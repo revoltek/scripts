@@ -6,7 +6,7 @@ import numpy as np
 images = sys.argv[5:]
 
 do_beam = True
-do_regrid = False
+do_regrid = True
 
 # load images
 bmaxmaj = 0
@@ -14,11 +14,11 @@ for img in images:
 	bmaj = qa.convert(imhead(imagename=img,mode='get',hdkey='beammajor'),'arcsec')
 	bmin = qa.convert(imhead(imagename=img,mode='get',hdkey='beamminor'),'arcsec')
 	bpa = imhead(imagename=img,mode='get',hdkey='beampa')
+	print "Load image:", img, "(Major:", bmaj['value'], bmaj['unit'], "- Minor:", bmin['value'], bmin['unit'], ")"
 	if bmaxmaj < bmaj['value']:
 		print "Setting bmaj to ", bmaj
 		bmaxmaj = bmaj['value']
 		bmaxmaj_img = img
-	print "Load image:", img, "(Major:", bmaj['value'], bmaj['unit'], "- Minor:", bmin['value'], bmin['unit'], ")"
 
 if do_beam:
     # armonize beams to the biggest
@@ -27,22 +27,9 @@ if do_beam:
 	    imsmooth(imagename=img, kernel='gauss', major=str(bmaxmaj)+'arcsec', minor=str(bmaxmaj)+'arcsec', pa='0deg', targetres=True, overwrite=True, outfile=img+'-convolved'+str(bmaxmaj))
 	    images[i] = img+'-convolved'+str(bmaxmaj)
 
-# find smallest image
-#for img in images:
-#	print "Scanning", img
-#	ia.open(img)
-#	cs = ia.coordsys()
-#	axisra = cs.findcoordinate(type='direction')[1][0]
-#	axisdec = cs.findcoordinate(type='direction')[1][1]
-#	ra = ia.toworld([0,0])[axisra]
-#	dec = ia.toworld([0,0])[axisdec]
-#	ra = ia.toworld([ia.shape()[axisra],ia.shape()[axisdec]])[axisra]
-#	dec = ia.toworld([ia.shape()[axisra],ia.shape()[axisdec]])[axisdec]
-#	if ra < minra
-
 if do_regrid:
-    # regrid to the first image coord sys
-    newincr = qa.convert({'unit':'arcsec', 'value':bmaxmaj/3.},'rad')['value']
+    # regrid to the first image size and pixel-size 1/5 of the beam
+    newincr = qa.convert({'unit':'arcsec', 'value':bmaxmaj/5.},'rad')['value']
     for i, img in enumerate(images):
     	print "Working on", img
     	print "Setting pixel to", newincr, "rad"
@@ -86,3 +73,18 @@ if do_regrid:
     		imrr = ia.regrid(outfile=img+'-regridded', csys=cs.torecord(), shape=thisshape, method='cubic')
     	cs.done()
     	ia.close()
+
+# find smallest image
+#for img in images:
+#	print "Scanning", img
+#	ia.open(img)
+#	cs = ia.coordsys()
+#	axisra = cs.findcoordinate(type='direction')[1][0]
+#	axisdec = cs.findcoordinate(type='direction')[1][1]
+#	ra = ia.toworld([0,0])[axisra]
+#	dec = ia.toworld([0,0])[axisdec]
+#	ra = ia.toworld([ia.shape()[axisra],ia.shape()[axisdec]])[axisra]
+#	dec = ia.toworld([ia.shape()[axisra],ia.shape()[axisdec]])[axisdec]
+#	if ra < minra
+
+

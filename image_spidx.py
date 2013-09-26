@@ -74,6 +74,7 @@ if (rmsfile != None):
 
 # Read images one by one.
 values = []
+masks = []
 frequencies = []
 rmsvalues = []
 fluxerrvalues = []
@@ -84,9 +85,13 @@ for name in imglist:
       # workaround for getting correct axes
       index = np.where(np.array(image.coordinates().get_names())=='direction')[0][0]
       imgdata = np.array(image.getdata())
+      maskdata = np.array(image.getmask())
+      # remove nested useless axes
       for i in xrange(index):
         imgdata = imgdata[0]
+        maskdata = maskdata[0]
       values.append(imgdata)
+      masks.append(maskdata)
       frequencies.append(image.coordinates().get_referencevalue()[0])
     except:
       print "ERROR: error accessing iamges data, probably wrong name or data format"
@@ -126,6 +131,10 @@ else:
   maskimgval = np.ones(imgsizeX*imgsizeY)
   maskimgval = maskimgval.reshape(imgsizeX, imgsizeY)
 
+# Merge given mask with images masks (images mask have 0 for good data and 1 for bad!)
+for maskdata in masks:
+  maskimgval = np.logical_and(maskimgval, ~maskdata)
+
 # Read mask plot
 if (doplot):
   if (maskplot):
@@ -157,9 +166,10 @@ for i in range(0, imgsizeX):
   for j in range(0, imgsizeY):
     val4reg=values.transpose()[j][i]
     # if the mask is set to 0 or rms check is true then skip this pixel
-    if (maskimgval[i][j] == 0 or (rmsfile != None and badrms(val4reg, rmsvalues))):
-      a = np.nan # TODO: set a mask, not to 0
-      sa = np.nan # TODO: set a mask, not to 0
+    if (maskimgval[i][j] == False or any(v < 0 for v in val4reg) or (rmsfile != None and badrms(val4reg, rmsvalues))):
+      a = np.nan
+      sa = np.nan
+      maskimgval[i][j] = False
     else:
       # err of log of quadrature sum of rms and fluxscale-error
       yerr=0.434*np.sqrt(rmsvalues**2+(fluxerrvalues*val4reg/100)**2)/val4reg
@@ -181,7 +191,8 @@ for i in range(0, imgsizeX):
   	  fig.clf()
 
     spidx[i][j] = a
-    err[i][j] = -100*sa/a # error in %
+    #err[i][j] = -100*sa/a # error in %
+    err[i][j] = sa # error in std dev
   sys.stdout.write('\r')
   sys.stdout.write(" [%-20s] %d%%" % ('='*(i*20/imgsizeX), i*100/imgsizeX))
   sys.stdout.flush()
@@ -203,18 +214,20 @@ if (dozone):
   fig.clf()
   np.savetxt('plots/zone.txt', np.array([frequencies,zoneval4reg]).transpose())
   
-# Write data
+# Write data (go back to mask convenction: 1=bad, 0=good)
 print "Writing spidx data."
 spidximg = pyrap.images.image(imglist[-1])
 spidximg.saveas(outimg)
 spidximg = pyrap.images.image(outimg)
 spidximg.putdata(spidx)
+spidximg.putmask(~maskimgval)
 #spidximg.tofits(outimg + ".fits")
 del spidximg
 rmsimg = pyrap.images.image(imglist[-1])
 rmsimg.saveas(outimg + "-rms")
 rmsimg = pyrap.images.image(outimg + "-rms")
 rmsimg.putdata(err)
+rmsimg.putmask(~maskimgval)
 #rmsimg.tofits(outimg + "-rms.fits")
 del rmsimg
 

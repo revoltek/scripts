@@ -14,18 +14,17 @@ maxdist = 0; mindist=np.inf
 t = table(sys.argv[1]+'/SPECTRAL_WINDOW')
 
 wavelenght = c/t.getcol('REF_FREQUENCY')[0]
-print 'Wavelenght:', wavelenght,'m'
+print 'Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1e6)+' MHz)'
 
-count = 0
 for u,v,w in col:
-	dist = math.sqrt(u*u+v*v)
-	if dist > maxdist: maxdist = dist
-	if dist < mindist and dist != 0.0:
-		mindist = dist
-		#print dist, u,v,w
+        dist = math.sqrt(u*u+v*v)
+        if dist > maxdist: maxdist = dist
+        if dist < mindist and dist != 0.0: mindist = dist
 
-print 'MaxUVdist (in unit of wavelenght): ', maxdist/wavelenght
-print 'MaxUVdist (in meters): ', maxdist
-print 'MinUVdist (in unit of wavelenght): ', mindist/wavelenght
-print 'MinUVdist (in meters): ', mindist
-print 'Resolution: ~',wavelenght/maxdist*(180/np.pi)*3600, 'arcsec'
+print 'MaxUVdist (wavelenght): ', maxdist/wavelenght
+print 'MaxUVdist (meters): ', maxdist
+print 'MinUVdist (wavelenght): ', mindist/wavelenght
+print 'MinUVdist (meters): ', mindist
+print 'Max Scale: ~',wavelenght/mindist*(180/np.pi), 'deg'
+print 'Min scale: ~',wavelenght/maxdist*(180/np.pi)*3600, 'arcsec'
+
