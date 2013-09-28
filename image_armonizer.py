@@ -38,7 +38,7 @@ if do_beam:
     print "# De Beam:"
     # armonize beams to the biggest
     for i, img in enumerate(images):
-        print "Convolving", img, "(to", bmaxmaj, "arcsec)"
+        print "Convolving (to", bmaxmaj, "arcsec):", img
         imsmooth(imagename=img, kernel='gauss', major=str(bmaxmaj)+'arcsec', minor=str(bmaxmaj)+'arcsec', pa='0deg', targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
         images[i] = img+'-conv'+str(bmaxmaj)
 
@@ -49,7 +49,7 @@ if do_regrid:
     newincr = qa.convert({'unit':'arcsec', 'value':bmaxmaj/5.},'rad')['value']
     print "Setting pixel to", newincr*180/np.pi/3600., "srcsec"
     for i, img in enumerate(images):
-        print "Working on", img
+        print "Regridding:", img
 
         # pre-check: set ref pix to 0,0 and consequently the refval
         ia.open(img)
@@ -97,6 +97,7 @@ if do_cut:
     print "# Do Cut:"
     print "Region:", region_file
     for i, img in enumerate(images):
+        print "Cutting:", img
         ia.open(img)   # casa image class
         #ia.summary()   # will print out some info
         #box = rg.box([10,10], [50,50])   # casa regionmanager class
