@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# fluxcal.py flux (in MHz)
 
 import sys, os
 import numpy as np

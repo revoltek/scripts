@@ -8,6 +8,9 @@ import numpy as np
 import pyrap.images
 import pyrap.tables
 
+import linearfit.linear_fit
+import linearfit.f
+
 def getValues(imglist):
     """Read image pixel values
     """
@@ -117,50 +120,51 @@ def getBeam(imglist):
         del t
     return [bmaj,bmin]
 
-opt = optparse.OptionParser(usage="%prog images", version="%prog 0.1")
-opt.add_option('-o', '--outfile', help='Output rms file [default = fluxes.dat]', default='fluxes.dat')
-opt.add_option('-r', '--rmsmask', help='Mask tp compute rms [default = use all]', default=None)
-opt.add_option('-f', '--fluxmask', help='Mask tp compute flux [default = use inner half]', default=None)
-opt.add_option('-s', '--sigma', help='Remove a pixel if it is below this sigma in any image [default = 0]', default=0, type='float')
-(options, imglist) = opt.parse_args()
-if len(imglist) == 0: sys.exit("Missing images.")
+if __name__ == "__main__":
+    opt = optparse.OptionParser(usage="%prog images", version="%prog 0.1")
+    opt.add_option('-o', '--outfile', help='Output text file [default = None]', default=None)
+    opt.add_option('-r', '--rmsmask', help='Mask tp compute rms [default = use all]', default=None)
+    opt.add_option('-f', '--fluxmask', help='Mask tp compute flux [default = use inner half]', default=None)
+    opt.add_option('-e', '--effectivemask', help='Output effective mask (intersection between fluxmask and pixels > Nsigma*RMS) [default = None]', default=None)
+    opt.add_option('-s', '--Nsigma', help='Remove a pixel if it is below this sigma in any image [default = 0]', default=0, type='float')
+    (options, imglist) = opt.parse_args()
+    if len(imglist) == 0: sys.exit("Missing images.")
 
-outfile = options.outfile
-print "Output file = "+outfile
-rmsmask = options.rmsmask.strip("/")
-fluxmask = options.fluxmask.strip("/")
-n_sigma = options.sigma
+    outfile = options.outfile
+    print "Output file = "+outfile
+    if options.rmsmask != None: rmsmask = options.rmsmask.strip("/")
+    if options.fluxmask != None: fluxmask = options.fluxmask.strip("/")
+    if options.effectivemask != None: effmask = options.effectivemask.strip("/")
+    n_sigma = options.Nsigma
 
-values, shape = getValues(imglist)
-rmsmaskval = getRmsMask(shape, rmsmask)
-fluxmaskval = getFluxMask(shape, fluxmask)
+    values, shape = getValues(imglist)
+    rmsmaskval = getRmsMask(shape, rmsmask)
+    fluxmaskval = getFluxMask(shape, fluxmask)
+    freqs = getFreqs(imglist)
+    beam = getBeam(imglist)
+    dpix = getPix(imglist)
 
-# calc rms and mask bad pixels
-maskedpix_pre = float(len(np.where(fluxmaskval == 1)[0]))
-maskedpix_tot = float(len(fluxmaskval[0])*len(fluxmaskval[1]))
-rmsvalues, fluxmaskval = calcRms(values, rmsmaskval, fluxmaskval, n_sigma)
-maskedpix_aft = float(len(np.where(fluxmaskval == 1)[0]))
-print "Mask moved from", maskedpix_pre/maskedpix_tot*100, "% to", maskedpix_aft/maskedpix_tot*100, "%."
+    # calc rms and mask bad pixels
+    maskedpix_pre = float(len(np.where(fluxmaskval == 1)[0]))
+    maskedpix_tot = float(len(fluxmaskval[0])*len(fluxmaskval[1]))
+    rmsvalues, fluxmaskval = calcRms(values, rmsmaskval, fluxmaskval, n_sigma)
+    maskedpix_aft = float(len(np.where(fluxmaskval == 1)[0]))
+    print "Mask moved from", maskedpix_pre/maskedpix_tot*100, "% to", maskedpix_aft/maskedpix_tot*100, "%."
 
-freqs = getFreqs(imglist)
-beam = getBeam(imglist)
-dpix = getPix(imglist)
-fluxvalues = calcFluxes(values, fluxmaskval, beam, dpix)
+    fluxvalues = calcFluxes(values, fluxmaskval, beam, dpix)
 
-print "Save flux values in "+outfile
-np.savetxt(outfile, np.array([freqs,fluxvalues,rmsvalues]).transpose(), fmt='%f %f %f')
+    if outfile != None:
+        print "Save flux values in "+outfile
+        np.savetxt(outfile, np.array([freqs,fluxvalues,rmsvalues]).transpose(), fmt='%f %f %f')
 
-print "Writing effective mask:"
-if fluxmask == None:
-    effmask = 'effective.mask'
-else:
-    effmask = fluxmask+'-eff'
-if os.path.isdir(effmask): os.system('rm -r '+effmask)
-os.system('cp -r '+imglist[0]+' '+effmask)
-image = pyrap.images.image(effmask)
-val = np.array(image.getdata())
-val[:] = 0
-val[0][0][np.where(fluxmaskval == 1)] = 1 
-image.putdata(val)
+    if effmask != None:
+        print "Writing effective mask:"
+        if os.path.isdir(effmask): os.system('rm -r '+effmask)
+        os.system('cp -r '+imglist[0]+' '+effmask)
+        image = pyrap.images.image(effmask)
+        val = np.array(image.getdata())
+        val[:] = 0
+        val[0][0][np.where(fluxmaskval == 1)] = 1 
+        image.putdata(val)
 
-print "Done."
+    print "Done."
