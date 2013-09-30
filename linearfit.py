@@ -40,6 +40,7 @@ def plotlinax(data, plotname):
     ax.plot(np.arange(6,10,0.1), [f(freq, B[0], B[1]) for freq in np.arange(6,10,0.1)], \
         label=r'y={:.1f}$\pm${:.1f}*x+{:2.0f}$\pm${:2.0f}'.format(B[0],B[2],B[1],B[3]))
     ax.legend(loc=1)
+    print "Writing "+plotname
     fig.savefig(plotname)
     del fig
 
@@ -50,7 +51,6 @@ def plotlogax(data, plotname):
     #reorder following freq
     srtidx = np.argsort(data['freq'])
     data = {'flux':data['flux'][srtidx], 'freq':data['freq'][srtidx], 'rms':data['rms'][srtidx]}
-    print data
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
     ax.set_yscale('log')
@@ -75,6 +75,7 @@ def plotlogax(data, plotname):
     ax.plot(freqs, [10**f(np.log10(freq), B[0], B[1]) for freq in freqs], \
         label=r'y={:.1f}$\pm${:.1f}*x+{:2.0f}$\pm${:2.0f}'.format(B[0],B[2],B[1],B[3]))
     ax.legend(loc=1)
+    print "Writing "+plotname
     fig.savefig(plotname)
     del fig
 

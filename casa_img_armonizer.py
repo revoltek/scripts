@@ -9,7 +9,9 @@ do_beam = True
 do_regrid = True
 do_cut = True
 region_file = '../cut.rgn'
+clean = True
 
+todelete = []
 
 print "##########################################"
 print "# Converting:"
@@ -19,6 +21,8 @@ for i, img in enumerate(images):
         print "Convert to MS: "+img
         importfits(fitsimage=img, overwrite=True, imagename=img.replace('.fits','.image'))
         images[i] = img.replace('.fits','.image')
+        if clean and (do_beam or do_regrid or do_cut):
+            todelete.append(img.replace('.fits','.image'))
 
 print "##########################################"
 print "# Compute Beam:"
@@ -41,6 +45,8 @@ if do_beam:
         print "Convolving (to", bmaxmaj, "arcsec):", img
         imsmooth(imagename=img, kernel='gauss', major=str(bmaxmaj)+'arcsec', minor=str(bmaxmaj)+'arcsec', pa='0deg', targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
         images[i] = img+'-conv'+str(bmaxmaj)
+        if clean and (do_regrid or do_cut):
+            todelete.append(img+'-conv'+str(bmaxmaj))
 
 if do_regrid:
     print "##########################################"
@@ -91,6 +97,8 @@ if do_regrid:
         images[i] = img+'-regridded'
         cs.done()
         ia.close()
+        if clean and do_cut:
+            todelete.append(img+'-regridded')
 
 if do_cut:
     print "##########################################"
@@ -103,3 +111,11 @@ if do_cut:
         #box = rg.box([10,10], [50,50])   # casa regionmanager class
         im2 = ia.subimage(outfile=img+'-cut', region=region_file, overwrite=True)
         images[i] = img+'-cut'
+
+if clean:
+    print "Cleaning up..."
+    for img in todelete:
+        os.system('rm -r '+img)
+        os.system('rm *log')
+
+print "Done."

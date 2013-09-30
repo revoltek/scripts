@@ -168,7 +168,7 @@ if __name__ == "__main__":
         rescaleData = np.loadtxt(rescalefile, comments='#', dtype=np.dtype({'names':['img','rescale'], 'formats':['S100',float]}))
         for i, img in enumerate(imglist):
             if img in rescaleData['img']:
-                r = rescaleData['rescale'][rescaleData['img'].index(img)]
+                r = rescaleData['rescale'][np.where(rescaleData['img'] == img)]
                 fluxvalues[i] *= r
                 print "Rescaling", img, "flux by", r
 
