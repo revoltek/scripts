@@ -8,7 +8,7 @@ images = sys.argv[5:]
 do_beam = True
 do_regrid = True
 do_cut = True
-region_file = 'cut.rgn'
+region_file = '../cut.rgn'
 
 
 print "##########################################"
@@ -35,7 +35,7 @@ print "Max beam is: ", bmaxmaj
 
 if do_beam:
     print "##########################################"
-    print "# De Beam:"
+    print "# Do Beam:"
     # armonize beams to the biggest
     for i, img in enumerate(images):
         print "Convolving (to", bmaxmaj, "arcsec):", img
@@ -44,7 +44,7 @@ if do_beam:
 
 if do_regrid:
     print "##########################################"
-    print "# De Regrid:"
+    print "# Do Regrid:"
     # regrid to the first image size and pixel-size 1/5 of the beam
     newincr = qa.convert({'unit':'arcsec', 'value':bmaxmaj/5.},'rad')['value']
     print "Setting pixel to", newincr*180/np.pi/3600., "srcsec"

@@ -5,8 +5,6 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 
-datafile = sys.argv[1]
-
 def f(x, B0, B1):
     return B0*x + B1
 # extimate errors and accept errors on ydata
@@ -23,6 +21,9 @@ def plotlinax(data, plotname):
     """Plot spectra using linear axes
     data are a dict: {flux:[],freq:[],rms:[]}
     """
+    #reorder following freq
+    srtidx = np.argsort(data['freq'])
+    data = {'flux':data['flux'][srtidx], 'freq':data['freq'][srtidx], 'rms':data['rms'][srtidx]}
     thisdata = {'flux': np.log10(data['flux']), 'freq': np.log10(data['freq']), 'rms': 0.434*data['rms']/data['flux']}
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
@@ -46,6 +47,10 @@ def plotlogax(data, plotname):
     """Plot spectra using log axes
     data are a dict: {flux:[],freq:[],rms:[]}
     """
+    #reorder following freq
+    srtidx = np.argsort(data['freq'])
+    data = {'flux':data['flux'][srtidx], 'freq':data['freq'][srtidx], 'rms':data['rms'][srtidx]}
+    print data
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
     ax.set_yscale('log')
