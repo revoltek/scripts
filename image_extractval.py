@@ -57,7 +57,7 @@ def getFluxMask(shape, fluxmask=None):
     assert fluxmaskval.shape == shape
     return fluxmaskval
 
-def calcRms(values, rmsmask, fluxmaskval = None, n_sigma = 5):
+def calcRms(values, rmsmaskval, fluxmaskval = None, n_sigma = 0):
     """Calculating RMSs and set to 0 the values under n sigma
     """
     rmsvalues = []
@@ -86,7 +86,15 @@ def getFreqs(imglist):
     freqs = []
     for img in imglist:
         t = pyrap.tables.table(img, ack=False)
-        freq = t.getkeyword('coords.worldreplace2')[0]
+        try:
+            freq = t.getkeyword('coords.worldreplace1')[0]
+        except:
+            pass
+        try:
+            freq = t.getkeyword('coords.worldreplace2')[0]
+        except:
+            pass
+        if 'vlss' in img: freq = 74e6
         freqs.append(freq)
         del t
     return freqs
@@ -108,14 +116,15 @@ def getPix(imglist):
 def getBeam(imglist):
     """Get the images beam (check that is the same)
     """
-    print "Get beams."
     t = pyrap.tables.table(imglist[0], ack=False)
     bmaj = t.getkeyword('imageinfo.restoringbeam.major.value')
     bmin = t.getkeyword('imageinfo.restoringbeam.minor.value')
     assert t.getkeyword('imageinfo.restoringbeam.major.unit') == 'arcsec'
     assert t.getkeyword('imageinfo.restoringbeam.minor.unit') == 'arcsec'
     del t
+    print "Get beams("+str(bmaj)+","+str(bmin)+")."
     for img in imglist[1:]:
+
         t = pyrap.tables.table(img, ack=False)
         thisbmaj = t.getkeyword('imageinfo.restoringbeam.major.value')
         thisbmin = t.getkeyword('imageinfo.restoringbeam.minor.value')
@@ -168,7 +177,7 @@ if __name__ == "__main__":
         rescaleData = np.loadtxt(rescalefile, comments='#', dtype=np.dtype({'names':['img','rescale'], 'formats':['S100',float]}))
         for i, img in enumerate(imglist):
             if img in rescaleData['img']:
-                r = rescaleData['rescale'][np.where(rescaleData['img'] == img)]
+                r = rescaleData['rescale'][np.where(rescaleData['img'] == img)][0]
                 fluxvalues[i] *= r
                 print "Rescaling", img, "flux by", r
 
@@ -178,6 +187,7 @@ if __name__ == "__main__":
 
     if outplot != None:
         data = {'flux':np.array(fluxvalues),'freq':np.array(freqs),'rms':np.array(rmsvalues)}
+        print data
         if log:
             linearfit.plotlinax(data, outplot)
         else:
