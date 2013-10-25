@@ -5,12 +5,12 @@ import sys
 import numpy as np
 images = sys.argv[5:]
 
-do_beam = False
+do_beam = True
 do_regrid = True
 newincr = 5 # arcsec
 do_cut = True
 region_file = 'cut.crtf'
-to_fits = True
+to_fits = False
 clean = True
 
 todelete = []
