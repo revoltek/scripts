@@ -4,7 +4,6 @@ from pyrap.tables import *
 import numpy as np
 import optparse
 import sys
-import coordinates_mode as cm
 import math
 
 img=sys.argv[1]

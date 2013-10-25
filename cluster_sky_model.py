@@ -23,32 +23,10 @@ matplotlib.use('GTK')
 import numpy as np
 import pylab as pl
 import matplotlib, itertools
-from coordinates_mode import *
+from lib_coordinates_mode import *
 import os
 import sys
 pi = np.pi
-
-def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
-    """Returns angular separation between two coordinates (all in degrees)"""
-    import math
-
-    ra1rad=ra1deg*math.pi/180.0
-    dec1rad=dec1deg*math.pi/180.0
-    ra2rad=ra2deg*math.pi/180.0
-    dec2rad=dec2deg*math.pi/180.0
-
-    # calculate scalar product for determination
-    # of angular separation
-    x=math.cos(ra1rad)*math.cos(dec1rad)*math.cos(ra2rad)*math.cos(dec2rad)
-    y=math.sin(ra1rad)*math.cos(dec1rad)*math.sin(ra2rad)*math.cos(dec2rad)
-    z=math.sin(dec1rad)*math.sin(dec2rad)
-
-    if x+y+z >= 1: rad = 0
-    else: rad=math.acos(x+y+z)
-
-    # Angular separation
-    deg=rad*180/math.pi
-    return deg
 
 def load_bbs_skymodel(infilename):
         tmp_input = infilename + '.tmp'
@@ -321,11 +299,11 @@ def find_closest_cluster(clusters,clusters_ra,clusters_dec,patches,ra_patches,de
     for (cluster_id,cluster) in enumerate(clusters): # loop over clusters
       ra_patch  = ra_patches[patch_id+Q]
       dec_patch = dec_patches[patch_id+Q]
-      adis = abs(angsep(clusters_ra[cluster_id],clusters_dec[cluster_id],ra_patch,dec_patch)) 
+      adis = abs(angsep2(clusters_ra[cluster_id],clusters_dec[cluster_id],ra_patch,dec_patch)) 
       if adis < angulardistance:
          angulardistance = adis
          patch_cluster_id[patch_id] = cluster_id
-         #print abs(angsep(clusters_ra[cluster_id],clusters_dec[cluster_id],ra_patch,dec_patch)) 
+         #print abs(angsep2(clusters_ra[cluster_id],clusters_dec[cluster_id],ra_patch,dec_patch)) 
          #print 'cloest cluster found till now', cluster
     #print 'Closest cluster to', patch, 'is at', angulardistance ,\
     #      '[cluster is', clusters[patch_cluster_id[patch_id]],']'

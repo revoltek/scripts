@@ -6,11 +6,12 @@
 # Modified (simplified) by Casey to work with pyDAL scripts
 
 import math, pylab, numpy, scipy, logging, datetime, pytz
+
 core_lat = 52.9088
 core_lon = -6.8689 # Note that wcstools takes a +ve longitude as WEST.
-#wcstools_path = '/app/usg_dal/lib/python/libwcstools.so.1'
-#wcstools_path = '/data/users/school/Exercise-45/inputs/libwcstools.so.1'
+
 wcstools_path= '/data/users/swinbank/app/lib/libwcstools.so.1'
+
 def julian_date(time=None, modified=False):
     """Return the Julian Date: the number of days (including fractions) which
     have elapsed between noon, UT on 1 January 4713 BC and the specified time.
@@ -62,36 +63,6 @@ def mjds2lst(mjds, lon=core_lon):
     logitude is that of LOFAR core."""
     # That is, this should be a drop-in replacement for old_mjds2lst(), below.
     return sec2deg(mjd2lst(sec2days(mjds), lon=lon))
-
-def old_mjds2lst(MJDs,lon=6.8689):
-    """DEPRECATED
-    Return the local sidereal time in degrees.  Starts with mean julian 
-    date in seconds, as is the time column from a measurement set.  Default
-    logitude is that of LOFAR core."""
-
-    logging.debug("old_mjds2lst() is deprecated: try mjds2lst() instead")
-
-    t0 = 51544  # MJD of midnight (am) on 2000 Jan 1 (which I think is where the MS times in seconds date from) - this is some kind of reference date --editor's note -- MJD starts at Nov 17, 1858
-    l0=99.967794687
-    l1=360.98564736628603
-    l2=2.907879e-13
-    l3=-5.302e-22
-
-    MJD_2000 = MJDs/(24*3600)-t0   # MJD days from 1 Jan 2000  -- compared this to web and it is ok
-#    print 'MJD: %5.3f s, %10.5f days' % (MJDs,MJDs/(24*3600))
-
-#    # method 1
-    sidereal_time =  l0+(l1*MJD_2000)+(l2*MJD_2000*MJD_2000)+(l3*MJD_2000*MJD_2000)+lon
-
-    # method 2 -- fails
-#    julian_day = MJD_2000
-#    julian_century = MJD_2000/36525.
-#    sidereal_time = 280.46061837 + 360.98564736629*julian_day + 0.000387933*julian_century*julian_century - julian_century*julian_century*julian_century/38710000. + lon
-
-    mst = sidereal_time-(360*math.floor(sidereal_time/360.0))
-    print 'LST: %5.3f' % mst
-
-    return mst
 
 def altaz(mjds, ra, dec, lat=core_lat):
     """Calculates the azimuth and elevation of source from time and position
@@ -217,6 +188,28 @@ def angsep(ra1,dec1,ra2,dec2):
     c = (math.pi/2)-math.radians(dec2)
 
     return 3600*math.degrees(math.acos((math.cos(b)*math.cos(c))+(math.sin(b)*math.sin(c)*math.cos(math.radians(ra1-ra2)))))
+
+def angsep2(ra1deg, dec1deg, ra2deg, dec2deg):
+    """Returns angular separation between two coordinates (all in degrees)"""
+    import math
+
+    ra1rad=ra1deg*math.pi/180.0
+    dec1rad=dec1deg*math.pi/180.0
+    ra2rad=ra2deg*math.pi/180.0
+    dec2rad=dec2deg*math.pi/180.0
+
+    # calculate scalar product for determination
+    # of angular separation
+    x=math.cos(ra1rad)*math.cos(dec1rad)*math.cos(ra2rad)*math.cos(dec2rad)
+    y=math.sin(ra1rad)*math.cos(dec1rad)*math.sin(ra2rad)*math.cos(dec2rad)
+    z=math.sin(dec1rad)*math.sin(dec2rad)
+
+    if x+y+z >= 1: rad = 0
+    else: rad=math.acos(x+y+z)
+
+    # Angular separation
+    deg=rad*180/math.pi
+    return deg
 
 # Find angular separation of 2 positions, in arcseconds
 

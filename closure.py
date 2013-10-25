@@ -2,7 +2,7 @@ import sys
 import pylab as lb
 import numpy
 import pyrap.tables as pt
-import coordinates_mode as co
+import lib_coordinates_mode as co
 from numpy import *
 from scipy import *
 import matplotlib.font_manager as font_manager 

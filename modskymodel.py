@@ -6,7 +6,7 @@ import pyrap.images
 import numpy as np
 import optparse
 import sys
-import coordinates_mode as cm
+import lib_coordinates_mode as cm
 import math
 from progressbar import * 
 
