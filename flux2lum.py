@@ -9,5 +9,7 @@ dist = 45.6 # in Mpc
 
 # 1 pc = 3.08567758e16 m
 print flux * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "W/hz"
-print "(For a distance of "+str(dist)+")"
+print "W/Hz"
+print flux * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
+print "erg/s/Hz"
+print "(For a distance of "+str(dist)+" Mpc)"
