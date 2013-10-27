@@ -1,22 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import matplotlib
-matplotlib.use('GTK')
+
 import numpy
-import os
-import sys
+import os, sys, time, uuid
+import logging
 import lofar.parmdb
 import lofar.expion.parmdbmain
 from scipy import interpolate
-import time
 from subprocess import Popen, PIPE
 import pyrap.tables as pt
-import uuid
-
-# import psutil
-
-pi = numpy.pi
-
 
 # to run casa when not logged in
 # Step 0. Run in screen
@@ -201,17 +193,13 @@ def make_image(
     nterms,
     atrous_do,
     imsize,
+    do_mask = True,
+    niter = 1000,  # 7500 causes nasty clean artifacts
+    mscale = 'False',
+    average = True,  # average the data a lot to speed up the imaging
     ):
 
-    do_mask = True
-    niter = 1000  # 7500 causes nasty clean artifacts
-    mscale = 'False'
-
-    average = True  # average the data a lot to speed up the imaging,
-
- # ONLY average for small FOV, otherwise timesmearing is a problem
- # average data
-
+    # ONLY average for small FOV, otherwise timesmearing is a problem average data
     if average:
         for ms in mslist:
             ndppp_parset = ms + '_NDPPP.parset'
@@ -222,7 +210,7 @@ def make_image(
             f.write('msin.datacolumn = CORRECTED_DATA\n')
             f.write('msout = %s\n' % output)
             f.write('steps=[avg]\n')
-            f.write('rficonsole.type=aoflagger\n')
+            #f.write('rficonsole.type=aoflagger\n')
             f.write('avg.type = squash\n')
             f.write('avg.freqstep = 1\n')
             f.write('avg.timestep = 12\n')  # is the default
@@ -239,13 +227,11 @@ def make_image(
                 pid = Popen('pidof NDPPP', shell=True,
                             stdout=PIPE).communicate()[0]
 
-      # print pid
-
+                # print pid
                 pid_list = pid.split(' ')
+
                 for pidnr in pid_list:
-
-        # print 'PID', pidnr
-
+                    # print 'PID', pidnr
                     os.system('kill -s CONT ' + str(pidnr))
 
             os.system('NDPPP ' + ndppp_parset + '&')
@@ -259,13 +245,11 @@ def make_image(
         pid = Popen('pidof NDPPP', shell=True,
                     stdout=PIPE).communicate()[0]
 
-      # print pid
+        # print pid
 
         pid_list = pid.split(' ')
         for pidnr in pid_list:
-
-        # print 'PID', numpy.int(pidnr)
-
+            # print 'PID', numpy.int(pidnr)
             os.system('kill -s CONT ' + str(pidnr))
 
     ms = ''
@@ -285,20 +269,17 @@ def make_image(
                   + ' ' + str(niter) + ' ' + str(nterms) + ' '
                   + str(imsize) + ' ' + mscale)
 
-   # make mask
-
         if nterms > 1:
-            os.system('python ~weeren/scripts/rx42_hba/makecleanmask.py --threshpix '
-                       + str(threshpix) + ' --threshisl '
-                      + str(threshisl) + ' --atrous_do '
-                      + str(atrous_do) + ' ' + imout + '.image.tt0')
+            imagename = imout + '.image.tt0'
         else:
-            os.system('python ~weeren/scripts/rx42_hba/makecleanmask.py --threshpix '
+            imagename = imout + '.image'
+
+        os.system('python ~weeren/scripts/rx42_hba/makecleanmask.py --threshpix '
                        + str(threshpix) + ' --threshisl '
                       + str(threshisl) + ' --atrous_do '
-                      + str(atrous_do) + ' ' + imout + '.image')
+                      + str(atrous_do) + ' ' + imagename)
 
-   # clean image with manual mask
+        # clean image with manual mask TODO: check this and what is do_mask=False?
         mask = imout + '.cleanmask'
 
     imout = 'im' + callnumber + '_cluster' + cluster
@@ -329,7 +310,7 @@ def runbbs(
     parset,
     parmdb,
     applycal,
-    TEC,
+    TEC = False,
     ):
 
  # NOTE WORK FROM MODEL_DATA (contains correct phase data from 10SB calibration)
@@ -338,8 +319,7 @@ def runbbs(
     if TEC:
         if len(mslist) == 10000:  # 34 does not work now!!!!!!
 
-   # this is a very special case for a full run, manually here to run with 3 solver controls
-
+            # this is a very special case for a full run, manually here to run with 3 solver controls
             vdslist = ''
             os.system('makevds /home/weeren/cep2.clusterdesc ' + ms)
             vdslist = vdslist + ms + '.vds '
@@ -420,8 +400,7 @@ def create_scalarphase_parset(timestep, TEC, groups):
 
     if TEC:
         f.write('Step.solve.Model.TEC.Enable            = T\n')
-        f.write('Step.solve.Solve.CalibrationGroups     = [%s]\n'
-                % groups)
+        f.write('Step.solve.Solve.CalibrationGroups     = [%s]\n' % groups)
         f.write('Step.solve.Model.Clock.Enable          = T\n')
 
     f.write('Step.solve.Model.Rotation.Enable        = F\n')
@@ -429,18 +408,12 @@ def create_scalarphase_parset(timestep, TEC, groups):
     f.write('Step.solve.Operation                    = SOLVE\n')
 
     if TEC:
-
-    # f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*"]\n')
-
-        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*","Clock:*"]\n'
-                )
+        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*","Clock:*"]\n')
     else:
-        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*"]\n'
-                )
+        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*"]\n')
 
     f.write('Step.solve.Solve.CellSize.Freq          = 0\n')
-    f.write('Step.solve.Solve.CellSize.Time          = %s\n'
-            % str(timestep))
+    f.write('Step.solve.Solve.CellSize.Time          = %s\n' % str(timestep))
     f.write('Step.solve.Solve.CellChunkSize          = 500\n')
     f.write('Step.solve.Solve.PropagateSolutions     = T\n')
     f.write('Step.solve.Solve.Options.MaxIter        = 100\n')
@@ -448,7 +421,7 @@ def create_scalarphase_parset(timestep, TEC, groups):
     f.write('Step.solve.Solve.Options.BalancedEqs    = F\n')
     f.write('Step.solve.Solve.Options.UseSVD         = T\n')
     f.write('Step.solve.Model.Beam.Enable            = F\n')
-    f.write('Step.solve.Solve.UVRange		   = [80]\n')
+    f.write('Step.solve.Solve.UVRange		         = [80]\n')
     f.write('Step.solve.Solve.Mode                   = COMPLEX \n')
 
     f.write('Step.correct.Model.Sources                 = []\n')
@@ -463,8 +436,7 @@ def create_scalarphase_parset(timestep, TEC, groups):
     f.write('Step.correct.Model.Gain.Enable             = F\n')
     f.write('Step.correct.Model.Phasors.Enable          = F\n')
     f.write('Step.correct.Operation                     = CORRECT\n')
-    f.write('Step.correct.Output.Column                 = CORRECTED_DATA\n'
-            )
+    f.write('Step.correct.Output.Column                 = CORRECTED_DATA\n')
     f.write('Step.correct.Model.Beam.Enable             = F\n')
     f.write('Step.correct.Output.WriteCovariance        = F\n')
 
@@ -495,26 +467,19 @@ def create_scalarphase_parset_p(timestep, TEC, groups):
     if TEC:
         f.write('Step.solve.Model.TEC.Enable            = T\n')
         f.write('Step.solve.Model.Clock.Enable            = T\n')
-        f.write('Step.solve.Solve.CalibrationGroups     = [%s]\n'
-                % groups)
+        f.write('Step.solve.Solve.CalibrationGroups     = [%s]\n' % groups)
 
     f.write('Step.solve.Model.Rotation.Enable        = F\n')
     f.write('Step.solve.Model.CommonScalarPhase.Enable = T \n')
     f.write('Step.solve.Operation                    = SOLVE\n')
 
     if TEC:
-
-    # f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*"]\n')
-
-        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*","Clock:*"]\n'
-                )
+        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*","Clock:*"]\n')
     else:
-        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*"]\n'
-                )
+        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*"]\n')
 
     f.write('Step.solve.Solve.CellSize.Freq          = 0\n')
-    f.write('Step.solve.Solve.CellSize.Time          = %s\n'
-            % str(timestep))
+    f.write('Step.solve.Solve.CellSize.Time          = %s\n' % str(timestep))
     f.write('Step.solve.Solve.CellChunkSize          = 500\n')
     f.write('Step.solve.Solve.PropagateSolutions     = T\n')
     f.write('Step.solve.Solve.Options.MaxIter        = 100\n')
@@ -522,7 +487,7 @@ def create_scalarphase_parset_p(timestep, TEC, groups):
     f.write('Step.solve.Solve.Options.BalancedEqs    = F\n')
     f.write('Step.solve.Solve.Options.UseSVD         = T\n')
     f.write('Step.solve.Model.Beam.Enable            = F\n')
-    f.write('Step.solve.Solve.UVRange		   = [80]\n')
+    f.write('Step.solve.Solve.UVRange		         = [80]\n')
     f.write('Step.solve.Solve.Mode                   = COMPLEX \n')
 
     f.write('Step.correct.Model.Sources                 = []\n')
@@ -558,7 +523,7 @@ def create_amponly_parset(timestep):
 
     f.write('Step.solve.Model.Sources                  = []\n')
     f.write('Step.solve.Model.Cache.Enable             = T\n')
-    f.write('Step.solve.Model.Phasors.Enable           = F\n')  # # T
+    f.write('Step.solve.Model.Phasors.Enable           = F\n')
     f.write('Step.solve.Model.DirectionalGain.Enable   = F\n')
     f.write('Step.solve.Model.Gain.Enable              = T\n')
     f.write('Step.solve.Model.Rotation.Enable          = F\n')
@@ -567,8 +532,7 @@ def create_amponly_parset(timestep):
     f.write('Step.solve.Solve.Parms                    = ["Gain:0:0:*","Gain:1:1:*"]\n'
             )  # #  ["Gain:0:0:Ampl:*","Gain:1:1:Ampl:*"]
     f.write('Step.solve.Solve.CellSize.Freq            = 0\n')
-    f.write('Step.solve.Solve.CellSize.Time            = %s\n'
-            % str(timestep))
+    f.write('Step.solve.Solve.CellSize.Time            = %s\n' % str(timestep))
     f.write('Step.solve.Solve.CellChunkSize            = 480\n')
     f.write('Step.solve.Solve.PropagateSolutions       = T\n')
     f.write('Step.solve.Solve.Options.MaxIter          = 100\n')
@@ -576,7 +540,7 @@ def create_amponly_parset(timestep):
     f.write('Step.solve.Solve.Options.BalancedEqs      = F\n')
     f.write('Step.solve.Solve.Options.UseSVD           = T\n')
     f.write('Step.solve.Model.Beam.Enable              = F\n')
-    f.write('Step.solve.Solve.UVRange		     = [80]\n')  # # [600]
+    f.write('Step.solve.Solve.UVRange		           = [80]\n')  # # [600]
     f.write('Step.solve.Solve.Mode                     = COMPLEX\n')
 
     f.close()
@@ -605,25 +569,19 @@ def create_scalarphase_parset_p2(timestep, TEC, groups):
     if TEC:
         f.write('Step.solve.Model.TEC.Enable            = T\n')
         f.write('Step.solve.Model.Clock.Enable          = T\n')
-        f.write('Step.solve.Solve.CalibrationGroups     = [%s]\n'
-                % groups)
+        f.write('Step.solve.Solve.CalibrationGroups     = [%s]\n' % groups)
 
     f.write('Step.solve.Model.Rotation.Enable        = F\n')
     f.write('Step.solve.Model.CommonScalarPhase.Enable = T \n')
     f.write('Step.solve.Operation                    = SOLVE\n')
 
     if TEC:
-#        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*"]\n'
-                )
-        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*","Clock:*"]\n'
-                )
+        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*","TEC:*","Clock:*"]\n')
     else:
-        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*"]\n'
-                )
+        f.write('Step.solve.Solve.Parms                  = ["CommonScalarPhase:*"]\n')
 
     f.write('Step.solve.Solve.CellSize.Freq          = 0\n')
-    f.write('Step.solve.Solve.CellSize.Time          = %s\n'
-            % str(timestep))
+    f.write('Step.solve.Solve.CellSize.Time          = %s\n' % str(timestep))
     f.write('Step.solve.Solve.CellChunkSize          = 500\n')
     f.write('Step.solve.Solve.PropagateSolutions     = T\n')
     f.write('Step.solve.Solve.Options.MaxIter        = 100\n')
@@ -631,7 +589,7 @@ def create_scalarphase_parset_p2(timestep, TEC, groups):
     f.write('Step.solve.Solve.Options.BalancedEqs    = F\n')
     f.write('Step.solve.Solve.Options.UseSVD         = T\n')
     f.write('Step.solve.Model.Beam.Enable            = F\n')
-    f.write('Step.solve.Solve.UVRange		   = [80]\n')
+    f.write('Step.solve.Solve.UVRange       		 = [80]\n')
     f.write('Step.solve.Solve.Mode                   = COMPLEX \n')
 
     f.write('Step.correct.Model.Sources                 = []\n')
@@ -654,59 +612,37 @@ def create_scalarphase_parset_p2(timestep, TEC, groups):
     f.close()
     return bbs_parset
 
+######################################################################
+from optparse import OptionParser
+parser = OptionParser(usage='%prog [options] <MSs>')
+parser.add_option('-c', '--cluster', help='Name of the working cluster',  default='unknownCluster')
+parser.add_option('-s', '--imsize', help='Image size in pixel [default=1024]',  default=1024, type=int)
+parser.add_option('-n', '--nterms', help='Nterms for cleaning, max: 3 [default=1]',  default=1, type=int)
+parser.add_option('-a', '--amp', help='cell size time amplitude [default=120]',  default=120, type=int)
+parser.add_option('-p', '--ph', help='cell size time phase [default=1]',  default=1, type=int)
+parser.add_option('-t', '--tec', help='solve also for clock and TEC? [default=False]', default=False, action='store_true')
+parser.add_option('--no_atrous_do', help='atrous_do in pybdsb? [default=True]', default=True, action='store_false')
+(o, mslist) = parser.parse_args()
 
-el = len(sys.argv)
+if len(mslist) < 1: sys.exit("Missing MSs.")
 
-mslist = sys.argv[1:el - 7]
-cluster = str(sys.argv[el - 7])
-atrous_do = str(sys.argv[el - 6])
-imsize = numpy.int(sys.argv[el - 5])
+cluster = o.cluster
+atrous_do = o.atrous_do
+imsize = o.imsize
+nterms = o.nterms
+assert (nterms < 4 and nterms > 0) # only 1 to 3 is supported 
+cellsizetime_a = o.amp
+cellsizetime_p = o.ph
+TECi = o.tec
 
-nterms = numpy.int(sys.argv[el - 4])  # only 1 to 3 is supported !!
-cellsizetime_a = numpy.int(sys.argv[el - 3])
-cellsizetime_p = numpy.int(sys.argv[el - 2])
-TECi = str(sys.argv[el - 1])
-
-TEC = False
-if TECi == 'True':
-    TEC = True
-
-print 'mslist', mslist
-print 'source', cluster
-print 'atrous_do', atrous_do
-print 'imsize', imsize
-
-# sys.exit()
+print 'Mslist:', mslist
+print 'Source:', cluster
+print 'Atrous_do:', atrous_do
+print 'Imsize:', imsize
 
 merge_parmdb = True
-phasors = False  # if true only solve for amps on long timescales
 
-# cellsizetime_a          = 120
-# cellsizetime_p          = 1
-# nterms                  = 1  # only 1 to 3 is supported !!
-
-# if merge_parmdb:
-#   pre_apply_parmdb = 'instrument_amps0' + '_smoothed' # need in merged if this is last calibration round
-#   if phasors:
-#      dummyparset = '~weeren/scripts/rx42_hba/scalarphase+amp.parset'
-#   else:
-#      dummyparset = '~weeren/scripts/rx42_hba/scalarphase+ap.parset'
-#   dummyparmdb = 'instrument_template'
-#
-#   #runbbs(mslist, skymodel,dummyparset, dummyparmdb, True, False)
-#
-#   parmdb_a    = 'instrument_amps1_smoothed'  # last/best ampplitude(+phase) parmdb
-#   parmdb_p    = 'instrument_phase1'          # last/best CommonScalarPhase parmdb
-#   parmdbout   = 'instrument_merged'
-#
-#   for ms in mslist:
-#     create_merged_parmdb(ms, ms+'/'+pre_apply_parmdb, ms+'/'+parmdb_a, ms+'/'+parmdb_p, ms+'/'+dummyparmdb,ms+'/'+parmdbout,cellsizetime_a,cellsizetime_p)
-#
-# sys.exit()
-
-# runbbs(mslist, 'bla.skymodel', 'bla.parset', 'parmdbbla', False, True)
-# sys.exit()
-
+#####################
 #### MAKE IMAGE 0 ###
 
 (imout, mask) = make_image(
@@ -721,7 +657,6 @@ phasors = False  # if true only solve for amps on long timescales
     )
 
 #####################
-
 ### CALIBRATE WITH BBS PHASE ONLY 1 ###
 # create skymodel for BBS
 
@@ -751,8 +686,8 @@ runbbs(
     )
 
 # NOTE WORK FROM MODEL_DATA (contains correct phase data from 10SB calibration)
-######################################
 
+######################################
 ### MAKE IMAGE 1 ###
 
 (imout, mask) = make_image(
@@ -766,8 +701,7 @@ runbbs(
     imsize,
     )
 
-####################
-
+######################################
 ### CALIBRATE WITH BBS PHASE ONLY 2 ###
 # create skymodel for BBS
 
@@ -797,7 +731,6 @@ runbbs(  # NOTE WORK FROM MODEL_DATA (contains correct phase data from 10SB cali
     )
 
 ######################################
-
 ### MAKE IMAGE 2 ###
 
 (imout, mask) = make_image(
@@ -811,8 +744,7 @@ runbbs(  # NOTE WORK FROM MODEL_DATA (contains correct phase data from 10SB cali
     imsize,
     )
 
-####################
-
+###################################
 ### CALIBRATE WITH BBS PHASE+AMP 1 ###
 
 os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
@@ -855,15 +787,8 @@ runbbs(
     )
 
 for ms in mslist:
-
   # remove outliers from the solutions
-
-    if phasors:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42.py '
-                  + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-    else:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
+  os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
                    + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
                   + parmdb + '_smoothed')
 
@@ -878,6 +803,7 @@ runbbs(
     False,
     )
 
+#########################################
 ### MAKE IMAGE 3 ###
 
 (imout, mask) = make_image(
@@ -891,7 +817,8 @@ runbbs(
     imsize,
     )
 
-#### CALIBRATE  BBS PHASE+AMP 2 ###
+####################################
+#### CALIBRATE  BBS PHASE+AMP 2
 # make model
 
 os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
@@ -935,8 +862,8 @@ skymodel = imout + '.skymodel'
 #  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '8,8')
 # else:
 
-parset = create_scalarphase_parset_p2(cellsizetime_p, TEC,
-        str(len(mslist)))
+parset = create_scalarphase_parset_p2(cellsizetime_p, TEC, str(len(mslist)))
+
 runbbs(
     mslist,
     skymodel,
@@ -962,13 +889,7 @@ runbbs(
 for ms in mslist:
 
   # remove outliers from the solutions
-
-    if phasors:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42.py '
-                  + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-    else:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
+  os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
                    + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
                   + parmdb + '_smoothed')
 
@@ -983,6 +904,7 @@ runbbs(
     False,
     )
 
+##########################################
 ### MAKE IMAGE 4 ###
 
 (imout, mask) = make_image(
@@ -996,6 +918,7 @@ runbbs(
     imsize,
     )
 
+##########################################
 ### CREATE FINAL MODEL ###
 
 skymodelf = 'im_cluster' + cluster + '.final.skymodel'
@@ -1007,14 +930,11 @@ os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
 
 if merge_parmdb:
 
-    if phasors:
-        dummyparset = '~weeren/scripts/rx42_hba/scalarphase+amp.parset'
-    else:
-        if TEC:
-            dummyparset = \
+    if TEC:
+        dummyparset = \
                 '~weeren/scripts/rx42_hba/scalarphase+ap+TEC+clock.parset'
-        else:
-            dummyparset = \
+    else:
+        dummyparset = \
                 '~weeren/scripts/rx42_hba/scalarphase+ap.parset'
 
     dummyparmdb = 'instrument_template'
@@ -1043,456 +963,3 @@ if merge_parmdb:
             cellsizetime_a,
             cellsizetime_p,
             )
-
-##################################################################
-##################################################################
-##################################################################
-##################################################################
-
-sys.exit()
-
-### CALIBRATE BBS PHASE+AMP 3 ###
-# create skymodel
-
-os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
-          + '-t ' + str(nterms) + ' ' + imout + '.model ' + imout
-          + '.skymodel')
-
-# parmdb keep from previous step
-
-skymodel = imout + '.skymodel'
-
-# pre-apply amp solutions
-
-if TEC:
-    runbbs(
-        mslist,
-        skymodel,
-        '~weeren/scripts/rx42_hba/apply_amplitudeonly_p_TEC.parset',
-        parmdb + '_smoothed',
-        True,
-        False,
-        )
-else:
-    runbbs(
-        mslist,
-        skymodel,
-        '~weeren/scripts/rx42_hba/apply_amplitudeonly_p.parset',
-        parmdb + '_smoothed',
-        True,
-        False,
-        )
-
-pre_apply_parmdb = parmdb + '_smoothed'  # need in merged if this is last calibration round
-
-# solve +apply phases
-# if len(mslist) == 34:
-#  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '11,11,12')
-# if len(mslist) == 16:
-#  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '8,8')
-# else:
-
-parset = create_scalarphase_parset_p2(cellsizetime_p, TEC,
-        str(len(mslist)))
-runbbs(
-    mslist,
-    skymodel,
-    parset,
-    'instrument_phase2',
-    False,
-    TEC,
-    )
-
-# solve amps
-
-parmdb = 'instrument_amps2'
-parset = create_amponly_parset(cellsizetime_a)
-runbbs(
-    mslist,
-    skymodel,
-    parset,
-    parmdb,
-    False,
-    False,
-    )
-
-for ms in mslist:
-
-  # remove outliers from the solutions
-
-    if phasors:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42.py '
-                  + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-    else:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
-                   + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-
-# apply amps
-
-runbbs(
-    mslist,
-    skymodel,
-    '~weeren/scripts/rx42_hba/apply_amplitudeonly.parset',
-    parmdb + '_smoothed',
-    True,
-    False,
-    )
-
-### MAKE IMAGE 5 ###
-
-(imout, mask) = make_image(
-    mslist,
-    cluster,
-    '5',
-    8,
-    8,
-    nterms,
-    atrous_do,
-    imsize,
-    )
-
-### CREATE FINAL MODEL ###
-
-skymodelf = 'im_cluster' + cluster + '.final.skymodel'
-os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
-          + '-t ' + str(nterms) + ' ' + imout + '.model ' + skymodelf)
-
-### CREATED MERGED PARMDB SCALARPHASE+AMPS ###
-### INCLUDES SPLINE INTERPOLARION OF AMPS ###
-
-if merge_parmdb:
-
-    if phasors:
-        dummyparset = '~weeren/scripts/rx42_hba/scalarphase+amp.parset'
-    else:
-        if TEC:
-            dummyparset = \
-                '~weeren/scripts/rx42_hba/scalarphase+ap+TEC+clock.parset'
-        else:
-            dummyparset = \
-                '~weeren/scripts/rx42_hba/scalarphase+ap.parset'
-
-    dummyparmdb = 'instrument_template'
-
-    runbbs(
-        mslist,
-        skymodel,
-        dummyparset,
-        dummyparmdb,
-        True,
-        False,
-        )
-
-    parmdb_a = 'instrument_amps2_smoothed'  # last/best ampplitude(+phase) parmdb
-    parmdb_p = 'instrument_phase2'  # last/best CommonScalarPhase parmdb
-    parmdbout = 'instrument_merged'
-
-    for ms in mslist:
-        create_merged_parmdb(
-            ms,
-            ms + '/' + pre_apply_parmdb,
-            ms + '/' + parmdb_a,
-            ms + '/' + parmdb_p,
-            ms + '/' + dummyparmdb,
-            ms + '/' + parmdbout,
-            cellsizetime_a,
-            cellsizetime_p,
-            )
-
-##################################################################
-##################################################################
-##################################################################
-##################################################################
-
-sys.exit()
-
-### CALIBRATE BBS PHASE+AMP 4 ###
-
-os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
-          + '-t ' + str(nterms) + ' ' + imout + '.model ' + imout
-          + '.skymodel')
-
-# parmdb keep from previous step
-
-skymodel = imout + '.skymodel'
-runbbs(
-    mslist,
-    skymodel,
-    '~weeren/scripts/rx42_hba/apply_amplitudeonly_p.parset',
-    parmdb + '_smoothed',
-    True,
-    False,
-    )
-pre_apply_parmdb = parmdb + '_smoothed'  # need in merged if this is last calibration round
-
-# solve +apply phases
-# if len(mslist) == 34:
-#  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '11,11,12')
-# if len(mslist) == 16:
-#  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '8,8')
-# else:
-
-parset = create_scalarphase_parset_p2(cellsizetime_p, TEC,
-        str(len(mslist)))
-runbbs(
-    mslist,
-    skymodel,
-    parset,
-    'instrument_phase3',
-    False,
-    TEC,
-    )
-
-# solve amps
-
-parmdb = 'instrument_amps3'
-parset = create_amponly_parset(cellsizetime_a)
-runbbs(
-    mslist,
-    skymodel,
-    parset,
-    parmdb,
-    False,
-    False,
-    )
-
-for ms in mslist:
-
-  # remove outliers from the solutions
-
-    if phasors:
-        os.system('python smoothcal_rx42.py ' + ms + ' ' + ms + '/'
-                  + parmdb + ' ' + ms + '/' + parmdb + '_smoothed')
-    else:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
-                   + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-
-# apply amps
-
-runbbs(
-    mslist,
-    skymodel,
-    '~weeren/scripts/rx42_hba/apply_amplitudeonly.parset',
-    parmdb + '_smoothed',
-    True,
-    False,
-    )
-
-### MAKE IMAGE 6 ###
-
-(imout, mask) = make_image(
-    mslist,
-    cluster,
-    '6',
-    8,
-    6,
-    nterms,
-    atrous_do,
-    imsize,
-    )
-
-### CREATE FINAL MODEL ###
-
-skymodelf = 'im_cluster' + cluster + '.final.skymodel'
-os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
-          + '-t ' + str(nterms) + ' ' + imout + '.model ' + skymodelf)
-
-### CREATED MERGED PARMDB SCALARPHASE+AMPS ###
-### INCLUDES SPLINE INTERPOLARION OF AMPS ###
-
-if merge_parmdb:
-
-    if phasors:
-        dummyparset = '~weeren/scripts/rx42_hba/scalarphase+amp.parset'
-    else:
-        if TEC:
-            dummyparset = \
-                '~weeren/scripts/rx42_hba/scalarphase+ap+TEC.parset'
-        else:
-            dummyparset = \
-                '~weeren/scripts/rx42_hba/scalarphase+ap.parset'
-
-    dummyparmdb = 'instrument_template'
-
-    runbbs(
-        mslist,
-        skymodel,
-        dummyparset,
-        dummyparmdb,
-        True,
-        False,
-        )
-
-    parmdb_a = 'instrument_amps3_smoothed'  # last/best ampplitude(+phase) parmdb
-    parmdb_p = 'instrument_phase3'  # last/best CommonScalarPhase parmdb
-    parmdbout = 'instrument_merged'
-
-    for ms in mslist:
-        create_merged_parmdb(
-            ms,
-            ms + '/' + pre_apply_parmdb,
-            ms + '/' + parmdb_a,
-            ms + '/' + parmdb_p,
-            ms + '/' + dummyparmdb,
-            ms + '/' + parmdbout,
-            cellsizetime_a,
-            cellsizetime_p,
-            )
-
-sys.exit()
-
-### CALIBRATE BBS PHASE+AMP 5 ###
-
-os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
-          + '-t ' + str(nterms) + ' ' + imout + '.model ' + imout
-          + '.skymodel')
-
-# parmdb keep from previous step
-
-skymodel = imout + '.skymodel'
-
-# pre-apply amp solutions
-
-if TEC:
-    runbbs(
-        mslist,
-        skymodel,
-        '~weeren/scripts/rx42_hba/apply_amplitudeonly_p_TEC.parset',
-        parmdb + '_smoothed',
-        True,
-        False,
-        )
-else:
-    runbbs(
-        mslist,
-        skymodel,
-        '~weeren/scripts/rx42_hba/apply_amplitudeonly_p.parset',
-        parmdb + '_smoothed',
-        True,
-        False,
-        )
-
-pre_apply_parmdb = parmdb + '_smoothed'  # need in merged if this is last calibration round
-
-skymodel = imout + '.skymodel'
-
-# solve +apply phases
-
-# if len(mslist) == 34:
-#  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '11,11,12')
-# if len(mslist) == 16:
-#  parset   = create_scalarphase_parset_p2(cellsizetime_p, TEC, '8,8')
-# else:
-
-parset = create_scalarphase_parset_p2(cellsizetime_p, TEC,
-        str(len(mslist)))
-runbbs(
-    mslist,
-    skymodel,
-    parset,
-    'instrument_phase4',
-    False,
-    TEC,
-    )
-
-# solve amps
-
-parmdb = 'instrument_amps4'
-parset = create_amponly_parset(cellsizetime_a)
-runbbs(
-    mslist,
-    skymodel,
-    parset,
-    parmdb,
-    False,
-    False,
-    )
-
-for ms in mslist:
-
-  # remove outliers from the solutions
-
-    if phasors:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42.py '
-                  + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-    else:
-        os.system('python ~weeren/scripts/rx42_hba/smoothcal_rx42_nophasors.py '
-                   + ms + ' ' + ms + '/' + parmdb + ' ' + ms + '/'
-                  + parmdb + '_smoothed')
-
-# apply amps
-
-runbbs(
-    mslist,
-    skymodel,
-    '~weeren/scripts/rx42_hba/apply_amplitudeonly.parset',
-    parmdb + '_smoothed',
-    True,
-    False,
-    )
-
-### MAKE IMAGE 7 ###
-
-(imout, mask) = make_image(
-    mslist,
-    cluster,
-    '7',
-    8,
-    6,
-    nterms,
-    atrous_do,
-    imsize,
-    )
-
-### CREATE FINAL MODEL ###
-
-skymodelf = 'im_cluster' + cluster + '.final.skymodel'
-os.system('~weeren/scripts/rx42_hba/casapy2bbs.py -m ' + mask + ' '
-          + '-t ' + str(nterms) + ' ' + imout + '.model ' + skymodelf)
-
-### CREATED MERGED PARMDB SCALARPHASE+AMPS ###
-### INCLUDES SPLINE INTERPOLARION OF AMPS ###
-
-if merge_parmdb:
-
-    if phasors:
-        dummyparset = '~weeren/scripts/rx42_hba/scalarphase+amp.parset'
-    else:
-        if TEC:
-            dummyparset = \
-                '~weeren/scripts/rx42_hba/scalarphase+ap+TEC.parset'
-        else:
-            dummyparset = \
-                '~weeren/scripts/rx42_hba/scalarphase+ap.parset'
-
-    dummyparmdb = 'instrument_template'
-
-    runbbs(
-        mslist,
-        skymodel,
-        dummyparset,
-        dummyparmdb,
-        True,
-        False,
-        )
-
-    parmdb_a = 'instrument_amps3_smoothed'  # last/best ampplitude(+phase) parmdb
-    parmdb_p = 'instrument_phase3'  # last/best CommonScalarPhase parmdb
-    parmdbout = 'instrument_merged'
-
-    for ms in mslist:
-        create_merged_parmdb(
-            ms,
-            ms + '/' + pre_apply_parmdb,
-            ms + '/' + parmdb_a,
-            ms + '/' + parmdb_p,
-            ms + '/' + dummyparmdb,
-            ms + '/' + parmdbout,
-            cellsizetime_a,
-            cellsizetime_p,
-            )
-

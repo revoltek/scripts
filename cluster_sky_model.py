@@ -321,8 +321,7 @@ def compute_cluster_info(clusters,clusters_ra,clusters_dec,patches,ra_patches,de
 
 
 if __name__ == '__main__':
-    import sys
-    argc=len(sys.argv)
+
     from optparse import OptionParser
     parser = OptionParser(usage='%prog [options] <PyBDSM BBS catalog>')
     parser.add_option('-o', '--outfile', dest='file_clusters', help='Name of the output skymodel file [default catalogue.clusters.skymodel]', \
