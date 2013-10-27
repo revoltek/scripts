@@ -124,10 +124,10 @@ def create_clusters(patches, ra_patches, dec_patches, flux_patches, Q, show_plot
         # check out http://phrogz.net/css/distinct-colors.html
         color=itertools.cycle(["#d96c6c", "#b23000", "#402310", "#ffd9bf", "#998273", "#b25f00", "#ffaa00", "#736039",
                                "#332f26", "#fff240", "#838c00", "#d5d9a3", "#aaff00", "#334d00", "#657356", "#bfffc8",
-                                       "#00e65c", "#008c38", "#00ffee", "#004d47", "#59adb3", "#00c2f2", "#267399", "#738c99",
-                                           "#0066ff", "#79aaf2", "#264599", "#0000ff", "#0000cc", "#000033", "#323040", "#220080",
-                                           "#b866cc", "#9d7ca6", "#ee00ff", "#59164c", "#ff40a6", "#330d21", "#8c4662", "#ff0022",
-                                           "#73000f", "#ffbfc8"])
+                               "#00e65c", "#008c38", "#00ffee", "#004d47", "#59adb3", "#00c2f2", "#267399", "#738c99",
+                               "#0066ff", "#79aaf2", "#264599", "#0000ff", "#0000cc", "#000033", "#323040", "#220080",
+                               "#b866cc", "#9d7ca6", "#ee00ff", "#59164c", "#ff40a6", "#330d21", "#8c4662", "#ff0022",
+                               "#73000f", "#ffbfc8"])
         for cluster_id, cluster in enumerate(clusters):
             c = color.next()
 
@@ -296,6 +296,9 @@ def update_cluster_centers(clusters,clusters_ra,clusters_dec,clusters_flux,ra_pa
 
 
 def compute_cluster_info(clusters,clusters_ra,clusters_dec,patches,ra_patches,dec_patches,patch_cluster_id_new,Q):
+    """
+    Return min and max clusters ra and dec
+    """
     cluster_ra_min_max  = np.zeros((len(clusters),2))
     cluster_dec_min_max = np.zeros((len(clusters),2))
 
