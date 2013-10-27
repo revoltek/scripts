@@ -1,8 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-
-
 #
 # Written by Bas van der Tol (vdtol@strw.leidenuniv.nl), March 2011.
 #

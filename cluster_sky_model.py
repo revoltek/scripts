@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013 - Reinout van Weeren
 # Copyright (C) 2011 - Francesco de Gasperin
@@ -17,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-#
+
 import matplotlib
 matplotlib.use('GTK')
 import numpy as np

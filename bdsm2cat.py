@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 """
 Script that takes a PyBDSM fits catalog and cross-
 matches to VLSS, WENSS, and NVSS catalogs, derives
