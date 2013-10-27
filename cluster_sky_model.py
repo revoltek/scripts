@@ -34,13 +34,13 @@ def load_bbs_skymodel(infilename):
 	# remove empty lines sed '/^$/d'
 	# remove format line grep -v 'format'
 	# remove comment lines  grep -v '#'
-        os.system("grep -v '00:00:00, +00.00.00' SB200.skymodel | grep -v '#' | grep -v 'format' | sed '/^$/d'>" + tmp_input) # to remove patches headers from skymodel
+        os.system("grep -v '^, , ' " + infilename + " | grep -v '#' | grep -v 'format' | sed '/^$/d'>" + tmp_input) # to remove patches headers from skymodel
 
         types = np.dtype({'names':['Name', 'Type','Patch','Ra', 'Dec', 'I', 'Q', 'U', 'V', 'Maj', 'Min', 'PA', 'RefFreq', 'Spidx'],\
 	       'formats':['S100','S100','S100','S100','S100',np.float,np.float,np.float,np.float,np.float,np.float,np.float,np.float,'S100']})
 
-	    data  = np.loadtxt(tmp_input, comments='format', unpack=True, delimiter=', ', dtype=types)
-	    os.system('rm ' + tmp_input)
+	data  = np.loadtxt(tmp_input, comments='format', unpack=True, delimiter=', ', dtype=types)
+	os.system('rm ' + tmp_input)
         return data	
 
 
