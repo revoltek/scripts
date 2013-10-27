@@ -69,6 +69,11 @@ def read_skymodel(skymodel, fields=[]):
 
         elif h == "I" or h == "Q" or h == "U" or h == "V" or h == "ReferenceFrequency" or h == "MajorAxis" or h == "MinorAxis" or h == "Orientation":
             formats.append(np.float)
+            if not i in filling_values:
+                if h == "I": filling_values[i]=1
+                else: filling_values[i]=0
+            else:
+                filling_values[i]=np.float(filling_values[i])
 
         # note that SpectralIndex also end up as a string with no comma!!
         else:
