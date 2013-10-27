@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyrap.measures as pm
 import pyrap.quanta as qa
-import coordinates_mode as cm
+import lib_coordinates_mode as cm
 
 
 def get_elev(t,ra,dec):

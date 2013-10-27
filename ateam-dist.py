@@ -4,9 +4,9 @@
 # Example: ./ateam-dist.py 12h30m49.4s +12d23m28s
 # calculate the angular distance between an object and ateams/calibrators
 
-import sys
+import sys, os, re
 import numpy as np
-import os
+from lib_coordinates_mode import *
 
 # A-team
 ateam={'CygA':{'ra':299.8679167,'dec':40.7338889},\
@@ -22,45 +22,6 @@ cal={'3c48':{'ra':24.4220808,'dec':33.1597594},\
 '3c295':{'ra':212.835495,'dec':52.202770},\
 '3c380':{'ra':277.3824204,'dec':48.7461556}\
 }
-
-# Converts an hms format RA to decimal degrees
-def hmstora(rah,ram,ras):
-    """Convert RA in hours, minutes, seconds format to decimal
-    degrees format.
-
-    Keyword arguments:
-    rah,ram,ras -- RA values (h,m,s)
-
-    Return value:
-    radegs -- RA in decimal degrees
-
-    """
-    hrs = (float(rah)+(float(ram)/60)+(float(ras)/3600.0)) % 24
-
-    return 15*hrs
-
-# Converts a dms format Dec to decimal degrees 
-def dmstodec(decd,decm,decs):
-    """Convert Dec in degrees, minutes, seconds format to decimal
-    degrees format.
-
-    Keyword arguments:
-    decd,decm,decs -- list of Dec values (d,m,s)
-
-    Return value:
-    decdegs -- Dec in decimal degrees
-
-    """
-    if decd < 0:
-        decm = -1*decm
-        decs = -1*decs
-
-    decdegs = float(decd)+(float(decm)/60)+(float(decs)/3600.0)
-
-    if abs(decdegs) > 90:
-        raise ValueError
-
-    return decdegs
 
 def distance(ra1, dec1, ra2, dec2):
     """Return the angular distance between two sources
