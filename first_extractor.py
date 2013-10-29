@@ -21,7 +21,7 @@
 # with some relevant information included
 
 import sys, os
-import glob
+import fnmatch
 import numpy as np
 from lofar import bdsm
 import aplpy
@@ -30,28 +30,56 @@ import coordinates_mode as cm
 # working dir
 wdir = sys.argv[1].strip("/")
 
-for fits_file in glob.glob(wdir+'/*fits'):
-    # run pybdsb
-    if not os.path.exists(fits_file.replace('.fits','.pybdsm.gaul')):
-        img = bdsm.process_image({'filename':fits_file, 'adaptive_rms_box':True, 'thresh_isl':4.})
-        img.write_catalog(format='ascii', clobber=True)
-
-    # read catalogue
-    types = np.dtype({'names':['idx', 'ra', 'dec', 'flux', 'peak_flux', 'maj', 'S_code'], \
-            'formats':[int,float,float,float,float,float,'S1']})
-    data = np.loadtxt(fits_file.replace('.fits','.pybdsm.gaul'), comments='#', usecols=(1,4,6,8,10,16,46), unpack=False, dtype=types)
+# recursively walk through all dirs
+for root, dirnames, filenames in os.walk(wdir):
+    fits_files = []
+    for fits_file in fnmatch.filter(filenames, '*.fits'):
+        fits_files.append(os.path.join(root, fits_file))
     
-    idxs = []
-    for i, source in enumerate(data):
-        if source['S_code'] != 'M': continue
-        if source['idx'] in idxs: continue
+    # remove duplicates using only highest letter (hepfully are the better images)
+    for i, old_fits_file in enumerate(fits_files[:]):
+        for fits_file in fits_files[i:]:
+            if old_fits_file[:-6] == fits_file[:-6] and old_fits_file < fits_file:
+                print "removing", old_fits_file, "<", fits_file
+                fits_files.remove(old_fits_file)
+                break
+                
+    for fits_file in fits_files:
+        # run pybdsb
+        if not os.path.exists(fits_file.replace('.fits','.pybdsm.gaul')):
+            img = bdsm.process_image({'filename':fits_file, 'adaptive_rms_box':True, 'thresh_isl':4.})
+            img.write_catalog(format='ascii', clobber=True)
+    
+        # read catalogue
+        types = np.dtype({'names':['idx', 'ra', 'dec', 'flux', 'peak_flux', 'maj', 'S_code'], \
+                'formats':[int,float,float,float,float,float,'S1']})
+        data = np.loadtxt(fits_file.replace('.fits','.pybdsm.gaul'), comments='#', usecols=(1,4,6,8,10,16,46), unpack=False, dtype=types)
+        
+        idxs = []
+        radec = []
+        for i, source in enumerate(data):
+            # consider only extended objects
+            if source['S_code'] != 'M': continue
+            # don't consider gaussians of the same object
+            if source['idx'] in idxs: continue
+            # don't consider stuff smaller than 10"
+            if source['maj'] < 10/60./60.: continue
+            # don't consider too close (1') objects
+            skip = False
+            for past_source in radec:
+                if cm.angsep(past_source[0],past_source[1],source['ra'],source['dec']) < 1/60.: skip = True
 
-        gal_lat = str(int(cm.eq_to_gal(source['ra'],source['dec'])[1]))
-
-        gc = aplpy.FITSFigure(fits_file)
-        gc.show_colorscale(stretch='log', vmin=1e-4, vmax=source['peak_flux'], interpolation='bicubic', cmap='Oranges')
-        gc.recenter(source['ra'], source['dec'], radius=2/60.)
-        gc.add_label(source['ra']+1.9/60., source['dec']+1.9/60., 'Gal lat: '+gal_lat, color='black')
-        gc.save(fits_file.replace('.fits','-'+str(i)+'.png'))
-        gc.close() # prevent run out of memory
-        idxs.append(source['idx'])
+            if skip == True: continue
+    
+            gal_lat = str(int(cm.eq_to_gal(source['ra'],source['dec'])[1]))
+    
+            gc = aplpy.FITSFigure(fits_file)
+            gc.recenter(source['ra'], source['dec'], radius=2/60.)
+            gc.show_colorscale(stretch='log', vmin=1e-5, vmax=source['peak_flux']+0.05, interpolation='bicubic', cmap='YlOrRd')
+            gc.add_label(source['ra']+1.9/60., source['dec']+1.9/60., 'Gal lat: '+gal_lat, color='black')
+            gc.add_label(source['ra']+1.9/60., source['dec']+1.8/60., 'RA: '+str(source['ra']), color='black')
+            gc.add_label(source['ra']+1.9/60., source['dec']+1.7/60., 'DEC: '+str(source['dec']), color='black')
+            gc.save('./png/'+os.path.basename(fits_file.replace('.fits','-'+str(i)+'.png')))
+            gc.close() # prevent run out of memory
+            idxs.append(source['idx'])
+            radec.append([source['ra'],source['dec']])
