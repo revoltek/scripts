@@ -25,7 +25,7 @@ import glob
 import numpy as np
 from lofar import bdsm
 import aplpy
-import coordinates_mode as cm
+import lib_coordinates_mode as cm
 
 # working dir
 wdir = sys.argv[1].strip("/")
