@@ -24,10 +24,12 @@ matplotlib.use('GTK')
 import numpy as np
 import pylab as pl
 import matplotlib, itertools
+import pyrap.tables as pt
+import lofar.stationresponse as lsr
 from lib_coordinates_mode import *
 from lib_read_skymodel import read_skymodel
 
-def compute_patch_center(data):
+def compute_patch_center(data, beam_ms = None):
     """
     Return the patches names, central (weighted) RA and DEC and total flux
     """
@@ -36,6 +38,15 @@ def compute_patch_center(data):
     ra_patches   = []
     dec_patches  = []
     flux_patches = []
+
+    # get the average time of the obs, OK for 1st order correction
+    if beam_ms != None:
+        t = pt.table(beam_ms, ack=False)
+        tt = t.query('ANTENNA1==0 AND ANTENNA2==1', columns='TIME')
+        time = tt.getcol("TIME")
+        time = min(time) + ( max(time) - min(time) ) / 2.
+        t.close()
+        sr = lsr.stationresponse(beam_ms, False, True)
 
     for patch_id, patch in enumerate(patches):
         components_idx = np.where(data['Patch'] == patch)[0]
@@ -55,15 +66,25 @@ def compute_patch_center(data):
             dec_comp  = data['Dec'][component_idx]
             flux_comp = np.float(data['I'][component_idx])
 
+            # beam correction
+            if beam_ms != None:
+                sr.setDirection(ra_comp*np.pi/180.,dec_comp*np.pi/180.)
+                # use station 0 to compute the beam and get channel 0
+                r = abs(sr.evaluateStation(time,0)[0])
+                beam = ( r[0][0] + r[1][1] ) / 2.
+                print "Beam:", beam,
+                flux_comp *= beam
+
             # calculate the average weighted patch center, and patch flux
             flux_patch  += flux_comp
-            # "DEBUG:", print ra_comp, dec_comp, flux_comp
             ra_patch    = ra_patch + (flux_comp*ra_comp)
             dec_patch   = dec_patch+ (flux_comp*dec_comp)
             ra_weights  += flux_comp
             dec_weights += flux_comp
 
-        print 'Center RA, Center DEC, flux', ra_patch/ra_weights, dec_patch/dec_weights, flux_patch
+        print 'Center RA', ra_patch/ra_weights,
+        print 'Center DEC', dec_patch/dec_weights,
+        print 'Flux', flux_patch
 
         ra_patches.append(ra_patch/ra_weights)
         dec_patches.append(dec_patch/dec_weights)
@@ -134,10 +155,10 @@ def create_clusters(patches, ra_patches, dec_patches, flux_patches, Q, show_plot
             # plot patches
             idx = np.where(patch_cluster_id == cluster_id)
             for el in range(len(idx[0])):
-                matplotlib.pyplot.plot(ra_patches[idx[0][el]+Q],dec_patches[idx[0][el]+Q],'o',color=c,markersize=5)
+                matplotlib.pyplot.plot(ra_patches[idx[0][el]+Q],dec_patches[idx[0][el]+Q],'o',color=c,markersize=10)
 
             # plot clusters
-            matplotlib.pyplot.plot(clusters_ra_new[cluster_id],clusters_dec_new[cluster_id],'*',color=c,markersize=15)
+            matplotlib.pyplot.plot(clusters_ra_new[cluster_id],clusters_dec_new[cluster_id],'*',color=c,markersize=25)
             matplotlib.pyplot.xlabel('RA [deg]')
             matplotlib.pyplot.ylabel('DEC [deg]')
 
@@ -172,7 +193,7 @@ def write_skymodel(clusters,clusters_ra,clusters_dec,clusters_flux,patches,patch
         return str(rah) + ':' + str(ram) + ':' +str(round(ras,2))
     def dectodms_string(dec):
         decd, decm, decs = dectodms(dec)
-        return str(decd) + ':' + str(decm) + ':' +str(round(decs,2))
+        return str(decd) + '.' + str(decm) + '.' +str(round(decs,2))
 
     for cluster_id, cluster in enumerate(clusters):
 
@@ -328,12 +349,15 @@ if __name__ == '__main__':
                       metavar='VAL', default='catalog.clusters.skymodel')
     parser.add_option('-n', '--numclusters', dest='Q', help='Number of clusters [default: 10]', metavar='VAL', default=10, type=int)
     parser.add_option('-p', action='store_true', dest='show_plot', help='Show plot of the cluster disposition', default=False)
+    parser.add_option('-b', '--beamMS', help='Give an MS used to find freq/dir/ant and correct for beam effect when clustering [default=None]', default=None)
     (o, args) = parser.parse_args()
 
-    if len(args) < 1: sys.exit("Missing BBS-formatted sky model.")
+    if len(args) < 1:
+        parser.print_help()
+        sys.exit()
 
     data = read_skymodel(args[0])
-    patches, ra_patches, dec_patches, flux_patches = compute_patch_center(data)
+    patches, ra_patches, dec_patches, flux_patches = compute_patch_center(data, o.beamMS)
 
     clusters,clusters_ra,clusters_dec,clusters_flux,patches,ra_patches,dec_patches,patch_cluster_id = \
                create_clusters(patches, ra_patches, dec_patches, flux_patches, o.Q, o.show_plot)

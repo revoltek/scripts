@@ -26,7 +26,6 @@ import pyrap.measures as pm
 import pyrap.quanta as qa
 import lib_coordinates_mode as cm
 
-
 def get_elev(t,ra,dec):
         pointing_s = me.direction('SUN')
         pointing_o = me.direction('j2000',qa.quantity(ra,'deg'),qa.quantity(dec,'deg'))
@@ -51,24 +50,26 @@ me.doframe(position)
 
 y=1
 for obj in data:
+        print "Work on: ", obj['name']
         rah, ram, ras = obj['ra'].split(':')
         ra = cm.hmstora(float(rah), float(ram), float(ras)) # in deg
         decd, decm, decs = obj['dec'].split(':')
         dec = cm.dmstodec(float(decd), float(decm), float(decs)) # in deg
-        for d in xrange(3):
+        for d in xrange(360):
                 # count how many h the source is at elev>30 when sun is at elev<0
                 observable = 0
                 for h in xrange(24):
                         t = 2456293.5-2400000.5+d+h/24. # MJD for 1/1/2013 + the hours
                         obj_elev, sun_elev = get_elev(t,ra,dec)
-                        print "RESULTS:", obj_elev, sun_elev
+                        #print "RESULTS:", obj_elev, sun_elev
                         if obj_elev>30 and sun_elev<0: observable+=1
                 # plot in greyscale from 0 to 12 h
+                print d,y,observable
                 ax.plot(d,y,c=str(observable/24.))
         ax.text(1,y,obj['name'])
         y+=1
 
 ax.set_ylim(ymin=0, ymax=y)
-fig.savefig('whenweobserve.png')
+fig.savefig('whenweobserve.pdf')
 fig.clf()
 
