@@ -69,8 +69,9 @@ def compute_patch_center(data, beam_ms = None):
             # beam correction
             if beam_ms != None:
                 sr.setDirection(ra_comp*np.pi/180.,dec_comp*np.pi/180.)
-                # use station 0 to compute the beam and get channel 0
-                r = abs(sr.evaluateStation(time,0)[0])
+                # use station 0 to compute the beam and get mid channel
+                beam = sr.evaluateStation(time,0)
+                r = abs(beam[int(len(beam)/2.)])
                 beam = ( r[0][0] + r[1][1] ) / 2.
                 print "Beam:", beam,
                 flux_comp *= beam
