@@ -27,6 +27,7 @@ def f(x, B0, B1):
     return B0*x + B1
 # extimate errors and accept errors on ydata
 def linear_fit(x, y, yerr=None):
+#    print "Using OLS (X|Y)" # for more algo read: Isobe et al 1990
     from scipy.optimize import curve_fit
     if yerr == None: yerr = np.ones(len(y))
     for i,e in enumerate(yerr):
@@ -38,6 +39,7 @@ def linear_fit(x, y, yerr=None):
 
 # extimate errors and accept errors on x and y-data
 def linear_fit_odr(x, y, xerr=None, yerr=None):
+#    print "Using ODR"
     from scipy import odr
     def f(B, x):
         return B[0]*x + B[1]
@@ -87,11 +89,12 @@ def plotlinax(data, plotname):
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     ax.errorbar(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'], fmt='ko')
-    ax.errorbar(thisdata['freq'], thisdata['flux'], fmt='k-')
+#    ax.errorbar(thisdata['freq'], thisdata['flux'], fmt='k-')
     B = linear_fit(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'])
+#    B = linear_fit_odr(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'])
     print "Regression:", B
     ax.plot(np.arange(6,10,0.1), [f(freq, B[0], B[1]) for freq in np.arange(6,10,0.1)], \
-        label=r'y={:.1f}$\pm${:.1f}*x+{:2.0f}$\pm${:2.0f}'.format(B[0],B[2],B[1],B[3]))
+        label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
     print "Writing "+plotname
     fig.savefig(plotname)
@@ -119,14 +122,15 @@ def plotlogax(data, plotname):
     yminerr = data['rms']
     yminerr[ data['rms'] >= data['flux'] ] = \
         data['flux'][ data['rms'] >= data['flux'] ]*.9999
-    ax.errorbar(data['freq'], data['flux'], yerr=[ymaxerr,yminerr], fmt='k-')
-    ax.errorbar(data['freq'], data['flux'], fmt='ko')
+    ax.errorbar(data['freq'], data['flux'], yerr=[ymaxerr,yminerr], fmt='ko')
+#    ax.errorbar(data['freq'], data['flux'], fmt='k-')
     freqs = np.logspace(6, 10, num=100)
     B = linear_fit(np.log10(data['freq']), np.log10(data['flux']),\
+#    B = linear_fit_odr(np.log10(data['freq']), np.log10(data['flux']),\
         yerr = 0.434*data['rms']/data['flux'])
     print "Regression:", B
     ax.plot(freqs, [10**f(np.log10(freq), B[0], B[1]) for freq in freqs], \
-        label=r'y={:.1f}$\pm${:.1f}*x+{:2.0f}$\pm${:2.0f}'.format(B[0],B[2],B[1],B[3]))
+        label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
     print "Writing "+plotname
     fig.savefig(plotname)

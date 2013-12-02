@@ -24,7 +24,7 @@ import numpy as py
 import scipy.constants as const
 
 # (alpha) synchrotron spectral index
-a = 1.4
+a = 0.87
 # Synchrotron intensity [erg/s/cm^2/Hz/sterad]
 bmaj = 30 # arcsec
 bmin = 27 # arcsec
