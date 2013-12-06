@@ -82,6 +82,7 @@ for j, dircontent in enumerate(os.walk(wdir)):
 
         if not os.path.exists(fits_file.replace('.fits','.pybdsm.srl')):
             img = bdsm.process_image({'filename':fits_file, 'adaptive_rms_box':True, 'thresh_isl':4., 'trim_box':(0,1550,0,1150)})
+            img.write_catalog(format='ascii', catalog_type='gaul', clobber=True)
             img.write_catalog(format='ascii', catalog_type='srl', clobber=True)
     
         # read catalogue (skip if no sources are detected)
