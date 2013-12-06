@@ -180,7 +180,7 @@ def angsep(ra1,dec1,ra2,dec2):
     ra2,dec2 - RA and Dec of the second source, in decimal degrees
 
     Return value:
-    angsep - Angular separation, in arcseconds
+    angsep - Angular separation, in arcsec
 
     """
 
