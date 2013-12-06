@@ -97,6 +97,15 @@ def calcFluxes(values, fluxmaskval, beam, dpix):
         fluxvalues.append(flux)
     return fluxvalues
 
+def caclFluxErr(rmsvalues, fluxvalues, fluxmaskval, beam, dpix, fluxerr):
+    """Add a percentage of the flux value to the rmsvalues and multiply by the number of beam
+    """
+    Nbeam = len(np.where(fluxmaskval == 1)[0]) / ((1.1331*beam[0]*beam[1])/(dpix[0]*dpix[1]))
+    print Nbeam
+    for i, rmsvalue in enumerate(rmsvalues):
+        rmsvalues[i] = np.sqrt( (fluxerr/100.*fluxvalues[i])**2 + (rmsvalue*Nbeam)**2 )
+    return rmsvalues
+
 def getFreqs(imglist):
     """Get the image frequencies
     """
@@ -156,6 +165,7 @@ if __name__ == "__main__":
     opt.add_option('-o', '--outfile', help='Output text file [default = None]', default=None)
     opt.add_option('-p', '--outplot', help='Name of the output plot [default = None]', default=None)
     opt.add_option('-r', '--rmsmask', help='Mask tp compute rms [default = use all]', default=None)
+    opt.add_option('-x', '--fluxerr', help='Add a percentege of the flux to the error budget [default=0]', default=0, type='float')
     opt.add_option('-f', '--fluxmask', help='Mask tp compute flux [default = use inner half]', default=None)
     opt.add_option('-e', '--effmask', help='Output effective mask (intersection between fluxmask and pixels > Nsigma*RMS) [default = None]', default=None)
     opt.add_option('-k', '--rescale', help='File with rescaling values to multiply [imgname rescaling] [default = None]', default=None)
@@ -172,6 +182,7 @@ if __name__ == "__main__":
     if options.fluxmask != None: fluxmask = options.fluxmask.strip("/")
     effmask = options.effmask
     rescalefile = options.rescale
+    fluxerr = options.fluxerr
     n_sigma = options.Nsigma
     log = options.log
 
@@ -191,11 +202,16 @@ if __name__ == "__main__":
 
     fluxvalues = calcFluxes(values, fluxmaskval, beam, dpix)
 
+    # add flux error and multiply by sqrt(N_beam)
+    rmsvalues = caclFluxErr(rmsvalues, fluxvalues, fluxmaskval, beam, dpix, fluxerr)
+
+    # rescale the data value by a certain amount
     if rescalefile != None:
         rescaleData = np.loadtxt(rescalefile, comments='#', dtype=np.dtype({'names':['img','rescale'], 'formats':['S100',float]}))
         for i, img in enumerate(imglist):
-            if img in rescaleData['img']:
-                r = rescaleData['rescale'][np.where(rescaleData['img'] == img)][0]
+            basename_img = os.path.basename(img)
+            if basename_img in rescaleData['img']:
+                r = rescaleData['rescale'][np.where(rescaleData['img'] == basename_img)][0]
                 fluxvalues[i] *= r
                 print "Rescaling", img, "flux by", r
 

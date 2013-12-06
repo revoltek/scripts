@@ -88,13 +88,18 @@ def read_skymodel(skymodel, fields=[]):
         for line in open(skymodel,'r'):
             # remove comments, patches and white lines
             if line[0] == '#' or line[0] == ',' or len(line) == 1: continue
-            #  remove commas inside [] for spidx
-            line = re.sub('\(\[.*\),\(.*\]\)', '\1\2', line)
+            #  remove commas inside [] for spidx and leave one space
+            spidx_part = re.search(r'\[.*\]', line).group(0).replace(',',' ')
+            spidx_part = re.sub('\s{2,}', ' ', spidx_part)
+            line = re.sub(r'\[.*\]', spidx_part, line)
             # add the missing commas at the end of the lines
             n_commas = line.count(',')
             missing_commas = n - n_commas
             yield line+','*missing_commas
 
     skymodel_data = np.genfromtxt(fileiter(skymodel, n), names=names, comments='#', unpack=True, dtype=formats, delimiter=',', autostrip=True, usecols=usecols, converters=converters, filling_values=filling_values)
+    if 'SpectralIndex' in skymodel_data.dtype.fields:
+        for skymodel_datum in skymodel_data:
+            skymodel_datum['SpectralIndex'] = skymodel_datum['SpectralIndex'].replace(' ',',')
 
     return skymodel_data

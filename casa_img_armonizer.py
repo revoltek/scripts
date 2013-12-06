@@ -17,13 +17,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Usage: casapy  --nogui --nologger -c ~/bin/scripts/image_armonizer.py image1 image2 image3 ...
+# Usage: casapy  --nogui --nologger -c ~/bin/scripts/casa_img_armonizer.py image1 image2 image3 ...
 
 import sys
 import numpy as np
 images = sys.argv[5:]
 
-do_beam = True
+do_convolve = True
 do_regrid = True
 newincr = 5 # arcsec
 do_cut = True
@@ -55,7 +55,7 @@ for i, img in enumerate(images):
         bmaxmaj_img = img
 print "Max beam is: ", bmaxmaj
 
-if do_beam:
+if do_convolve:
     print "##########################################"
     print "# Do Beam:"
     # armonize beams to the biggest
