@@ -54,19 +54,31 @@ def linear_fit_odr(x, y, xerr=None, yerr=None):
     return(myoutput.beta[0],myoutput.beta[1],myoutput.sd_beta[0],myoutput.sd_beta[1])
 
 
-def armonizeXY(dataX, dataY):
+def armonizeXY(dataX, dataY, errY):
     """
     Return xmin,xmax,ymin,ymax in order to have the two axis
     covering almost the same amount of orders of magnitudes
     input must be the log10 of data!!!
     """
-    diffX = max(dataX) - min(dataX)
-    diffY = max(dataY) - min(dataY)
-    maxdiff = max(diffX, diffY)
-    xmin = np.floor(((min(dataX)+diffX/2.) - maxdiff/2.)*10.)/10.
-    xmax = np.ceil(((min(dataX)+diffX/2.) + maxdiff/2.)*10.)/10.
-    ymin = np.floor(((min(dataY)+diffY/2.) - maxdiff/2.)*10.)/10.
-    ymax = np.ceil(((min(dataY)+diffY/2.) + maxdiff/2.)*10.)/10.
+    print "Armo"
+
+    minY = min(dataY) - abs(errY[np.where(dataY == min(dataY))])[0]
+    maxY = max(dataY) + abs(errY[np.where(dataY == max(dataY))])[0]
+    minX = min(dataX)
+    maxX = max(dataX)
+
+    diffX = maxX - minX # X separation
+    diffY = maxY - minY # Y separation (including errors)
+    maxdiff = max(diffX, diffY)*1.1
+    xmin = np.floor(((minX+diffX/2.) - maxdiff/2.)*10.)/10.
+    xmax = np.ceil(((minX+diffX/2.) + maxdiff/2.)*10.)/10.
+    ymin = np.floor(((minY+diffY/2.) - maxdiff/2.)*10.)/10.
+    ymax = np.ceil(((minY+diffY/2.) + maxdiff/2.)*10.)/10.
+    print dataY
+    print errY
+    print 10**maxY, 10**minY
+    print diffY
+    print xmin, xmax, ymin, ymax
     return xmin, xmax, ymin, ymax
     
 
@@ -85,7 +97,7 @@ def plotlinax(data, plotname):
     ax = fig.add_subplot(111)
     ax.set_xlabel(r'Log Freq [Hz]')
     ax.set_ylabel(r'Log Flux density [Jy]')
-    xmin, xmax, ymin, ymax = armonizeXY(data['freq'], data['flux'])
+    xmin, xmax, ymin, ymax = armonizeXY(thisdata['freq'], thisdata['flux'], thisdata['rms'])
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     ax.errorbar(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'], fmt='ko')
@@ -114,14 +126,15 @@ def plotlogax(data, plotname):
     ax.set_xscale('log')
     ax.set_xlabel(r'Freq [Hz]')
     ax.set_ylabel(r'Flux density [Jy]')
-    xmin, xmax, ymin, ymax = armonizeXY(np.log10(data['freq']), np.log10(data['flux']))
+    xmin, xmax, ymin, ymax = armonizeXY(np.log10(data['freq']), np.log10(data['flux']), 0.434*data['rms']/data['flux'])
     ax.set_xlim(10**xmin, 10**xmax)
     ax.set_ylim(10**ymin, 10**ymax)
     # workaround for too big errors inlog plot
     ymaxerr = data['rms']
     yminerr = data['rms']
+    # i.e. if it would fall in the negative part of the plot
     yminerr[ data['rms'] >= data['flux'] ] = \
-        data['flux'][ data['rms'] >= data['flux'] ]*.9999
+        data['flux'][ data['rms'] >= data['flux'] ]*.9999 # let it be just ~0
     ax.errorbar(data['freq'], data['flux'], yerr=[ymaxerr,yminerr], fmt='ko')
 #    ax.errorbar(data['freq'], data['flux'], fmt='k-')
     freqs = np.logspace(6, 10, num=100)

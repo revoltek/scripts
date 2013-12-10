@@ -26,6 +26,9 @@ import numpy as np
 from lofar import bdsm
 import aplpy
 import lib_coordinates_mode as cm
+#from astroquery.sdss import SDSS
+#from astropy import units as u
+#from astropy import coordinates as coords
 
 #######################################
 # NGC catalogue (magenta - circle)
@@ -77,14 +80,17 @@ for j, dircontent in enumerate(os.walk(wdir)):
                 fits_files.remove(old_fits_file)
                 break
                 
+    # run pybdsm
     for fits_file in fits_files:
         print "Working on "+fits_file
 
-        if not os.path.exists(fits_file.replace('.fits','.pybdsm.srl')):
+        if not os.path.exists(fits_file.replace('.fits','.pybdsm.srl')) and os.path.exists(fits_file.replace('.fits','.pybdsm.gaul')):
             img = bdsm.process_image({'filename':fits_file, 'adaptive_rms_box':True, 'thresh_isl':4., 'trim_box':(0,1550,0,1150)})
             img.write_catalog(format='ascii', catalog_type='gaul', clobber=True)
             img.write_catalog(format='ascii', catalog_type='srl', clobber=True)
     
+    # make images
+    for fits_file in fits_files:
         # read catalogue (skip if no sources are detected)
         if not os.path.exists(fits_file.replace('.fits','.pybdsm.srl')): continue
         types = np.dtype({'names':['idx', 'ra', 'dec', 'peak_flux', 'maj', 'flux', 'rms', 'S_code'], \
@@ -95,12 +101,12 @@ for j, dircontent in enumerate(os.walk(wdir)):
         for i, source in enumerate(data):
 
             # consider only extended objects
-            if source['S_code'] != 'M': continue
+            if source['S_code'] != 'M' or source['S_code'] != 'C': continue
             
             # don't consider stuff smaller than 10" (remove point-source-like)
             if source['maj'] < 10/60./60.: continue
             
-            # don't consider too close (1') objects
+            # don't consider too close (1') objects TODO: remove!
             skip = False
             for past_source in radec:
                 if cm.angsep2(past_source[0],past_source[1],source['ra'],source['dec']) < 1/60.:
@@ -108,7 +114,7 @@ for j, dircontent in enumerate(os.walk(wdir)):
                     break
             if skip == True: continue
 
-            # don't consider gaussians of the same object ()
+            # don't consider gaussians of the same object
             if source['idx'] in idxs: continue
             idxs.append(source['idx'])
 
@@ -119,7 +125,11 @@ for j, dircontent in enumerate(os.walk(wdir)):
             # skip if image already present
             if os.path.exists('./png/'+os.path.basename(fits_file.replace('.fits','-'+str(i)+'.png'))): continue
 
+            # fetch sdss
+            os.system('wget http://skyservice.pha.jhu.edu/DR10/ImgCutout/getjpeg.aspx?ra='+first_ra+'&dec='+first_dec+'&scale=0.396127&width=500&height=500&opt=TPS&query=G(0,30) -O sdss_cutout.jpg')
+
             gc = aplpy.FITSFigure(fits_file)
+            gc.show_rgb('sdss_cutout.jpg')
             gc.recenter(source['ra'], source['dec'], radius=2/60.)
             gc.show_colorscale(stretch='log', vmin=source['rms']/2., vmax=source['peak_flux'], interpolation='bicubic', cmap='YlOrRd')
             levels = np.logspace(np.log10(2*source['rms']),np.log10(source['peak_flux']),7)
