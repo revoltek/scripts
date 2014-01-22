@@ -84,7 +84,7 @@ for j, dircontent in enumerate(os.walk(wdir)):
     for fits_file in fits_files:
         print "Working on "+fits_file
 
-        if not os.path.exists(fits_file.replace('.fits','.pybdsm.srl')) and os.path.exists(fits_file.replace('.fits','.pybdsm.gaul')):
+        if not os.path.exists(fits_file.replace('.fits','.pybdsm.srl')) or not os.path.exists(fits_file.replace('.fits','.pybdsm.gaul')):
             img = bdsm.process_image({'filename':fits_file, 'adaptive_rms_box':True, 'thresh_isl':4., 'trim_box':(0,1550,0,1150)})
             img.write_catalog(format='ascii', catalog_type='gaul', clobber=True)
             img.write_catalog(format='ascii', catalog_type='srl', clobber=True)
@@ -100,19 +100,19 @@ for j, dircontent in enumerate(os.walk(wdir)):
         idxs = []
         for i, source in enumerate(data):
 
-            # consider only extended objects
-            if source['S_code'] != 'M' or source['S_code'] != 'C': continue
+            # consider only extended/double objects
+            if source['S_code'] != 'M' and source['S_code'] != 'C': continue
             
             # don't consider stuff smaller than 10" (remove point-source-like)
             if source['maj'] < 10/60./60.: continue
             
             # don't consider too close (1') objects TODO: remove!
-            skip = False
-            for past_source in radec:
-                if cm.angsep2(past_source[0],past_source[1],source['ra'],source['dec']) < 1/60.:
-                    skip = True
-                    break
-            if skip == True: continue
+            #skip = False
+            #for past_source in radec:
+            #    if cm.angsep2(past_source[0],past_source[1],source['ra'],source['dec']) < 1/60.:
+            #        skip = True
+            #        break
+            #if skip == True: continue
 
             # don't consider gaussians of the same object
             if source['idx'] in idxs: continue
@@ -126,14 +126,14 @@ for j, dircontent in enumerate(os.walk(wdir)):
             if os.path.exists('./png/'+os.path.basename(fits_file.replace('.fits','-'+str(i)+'.png'))): continue
 
             # fetch sdss
-            os.system('wget http://skyservice.pha.jhu.edu/DR10/ImgCutout/getjpeg.aspx?ra='+first_ra+'&dec='+first_dec+'&scale=0.396127&width=500&height=500&opt=TPS&query=G(0,30) -O sdss_cutout.jpg')
+            os.system('wget "http://skyservice.pha.jhu.edu/DR10/ImgCutout/getjpeg.aspx?ra='+str(source['ra'])+'&dec='+str(source['dec'])+'&scale=0.396127&width=500&height=500&opt=TPS&query=G(0,30)" -O sdss_cutout.jpg')
 
             gc = aplpy.FITSFigure(fits_file)
-            gc.show_rgb('sdss_cutout.jpg')
             gc.recenter(source['ra'], source['dec'], radius=2/60.)
-            gc.show_colorscale(stretch='log', vmin=source['rms']/2., vmax=source['peak_flux'], interpolation='bicubic', cmap='YlOrRd')
+            gc.show_rgb('sdss_cutout.jpg')
+            #gc.show_colorscale(stretch='log', vmin=source['rms']/2., vmax=source['peak_flux'], interpolation='bicubic', cmap='YlOrRd')
             levels = np.logspace(np.log10(2*source['rms']),np.log10(source['peak_flux']),7)
-            gc.show_contour(fits_file, levels=levels, colors='black', overlap=True)
+            gc.show_contour(fits_file, levels=levels, colors='white', overlap=True)
 
             # add some info
             gal_lat = str(int(cm.eq_to_gal(source['ra'],source['dec'])[1]))
