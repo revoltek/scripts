@@ -89,6 +89,8 @@ for j, dircontent in enumerate(os.walk(wdir)):
             img.write_catalog(format='ascii', catalog_type='gaul', clobber=True)
             img.write_catalog(format='ascii', catalog_type='srl', clobber=True)
     
+    # merge all the catalogue and remove double sources
+
     # make images
     for fits_file in fits_files:
         # read catalogue (skip if no sources are detected)

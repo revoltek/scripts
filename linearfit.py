@@ -34,6 +34,7 @@ def linear_fit(x, y, yerr=None):
         if e == 0: yerr[i] = 1
     out = curve_fit(f, x, y, [-1. ,0.], yerr)
     # return B0, B1, errB0, errB1 (err are in std dev)
+    print out
     return (out[0][0], out[0][1], np.sqrt(out[1][0][0]), np.sqrt(out[1][1][1]))
 
 
@@ -60,7 +61,6 @@ def armonizeXY(dataX, dataY, errY):
     covering almost the same amount of orders of magnitudes
     input must be the log10 of data!!!
     """
-    print "Armo"
 
     minY = min(dataY) - abs(errY[np.where(dataY == min(dataY))])[0]
     maxY = max(dataY) + abs(errY[np.where(dataY == max(dataY))])[0]
@@ -74,11 +74,6 @@ def armonizeXY(dataX, dataY, errY):
     xmax = np.ceil(((minX+diffX/2.) + maxdiff/2.)*10.)/10.
     ymin = np.floor(((minY+diffY/2.) - maxdiff/2.)*10.)/10.
     ymax = np.ceil(((minY+diffY/2.) + maxdiff/2.)*10.)/10.
-    print dataY
-    print errY
-    print 10**maxY, 10**minY
-    print diffY
-    print xmin, xmax, ymin, ymax
     return xmin, xmax, ymin, ymax
     
 
@@ -160,7 +155,7 @@ if __name__ == "__main__":
     if datafile == None: sys.exit('missing data file')
     print "Data file = "+datafile
     output = options.output
-    if output == None: output = datafile.replace('.dat','.pdf')
+    if output == None: output = datafile+'.pdf'
     print "Output file = "+output
     log = options.log
 
