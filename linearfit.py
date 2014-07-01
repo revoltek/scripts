@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 
 def f(x, B0, B1):
     return B0*x + B1
+
 # extimate errors and accept errors on ydata
 def linear_fit(x, y, yerr=None):
 #    print "Using OLS (X|Y)" # for more algo read: Isobe et al 1990
