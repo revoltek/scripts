@@ -90,8 +90,12 @@ def plotlinax(data, plotname):
     thisdata = {'flux': np.log10(data['flux']), 'freq': np.log10(data['freq']), 'rms': 0.434*data['rms']/data['flux']}
 
     fig = plt.figure(figsize=(8, 8))
+    fig.subplots_adjust(wspace=0)
     ax = fig.add_subplot(111)
-    ax.set_xlabel(r'Log Freq [Hz]')
+    ax.tick_params('both', length=10, width=2, which='major')
+    ax.tick_params('both', length=5, width=1, which='minor')
+    ax.label_outer()
+    ax.set_xlabel(r'Log Frequency [Hz]')
     ax.set_ylabel(r'Log Flux density [Jy]')
     xmin, xmax, ymin, ymax = armonizeXY(thisdata['freq'], thisdata['flux'], thisdata['rms'])
     ax.set_xlim(xmin, xmax)
@@ -105,7 +109,7 @@ def plotlinax(data, plotname):
         label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
     print "Writing "+plotname
-    fig.savefig(plotname)
+    fig.savefig(plotname, bbox_inches='tight')
     del fig
 
 def plotlogax(data, plotname):
@@ -117,10 +121,14 @@ def plotlogax(data, plotname):
     data = {'flux':data['flux'][srtidx], 'freq':data['freq'][srtidx], 'rms':data['rms'][srtidx]}
 
     fig = plt.figure(figsize=(8, 8))
+    fig.subplots_adjust(wspace=0)
     ax = fig.add_subplot(111)
+    ax.tick_params('both', length=10, width=2, which='major')
+    ax.tick_params('both', length=5, width=1, which='minor')
+    ax.label_outer()
     ax.set_yscale('log')
     ax.set_xscale('log')
-    ax.set_xlabel(r'Freq [Hz]')
+    ax.set_xlabel(r'Frequency [Hz]')
     ax.set_ylabel(r'Flux density [Jy]')
     xmin, xmax, ymin, ymax = armonizeXY(np.log10(data['freq']), np.log10(data['flux']), 0.434*data['rms']/data['flux'])
     ax.set_xlim(10**xmin, 10**xmax)
@@ -142,7 +150,7 @@ def plotlogax(data, plotname):
         label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
     print "Writing "+plotname
-    fig.savefig(plotname)
+    fig.savefig(plotname, bbox_inches='tight')
     del fig
 
 if __name__ == "__main__":
