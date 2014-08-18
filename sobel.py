@@ -37,7 +37,8 @@ def sobel(img):
 
 
 img = pyrap.images.image(img_f)
-pixels = img.getdata()[0][0]
+pixels = np.squeeze(img.getdata())#[0][0]
+print "Image shape:", pixels.shape
 
 pixels = ndimage.gaussian_filter(pixels, sigma=3)
 pixels_s = sobel(pixels)

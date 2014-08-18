@@ -23,7 +23,6 @@ import numpy as np
 import pyrap.images
 import pyrap.tables
 from progressbar import ProgressBar
-from image_extractval import calcRms
 from linearfit import *
 
 opt = optparse.OptionParser(usage="%prog images", version="%prog 0.3")
@@ -96,7 +95,9 @@ for name in imglist:
         image = pyrap.images.image(rmsmask)
         rmsmaskval = np.array(image.getdata()[0][0])
         del image
-        rms = np.std(val[np.where(rmsmaskval == 1)])
+        linearized_val = val[np.where(rmsmaskval == 1)]
+        rms = np.sqrt(sum(n*n for n in linearized_val)/len(linearized_val))
+        print "Rms:", rms
         maskval[np.where(val < n_sigma*rms)] = 0
         rmsvalues.append(rms)
     else:

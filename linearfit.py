@@ -35,8 +35,10 @@ def linear_fit(x, y, yerr=None):
         if e == 0: yerr[i] = 1
     out = curve_fit(f, x, y, [-1. ,0.], yerr)
     # return B0, B1, errB0, errB1 (err are in std dev)
-    print out
-    return (out[0][0], out[0][1], np.sqrt(out[1][0][0]), np.sqrt(out[1][1][1]))
+    if type(out[1]) is np.ndarray:
+        return (out[0][0], out[0][1], np.sqrt(out[1][0][0]), np.sqrt(out[1][1][1]))
+    else:
+        return (out[0][0], out[0][1], 0, 0)
 
 
 # extimate errors and accept errors on x and y-data

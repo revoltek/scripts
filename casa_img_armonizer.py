@@ -25,11 +25,11 @@ images = sys.argv[5:]
 
 do_convolve = True
 do_regrid = True
-newincr = 5 # arcsec
+newincr = 1 # arcsec, pixsize of final image
 do_cut = True
-region_file = 'cut.crtf'
+region_file = 'cut.crtf' # region to cut the image
 to_fits = False
-clean = True
+clean = False
 
 todelete = []
 
@@ -61,10 +61,9 @@ if do_convolve:
     # armonize beams to the biggest
     for i, img in enumerate(images):
         print "Convolving (to", bmaxmaj, "arcsec):", img
-        imsmooth(imagename=img, kernel='gauss', major=str(bmaxmaj)+'arcsec', minor=str(bmaxmaj)+'arcsec', pa='0deg', targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
+        imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
         images[i] = img+'-conv'+str(bmaxmaj)
         todelete.append(img)
-
 
 if do_cut:
     print "##########################################"

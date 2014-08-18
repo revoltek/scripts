@@ -33,25 +33,24 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 import pyfits, pywcs
-import lib_coordinates_mode as cm
 from astropy.cosmology import FlatLambdaCDM
 cosmo = FlatLambdaCDM(H0=73, Om0=0.27)
 
 # parameters
-sdss_file = 'gal_distrib.txt'
-z = 0.1268
-cluster_coords = [157.8907, 35.0761]
-cluster_size = 5.e3 # assumed cluster size in kpc
+sdss_file = sys.argv[1]
+z = 0.1259
+cluster_coords = [157.93151, 35.036615]
+cluster_size = 1.03 # virial radius assumed cluster size in Mpc
 
 def LdFromZ(z): return cosmo.luminosity_distance(z).value
 
 types = np.dtype({'names':['ra','dec','z', 'z_err'], 'formats':[np.float,np.float,np.float,np.float]})
-data = np.loadtxt(sdss_file, comments='#', unpack=False, converters={}, dtype=types)
+data = np.loadtxt(sdss_file, comments='#', unpack=False, converters={}, dtype=types, usecols=(0,1,2,3))
 
 # create fits file (1 pixel is 100 kpc)
 cell_size = cosmo.arcsec_per_kpc_proper(z).value * 100.
 print "Cell size in arcesc:", cell_size
-npix = int(cosmo.arcsec_per_kpc_proper(z).value * cluster_size / cell_size)
+npix = int(cosmo.arcsec_per_kpc_proper(z).value * 2*cluster_size*1e3 / cell_size)
 print "Number of pixel of final image:", npix, "x", npix
 fits_data = np.zeros([npix,npix])
 # set WCS
@@ -66,10 +65,13 @@ wcs.wcs.equinox = 2000.0
 # fill fits file
 good_z = []
 for s in data:
+    # exclude object with bad z_err
+    if s['z_err'] < 0: continue
     # exclude objects too far
-    if LdFromZ(s['z']-s['z_err']) - LdFromZ(z) > cluster_size/2.: continue
+    if LdFromZ(s['z']-s['z_err']) - LdFromZ(z) > cluster_size: continue
     # exclude objects too close
-    if LdFromZ(z) - LdFromZ(s['z']+s['z_err']) > cluster_size/2.: continue
+    if LdFromZ(z) - LdFromZ(s['z']+s['z_err']) > cluster_size: continue
+
 
     ra_pix, dec_pix = wcs.wcs_sky2pix(s['ra'],s['dec'], 1)
     ra_pix = int(np.round(ra_pix))
@@ -77,6 +79,8 @@ for s in data:
     if ra_pix < 0 or ra_pix >= npix or dec_pix < 0 or dec_pix >= npix: continue # galaxy too far
     fits_data[ra_pix][dec_pix] += 1
     good_z.append(s['z'])
+
+print "Total number of good galaxies: ",len(good_z)
 
 # put fits_data and wcs
 header = wcs.to_header()
@@ -91,7 +95,7 @@ ax = fig.add_subplot(110)
 ax.set_xlabel(r'z')
 ax.set_ylabel(r'Number of galaxies')
 ax.label_outer()
-ax.hist(good_z, bins=20., color='white')
+ax.hist(good_z, bins=15., color='white')
 ax.axvline(z, c='r', ls='--', lw=2)
 fig.savefig('z-distrib.pdf', bbox_inches='tight')
 fig.clf()
