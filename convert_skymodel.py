@@ -29,7 +29,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
  # P1C1, GAUSSIAN, PATCH, 14:16:57.07, +50.57.57.51, 0.406232, 0.0, 0.0, 0.0, MajorAxis, MinorAxis, Orientation,  52708393.061927, [0.040956]
  # P1C1, GAUSSIAN, 14:16:57.07, +50.57.57.51, 0.406232, 0.0, 0.0, 0.0, MajorAxis, MinorAxis, Orientation,  52708393.061927, [0.040956]
  pp=re.compile(r"""
-   ^(?P<col1>[A-Za-z0-9_.]+)  # column 1 name: must start with a character
+   ^(?P<col1>[A-Za-z0-9_.-]+)  # column 1 name: must start with a character
    \s*             # skip white space
    \,           # skip comma
    \s*             # skip white space
@@ -73,7 +73,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
    [\S\s]*""",re.VERBOSE)
 
  pp1=re.compile(r"""
-   ^(?P<col1>[A-Za-z0-9_.]+)  # column 1 name: must start with a character
+   ^(?P<col1>[A-Za-z0-9_.-]+)  # column 1 name: must start with a character
    \s*             # skip white space
    \,           # skip comma
    \s*             # skip white space
@@ -129,7 +129,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
    [\S\s]*""",re.VERBOSE)
 
  pp2=re.compile(r"""
-   ^(?P<col1>[A-Za-z0-9_.]+)  # column 1 name: must start with a character
+   ^(?P<col1>[A-Za-z0-9_.-]+)  # column 1 name: must start with a character
    \s*             # skip white space
    \,           # skip comma
    \s*             # skip white space
@@ -197,7 +197,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
    [\S\s]+""",re.VERBOSE)
 
  pp3=re.compile(r"""
-   ^(?P<col1>[A-Za-z0-9_.]+)  # column 1 name: must start with a character
+   ^(?P<col1>[A-Za-z0-9_.-]+)  # column 1 name: must start with a character
    \s*             # skip white space
    \,           # skip comma
    \s*             # skip white space
@@ -281,7 +281,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
      if v!= None:
       strline=str(v.group('col1'))+' '+str(v.group('col4'))+' '+str(v.group('col5'))+' '+str(v.group('col6'))
       strline=strline+' '+str(v.group('col7'))+' '+str(v.group('col8'))+' '+str(v.group('col9'))+' '+str(v.group('col10'))
-      strline=strline+' 0 0 0 0 0 0 0 0\n'
+      strline=strline+' 0 0 0 0 0 0 0 0 0\n'
       outfile.write(strline)
      else:
        v=pp2.search(eachline)

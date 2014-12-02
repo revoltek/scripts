@@ -60,7 +60,7 @@ def distance(ra1, dec1, ra2, dec2):
 
 def printdist(name,d):
 	print name, str(d), "deg",
-	if d<25: print '*COLSE*'
+	if d<25: print '*CLOSE*'
 	else: print ''
 
 
