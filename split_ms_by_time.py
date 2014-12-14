@@ -20,8 +20,8 @@ outputname = 'L215949_SB030_uv_1h.dppp.MS-untouched'
 # end = 3.0 will mean that output MS will stop 3 hours from the start of 
 #    INPUT MS
 # So output MS will have 2 hours of data in such a case
-start_out = 2.0
-end_out = 3.0
+start_out = 4.0
+end_out = 5.0
 ####### END USER ENTRY #########
 
 print '###############################################'
