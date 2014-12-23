@@ -8,11 +8,6 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False):
     import pyfits, pyrap
     import lofar.bdsm as bdsm
 
-    # convert to boolean
-    if atrous_do == True:
-        print 'Changing island threshold to 4 because atrous_do=True'
-        threshisl = 4.0
-
     # DO THE SOURCE DETECTION
     print "Running source detector"
     img = bdsm.process_image( image_name, mean_map='zero', rms_box=(70, 10), \
@@ -57,4 +52,4 @@ if __name__=='__main__':
     opt.add_option('-t', '--atrous_do', help='BDSM extended source detection (default=False)', action='store_true', default=False)
     (options, args) = opt.parse_args()
 
-    make_mask(args[0], options.threshpix, options.threshisl, options.atrous_do)
+    make_mask(args[0].rstrip('/'), options.threshpix, options.threshisl, options.atrous_do)
