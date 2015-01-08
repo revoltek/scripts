@@ -38,14 +38,14 @@ cosmo = FlatLambdaCDM(H0=73, Om0=0.27)
 
 # parameters
 sdss_file = sys.argv[1]
-z = 0.1259
-cluster_coords = [157.93151, 35.036615]
-cluster_size = 1.03 # virial radius assumed cluster size in Mpc
+z = 0.334 # redshift
+cluster_coords = [350.623750, 48.775000] # [deg, deg]
+cluster_size = 3. # virial radius assumed cluster size in Mpc
 
 def LdFromZ(z): return cosmo.luminosity_distance(z).value
 
 types = np.dtype({'names':['ra','dec','z', 'z_err'], 'formats':[np.float,np.float,np.float,np.float]})
-data = np.loadtxt(sdss_file, comments='#', unpack=False, converters={}, dtype=types, usecols=(0,1,2,3))
+data = np.loadtxt(sdss_file, comments='#', unpack=False, converters={}, dtype=types, usecols=(0,1,4,5))
 
 # create fits file (1 pixel is 100 kpc)
 cell_size = cosmo.arcsec_per_kpc_proper(z).value * 100.
@@ -68,16 +68,15 @@ for s in data:
     # exclude object with bad z_err
     if s['z_err'] < 0: continue
     # exclude objects too far
-    if LdFromZ(s['z']-s['z_err']) - LdFromZ(z) > cluster_size: continue
+    #if LdFromZ(s['z']-s['z_err']) - LdFromZ(z) > cluster_size: continue
     # exclude objects too close
-    if LdFromZ(z) - LdFromZ(s['z']+s['z_err']) > cluster_size: continue
-
+    #if LdFromZ(z) - LdFromZ(s['z']+s['z_err']) > cluster_size: continue
 
     ra_pix, dec_pix = wcs.wcs_sky2pix(s['ra'],s['dec'], 1)
     ra_pix = int(np.round(ra_pix))
     dec_pix = int(np.round(dec_pix))
     if ra_pix < 0 or ra_pix >= npix or dec_pix < 0 or dec_pix >= npix: continue # galaxy too far
-    fits_data[ra_pix][dec_pix] += 1
+    fits_data[dec_pix-1][ra_pix-1] += 1
     good_z.append(s['z'])
 
 print "Total number of good galaxies: ",len(good_z)

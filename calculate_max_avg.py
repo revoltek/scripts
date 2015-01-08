@@ -20,7 +20,7 @@
 import numpy as np
 
 TEC_low = 0.1 # low TEC val
-TEC_high = 0.8 # high TEC val
+TEC_high = 0.7 # high TEC val
 
 # calculate max avg in freq for TEC problems (this is important in calibrating)
 freq1 = 35e6

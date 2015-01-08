@@ -38,7 +38,7 @@ data = t.getcol('CORRECTED_DATA')
 for i, freq_chan in enumerate(freq_chans):
 	print "Working on chan:", freq_chan,
 	# find factor
-	fact = 10.**(0.7 * np.log(freq_chan/freq_ref))
+	fact = 10.**(0.7 * np.log10(freq_chan/freq_ref))
 	print "(factor:", fact, ")", " - ",
 	amp = np.absolute(data[:,i,:])
 	ph = np.angle(data[:,i,:])
