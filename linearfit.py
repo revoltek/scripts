@@ -151,6 +151,26 @@ def plotlogax(data, plotname):
     ax.plot(freqs, [10**f(np.log10(freq), B[0], B[1]) for freq in freqs], \
         label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
+
+    # minor tics
+    #ax.xaxis.set_minor_formatter(plt.LogFormatter(base=10.0, labelOnlyBase=False))
+    #ax.xaxis.set_major_formatter(plt.LogFormatter(base=10.0, labelOnlyBase=False))
+    #ax.yaxis.set_minor_formatter(plt.FormatStrFormatter('%.2f'))
+    #ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+    count = 0
+    for i in ax.xaxis.get_minorticklabels():
+        if (count%4 == 0):
+            i.set_fontsize(12)
+        else:
+            i.set_visible(False)
+        count+=1
+    for i in ax.yaxis.get_minorticklabels():
+        if (count%4 == 0):
+            i.set_fontsize(12)
+        else:
+            i.set_visible(False)
+        count+=1
+
     print "Writing "+plotname
     fig.savefig(plotname, bbox_inches='tight')
     del fig
