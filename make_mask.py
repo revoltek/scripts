@@ -2,7 +2,7 @@
 
 # create a mask using bdsm of an image
 
-def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False):
+def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=None):
 
     import sys, os, numpy
     import pyfits, pyrap
@@ -26,7 +26,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False):
     hdulist = pyfits.open(gausmodel)
     pixels_gs = hdulist[0].data
 
-    mask_name = image_name.replace('.image','.mask')
+    if mask_name == None: mask_name = image_name.replace('.image','.mask')
     print 'Making mask:', mask_name
     if os.path.exists(mask_name): os.system('rm -r ' + mask_name)
     os.system('cp -r ' + image_name + ' ' + mask_name)
@@ -50,6 +50,7 @@ if __name__=='__main__':
     opt.add_option('-p', '--threshpix', help='Threshold pixel (default=5)', type='int', default=5)
     opt.add_option('-i', '--threshisl', help='Threshold island (default=3)', type='int', default=3)
     opt.add_option('-t', '--atrous_do', help='BDSM extended source detection (default=False)', action='store_true', default=False)
+    opt.add_option('-m', '--mask', help='Mask name (default=imagename with mask in place of image)', default=None)
     (options, args) = opt.parse_args()
 
-    make_mask(args[0].rstrip('/'), options.threshpix, options.threshisl, options.atrous_do)
+    make_mask(args[0].rstrip('/'), options.threshpix, options.threshisl, options.atrous_do, options.mask)

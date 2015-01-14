@@ -42,7 +42,7 @@ def coordshift(ra, dec, rashift, decshift):
 
 def getPos(name, header):
     """Get the position from a header line like
-    (Name, Type, Patch, Ra, Dec, I, Q, U, V, MajorAxis, MinorAxis, Orientation, ReferenceFrequency='1.47797e+08', SpectralIndex='[]') = format
+    format = Name, Type, Patch, Ra, Dec, I, Q, U, V, MajorAxis, MinorAxis, Orientation, ReferenceFrequency='1.47797e+08', SpectralIndex='[]'
     """
     headers = header.split(',')
     for i, header in enumerate(headers):
@@ -113,25 +113,27 @@ sys.stdout.flush()
 with open(inbbs) as f:
         lines = f.readlines()
 bbsnewdata = []
-patchestoupdate = []
+patchtoupdate = []
+totFluxMask = 0.
+totFluxOutMask = 0.
 
 # Get position of interesting arguments
-header = [line.replace('= format', '').replace('\n','').replace(' ','').replace('#','') for line in lines if line[-9:-1] == '= format'][0]
-bbsnewdata.append('# '+header+' = format\n\n')
+header = [line.replace(' ','').replace('format=', '').replace('\n','').replace('#','') for line in lines if line[0:6] == 'format'][0]
+bbsnewdata.append('format = '+header+'\n\n')
 PosName = getPos('Name', header)
 PosRA = getPos('Ra', header)
 PosDec = getPos('Dec', header)
 PosPatch = getPos('Patch', header)
 PosSpidx = getPos('SpectralIndex', header)
+PosI = getPos('I', header)
 
 # for each component find the relative mask pix, spidx pix and do the shift
-widgets = ['Makeskymodel: ', Percentage(), ' ', Bar(marker='0',left='[',right=']'),\
-                   ' ', ETA()]
+widgets = ['Makeskymodel: ', Percentage(), ' ', Bar(marker='0',left='[',right=']'),' ', ETA()]
 pbar = ProgressBar(widgets=widgets, maxval=len(lines))
 pbar.start()
 for i, cc in enumerate(lines):
   pbar.update(i)
-  if cc[0] == '\n' or cc[0] == '#': continue # nothing
+  if cc[0] == '\n' or cc[0] == '#' or cc[0:6] == 'format': continue # nothing
   if cc[0] == ',': 
       bbsnewdata.append(cc)
       continue
@@ -141,7 +143,8 @@ for i, cc in enumerate(lines):
   ccdec = cc[PosDec]
   ccpatch = cc[PosPatch]
   ccspidx = cc[PosSpidx]
-  
+  ccI = float(cc[PosI])
+   
   # first do the coordinate shift (assuming mask and spidx image have correct coordinates!)
   if shift != None:
     (ra, dec) = coordshift(ra, dec, rashift, decshift)
@@ -154,6 +157,7 @@ for i, cc in enumerate(lines):
     try:
       # != is a XOR for booleans
       if (not maskval[math.floor(pixY)][math.floor(pixX)]) != reverse:
+        totFluxMask += ccI
         if patchprefix == None:
             if verbose: print "Removing component \"",ccname,"\" because it is masked."
             continue
@@ -161,6 +165,8 @@ for i, cc in enumerate(lines):
             if verbose: print "Renameing patch for \"",ccname,"\" because it is masked."
             # add to the list of patches to update
             if ccpatch not in patchtoupdate: patchtoupdate.append(ccpatch)
+      else:
+        totFluxOutMask += ccI
 
     except:
       print "WARNING: failed to find a good mask value for component \"", ccname, "\"."
@@ -190,11 +196,23 @@ for i, cc in enumerate(lines):
 
 pbar.finish()
 
-# update patches names TODO
-#if bbsnewdata[-1][0] == ',':
-#    bbsnewdata[-1] = bbsnewdata[-1].replace(ccpatch.replace(patchprefix,''),ccpatch)
+# print tot flux in mask values
+if mask != None:
+    print "Total masked flux:", totFluxMask
+    print "Total UNmasked flux:", totFluxOutMask
+
+# update patches names
+if patchprefix != None:
+    for i, cc in enumerate(bbsnewdata):
+        cc = cc.replace(' ','').split(',')
+        if cc[0] == ',': continue # patch definition
+        ccpatch = cc[PosPatch]
+        if ccpatch in patchtoupdate:
+            for i, ccu in enumerate(bbsnewdata):
+                bbsnewdata[i] = ccu.replace(', '+ccpatch+',',', '+patchprefix+ccpatch+',')
+            patchtoupdate.remove(ccpatch)
 
 # write to new BBS file
 with open(outbbs, 'w') as f:
     for cc in bbsnewdata:
-        f.write(cc+'\n')
+        f.write(cc)

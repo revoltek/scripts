@@ -112,7 +112,7 @@ def read_ms(logger, msname, ateam, diameter=None):
 def calculate_sizes(logger, imaging, fieldsize, maxbl, freq, interval, chwidth):
     def smearing_imaging(fieldsize, maxbl, freq):
         logger.debug("Imaging mode")
-        fieldsize=0.5*3.14115/180.
+        #fieldsize=0.5*3.14115/180.
         return 4127.*1.22/(fieldsize*maxbl), 0.3*1.22/(fieldsize*maxbl)*freq
 
     def smearing_noimaging(fieldsize, maxbl, freq):
