@@ -6,10 +6,7 @@ import sys
 import pyrap.tables as pt
 from pyrap.quanta import quantity
 
-def checkfile(options):
-
-  inms=options.inms
-  outms=options.outms
+def checkfile(inms):
   if inms == '':
      print 'Error: give an input MS'
      sys.exit()
@@ -114,10 +111,10 @@ opt.add_option('-i','--inms',help='Input MS (format: ms:COLUMN, default column: 
 opt.add_option('-o','--outms',help='Output MS (format: ms:COLUMN, default ms: InputMS, default column: DATA)')
 opt.add_option('-r','--reverse',action="store_true",default=False,help='Convert from circular to linear')
 options, arguments = opt.parse_args()
-checkfile(options)
 
 inms = options.inms.split(':')[0]
 outms = options.outms.split(':')[0]
+checkfile(inms)
 outms = setupiofiles(inms, outms)
 
 if len( options.inms.split(':') ) == 2:
@@ -129,6 +126,9 @@ if len( options.outms.split(':') ) == 2:
     incolumn = options.outms.split(':')[2]
 else:
     incolumn = 'DATA'
+
+print "INFO: inms: "+inms+" (column: "+incolumn+")"
+print "INFO: outms: "+outms+" (column: "+outcolumn+")"
 
 if options.reverse == True:
    mscirc2lin(incolumn, outcolumn, outms)
