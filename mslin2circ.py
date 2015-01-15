@@ -118,14 +118,14 @@ checkfile(inms)
 outms = setupiofiles(inms, outms)
 
 if len( options.inms.split(':') ) == 2:
-    incolumn = options.inms.split(':')[2]
+    incolumn = options.inms.split(':')[1]
 else:
     incolumn = 'DATA'
 
 if len( options.outms.split(':') ) == 2:
-    incolumn = options.outms.split(':')[2]
+    outcolumn = options.outms.split(':')[1]
 else:
-    incolumn = 'DATA'
+    outcolumn = 'DATA'
 
 print "INFO: inms: "+inms+" (column: "+incolumn+")"
 print "INFO: outms: "+outms+" (column: "+outcolumn+")"
