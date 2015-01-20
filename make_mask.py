@@ -19,14 +19,14 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     #img.export_image(img_type='sou_model', outfile=soumodel)
 
     # WRITE THE GAUSSIAN MODEL FITS
-    gausmodel = image_name.replace('.image','.gausmodel')
+    gausmodel = image_name.replace('.image','.gausmodel').replace('.restored.corr','.gausmodel')
     if os.path.exists(gausmodel): os.system('rm ' + gausmodel)
     img.export_image(img_type='gaus_model', outfile=gausmodel)
 
     hdulist = pyfits.open(gausmodel)
     pixels_gs = hdulist[0].data
 
-    if mask_name == None: mask_name = image_name.replace('.image','.mask')
+    if mask_name == None: mask_name = image_name.replace('.image','.mask').replace('.restored.corr','.mask')
     print 'Making mask:', mask_name
     if os.path.exists(mask_name): os.system('rm -r ' + mask_name)
     os.system('cp -r ' + image_name + ' ' + mask_name)
@@ -35,7 +35,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     pixels = numpy.copy(img.getdata())
     pixels_mask = 0. * numpy.copy(pixels)
 
-    gs_cut = 1e-3
+    gs_cut = 1e-2
     idx = numpy.where(pixels_gs > gs_cut)
     pixels_mask[idx] = 1.0
 
