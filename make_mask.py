@@ -11,7 +11,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     # DO THE SOURCE DETECTION
     print "Running source detector"
     img = bdsm.process_image( image_name, mean_map='zero', adaptive_rms_box=True, rms_box_bright=(20, 7), rms_box=(120, 40),\
-        thresh_pix=int(threshpix), thresh_isl=int(threshisl), atrous_do=atrous_do, ini_method='curvature')
+        thresh_pix=int(threshpix), thresh_isl=int(threshisl), atrous_do=atrous_do, ini_method='curvature', advanced_opts=True, blank_limit=1e-5)
 
     # DEBUG
     #soumodel = image_name.replace('.image','.skymodel')
