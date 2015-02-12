@@ -10,7 +10,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False):
 
     # DO THE SOURCE DETECTION
     print "Running source detector"
-    img = bdsm.process_image( image_name, mean_map='zero', rms_box=(70, 10), \
+    img = bdsm.process_image( image_name, mean_map='zero', rms_box=(70, 10), 
         thresh_pix=int(threshpix), thresh_isl=int(threshisl), atrous_do=atrous_do, ini_method='curvature')
 
     # DEBUG

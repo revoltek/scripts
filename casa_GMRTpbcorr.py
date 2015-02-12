@@ -9,7 +9,7 @@ def correctPB(imgname, freq=0, phaseCentre=None):
     if freq == 0: freq = cs.restfrequency()['value'][0]
 
     # find the correct freq
-    freq = min([153,235,325,610,1400], key=lambda x:abs(x-freq))
+    freq = min([153,235,325,610,1400], key=lambda x:abs(x-freq/1.e6))
     print "Frequency is", freq, "MHz"
 
     # from http://gmrt.ncra.tifr.res.in/gmrt_hpage/Users/doc/manual/UsersManual/node27.html
