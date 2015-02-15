@@ -63,6 +63,12 @@ if do_convolve:
         print "Convolving (to", bmaxmaj, "arcsec):", img
         imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
         images[i] = img+'-conv'+str(bmaxmaj)
+        # forse PA to zero (OK because we have circular beams)
+        ia.open(images[i])
+        rb = ia.restoringbeam()
+        rb['positionangle']['value'] = 0
+        ia.setrestoringbeam(beam=rb)
+        ia.close()
 #        todelete.append(img)
 
 if do_cut:
@@ -155,7 +161,7 @@ if to_fits:
     print "##########################################"
     print "# Do To_FITS:"
     for i, img in enumerate(images):
-        os.system('image2fits in='+img+' out='+img+'.fits')
+        os.system('which image2fits; image2fits in='+img+' out='+img+'.fits')
         todelete.append(img)
 
 if clean:
