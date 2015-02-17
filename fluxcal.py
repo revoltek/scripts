@@ -42,6 +42,7 @@ def prod(sou, freq, i=1):
 def flux(sou, freq):
     return par[sou][0]*prod(sou, freq)
 
+print "Flux at", str(freq), 'MHz'
 print "3C48: ",flux('3C48', freq)
 print "3C147: ",flux('3C147', freq)
 print "3C186: ",flux('3C186', freq)

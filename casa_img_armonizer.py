@@ -25,10 +25,10 @@ images = sys.argv[5:]
 
 do_convolve = True
 do_regrid = True
-newincr = 1 # arcsec, pixsize of final image
+newincr = None # arcsec, pixsize of final image
 do_cut = True
 region_file = 'cut.crtf' # region to cut the image
-to_fits = False
+to_fits = True
 clean = True
 
 todelete = []
@@ -89,9 +89,9 @@ if do_regrid:
     print "##########################################"
     print "# Do Regrid:"
     # regrid to the first image size and pixel-size 1/5 of the beam if not set
-    print "Setting pixel to", newincr, "arcsec"
     if not type(newincr) is int:
-        newincr = bmaxmaj/5.
+        newincr = np.floor(bmaxmaj/5.)
+    print "Setting pixel to", newincr, "arcsec"
     newincr = qa.convert({'unit':'arcsec', 'value':newincr},'rad')['value']
 
     for i, img in enumerate(images):
@@ -161,7 +161,8 @@ if to_fits:
     print "##########################################"
     print "# Do To_FITS:"
     for i, img in enumerate(images):
-        os.system('which image2fits; image2fits in='+img+' out='+img+'.fits')
+#        os.system('image2fits in='+img+' out='+img+'.fits')
+        exportfits(imagename=img, fitsimage=img+'.fits')
         todelete.append(img)
 
 if clean:

@@ -26,17 +26,18 @@ import scipy.constants as const
 # (alpha) synchrotron spectral index
 a = 0.87
 # Synchrotron intensity [erg/s/cm^2/Hz/sterad]
+flux = 2e-03 # Jy
 bmaj = 30 # arcsec
 bmin = 27 # arcsec
 beamarea2arcsec = 1/(bmaj*bmin*1.1331) # from beam area to arcsec**2
 arcsec2sterad = 4.25e10 # from arcsec**2 to sterad
-Inu_jy = 2e-03*beamarea2arcsec*arcsec2sterad
+Inu_jy = flux*beamarea2arcsec*arcsec2sterad
 Inu = Inu_jy*1e-23 # Jy -> cgs
 # Frequency [Hz]
 nu = 323.e6
 # pathlenght [cm]
 l = 2.7e23
-# proton to electron ratio
+# proton to electron number density ratio
 K0 = 100.
 
 # const
