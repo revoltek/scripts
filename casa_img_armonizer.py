@@ -19,16 +19,16 @@
 
 # Usage: casapy  --nogui --nologger -c ~/bin/scripts/casa_img_armonizer.py image1 image2 image3 ...
 
-import sys
+import sys, math
 import numpy as np
 images = sys.argv[5:]
 
 do_convolve = True
 do_regrid = True
-newincr = 1 # arcsec, pixsize of final image
+newincr = None # arcsec, pixsize of final image
 do_cut = True
 region_file = 'cut.crtf' # region to cut the image
-to_fits = False
+to_fits = True
 clean = True
 
 todelete = []
@@ -51,7 +51,7 @@ for i, img in enumerate(images):
     bpa = imhead(imagename=img,mode='get',hdkey='beampa')
     print img, ": Major:", bmaj['value'], bmaj['unit'], "- Minor:", bmin['value'], bmin['unit']
     if bmaxmaj < bmaj['value']:
-        bmaxmaj = bmaj['value']+0.01
+        bmaxmaj = math.ceil(bmaj['value'])
         bmaxmaj_img = img
 print "Max beam is: ", bmaxmaj
 
@@ -63,6 +63,12 @@ if do_convolve:
         print "Convolving (to", bmaxmaj, "arcsec):", img
         imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
         images[i] = img+'-conv'+str(bmaxmaj)
+        # forse PA to zero (OK because we have circular beams)
+        ia.open(images[i])
+        rb = ia.restoringbeam()
+        rb['positionangle']['value'] = 0
+        ia.setrestoringbeam(beam=rb)
+        ia.close()
 #        todelete.append(img)
 
 if do_cut:
@@ -83,9 +89,9 @@ if do_regrid:
     print "##########################################"
     print "# Do Regrid:"
     # regrid to the first image size and pixel-size 1/5 of the beam if not set
-    print "Setting pixel to", newincr, "arcsec"
     if not type(newincr) is int:
-        newincr = bmaxmaj/5.
+        newincr = np.floor(bmaxmaj/5.)
+    print "Setting pixel to", newincr, "arcsec"
     newincr = qa.convert({'unit':'arcsec', 'value':newincr},'rad')['value']
 
     for i, img in enumerate(images):
@@ -94,39 +100,42 @@ if do_regrid:
         # pre-check: set ref pix to 0,0 and consequently the refval
         ia.open(img)
         cs = ia.coordsys()
+        raax = cs.findaxisbyname('ra')
+        decax = cs.findaxisbyname('dec')
         if i == 0:
             newrefv = cs.referencevalue()['numeric']
-            newrefv[0] = ia.toworld([0,0])['numeric'][0]
-            newrefv[1] = ia.toworld([0,0])['numeric'][1]
+            newrefv[raax] = ia.toworld([0,0])['numeric'][raax]
+            newrefv[decax] = ia.toworld([0,0])['numeric'][decax]
 #            print "ref val", cs.referencevalue()
 
             newrefp = cs.referencepixel()['numeric']
-            newrefp[0] = 0.
-            newrefp[1] = 0.
+            newrefp[raax] = 0.
+            newrefp[decax] = 0.
 #            print "ref pix", cs.referencepixel()
 
             # scale the shape according to the new increment per pixel
             newshape = ia.shape()
             rescaling = cs.increment()['numeric'][1]/newincr
-            newshape[0] = ia.shape()[0]*rescaling
-            newshape[1] = ia.shape()[1]*rescaling
+            newshape[raax] = ia.shape()[raax]*rescaling
+            newshape[decax] = ia.shape()[decax]*rescaling
 
         refv = cs.referencevalue()['numeric']
-        refv[0] = newrefv[0]
-        refv[1] = newrefv[1]
+        refv[raax] = newrefv[raax]
+        refv[decax] = newrefv[decax]
         cs.setreferencevalue(value=refv)
 
         refp = cs.referencepixel()['numeric']
-        refp[0] = newrefp[0]
-        refp[1] = newrefp[1]
+        refp[raax] = newrefp[raax]
+        refp[decax] = newrefp[decax]
         cs.setreferencepixel(value=refp)
 
         cs.setincrement([-newincr,newincr])
         cs.setprojection(type='SIN', parameters=[0,0])
         shape = ia.shape()
-        shape[0] = newshape[0]
-        shape[1] = newshape[1]
-        imrr = ia.regrid(outfile=img+'-regridded', csys=cs.torecord(), shape=shape, method='cubic', overwrite=True)
+        shape[raax] = newshape[raax]
+        shape[decax] = newshape[decax]
+#        imrr = ia.regrid(outfile=img+'-regridded', csys=cs.torecord(), shape=[shape[raax],shape[decax],1], method='cubic', overwrite=True, dropdeg=True)
+        imrr = ia.regrid(outfile=img+'-regridded', csys=cs.torecord(), shape=shape, method='cubic', overwrite=True, dropdeg=False)
 
         images[i] = img+'-regridded'
         todelete.append(img)
@@ -152,7 +161,8 @@ if to_fits:
     print "##########################################"
     print "# Do To_FITS:"
     for i, img in enumerate(images):
-        os.system('image2fits in='+img+' out='+img+'.fits')
+#        os.system('image2fits in='+img+' out='+img+'.fits')
+        exportfits(imagename=img, fitsimage=img+'.fits')
         todelete.append(img)
 
 if clean:

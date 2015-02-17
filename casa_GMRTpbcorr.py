@@ -9,7 +9,7 @@ def correctPB(imgname, freq=0, phaseCentre=None):
     if freq == 0: freq = cs.restfrequency()['value'][0]
 
     # find the correct freq
-    freq = min([153,235,325,610,1400], key=lambda x:abs(x-freq))
+    freq = min([153,235,325,610,1400], key=lambda x:abs(x-freq/1.e6))
     print "Frequency is", freq, "MHz"
 
     # from http://gmrt.ncra.tifr.res.in/gmrt_hpage/Users/doc/manual/UsersManual/node27.html
@@ -21,6 +21,7 @@ def correctPB(imgname, freq=0, phaseCentre=None):
 
     # if not specified assuming pointing in the centre of the image
     if phaseCentre == None:
+        print "Assume pointing in the image centre."
         pixPhaseCentre = ia.topixel( () )['numeric'][0:2]
     else: 
         pixPhaseCentre = ia.topixel( qa.quantity(str(phaseCentre[0])+'deg'), qa.quantity(str(phaseCentre[1])+'deg') )['numeric'][0:2]

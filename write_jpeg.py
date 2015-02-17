@@ -3,7 +3,7 @@ import sys
 
 rstrname = sys.argv[5]
 
-vwr = viewertool.viewertool( False, True)
+vwr = viewertool.viewertool( False, True )
 panel = vwr.panel("viewer")
 data = vwr.restore(rstrname)
 
