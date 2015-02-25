@@ -2,7 +2,7 @@
 
 # create a mask using bdsm of an image
 
-def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=None, rmsbox=(120,40)):
+def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=None, rmsbox=(120,40), mask_combine=None):
 
     import sys, os, numpy
     import pyfits, pyrap
@@ -37,7 +37,13 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
 
     gs_cut = 1e-2
     idx = numpy.where(pixels_gs > gs_cut)
-    pixels_mask[idx] = 1.0
+    pixels_mask[idx] = 1.
+    
+    # do an pixel-by-pixel "OR" operation with a given mask
+    if mask_combine != None:
+        print "Combining with "+mask_combine
+        imgcomb = pyrap.images.image(mask_combine)
+        pixels_mask[numpy.where(imgcomb.getdata() == 1.)] = 1.
 
     img.putdata(pixels_mask)
     del img
@@ -50,9 +56,10 @@ if __name__=='__main__':
     opt.add_option('-p', '--threshpix', help='Threshold pixel (default=5)', type='int', default=5)
     opt.add_option('-i', '--threshisl', help='Threshold island (default=3)', type='int', default=3)
     opt.add_option('-t', '--atrous_do', help='BDSM extended source detection (default=False)', action='store_true', default=False)
-    opt.add_option('-m', '--mask', help='Mask name (default=imagename with mask in place of image)', default=None)
+    opt.add_option('-m', '--newmask', help='Mask name (default=imagename with mask in place of image)', default=None)
+    opt.add_option('-c', '--combinemask', help='Mask name of a mask to add to the found one (default=None)', default=None)
     opt.add_option('-r', '--rmsbox', help='rms box size (default=120,40)', default='120,40')
     (options, args) = opt.parse_args()
     
     rmsbox = (int(options.rmsbox.split(',')[0]),int(options.rmsbox.split(',')[1]))
-    make_mask(args[0].rstrip('/'), options.threshpix, options.threshisl, options.atrous_do, options.mask, rmsbox)
+    make_mask(args[0].rstrip('/'), options.threshpix, options.threshisl, options.atrous_do, options.newmask, rmsbox, options.combinemask)

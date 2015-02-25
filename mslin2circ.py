@@ -18,28 +18,37 @@ def checkfile(inms):
   t.close() 
   if options.reverse == True:
     if poltyp[0] != 'R' and poltyp[0] != 'L':
-       print "Error: Data is not from circularly polarized feed"
-       exit(1)
+       print "WARNING: Data is not from circularly polarized feed but I'm converting a column from circular"
   else: 
     if poltyp[0] != 'X' and poltyp[0] != 'Y':
-       print 'Error: Data is not from linearly polarized feed'
-       exit(1)
+       print "WARNING: Data is not from linearly polarized feed but I'm converting a column from linear."
 
-def setupiofiles(inms, outms):
+def setupiofiles(inms, outms, incolumn, outcolumn):
   if outms == None:
      outms = inms
   if inms != outms :
      t = pt.table(inms)
-     t.copy (outms, True, True)
+     t.copy(outms, True, True)
      t.close()
      print "Finished copying"
+  # create output column if doesn't exist
+  to = pt.table(outms, readonly=False)
+  if not outcolumn in to.colnames():
+      ti = pt.table(inms)
+      desc = ti.getcoldesc('DATA')
+      desc['name'] = outcolumn
+      dminfo = ti.getdminfo(incolumn)
+      dminfo['NAME'] = outcolumn
+      to.addcols(desc,dminfo)
+      ti.close()
+  to.close()
   return outms
 
 def mslin2circ(incol, outcol, outms):
   tc = pt.table(outms,readonly=False)
   dataXY = tc.getcol(incol)
   I=numpy.complex(0.0,1.0)
-  dataRL =0.5* numpy.transpose(numpy.array([
+  dataRL = 0.5* numpy.transpose(numpy.array([
            +dataXY[:,:,0]-I*dataXY[:,:,1]+I*dataXY[:,:,2]+dataXY[:,:,3],
            +dataXY[:,:,0]+I*dataXY[:,:,1]+I*dataXY[:,:,2]-dataXY[:,:,3],
            +dataXY[:,:,0]-I*dataXY[:,:,1]-I*dataXY[:,:,2]-dataXY[:,:,3],
@@ -69,7 +78,7 @@ def mscirc2lin(incol, outcol, outms):
   tc = pt.table(outms,readonly=False)
   dataRL = tc.getcol(incol)
   I=numpy.complex(0.0,1.0)
-  dataXY =0.5* numpy.transpose(numpy.array([
+  dataXY = 0.5* numpy.transpose(numpy.array([
               +dataRL[:,:,0]+dataRL[:,:,1]+dataRL[:,:,2]+dataRL[:,:,3],
            I*(+dataRL[:,:,0]-dataRL[:,:,1]+dataRL[:,:,2]-dataRL[:,:,3]),
            I*(-dataRL[:,:,0]-dataRL[:,:,1]+dataRL[:,:,2]+dataRL[:,:,3]),
@@ -112,11 +121,6 @@ opt.add_option('-o','--outms',help='Output MS (format: ms:COLUMN, default ms: In
 opt.add_option('-r','--reverse',action="store_true",default=False,help='Convert from circular to linear')
 options, arguments = opt.parse_args()
 
-inms = options.inms.split(':')[0]
-outms = options.outms.split(':')[0]
-checkfile(inms)
-outms = setupiofiles(inms, outms)
-
 if len( options.inms.split(':') ) == 2:
     incolumn = options.inms.split(':')[1]
 else:
@@ -126,6 +130,11 @@ if len( options.outms.split(':') ) == 2:
     outcolumn = options.outms.split(':')[1]
 else:
     outcolumn = 'DATA'
+
+inms = options.inms.split(':')[0]
+outms = options.outms.split(':')[0]
+checkfile(inms)
+outms = setupiofiles(inms, outms, incolumn, outcolumn)
 
 print "INFO: inms: "+inms+" (column: "+incolumn+")"
 print "INFO: outms: "+outms+" (column: "+outcolumn+")"
