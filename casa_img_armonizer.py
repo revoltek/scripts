@@ -28,7 +28,7 @@ do_regrid = True
 newincr = None # arcsec, pixsize of final image
 do_cut = True
 region_file = 'cut.crtf' # region to cut the image
-to_fits = True
+to_fits = False
 clean = True
 
 todelete = []
@@ -61,7 +61,7 @@ if do_convolve:
     # armonize beams to the biggest
     for i, img in enumerate(images):
         print "Convolving (to", bmaxmaj, "arcsec):", img
-        imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
+        imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj), region=region_file)
         images[i] = img+'-conv'+str(bmaxmaj)
         # forse PA to zero (OK because we have circular beams)
         ia.open(images[i])

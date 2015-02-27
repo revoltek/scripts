@@ -22,8 +22,8 @@
 import sys, os
 import numpy as np
 from astropy.cosmology import FlatLambdaCDM
-cosmo = FlatLambdaCDM(H0=73, Om0=0.27)
-print "Using Flat LmbdaCDM H0=0.73 Om0=0.27"
+cosmo = FlatLambdaCDM(H0=70, Om0=0.27)
+print "Using Flat LmbdaCDM H0=0.70 Om0=0.27"
 
 z = float(sys.argv[1]) # redshift
 flux = float(sys.argv[2]) # in Jy
