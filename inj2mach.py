@@ -7,9 +7,11 @@ import sys, os
 import numpy as np
 
 a = abs(float(sys.argv[1]))
-a_e = abs(float(sys.argv[2]))
+a_ep = abs(float(sys.argv[2]))
+a_em = abs(float(sys.argv[3]))
 
 M = np.sqrt( (2*a+3) / (2*a-1) )
-M_e = a_e * (2*(2*a-1)-2*(2*a+3))/(2*(2*a-1)**2*np.sqrt((2*a+3)/(2*a-1)))
+M_ep = abs( a_ep * (2*(2*a-1)-2*(2*a+3))/(2*(2*a-1)**2*np.sqrt((2*a+3)/(2*a-1))) )
+M_em = abs( a_em * (2*(2*a-1)-2*(2*a+3))/(2*(2*a-1)**2*np.sqrt((2*a+3)/(2*a-1))) )
 
-print M, "+/-", M_e
+print M, "+", M_ep, "-", M_em
