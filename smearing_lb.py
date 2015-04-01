@@ -18,13 +18,13 @@
 import numpy as np
 
 # USER INPUT
-nu0 = 150.0e6 # Hz, Observing freqency, from msoverview
-nchan= 16 # Channels per subband
+nu0 = 60.0e6 # Hz, Observing freqency, from msoverview
+nchan= 8 # Channels per subband
 bw=195.0e3/nchan # in kHz. 195kHz is the bandwidt of one subband
-time = 1. # seconds. 
-b = 1158.0e3 # meters. IS longest baseline in meters. 
-#b = 121.0e3 # meters. RS longest baseline in meters.
-imoffset = 2*60*60.0 # arcseconds. Distance in image from phase centre, i.e. half the FoV.
+time = 2. # seconds. 
+#b = 1158.0e3 # meters. IS longest baseline in meters. 
+b = 121.0e3 # meters. RS longest baseline in meters.
+imoffset = 5*60*60.0 # arcseconds. Distance in image from phase centre, i.e. half the FWHM.
 maxrate = 3e-3 # Hz, typical residual rates on long baselines, value for M82 data
 maxdelay = 300e-9 # seconds. typical residual delays on long baselines, value for M82 data
 
