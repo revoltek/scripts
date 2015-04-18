@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2013 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# Usage: casapy  --nogui --nologger -c ~/bin/scripts/crtf2flux.py region.crtf noise.reg image1 image2 image3 ...
+# select flux in image1,image2... above a certain sigma threshold
+# images must be casa_img_armonize-ed
+# for every region in region.crtf extract the flux
+# if more then 1 img: do integrated spidx of that region
+
+# to set reffreq:
+# imhead(imagename,'put','restfreq',{'value': 323098000.0, 'unit': 'Hz'}
+
+nsigma = 2 # number of sigma below which the image is masked out
+
+import os, sys, glob
+import numpy as np
+import linearfit
+images = sys.argv[7:]
+regionfile = sys.argv[5]
+noiseregionfile = sys.argv[6]
+
+print "Split region file"
+lines = sum(1 for line in open(regionfile))
+with open(regionfile) as f:
+    for i, l in enumerate(f):
+        if i == 0: head = l
+        else:
+            with open('__reg'+str(i)+'.crtf', 'w+') as fo:
+                fo.write(head)
+                fo.write(l)
+
+print "Calculate RMSs:"
+rms = []
+freqs = []
+lelexpr = []
+for i, image in enumerate(images):
+    rms.append(imstat(imagename=image, region=noiseregionfile)['rms'][0])
+    freqs.append(imhead(imagename=image,mode='get',hdkey='restfreq')['value'])
+    print image+ "(freq:", freqs[i], ") - rms:", rms[i], 'Jy/b'
+    # make mask that selects only pixels above the noise in all images
+    lelexpr.append('"'+image+'" > '+str(nsigma)+'*'+str(rms[i]))
+
+print "Calculate fluxes:"
+flux = {}
+err = {}
+for region in glob.glob('__reg*crtf'):
+    flux[region] = []
+    err[region] = []
+    print "### Working region:", region
+    for i, image in enumerate(images):
+
+        # get beam in pixel
+        bmaj = qa.convert(imhead(imagename=image,mode='get',hdkey='beammajor'),'deg')
+        bmin = qa.convert(imhead(imagename=image,mode='get',hdkey='beamminor'),'deg')
+        ia.open(image)
+        cs = ia.coordsys()
+        xpix = cs.increment()['numeric'][0]*180/np.pi
+        ypix = cs.increment()['numeric'][1]*180/np.pi
+        cs.done()
+        ia.close()
+        pixperbeam = (bmaj['value']*bmin['value']*1.1331)/abs(xpix*ypix)
+
+        # in some cases casa crash if the first image of the lel expression is not the one in imagename
+        lelexpr[0], lelexpr[i] = lelexpr[i], lelexpr[0]
+
+        stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr))
+        flux[region].append(stat['flux'][0])
+        err[region].append(rms[i]*np.sqrt(stat['npts'][0]/pixperbeam)) 
+        print image+ " - flux:", flux[region][i], '±', err[region][i], 'Jy'
+        lelexpr[i], lelexpr[0] = lelexpr[0], lelexpr[i]
+
+print "Calculate spidx"
+for region in glob.glob('__reg*crtf'):
+    (a, b, sa, sb) = linearfit.linear_fit(x=np.log10(freqs), y=np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]))
+    print region+" - spidx:", a, '±', sa
+
+os.system('rm __reg*crtf')
+print "Done."

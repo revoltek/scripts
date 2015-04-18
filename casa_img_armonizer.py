@@ -28,7 +28,7 @@ do_regrid = True
 newincr = None # arcsec, pixsize of final image
 do_cut = True
 region_file = 'cut.crtf' # region to cut the image
-to_fits = True
+to_fits = False
 clean = True
 
 todelete = []
@@ -79,7 +79,6 @@ if do_cut:
         print "Cutting:", img
         ia.open(img)   # casa image class
         #ia.summary()   # will print out some info
-        #box = rg.box([10,10], [50,50])   # casa regionmanager class
         im2 = ia.subimage(outfile=img+'-cut', region=region_file, overwrite=True)
         images[i] = img+'-cut'
         todelete.append(img)

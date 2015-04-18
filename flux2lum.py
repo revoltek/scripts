@@ -36,6 +36,11 @@ except: flux_err = 0.
 try: alpha = float(sys.argv[4])
 except: alpha = -1
 
+print "z=",z
+print "flux=",flux," Jy"
+print "err=",flux_err," Jy"
+print "alpha=",alpha
+
 dist = cosmo.luminosity_distance(z).value # in Mpc
 print "Distance: ", dist, "Mpc"
 

@@ -17,6 +17,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# in case of pyrap RuntimeError: Failed Always Assert "coords[nc-1] != 0"
+# try to convert the map in fits, and then back to MS using pyrap "saveas"
+
 import sys, os
 import optparse
 import numpy as np
