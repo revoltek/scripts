@@ -31,7 +31,7 @@ maxdist = 0; mindist=np.inf
 t = table(sys.argv[1]+'/SPECTRAL_WINDOW')
 
 wavelenght = c/t.getcol('REF_FREQUENCY')[0]
-print 'Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1e6)+' MHz)'
+print 'Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1.e6)+' MHz)'
 
 for u,v,w in col:
         dist = math.sqrt(u*u+v*v)

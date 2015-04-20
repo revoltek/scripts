@@ -17,18 +17,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# flux2lum.py redshift flux(in Jy) [error]
+# flux2lum.py redshift flux(in Jy) [error] [alpha=-1]
 
 import sys, os
 import numpy as np
 from astropy.cosmology import FlatLambdaCDM
-cosmo = FlatLambdaCDM(H0=73, Om0=0.27)
-print "Using Flat LmbdaCDM H0=0.73 Om0=0.27"
+cosmo = FlatLambdaCDM(H0=70, Om0=0.27)
+print "Using Flat LmbdaCDM H0=0.70 Om0=0.27"
+
+# k-correction
+def kcorr(flux, z, alpha):
+    return flux*(1+z)**(-1-alpha)
 
 z = float(sys.argv[1]) # redshift
 flux = float(sys.argv[2]) # in Jy
-if len(sys.argv) > 2: flux_err = float(sys.argv[3])
-else: flux_err = 0.
+try:flux_err = float(sys.argv[3])
+except: flux_err = 0.
+try: alpha = float(sys.argv[4])
+except: alpha = -1
+
+print "z=",z
+print "flux=",flux," Jy"
+print "err=",flux_err," Jy"
+print "alpha=",alpha
 
 dist = cosmo.luminosity_distance(z).value # in Mpc
 print "Distance: ", dist, "Mpc"
@@ -40,4 +51,10 @@ print "W/Hz"
 print flux * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
 print "±", flux_err * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
 print "erg/s/Hz"
-print "(For a distance of "+str(dist)+" Mpc)"
+print "with K-correction: (alpha:"+str(alpha)+")"
+print kcorr(flux,z,alpha) * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
+print "±", kcorr(flux_err,z,alpha) * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
+print "W/Hz"
+print kcorr(flux,z,alpha) * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
+print "±", kcorr(flux_err,z,alpha) * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
+print "erg/s/Hz"

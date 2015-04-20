@@ -35,7 +35,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     pixels = numpy.copy(img.getdata())
     pixels_mask = 0. * numpy.copy(pixels)
 
-    gs_cut = 1e-2
+    gs_cut = 1e-5
     idx = numpy.where(pixels_gs > gs_cut)
     pixels_mask[idx] = 1.
     

@@ -28,7 +28,7 @@ do_regrid = True
 newincr = None # arcsec, pixsize of final image
 do_cut = True
 region_file = 'cut.crtf' # region to cut the image
-to_fits = True
+to_fits = False
 clean = True
 
 todelete = []
@@ -61,7 +61,7 @@ if do_convolve:
     # armonize beams to the biggest
     for i, img in enumerate(images):
         print "Convolving (to", bmaxmaj, "arcsec):", img
-        imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj))
+        imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj), region=region_file)
         images[i] = img+'-conv'+str(bmaxmaj)
         # forse PA to zero (OK because we have circular beams)
         ia.open(images[i])
@@ -79,7 +79,6 @@ if do_cut:
         print "Cutting:", img
         ia.open(img)   # casa image class
         #ia.summary()   # will print out some info
-        #box = rg.box([10,10], [50,50])   # casa regionmanager class
         im2 = ia.subimage(outfile=img+'-cut', region=region_file, overwrite=True)
         images[i] = img+'-cut'
         todelete.append(img)
@@ -90,7 +89,7 @@ if do_regrid:
     print "# Do Regrid:"
     # regrid to the first image size and pixel-size 1/5 of the beam if not set
     if not type(newincr) is int:
-        newincr = np.floor(bmaxmaj/5.)
+        newincr = np.floor(bmaxmaj/3.)
     print "Setting pixel to", newincr, "arcsec"
     newincr = qa.convert({'unit':'arcsec', 'value':newincr},'rad')['value']
 

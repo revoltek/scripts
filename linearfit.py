@@ -107,7 +107,7 @@ def plotlinax(data, plotname):
     B = linear_fit(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'])
 #    B = linear_fit_odr(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'])
     print "Regression:", B
-    ax.plot(np.arange(6,10,0.1), [f(freq, B[0], B[1]) for freq in np.arange(6,10,0.1)], \
+    ax.plot(freqs, [f(freq, B[0], B[1]) for freq in freqs], \
         label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
     print "Writing "+plotname
@@ -143,7 +143,7 @@ def plotlogax(data, plotname):
         data['flux'][ data['rms'] >= data['flux'] ]*.9999 # let it be just ~0
     ax.errorbar(data['freq'], data['flux'], yerr=[ymaxerr,yminerr], fmt='ko')
 #    ax.errorbar(data['freq'], data['flux'], fmt='k-')
-    freqs = np.logspace(6, 10, num=100)
+    freqs = np.logspace(np.log10(min(data['freq'])), np.log10(max(data['freq'])), num=100)
     B = linear_fit(np.log10(data['freq']), np.log10(data['flux']),\
 #    B = linear_fit_odr(np.log10(data['freq']), np.log10(data['flux']),\
         yerr = 0.434*data['rms']/data['flux'])
@@ -177,7 +177,7 @@ def plotlogax(data, plotname):
 
 if __name__ == "__main__":
     import optparse
-    opt = optparse.OptionParser(usage="%prog images", version="%prog 0.1")
+    opt = optparse.OptionParser(usage="%prog -d datafile", version="%prog 0.1")
     opt.add_option('-d', '--datafile', help='Input data file with freq, flux and rms', default=None)
     opt.add_option('-o', '--output', help='Name of the output plot [default = datafile.pdf]', default=None)
     opt.add_option('-l', help='Output plot shows the log10 of the values', action="store_true", dest="log")
