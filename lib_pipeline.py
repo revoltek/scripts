@@ -6,9 +6,9 @@ from Queue import Queue
 import lofar.parmdb as parmdb
 from scipy.interpolate import interp1d
 import numpy as np
-import logging
+import logging, time
 
-def thread_cmd(action_list, max_threads = 20):
+def thread_cmd(action_list, max_threads = 12):
     def worker(queue):
         for cmd in iter(queue.get, None):
             subprocess.call(cmd, shell=True)
@@ -21,7 +21,9 @@ def thread_cmd(action_list, max_threads = 20):
         t.start()
 
     for action in action_list:
-                q.put_nowait(action)
+        q.put_nowait(action)
+        # CASA and other tasks may conflict if initialized to close together
+        time.sleep(1)
     for _ in threads: q.put(None) # signal no more commands
     for t in threads: t.join()
 
@@ -49,14 +51,16 @@ def add_coloring_to_emit_ansi(fn):
 def set_logger():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    del logger.handlers[0]
+    # get rid of all other loggers imported by modules
+    for l in logger.handlers: l.setLevel('ERROR')
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
     # create file handler which logs even debug messages
-    fh = logging.FileHandler('pipeline.log')
+    check_rm('pipeline.logging')
+    fh = logging.FileHandler('pipeline.logging')
     fh.setLevel(logging.DEBUG)
     # create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.DEBUG)
     # create formatter and add it to the handlers
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
@@ -101,15 +105,28 @@ def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
     pdbnew.addValues(parms_empty)
     pdbnew.flush()
 
-def check_rm(filename):
+#def check_rm(filename):
+#    """
+#    Check if file exists and remove it
+#    Handle reg exp of glob
+#    """
+#    import os, errno, glob
+#    for f in glob.glob(filename):
+#        try:
+#            os.system('rm -r '+f)
+#        except OSError as e: # this would be "except OSError, e:" before Python 2.6
+#            if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
+#                raise # re-raise exception if a different error occured
+
+def check_rm(regexp):
     """
     Check if file exists and remove it
-    Handle reg exp of glob
+    Handle reg exp of glob and spaces
     """
-    import os, errno, glob
-    for f in glob.glob(filename):
-        try:
+    import os, glob
+    filenames = regexp.split(' ')
+    for filename in filenames:
+        # glob is used to check if file exists
+        for f in glob.glob(filename):
             os.system('rm -r '+f)
-        except OSError as e: # this would be "except OSError, e:" before Python 2.6
-            if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
-                raise # re-raise exception if a different error occured
+
