@@ -105,19 +105,6 @@ def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
     pdbnew.addValues(parms_empty)
     pdbnew.flush()
 
-#def check_rm(filename):
-#    """
-#    Check if file exists and remove it
-#    Handle reg exp of glob
-#    """
-#    import os, errno, glob
-#    for f in glob.glob(filename):
-#        try:
-#            os.system('rm -r '+f)
-#        except OSError as e: # this would be "except OSError, e:" before Python 2.6
-#            if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
-#                raise # re-raise exception if a different error occured
-
 def check_rm(regexp):
     """
     Check if file exists and remove it
@@ -129,4 +116,28 @@ def check_rm(regexp):
         # glob is used to check if file exists
         for f in glob.glob(filename):
             os.system('rm -r '+f)
+
+def size_from_facet(img, c_coord, pixsize):
+    """
+    Given an image, a new centre find the smallest image size which cover the whole image.
+    img = CASA-image name
+    c_coord = [ra,dec] in degrees, the wanted image centre
+    pixsize = in arcsec, the final image will have this pixels size, so a rescaling might be needed
+    """
+    import pyrap.images
+    img = pyrap.images.image(img)
+    c = img.coordinates()
+    # assumes images in a standard casa shape
+    assert c.get_axes()[2] == ['Declination', 'Right Ascension']
+    # assume same increment in image axes
+    assert abs(c.get_increment()[2][0]) == abs(c.get_increment()[2][1])
+
+    cen_y, cen_x = img.topixel([1,1,c_coord[1]*np.pi/180., c_coord[0]*np.pi/180.])[2:]
+    max_y, max_x = img.shape()[2:]
+    max_dist = max(max(cen_x, max_x - cen_x), max(cen_y, max_y - cen_y))
+    max_dist = max_dist * c.get_increment()[2]*180/np.pi*3600 / pixsize
+    goodvalues = np.array([6400,6144,5600,5400,5184,5000,4800,4608,4320,4096,3840,3600,3200,3072,2880,2560,2304,2048, 1600, 1536, 1200, 1024, 800, 512, 256, 128, 64])
+    shape = min(goodvalues[np.where(goodvalues>=max_dist)])*2
+    img.close()
+    return shape
 
