@@ -19,12 +19,21 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     #img.export_image(img_type='sou_model', outfile=soumodel)
 
     # WRITE THE GAUSSIAN MODEL FITS
-    gausmodel = image_name.replace('.image','.gausmodel').replace('.restored.corr','.gausmodel')
+    gausmodel = image_name.replace('.image','.gausmodel').replace('.restored.corr','.gausmodel').replace('.fits','.gausmodel')
+    assert gausmodel != image_name # prevent overwriting
     if os.path.exists(gausmodel): os.system('rm ' + gausmodel)
     img.export_image(img_type='gaus_model', outfile=gausmodel)
 
     hdulist = pyfits.open(gausmodel)
     pixels_gs = hdulist[0].data
+
+    # convert to casa-image if fits file
+    if image_name[-4:] == 'fits':
+        print "Converting to fits file..."
+        img = pyrap.images.image(image_name)
+        image_name = image_name.replace('.fits','.image')
+        img.saveas(image_name, overwrite=True)
+        del img
 
     if mask_name == None: mask_name = image_name.replace('.image','.mask').replace('.restored.corr','.mask')
     print 'Making mask:', mask_name
@@ -43,6 +52,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     if mask_combine != None:
         print "Combining with "+mask_combine
         imgcomb = pyrap.images.image(mask_combine)
+        assert imgcomb.shape() == img.shape()
         pixels_mask[numpy.where(imgcomb.getdata() == 1.)] = 1.
 
     img.putdata(pixels_mask)
