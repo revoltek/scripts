@@ -5,16 +5,26 @@
 
 import os, sys, pickle
 
-def casa_blank(img = [], region = ''):
+def casa_blank(imgs = [], region = '', inverse=False, setTo = 0):
     """
     img = image to blank
-    region = blank all pixel outside this region
+    region = blank all pixels inside this region to the value "setTo"
+    setTo = value to set pixels
+    inverse = instead of blanking pixel return an image that covers only the "region" region
     out: the new, blanked image will overwrite the old one
     """
-    default('immath')
-    immath(imagename = img, mode = 'evalexpr', expr = 'IM0', region = region, outfile = img+'-out')
-    os.system('rm -r '+img)
-    os.system('mv '+img+'-out '+img)
+    if imgs is str: imgs = [imgs]
+    for img in imgs:
+        if inverse:
+            default('immath')
+            immath(imagename = img, mode = 'evalexpr', expr = 'IM0', region = region, outfile = img+'-out')
+            os.system('rm -r '+img)
+            os.system('mv '+img+'-out '+img)
+        else:
+            ia.open(img)
+            reg = rg.fromtextfile(filename=region, shape=ia.shape(), csys=ia.coordsys().torecord())
+            ia.set(pixels=setTo, region=reg)
+            ia.close()
 
 params = pickle.load( open( sys.argv[6], "rb" ) )
 os.system('rm '+sys.argv[6])

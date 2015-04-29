@@ -176,7 +176,7 @@ for i in xrange(5):
         imagename = 'img/clean-wide-c'+str(i)
         run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename=imagename, imtype='wide'}, log='clean-wide1-c'+str(i)+'.log')
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
-        run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_blank_region.py', params={imagename=imagename+'.newmask', region='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf'})
+        run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87.crtf'})
         logging.info('Make widefield model - Widefield imaging2...')
         run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename=imagename.reaplce('wide','wode-masked'), mask=imagename+'.newmask' imtype='wide'}, log='clean-wide2-c'+str(i)+'.log')
 

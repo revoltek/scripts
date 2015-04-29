@@ -133,7 +133,7 @@ for group in sorted(glob.glob('group*')):
         #os.system('taql \'update '+ms+', '+msLL+' as ll set DATA[3,]=ll.DATA[3,]\'')
         #os.system('rm -r '+msLL)
     
-        ##############################################################################################################################################
+        ###################################################################################################################
         # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
         # NOTE: observations must have the same channels i.e. same SBs freq!
         # NOTE: virtual concat or casa concat both fails if second observation SB is the first of the concat list (mss are now sorted), very strange bug
@@ -146,7 +146,8 @@ for group in sorted(glob.glob('group*')):
         imagename = 'img/wide-'+str(i)
         os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms+' > wscleanA-c'+str(i)+'.log 2>&1')
-        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', mask_combine='/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth.mask')
+        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
+        run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1})
         logging.info('Cleaning 2...')
         os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms+'  > wscleanB-c'+str(i)+'.log 2>&1')

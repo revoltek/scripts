@@ -68,11 +68,11 @@ for i, model in enumerate(sorted(glob.glob('self/models/wide*-g*model*'))):
     logging.debug('Splitting group: '+g+' ('+model+')')
     peelmodel = os.path.basename(model).replace('wide','peel')
     os.system('cp -r '+model+' peel/'+dd['name']+'/models/'+peelmodel)
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_blank.py', params={'img':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg']}, log='split_skymodels1-g'+g+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_blank.py', params={'imgs':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg'], 'inverse':True}, log='split_skymodels1-g'+g+'.log')
     # redo the same but leaving the entire facet in the model
     peelmodel = os.path.basename(model).replace('wide','peel_facet')
     os.system('cp -r '+model+' peel/'+dd['name']+'/models/'+peelmodel)
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_blank.py', params={'img':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg_facet']}, log='split_skymodels2-g'+g+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_blank.py', params={'imgs':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg_facet'], 'inverse':True}, log='split_skymodels2-g'+g+'.log')
 
 ###############################################################################################################################
 # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
