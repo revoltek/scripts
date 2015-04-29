@@ -8,9 +8,14 @@ from scipy.interpolate import interp1d
 import numpy as np
 import logging, time
 
-def thread_cmd(action_list, max_threads = 12):
+def thread_cmd(action_list, max_threads = 12, qsub=False):
+    """
+    qsub: if true call a shell script which call qsub and then wait 
+    for the process to finish before returning
+    """
     def worker(queue):
         for cmd in iter(queue.get, None):
+            if qsub: cmd = 'qsub_waiter.sh '+cmd
             subprocess.call(cmd, shell=True)
 
     q = Queue()
@@ -154,7 +159,5 @@ def run_casa(command='', params={}, log=''):
     pickle.dump( params, open( pfile, "wb" ) )
     if log == '': log = os.path.basename(command)+'.log'
     os.system('casa --nogui --log2term --nologger -c '+command+' '+pfile+' > '+log+' 2>&1')
-
-
 
 
