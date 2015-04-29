@@ -68,11 +68,11 @@ for i, model in enumerate(sorted(glob.glob('self/models/wide*-g*model*'))):
     logging.debug('Splitting group: '+g+' ('+model+')')
     peelmodel = os.path.basename(model).replace('wide','peel')
     os.system('cp -r '+model+' peel/'+dd['name']+'/models/'+peelmodel)
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_blank.py', params={'imgs':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg'], 'inverse':True}, log='split_skymodels1-g'+g+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg'], 'inverse':True}, log='split_skymodels1-g'+g+'.log')
     # redo the same but leaving the entire facet in the model
     peelmodel = os.path.basename(model).replace('wide','peel_facet')
     os.system('cp -r '+model+' peel/'+dd['name']+'/models/'+peelmodel)
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_blank.py', params={'imgs':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg_facet'], 'inverse':True}, log='split_skymodels2-g'+g+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':'peel/'+dd['name']+'/models/'+peelmodel, 'region':dd['reg_facet'], 'inverse':True}, log='split_skymodels2-g'+g+'.log')
 
 ###############################################################################################################################
 # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
@@ -83,8 +83,8 @@ for g in groups:
     logging.debug('Concatenating group: '+g)
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True}, log='init-g'+g+'-ft2.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True}, log='init-g'+g+'-ft2.log')
 
 # [PARALLEL] ADD (corrupt) group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
 logging.info('Add and corrupt model...')
@@ -137,7 +137,7 @@ for i in xrange(4):
     if i > 0:
         logging.info('FT model...')
         for ms in glob.glob('peel-avg_TC*.MS'):
-            run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_ft.py', params={'msfile':ms, 'model':imagename+'-masked.model'}, log=ms+'_ft-c'+str(i)+'.log')
+            run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':imagename+'-masked.model'}, log=ms+'_ft-c'+str(i)+'.log')
 
     if i < 2:
         ################################################################################################
@@ -216,10 +216,10 @@ for i in xrange(4):
     if dd['extended']: multiscale = [0,3,9,18]
     else: multiscale = []
     logging.info('Cleaning...')
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_clean.py', params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':1000, 'multiscale':multiscale, 'wproj':128}, log='casaclean1-c'+str(i)+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':1000, 'multiscale':multiscale, 'wproj':128}, log='casaclean1-c'+str(i)+'.log')
     make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
     logging.info('Cleaning (with mask)...')
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_clean.py', params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':1000, 'multiscale':multiscale, 'wproj':128, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(i)+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':1000, 'multiscale':multiscale, 'wproj':128, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(i)+'.log')
 
     # TODO: flag residuals
 
@@ -240,9 +240,9 @@ for g in groups:
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
     logging.debug('Ft high res model')
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='facet-g'+g+'-ft1.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='facet-g'+g+'-ft1.log')
     logging.debug('Ft low res model')
-    run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True, 'wproj':512}, log='facet-g'+g+'-ft2.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True, 'wproj':512}, log='facet-g'+g+'-ft2.log')
 
 # [PARALLEL] ADD and corrupt group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
 logging.info('Add and corrupt facet model...')
@@ -294,10 +294,10 @@ logging.debug('Image size set to '+str(imsize))
 if dd['extended']: multiscale = [0,3,9,18]
 else: multiscale = []
 logging.info('Cleaning facet...')
-run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_clean.py', params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':5000, 'multiscale':multiscale, 'wproj':512}, log='casaclean1-facet.log')
+run_casa(command='/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':5000, 'multiscale':multiscale, 'wproj':512}, log='casaclean1-facet.log')
 make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['facet_extended'])
 logging.info('Cleaning facet (with mask)...')
-run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_clean.py', params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':5000, 'multiscale':multiscale, 'wproj':512, 'mask':imagename+'.newmask'}, log='casaclean2-facet.log')
+run_casa(command='/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':5000, 'multiscale':multiscale, 'wproj':512, 'mask':imagename+'.newmask'}, log='casaclean2-facet.log')
 
 ############################################################################################################################
 # in the corrected_data there's still the old facet model properly corrupted
@@ -321,7 +321,7 @@ logging.info('Add new facet model...')
 check_rm('concat.MS*')
 pt.msutil.msconcat(sorted(glob.glob('group*_TC*-shift.MS')), 'concat.MS', concatTime=False)
 model = 'peel/'+dd['name']+'/images/facet.model'
-run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='final-ft.log')
+run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='final-ft.log')
 
 # here the best facet model is subtracted after corruption with DD solution
 # [PARALLEL] SUB corrupted facet model group*_TC*-shift.MS:DATA - MODEL_DATA -> group*_TC*-shift.MS:CORRECTED_DATA (empty data + facet from model)

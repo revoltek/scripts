@@ -104,7 +104,7 @@ for i in xrange(5):
     logging.info('Add models...')
     check_rm('concat.MS*')
     pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-    run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
 
     #####################################################################################
     # [PARALLEL] calibrate - SB.MS:CIRC_DATA (no correction)
@@ -153,7 +153,7 @@ for i in xrange(5):
 
     # clean (make a new model of virgo)
 #    logging.info('Clean...')
-#    run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat-avg.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+#    run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat-avg.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
 
 #    continue
 #
@@ -174,21 +174,21 @@ for i in xrange(5):
         # clean, mask, clean
         logging.info('Make widefield model - Widefield imaging...')
         imagename = 'img/clean-wide-c'+str(i)
-        run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename=imagename, imtype='wide'}, log='clean-wide1-c'+str(i)+'.log')
+        run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat.MS', imagename=imagename, imtype='wide'}, log='clean-wide1-c'+str(i)+'.log')
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
-        run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87.crtf'})
+        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87.crtf'})
         logging.info('Make widefield model - Widefield imaging2...')
-        run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename=imagename.reaplce('wide','wode-masked'), mask=imagename+'.newmask' imtype='wide'}, log='clean-wide2-c'+str(i)+'.log')
+        run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat.MS', imagename=imagename.reaplce('wide','wode-masked'), mask=imagename+'.newmask' imtype='wide'}, log='clean-wide2-c'+str(i)+'.log')
 
         # Subtract widefield model using ft on a virtual concat - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
         logging.info('Flagging - Subtracting wide-field model...')
         check_rm('concat.MS*')
         pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-        run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_ft.py', params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', 'wproj':512}, log='ft-flag-c'+str(i)+'.log')
+        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', 'wproj':512}, log='ft-flag-c'+str(i)+'.log')
         os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
         logging.info('Flagging - Flagging residuals...')
-        run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_flag.py', params={'msfile':'concat.MS'}, log='flag-c'+str(i)+'.log')
+        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_flag.py', params={'msfile':'concat.MS'}, log='flag-c'+str(i)+'.log')
 
         # [PARALLEL] reapply NDPPP solutions - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
         # this because with the virtual concat the CORRECTED_DATA have been uvsubbed
@@ -204,7 +204,7 @@ for i in xrange(5):
     logging.info('Subtracting wide-field model...')
     check_rm('concat.MS*')
     pt.msutil.msconcat(mss_clean, 'concat.MS', concatTime=False)
-    run_casa(command='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_ft.py', params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', wproj=512}, log='ft-wide-c'+str(i)+'.log')
+    run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', wproj=512}, log='ft-wide-c'+str(i)+'.log')
     os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
     # avg 1chanSB/20s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
@@ -214,7 +214,7 @@ for i in xrange(5):
 
     # clean (make a new model of virgo)
     logging.info('Clean...')
-    run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+    run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
 
 ##########################################################################################################
 # [PARALLEL] concat+avg - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circ)
@@ -226,22 +226,22 @@ os.system('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.
 #########################################################################################################
 # group images of VirA
 logging.info('Full BW image...')
-run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-all'}, log='final_clean-all.log')
+run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-all'}, log='final_clean-all.log')
 
 #########################################################################################################
 # low-res image
 logging.info('Make low-resolution image...')
-run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-lr', imtype='lr'}, log='final_clean-lr.log')
+run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-lr', imtype='lr'}, log='final_clean-lr.log')
 
 ##########################################################################################################
 # uvsub + large FoV image
 check_rm('concat.MS*')
 pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
 logging.info('Ft+uvsub of M87 model...')
-run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_ft.py', params={'msfile':'concat.MS', 'model':'img/clean-c'+str(i)+'.model'}, log='final_ft.log')
+run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':'img/clean-c'+str(i)+'.model'}, log='final_ft.log')
 os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
 logging.info('Low-res wide field image...')
-run_casa(commnad='/home/fdg/scripts/autocal/VirA_LBA/parset_self/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-wide', imtype='wide'}, log='final_clean-wide.log')
+run_casa(commnad='/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', params={'msfile':'concat.MS', imagename='img/clean-wide', imtype='wide'}, log='final_clean-wide.log')
 
 logging.info("Done.")

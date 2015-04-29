@@ -147,7 +147,7 @@ for group in sorted(glob.glob('group*')):
         os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms+' > wscleanA-c'+str(i)+'.log 2>&1')
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
-        run_casa(command='/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1})
+        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1})
         logging.info('Cleaning 2...')
         os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms+'  > wscleanB-c'+str(i)+'.log 2>&1')
