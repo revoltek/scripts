@@ -1,0 +1,14 @@
+msin = 
+msin.datacolumn = CORRECTED_DATA
+msout = 
+msout.datacolumn = DATA
+msout.writefullresflag = False
+
+steps = [shift, avg]
+
+shift.type = phaseshifter
+shift.phasecenter = 
+
+avg.type = averager
+avg.freqstep = 4
+avg.timestep = 5

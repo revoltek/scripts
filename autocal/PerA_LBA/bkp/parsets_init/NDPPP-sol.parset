@@ -1,0 +1,13 @@
+msin=
+msin.datacolumn=DATA_SUB_CIRC
+msin.baseline = [CR]S*&
+msout = 
+msout.datacolumn=CORRECTED_DATA
+
+steps = [sol]
+
+sol.type = gaincal
+sol.parmdb = 
+sol.caltype = diagonal
+sol.maxiter = 100
+sol.sourcedb = 

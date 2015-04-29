@@ -1,0 +1,29 @@
+Strategy.InputColumn = CORRECTED_DATA_PHASE
+Strategy.ChunkSize = 120
+Strategy.Steps = [solve, correct]
+
+Step.solve.Operation = SOLVE
+Step.solve.Model.Sources = []
+Step.solve.Model.Cache.Enable = T
+Step.solve.Model.Gain.Enable = T
+Step.solve.Model.Beam.Enable = T
+Step.solve.Model.Beam.UseChannelFreq = T
+Step.solve.Solve.Parms = ["Gain:0:0:*", "Gain:1:1:*"]
+Step.solve.Solve.CellSize.Freq = 0
+Step.solve.Solve.CellSize.Time = 120
+Step.solve.Solve.CellChunkSize = 120
+Step.solve.Solve.PropagateSolutions = T
+Step.solve.Solve.Options.MaxIter = 100
+Step.solve.Solve.Options.EpsValue = 1e-9
+Step.solve.Solve.Options.EpsDerivative = 1e-9
+Step.solve.Solve.Options.ColFactor = 1e-9
+Step.solve.Solve.Options.LMFactor = 1.0
+Step.solve.Solve.Options.BalancedEqs = F
+Step.solve.Solve.Options.UseSVD = T
+
+Step.correct.Operation = CORRECT
+Step.correct.Model.Sources = []
+Step.correct.Model.Gain.Enable = T
+Step.correct.Model.Beam.Enable = T
+Step.correct.Model.Beam.UseChannelFreq = T
+Step.correct.Output.Column = CORRECTED_DATA

@@ -1,0 +1,12 @@
+msin=
+msin.datacolumn=CORRECTED_DATA_PHASE
+msin.baseline = [CR]S*&
+msout = 
+msout.datacolumn=CORRECTED_DATA
+
+steps = [cal]
+
+cal.type = gaincal
+cal.parmdb = instrument
+cal.caltype = diagonal
+cal.maxiter = 100

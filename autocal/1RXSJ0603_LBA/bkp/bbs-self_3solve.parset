@@ -1,0 +1,32 @@
+Strategy.InputColumn = CORRECTED_DATA
+Strategy.ChunkSize = 30
+Strategy.Steps = [solve3, correct3] 
+
+Step.solve3.Operation = SOLVE
+Step.solve3.Model.Sources = [RX*]
+Step.solve3.Model.Cache.Enable = T
+Step.solve3.Model.Gain.Enable = F
+Step.solve3.Model.CommonScalarPhase.Enable = T
+Step.solve3.Model.Phasors.Enable = F
+Step.solve3.Model.Beam.Enable = T
+Step.solve3.Model.Beam.UseChannelFreq = T
+Step.solve3.Solve.Parms = ["CommonScalarPhase:*"]
+Step.solve3.Solve.CellSize.Freq = 0
+Step.solve3.Solve.CellSize.Time = 1
+Step.solve3.Solve.CellChunkSize = 50
+Step.solve3.Solve.PropagateSolutions = T
+Step.solve3.Solve.Options.MaxIter = 100
+Step.solve3.Solve.Options.EpsValue = 1e-9
+Step.solve3.Solve.Options.EpsDerivative = 1e-9
+Step.solve3.Solve.Options.ColFactor = 1e-9
+Step.solve3.Solve.Options.LMFactor = 1.0
+Step.solve3.Solve.Options.BalancedEqs = F
+Step.solve3.Solve.Options.UseSVD = T
+
+Step.correct3.Operation = CORRECT
+Step.correct3.Model.Sources = []
+Step.correct3.Model.Gain.Enable = F
+Step.correct3.Model.CommonScalarPhase.Enable = T
+Step.correct3.Model.Beam.Enable = T
+Step.correct3.Model.Beam.UseChannelFreq = T
+Step.correct3.Output.Column = CORRECTED_DATA

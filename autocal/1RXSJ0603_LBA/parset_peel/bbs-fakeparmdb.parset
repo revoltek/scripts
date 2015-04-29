@@ -1,0 +1,23 @@
+Strategy.InputColumn = DATA
+Strategy.ChunkSize = 50
+Strategy.Steps = [solve]
+
+Step.solve.Operation = SOLVE
+Step.solve.Model.Sources = [@MODEL_DATA]
+Step.solve.Model.Cache.Enable = T
+Step.solve.Model.Gain.Enable = T
+Step.solve.Model.CommonScalarPhase.Enable = T
+Step.solve.Model.TEC.Enable = T
+Step.solve.Model.Beam.Enable = F
+Step.solve.Solve.Parms = ["Gain:0:0:*", "Gain:1:1:*", "CommonScalarPhase:*", "TEC:*"]
+Step.solve.Solve.CellSize.Freq = 0
+Step.solve.Solve.CellSize.Time = 1
+Step.solve.Solve.CellChunkSize = 50
+Step.solve.Solve.PropagateSolutions = F
+Step.solve.Solve.Options.MaxIter = 1
+Step.solve.Solve.Options.EpsValue = 1e-9
+Step.solve.Solve.Options.EpsDerivative = 1e-9
+Step.solve.Solve.Options.ColFactor = 1e-9
+Step.solve.Solve.Options.LMFactor = 1.0
+Step.solve.Solve.Options.BalancedEqs = F
+Step.solve.Solve.Options.UseSVD = T

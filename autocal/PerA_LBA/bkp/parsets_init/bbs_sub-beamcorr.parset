@@ -1,0 +1,34 @@
+Strategy.InputColumn = DATA
+Strategy.ChunkSize   = 50
+Strategy.UseSolver   = F
+Strategy.Steps       = [solve, subtract]
+
+Step.solve.Model.Sources                = []
+Step.solve.Model.Cache.Enable           = T
+Step.solve.Model.Phasors.Enable         = F
+Step.solve.Model.DirectionalGain.Enable = F
+Step.solve.Model.Gain.Enable            = T
+Step.solve.Model.CommonRotation.Enable  = T
+Step.solve.Operation                    = SOLVE
+Step.solve.Solve.Parms                  = ["Gain:0:0:*","Gain:1:1:*","CommonRotationAngle:*"]
+Step.solve.Solve.CellSize.Freq          = 0
+Step.solve.Solve.CellSize.Time          = 1 
+Step.solve.Solve.CellChunkSize          = 50
+Step.solve.Solve.PropagateSolutions     = T
+Step.solve.Solve.Options.MaxIter        = 50
+Step.solve.Solve.Options.LMFactor       = 1.0
+Step.solve.Solve.Options.BalancedEqs    = F
+Step.solve.Solve.Options.UseSVD         = T
+Step.solve.Model.Beam.Enable            = T
+Step.solve.Model.Beam.UseChannelFreq    = T
+Step.solve.Solve.UVRange		        = [125]
+
+Step.subtract.Model.Sources                = [field*]
+Step.subtract.Model.DirectionalGain.Enable = F
+Step.subtract.Model.CommonRotation.Enable  = T
+Step.subtract.Model.Gain.Enable            = T
+Step.subtract.Operation                    = SUBTRACT
+Step.subtract.Model.Beam.Enable            = T
+Step.subtract.Model.Beam.UseChannelFreq    = T
+Step.subtract.Output.WriteCovariance       = False 
+Step.subtract.Output.Column                = DATA_SUB_BC

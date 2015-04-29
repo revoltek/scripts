@@ -1,0 +1,13 @@
+msin='VirgoA_*.MS'
+msin.datacolumn = CORRECTED_DATA
+msin.startchan = 0
+msin.nchan = 0
+msin.autoweight = false
+
+msout = ''
+
+steps = [flag1, count]
+
+flag1.type=madflagger
+flag1.threshold=3
+flag1.timewindow=251

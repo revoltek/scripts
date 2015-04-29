@@ -1,0 +1,11 @@
+msin=
+msin.datacolumn=DATA
+msin.baseline = [CR]S*&
+msout = 
+msout.datacolumn=CORRECTED_DATA
+
+steps = [cor]
+
+cor.type = applycal
+cor.parmdb =
+cor.correction = gain

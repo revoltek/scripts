@@ -1,0 +1,11 @@
+Strategy.InputColumn = SUBTRACTED_DATA
+Strategy.ChunkSize = 10
+Strategy.Steps = [add]
+
+Step.add.Operation                    = ADD
+Step.add.Model.Sources                = [@MODEL_DATA]
+Step.add.Model.CommonScalarPhase.Enable = T
+Step.add.Model.TEC.Enable             = T
+Step.add.Model.Gain.Enable            = T
+Step.add.Model.Beam.Enable            = F
+Step.add.Output.Column = CORRECTED_DATA

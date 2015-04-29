@@ -1,0 +1,6 @@
+msin = 
+msin.datacolumn = MODEL_DATA
+msout = 
+msout.datacolumn = MODEL_DATA_HIGHRES
+
+steps = []

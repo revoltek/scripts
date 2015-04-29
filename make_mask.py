@@ -4,7 +4,8 @@
 
 def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=None, rmsbox=(55,12), mask_combine=None):
 
-    import sys, os, numpy
+    import sys, os
+    import numpy as np
     import pyfits, pyrap
     import lofar.bdsm as bdsm
 
@@ -24,6 +25,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     if os.path.exists(mask_name): os.system('rm -r ' + mask_name)
     print 'Making mask:', mask_name
     img.export_image(img_type='island_mask', img_format='casa', outfile=mask_name)
+    del img
 
     # do an pixel-by-pixel "OR" operation with a given mask
     if mask_combine != None:
@@ -34,6 +36,10 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
         assert imgcomb.shape() == img.shape()
         pixels_mask[np.where(imgcomb.getdata() == 1.)] = 1.
         img.putdata(pixels_mask)
+        img.unlock()
+        imgcomb.unlock()
+        del img
+        del imgcomb
 
     return mask_name
 

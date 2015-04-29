@@ -1,0 +1,11 @@
+# idea
+1. solve cal for amp+ph+rot_ang (beam on)
+2. transfer to tgt amp and phases (beam on, from now on always OFF)
+3. convert to circular (simple convertion)
+4. self-cal phRR-phLL-TECRR-TECLL on blocks of 30 sb (array factor must be on in the prediction step)
+4b. to duplicate pol:
+taql 'update concat-circRR.MS set DATA[,3]=DATA[,0]'
+taql 'update concat-circLL.MS set DATA[,0]=DATA[,3]'
+calibrate: calibrate-stand-alone -f $ms /cep3home/fdg/scripts/autocal/1RXSJ0603_LBA/bbs-self_solveCirc1pol.parset /cep3home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel
+cp -r concat-circRR.MS concat-circIndip.MS
+taql 'update concat-circIndip.MS, concat-circLL.MS as ll set DATA[3,]=ll.DATA[3,]'

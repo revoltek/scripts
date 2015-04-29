@@ -1,0 +1,102 @@
+# losoto parset
+LoSoTo.Steps = [reweight, clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
+#LoSoTo.Steps = [merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
+LoSoTo.Solset = [sol000]
+LoSoTo.Soltab = []
+LoSoTo.SolType = []
+LoSoTo.ant = []
+LoSoTo.pol = [XX, YY]
+LoSoTo.dir = [3C295]
+LoSoTo.Ncpu = 10
+
+LoSoTo.Steps.reweight.Operation = REWEIGHT
+LoSoTo.Steps.reweight.WeightVal = 0.
+LoSoTo.Steps.reweight.ant = CS013LBA # wrong pol
+LoSoTo.Steps.reweight.FlagBad = False # wrong pol
+
+LoSoTo.Steps.clip.Operation = CLIP
+LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.clip.ClipLevel = 5 # factor above/below median at which to clip
+LoSoTo.Steps.clip.Axes = [time] # axis along which to calculate the median
+
+LoSoTo.Steps.flagA.Operation = FLAG
+LoSoTo.Steps.flagA.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flagA.Axis = 'time' # axis to flag (e.g. 'time')
+LoSoTo.Steps.flagA.MaxCycles = 3 # number of flagging cycles
+LoSoTo.Steps.flagA.MaxRms = 5 # rms to clip outliers
+LoSoTo.Steps.flagA.MaxRmsNoise = 5 # rms to clip outliers
+LoSoTo.Steps.flagA.Window = 500 # window to remove trends (in timestamps)
+LoSoTo.Steps.flagA.Order = 1  # order of the function fitted during trend removal (amp: 1, ph: 2)
+LoSoTo.Steps.flagA.MaxGap = 300 # maximum gaps allowed before fitting 2 trends (in timestamps)
+LoSoTo.Steps.flagA.Reaplce = False # replace bad values with the interpolated ones, instead of flagging them
+LoSoTo.Steps.flagA.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
+#LoSoTo.Steps.flagA.freq = [30076599.12109375,40037536.62109375,50193786.62109375,60154724.12109375]
+LoSoTo.Steps.flagA2.Operation = FLAG
+LoSoTo.Steps.flagA2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flagA2.Axis = 'freq' # axis to flag (e.g. 'time')
+LoSoTo.Steps.flagA2.MaxCycles = 3 # number of flagging cycles
+LoSoTo.Steps.flagA2.MaxRms = 6 # rms to clip outliers
+LoSoTo.Steps.flagA2.MaxRmsNoise = 6 # rms to clip outliers
+LoSoTo.Steps.flagA2.Window = 3e6 # window to remove trends (in timestamps)
+LoSoTo.Steps.flagA2.Order = 1  # order of the function fitted during trend removal (amp: 1, ph: 2)
+LoSoTo.Steps.flagA2.MaxGap = 1.5e6 # maximum gaps allowed before fitting 2 trends (in timestamps)
+LoSoTo.Steps.flagA2.Reaplce = False # replace bad values with the interpolated ones, instead of flagging them
+LoSoTo.Steps.flagA2.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
+#LoSoTo.Steps.flagA2.time = [4873803088.3722754,4873829660.2580481,4873804545.3948412,4873829169.5769091]
+
+LoSoTo.Steps.flagextend.Operation = FLAGEXTEND
+LoSoTo.Steps.flagextend.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flagextend.Axes = ['freq','time']
+LoSoTo.Steps.flagextend.Percent = 40
+LoSoTo.Steps.flagextend.Size = 7
+LoSoTo.Steps.flagextend.Cycles = 3
+
+LoSoTo.Steps.merge.Operation = REWEIGHT
+LoSoTo.Steps.merge.Soltab = [sol000/phase000]
+LoSoTo.Steps.merge.MergeFromSoltab = sol000/amplitude000
+
+# plot amplitudes time/freq
+LoSoTo.Steps.plotA.Operation = PLOT
+LoSoTo.Steps.plotA.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA.Axes = [time]
+LoSoTo.Steps.plotA.Prefix = plot/amp_
+LoSoTo.Steps.plotA.Log = T
+LoSoTo.Steps.plotA.freq = [23484802.24609375,30076599.12109375,40037536.62109375,50193786.62109375,60154724.12109375]
+LoSoTo.Steps.plotA.pol = [XX]
+LoSoTo.Steps.plotA2.Operation = PLOT
+LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA2.Axes = [freq]
+LoSoTo.Steps.plotA2.Prefix = plot/amp2_
+LoSoTo.Steps.plotA2.Log = T
+LoSoTo.Steps.plotA2.time = [4873803088.3722754,4873829660.2580481,4873804545.3948412,4873829169.5769091]
+LoSoTo.Steps.plotA2.pol = [XX]
+
+# plot phases time/freq
+LoSoTo.Steps.plotP.Operation = PLOT
+LoSoTo.Steps.plotP.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotP.Axes = [time]
+LoSoTo.Steps.plotP.Prefix = plot/ph_
+LoSoTo.Steps.plotP.freq = [23484802.24609375,30076599.12109375,40037536.62109375,50193786.62109375,60154724.12109375]
+LoSoTo.Steps.plotP.pol = [XX]
+LoSoTo.Steps.plotP2.Operation = PLOT
+LoSoTo.Steps.plotP2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotP2.Axes = [freq]
+LoSoTo.Steps.plotP2.Prefix = plot/ph2_
+LoSoTo.Steps.plotP2.time = [4873803088.3722754,4873829660.2580481,4873804545.3948412,4873829169.5769091]
+LoSoTo.Steps.plotP2.pol = [XX]
+
+# clock/tec
+LoSoTo.Steps.ct.Operation = CLOCKTEC
+LoSoTo.Steps.ct.Soltab = [sol000/phase000]
+LoSoTo.Steps.ct.freq.minmax = [30e6,1e9]
+LoSoTo.Steps.ct.CombinePol = True
+
+LoSoTo.Steps.plotCLOCK.Operation = PLOT
+LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
+LoSoTo.Steps.plotCLOCK.Axes = [time]
+LoSoTo.Steps.plotCLOCK.Prefix = plot/clock_
+
+LoSoTo.Steps.plotTEC.Operation = PLOT
+LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
+LoSoTo.Steps.plotTEC.Axes = [time]
+LoSoTo.Steps.plotTEC.Prefix = plot/tec_

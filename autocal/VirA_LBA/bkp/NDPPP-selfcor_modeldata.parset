@@ -1,0 +1,15 @@
+msin=
+msin.datacolumn=DATA
+msin.baseline = [CR]S*&
+msout = 
+msout.datacolumn=CORRECTED_DATA
+
+steps = [cor]
+
+cor.type = applycal
+cor.parmdb =
+cor.correction = gain
+
+applybeam.type = applybeam
+applybeam.usebeammodel = True
+applybeam.invert = True
