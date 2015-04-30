@@ -13,7 +13,7 @@ def casa_blank(imgs = [], region = '', inverse=False, setTo = 0):
     inverse = instead of blanking pixel return an image that covers only the "region" region
     out: the new, blanked image will overwrite the old one
     """
-    if imgs is str: imgs = [imgs]
+    if type(imgs) is str: imgs = [imgs]
     for img in imgs:
         if inverse:
             default('immath')

@@ -1,36 +1,14 @@
 #!/usr/bin/python
 
-from threading import Thread
+import os, sys, time, pickle, random
 import subprocess
+import logging
+from threading import Thread
 from Queue import Queue
-import lofar.parmdb as parmdb
 from scipy.interpolate import interp1d
 import numpy as np
-import logging, time
+import lofar.parmdb as parmdb
 
-def thread_cmd(action_list, max_threads = 12, qsub=False):
-    """
-    qsub: if true call a shell script which call qsub and then wait 
-    for the process to finish before returning
-    """
-    def worker(queue):
-        for cmd in iter(queue.get, None):
-            if qsub: cmd = 'qsub_waiter.sh '+cmd
-            subprocess.call(cmd, shell=True)
-
-    q = Queue()
-    threads = [Thread(target=worker, args=(q,)) for _ in range(max_threads)]
-
-    for i, t in enumerate(threads): # start workers
-        t.daemon = True
-        t.start()
-
-    for action in action_list:
-        q.put_nowait(action)
-        # CASA and other tasks may conflict if initialized to close together
-        time.sleep(1)
-    for _ in threads: q.put(None) # signal no more commands
-    for t in threads: t.join()
 
 def add_coloring_to_emit_ansi(fn):
     # add methods we need to the class
@@ -49,9 +27,9 @@ def add_coloring_to_emit_ansi(fn):
         else:
             color = '\x1b[0m' # normal
         args[1].msg = color + args[1].msg +  '\x1b[0m'  # normal
-        #print "after"
         return fn(*args)
     return new
+
 
 def set_logger():
     logger = logging.getLogger()
@@ -74,6 +52,7 @@ def set_logger():
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger
+
 
 def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
     """
@@ -110,6 +89,7 @@ def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
     pdbnew.addValues(parms_empty)
     pdbnew.flush()
 
+
 def check_rm(regexp):
     """
     Check if file exists and remove it
@@ -121,6 +101,7 @@ def check_rm(regexp):
         # glob is used to check if file exists
         for f in glob.glob(filename):
             os.system('rm -r '+f)
+
 
 def size_from_facet(img, c_coord, pixsize):
     """
@@ -149,15 +130,120 @@ def size_from_facet(img, c_coord, pixsize):
     return shape
 
 
-def run_casa(command='', params={}, log=''):
-    """
-    Run a casa command pickling the parameters
-    """
-    import os, pickle, random
+class Scheduler():
+    def __init__(self, qsub=False, max_threads = 12, dry=False):
+        """
+        qsub: if true call a shell script which call qsub and then wait 
+        for the process to finish before returning
+        max_threads: max number of parallel processes
+        dry: don't schedule job
+        """
+        self.max_threads = max_threads
+        self.qsub = qsub
+        self.dry = dry
 
-    pfile = 'casaparams_'+str(random.randint(0,1e9))+'.pickle'
-    pickle.dump( params, open( pfile, "wb" ) )
-    if log == '': log = os.path.basename(command)+'.log'
-    os.system('casa --nogui --log2term --nologger -c '+command+' '+pfile+' > '+log+' 2>&1')
+        self.action_list = []
+        self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
 
+    def add(self, cmd='', log='', log_append = False, cmd_type=''):
+        """
+        Add cmd to the scheduler list
+        """
+        if log != '' and not log_append: cmd += ' > '+log+' 2>&1'
+        if log != '' and log_append: cmd += ' >> '+log+' 2>&1'
+        self.action_list.append(cmd)
+        if log != '' and cmd_type != '':
+            self.log_list.append((log,cmd_type))
 
+    def add_casa(self, cmd='', params={}, log='', log_append = False):
+        """
+        Run a casa command pickling the parameters passed in params
+        NOTE: running casa commands in parallel is a problem for the log file, better avoid
+        """
+        pfile = 'casaparams_'+str(random.randint(0,1e9))+'.pickle'
+        pickle.dump( params, open( pfile, "wb" ) )
+        if log != '' and not log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1')
+        elif log != '' and log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1')
+        else: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile)
+        if log != '':
+            self.log_list.append((log,'CASA'))
+
+    def run(self, check=False):
+        """
+        If check=True then a check is done on every log in the log_list
+        """
+        def worker(queue):
+            for cmd in iter(queue.get, None):
+                if self.qsub: cmd = 'qsub_waiter.sh '+cmd
+                subprocess.call(cmd, shell=True)
+    
+        q = Queue()
+        threads = [Thread(target=worker, args=(q,)) for _ in range(self.max_threads)]
+    
+        for i, t in enumerate(threads): # start workers
+            t.daemon = True
+            t.start()
+    
+        for action in self.action_list:
+            if self.dry: continue # don't schedule if dry run
+            q.put_nowait(action)
+            # CASA and other tasks may conflict if initialized to close together
+            time.sleep(1)
+        for _ in threads: q.put(None) # signal no more commands
+        for t in threads: t.join()
+
+        # check outcomes on logs
+        if check:
+            for log, cmd_type in self.log_list:
+                self.check_run(log, cmd_type)
+
+        # reset list of commands
+        self.action_list = []
+        self.log_list = []
+
+    def check_run(self, log='', cmd_type=''):
+        """
+        Produce a warning if a command didn't close the log properly i.e. it crashed
+        NOTE: grep, -L inverse match, -l return only filename
+        """
+        out = subprocess.check_output('ls '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+        if out == '':
+            logging.warning('No log file found to check results: '+log)
+            return 1
+
+        if cmd_type == 'BBS':
+            out = subprocess.check_output('grep -L success '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            if out != '':
+                logging.error('BBS run problem on:\n'+out)
+                return 1
+
+        elif cmd_type == 'NDPPP':
+            out = subprocess.check_output('grep -L "Finishing processing" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            if out != '':
+                logging.error('NDPPP run problem on:\n'+out)
+                return 1
+
+        elif cmd_type == 'CASA':
+            out = subprocess.check_output('grep -L "##### End Task" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -l "TypeError" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            if out != '':
+                logging.error('CASA run problem on:\n'+out)
+                return 1
+
+        elif cmd_type == 'wsclean':
+            out = subprocess.check_output('grep -L "Writing restored image... DONE" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            if out != '':
+                logging.error('WSClean run problem on:\n'+out)
+                return 1
+
+        elif cmd_type == 'python':
+            out = subprocess.check_output('grep -l "TypeError" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            if out != '':
+                logging.error('WSClean run problem on:\n'+out)
+                return 1
+
+        else:
+            logging.warning('Unknown command type for log checking: '+cmd)
+            return 1
+
+        return 0

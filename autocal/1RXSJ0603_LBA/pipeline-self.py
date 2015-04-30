@@ -11,7 +11,6 @@
 # last high/low resolution images are copied in the "self/images" dir
 
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel'
-max_threads = 40
 
 #######################################################################################
 
@@ -24,6 +23,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
+s = Scheduler(qsub=False, max_threads=40, dry=False)
 
 # here an image+model for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
@@ -49,10 +49,10 @@ for group in sorted(glob.glob('group*')):
     #################################################################################################
     # create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
     logging.info('Creating fake parmdb...')
-    cmds = []
     for ms in mss:
-        cmds.append('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel+' > '+ms+'_fakeparmdb.log 2>&1')
-    thread_cmd(cmds, max_threads=max_threads)
+        s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
+              log=ms+'_fakeparmdb.log', cmd_type='BBS')
+    s.run(check=True)
     
     ####################################################################################################
     # self-cal cycle
@@ -75,24 +75,24 @@ for group in sorted(glob.glob('group*')):
         if i == 0:
             # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
-            cmds = []
             for ms in mss:
-                cmds.append('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor.parset '+skymodel+' > '+ms+'_cal-c'+str(i)+'.log 2>&1')
-            thread_cmd(cmds, max_threads=max_threads)
+                s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor.parset '+skymodel, \
+                      log=ms+'_cal-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
         else:
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
-            cmds = []
             for ms in mss:
-                cmds.append('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel+' > '+ms+'_calpreamp-c'+str(i)+'.log 2>&1')
-            thread_cmd(cmds, max_threads=max_threads)
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
+                      log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
     
             # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
             logging.info('Calibrating amplitude...')
-            cmds = []
             for ms in mss:
-                cmds.append('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol_amp.parset '+skymodel+' > '+ms+'_calamp-c'+str(i)+'.log 2>&1')
-            thread_cmd(cmds, max_threads=max_threads)
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol_amp.parset '+skymodel, \
+                      log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
     
             # merge parmdbs
             logging.info('Merging instrument tables...')
@@ -109,9 +109,14 @@ for group in sorted(glob.glob('group*')):
                 os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
                 if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
             h5parm = 'global-c'+str(i)+'.h5'
-            os.system('H5parm_importer.py -v '+h5parm+' globaldb > losoto-c'+str(i)+'.log 2>&1')
-            os.system('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/losoto.parset >> losoto-c'+str(i)+'.log 2>&1')
-            os.system('H5parm_exporter.py -v -c '+h5parm+' globaldb >> losoto-c'+str(i)+'.log 2>&1')
+
+            s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+            s.run(check=False)
+            s.add('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+            s.run(check=False)
+            s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
+            s.run(check=True)
+
             for num, ms in enumerate(mss):
                 check_rm(ms+'/instrument')
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
@@ -120,10 +125,10 @@ for group in sorted(glob.glob('group*')):
     
             # correct amplitude - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting amplitude...')
-            cmds = []
             for ms in mss:
-                cmds.append('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel+' > '+ms+'_corampcsp-c'+str(i)+'.log 2>&1')
-            thread_cmd(cmds, max_threads=max_threads)
+                s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel, \
+                      log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
     
         # TEST for circular
         # join RR and LL
@@ -144,26 +149,30 @@ for group in sorted(glob.glob('group*')):
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
         logging.info('Cleaning 1...')
         imagename = 'img/wide-'+str(i)
-        os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
-                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms+' > wscleanA-c'+str(i)+'.log 2>&1')
+        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms, \
+                log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
-        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1})
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
+                   params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1})
+        s.run(check=True)
         logging.info('Cleaning 2...')
-        os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
-                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms+'  > wscleanB-c'+str(i)+'.log 2>&1')
+        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
+                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
+                log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
     
         # copy model column
         if i == 0:
-            cmds = []
             logging.info('Creating MODEL_DATA_HIGHRES...')
             for ms in mss:
-                cmds.append('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES')
-            thread_cmd(cmds, max_threads=max_threads)
-            cmds = []
+                s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
+            s.run(check=True)
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
         for ms in mss:
-            cmds.append('taql "update '+ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"')
-        thread_cmd(cmds, max_threads=max_threads)
+            s.add('taql "update '+ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"')
+        s.run(check=False)
     
         ####################################################################
         # FAST VERSION (no low-res)
@@ -172,11 +181,10 @@ for group in sorted(glob.glob('group*')):
     
         ####################################################################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
-        cmds = []
         logging.info('Subtracting high-res model...')
         for ms in mss:
-            cmds.append('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
-        thread_cmd(cmds, max_threads=max_threads)
+            s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
+        s.run(check=False)
     
         # concat all TCs in one MS - group*_TC*.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         check_rm(concat_ms+'*')
@@ -186,26 +194,29 @@ for group in sorted(glob.glob('group*')):
         # reclean low-resolution
         logging.info('Cleaning low resolution 1...')
         imagename = 'img/wide-lr-'+str(i)
-        os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
-                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms+' > wscleanA-lr-c'+str(i)+'.log 2>&1')
+        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
+                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
+                log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         logging.info('Cleaning low resolution 2...')
         os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
-                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms+' > wscleanB-lr-c'+str(i)+'.log 2>&1')
+                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
+                log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
     
         # Concat models
-        cmds = []
         logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
         for ms in mss:
-            cmds.append('taql "update '+ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"')
-        thread_cmd(cmds, max_threads=max_threads)
+            s.add('taql "update '+ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"')
+        s.run(check=False)
     
     # Final subtract of the best model - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
-    cmds = []
     logging.info('Final subtraction...')
     for ms in mss:
-        cmds.append('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel+' > '+ms+'_final-sub.log 2>&1')
-    thread_cmd(cmds, max_threads=max_threads)
+        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel, \
+               log=ms+'_final-sub.log', cmd_type='BBS')
+    s.run(check=True)
     
     # Copy last *model and *image
     logging.info('Copying models/images...')
