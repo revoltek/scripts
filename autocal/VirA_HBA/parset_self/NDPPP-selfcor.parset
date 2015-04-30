@@ -2,7 +2,7 @@ msin=
 msin.datacolumn=CIRC_DATA
 msin.baseline = [CR]S*&
 msout = 
-msout.datacolumn=CIRC_CORRECTED_DATA
+msout.datacolumn=CORRECTED_DATA
 
 steps = [cor]
 
