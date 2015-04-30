@@ -9,7 +9,6 @@ ngroups = 12 # number of groups (=total_time/chunk_time)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 fakeskymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.fakemodel.skymodel'
 globaldb = '../cals/globaldb'
-max_threads = 20
 
 ##################################################################################################
 
@@ -19,6 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
+s = Scheduler(qsub=False, max_threads=12, dry=False)
 
 #################################################
 # Clear
@@ -29,36 +29,31 @@ check_rm('*group*')
 ##############################################
 # Initial processing
 logging.info('Fix beam table')
-cmds=[]
 for ms in sorted(glob.glob('*MS')):
-    cmds.append('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms+' > '+ms+'_fixbeam.log 2>&1')
-thread_cmd(cmds, max_threads)
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log', cmd_type='python')
+s.run(check=True)
 
 #################################################
 # Copy cal solution
 for ms in sorted(glob.glob('*MS')):
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument')
-    print 'cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument'
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
     os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 ###################################################################################################
 # [PARALLEL] Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
 logging.info('Apply solutions...')
-cmds=[]
 for ms in glob.glob('*MS'):
-    cmds.append('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel+' > '+ms+'_cor.log  2>&1')
-thread_cmd(cmds, max_threads)
-logging.warning('Bad runs:')
-os.system('grep -L success *_cor.log')
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
+s.run(check=True)
 
 ###################################################################################################
 # [PARALLEL] To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
 logging.info('Convert to circular...')
-cmds = []
 for ms in glob.glob('*MS'):
-    cmds.append('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC > '+ms+'_circ2lin.log 2>&1')
-thread_cmd(cmds, max_threads)
+    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 # TODO: combine all SB and run aoflagger
 
@@ -99,11 +94,11 @@ for i, msg in enumerate(np.array_split(sorted(glob.glob('*.MS')), ngroups)):
 
     # prepare concatenated time chunks (TC) - SB_group#_TC#.MS:CALCOR_DATA_CIRC -> group#_TC#.MS:DATA (cal corr data, beam corrected, circular)
     logging.info('Concatenating timechunks...')
-    cmds = []
     for tcnum in tcnums:
         group_tc = sorted(glob.glob('group'+str(i)+'/*_TC'+tcnum+'.MS'))
-        cmds.append('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout=group'+str(i)+'/group'+str(i)+'_TC'+tcnum+'.MS > group'+str(i)+'/NDPPP_concat_TC'+tcnum+'.log 2>&1')
-    thread_cmd(cmds, max_threads)
+        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout=group'+str(i)+'/group'+str(i)+'_TC'+tcnum+'.MS' \
+                log='group'+str(i)+'/NDPPP_concat_TC'+tcnum+'.log', run_type='NDPPP')
+    s.run(check=True)
 
     check_rm('group'+str(i)+'/*_group*_TC*.MS') # remove splitted files
 

@@ -107,14 +107,14 @@ for tc in tcs:
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'peel-avg_TC'+tc+'.MS'
     s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
-            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='BBS')
+            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
 s.run(check=True)
 for tc in tcs:
     logging.debug('Time chunk (MODEL_DATA): '+tc)
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'peel-avg-model_TC'+tc+'.MS'
     s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
-            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='BBS')
+            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Copy the phase-shifted MODEL_DATA - peel-avg-model_TC*.MS':DATA -> peel-avg_TC*.MS':MODEL_DATA
