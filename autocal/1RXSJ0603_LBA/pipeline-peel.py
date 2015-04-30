@@ -29,7 +29,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=40, dry=False)
+s = Scheduler(qsub=False, max_threads=12, dry=False)
 
 # TODO: iterate on DD calibrators
 
@@ -40,7 +40,7 @@ check_rm('peel*MS')
 check_rm('facet*MS')
 check_rm('*shift.MS') 
 check_rm('concat*') 
-check_rm('*log *last')
+check_rm('*log *last *pickle')
 check_rm('plot')
 check_rm('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name'])
@@ -268,8 +268,8 @@ for g in groups:
 # [PARALLEL] ADD and corrupt group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
 logging.info('Add and corrupt facet model...')
 for ms in sorted(glob.glob('group*_TC*.MS')):
-    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset '+skymodel, \ 
-    log=ms+'_facet-add.log', cmd_type='BBS')
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset '+skymodel, \
+        log=ms+'_facet-add.log', cmd_type='BBS')
 s.run(check=True)
 
 # [PARALLEL] Concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> facet-avg_TC*.MS:DATA (selfcal corrected, field subtracted but facet, avg, phase shifted, beam corrected)

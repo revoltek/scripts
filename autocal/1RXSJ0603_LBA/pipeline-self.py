@@ -23,7 +23,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=40, dry=False)
+s = Scheduler(qsub=False, max_threads=12, dry=False)
 
 # here an image+model for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
@@ -200,7 +200,7 @@ for group in sorted(glob.glob('group*')):
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         logging.info('Cleaning low resolution 2...')
-        os.system('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
+        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
                 -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)

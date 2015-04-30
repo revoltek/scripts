@@ -4,7 +4,7 @@ Strategy.UseSolver   = F
 Strategy.Steps       = [correct]
 
 Step.correct.Operation = CORRECT
-Step.correct.Model.Sources = [3C196]
+Step.correct.Model.Sources = [3C295]
 Step.correct.Model.DirectionalGain.Enable = T
 Step.correct.Model.Beam.Enable = T
 Step.correct.Model.Beam.UseChannelFreq     = T

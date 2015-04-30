@@ -7,7 +7,7 @@ LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = [3C295]
-LoSoTo.Ncpu = 10
+LoSoTo.Ncpu = 20
 
 #LoSoTo.Steps.reweight.Operation = REWEIGHT
 #LoSoTo.Steps.reweight.WeightVal = 0.

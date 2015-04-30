@@ -206,8 +206,7 @@ class Scheduler():
         Produce a warning if a command didn't close the log properly i.e. it crashed
         NOTE: grep, -L inverse match, -l return only filename
         """
-        out = subprocess.check_output('ls '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-        if out == '':
+        if not os.path.exists(log):
             logging.warning('No log file found to check results: '+log)
             return 1
 
