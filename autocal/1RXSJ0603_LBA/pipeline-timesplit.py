@@ -30,8 +30,8 @@ check_rm('*group*')
 # Initial processing
 logging.info('Fix beam table')
 for ms in sorted(glob.glob('*MS')):
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log', cmd_type='python')
-s.run(check=True)
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 #################################################
 # Copy cal solution
