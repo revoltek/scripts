@@ -1,5 +1,5 @@
-#losoto parset
-LoSoTo.Steps = [plotA2,plotP2]
+# losoto parset
+LoSoTo.Steps = [norm,plotA,plotA2,plotP,plotP2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -8,7 +8,12 @@ LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
 
-#plot amp time/freq
+LoSoTo.Steps.norm.Operation = NORM
+LoSoTo.Steps.norm.NormVal = 1.
+LoSoTo.Steps.norm.NormAxes = [time,ant,pol]
+LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
+
+# plot amp time/freq
 LoSoTo.Steps.plotA.Operation = PLOT
 LoSoTo.Steps.plotA.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.plotA.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375]
@@ -17,6 +22,7 @@ LoSoTo.Steps.plotA.TableAxis = ant # the axis to plot on a page - e.g. ant to ge
 LoSoTo.Steps.plotA.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
 LoSoTo.Steps.plotA.PlotFlag = True
 LoSoTo.Steps.plotA.Prefix = plot/amp_
+LoSoTo.Steps.plotA.MinMax = [1e-4,5e-3] # min max value for the independent variable (0 means automatic)
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
@@ -24,6 +30,7 @@ LoSoTo.Steps.plotA2.Axes = [time,freq]
 LoSoTo.Steps.plotA2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotA2.PlotFlag = True
 LoSoTo.Steps.plotA2.Prefix = plot/amp2_
+LoSoTo.Steps.plotA2.MinMax = [0,0] # min max value for the independent variable (0 means automatic)
 
 # plot phases time/freq
 LoSoTo.Steps.plotP.Operation = PLOT
@@ -34,7 +41,8 @@ LoSoTo.Steps.plotP.TableAxis = ant # the axis to plot on a page - e.g. ant to ge
 LoSoTo.Steps.plotP.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
 LoSoTo.Steps.plotP.PlotFlag = True
 LoSoTo.Steps.plotP.Prefix = plot/ph_
-LoSoTo.Steps.plotP.Reference = 'CS001LBA' # antenna name for referencing phases
+LoSoTo.Steps.plotP.Reference = 'CS001HBA0' # antenna name for referencing phases
+LoSoTo.Steps.plotP.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
 
 LoSoTo.Steps.plotP2.Operation = PLOT
 LoSoTo.Steps.plotP2.Soltab = [sol000/phase000]
@@ -42,4 +50,5 @@ LoSoTo.Steps.plotP2.Axes = [time,freq]
 LoSoTo.Steps.plotP2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotP2.PlotFlag = True
 LoSoTo.Steps.plotP2.Prefix = plot/ph2_
-LoSoTo.Steps.plotP2.Reference = 'CS001LBA' # antenna name for referencing phases
+LoSoTo.Steps.plotP2.Reference = 'CS001HBA0' # antenna name for referencing phases
+LoSoTo.Steps.plotP2.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
