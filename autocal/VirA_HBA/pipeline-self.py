@@ -7,11 +7,11 @@
 # 3 flag
 
 # initial self-cal model
-model = '/home/fdg/scripts/autocal/VirA_HBA/150328_HBA-VirgoA.model'
+model = '/home/stsf309/scripts/autocal/VirA_HBA/150328_HBA-VirgoA.model'
 # globaldb produced by pipeline-init
 globaldb = '../cals/globaldb'
 # fake skymodel with pointing direction
-fakeskymodel = '/home/fdg/scripts/autocal/VirA_HBA/virgo.fakemodel.skymodel'
+fakeskymodel = '/home/stsf309/scripts/autocal/VirA_HBA/virgo.fakemodel.skymodel'
 # SB per block
 n = 20
 
@@ -52,7 +52,7 @@ for j, mss_block in enumerate(np.array_split(mss, Nblocks)):
 # Initial processing
 logging.info('Fix beam table...')
 for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+    s.add('/home/stsf309/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 s.run(check=False)
 
 #################################################
@@ -67,7 +67,7 @@ for ms in mss:
 # [PARALLEL] apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
 logging.info('Correcting target MSs...')
 for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/VirA_HBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/stsf309/scripts/autocal/VirA_HBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
           log=ms+'-init_corbeam.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -75,7 +75,7 @@ s.run(check=True)
 # [PARALLEL] Transform to circular pol - SB.MS:CALCOR_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+    s.add('/home/stsf309/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
 s.run(check=True)
  
 # self-cal cycle -> 5
@@ -99,7 +99,7 @@ for i in xrange(5):
     logging.info('Add models...')
     check_rm('concat.MS*')
     pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
+    s.add_casa('/home/stsf309/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
     s.run(check=True)
 
     #####################################################################################
@@ -107,7 +107,7 @@ for i in xrange(5):
     # TODO: calibrated on wide-field subtracted data?
     logging.info('Calibrate...')
     for ms in mss_c:
-        s.add('NDPPP /home/fdg/scripts/autocal/VirA_HBA/parset_self/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
+        s.add('NDPPP /home/stsf309/scripts/autocal/VirA_HBA/parset_self/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
               log=ms+'_selfcal-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -124,7 +124,7 @@ for i in xrange(5):
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
     s.run(check=False)
-    s.add('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/VirA_HBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+    s.add('losoto.py -v '+h5parm+' /home/stsf309/scripts/autocal/VirA_HBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
     s.run(check=False)
     s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
     s.run(check=True)
@@ -138,7 +138,7 @@ for i in xrange(5):
     # [PARALLEL] correct - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
     logging.info('Correct...')
     for ms in mss_c:
-        s.add('NDPPP /home/fdg/scripts/autocal/VirA_HBA/parset_self/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
+        s.add('NDPPP /home/stsf309/scripts/autocal/VirA_HBA/parset_self/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
               log=ms+'_selfcor-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -146,11 +146,11 @@ for i in xrange(5):
 #   QUICK TEST LOOP
 #    # avg - SB.MS:CORRECTED_DATA -> concat-avg.MS:DATA
 #    logging.info('Average...')
-#    s.add('NDPPP /home/fdg/scripts/autocal/VirA_HBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
+#    s.add('NDPPP /home/stsf309/scripts/autocal/VirA_HBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
 #    s.run(check=True)
 #    # clean (make a new model of virgo)
 #    logging.info('Clean...')
-#    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', params={'msfile':'concat-avg.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+#    s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', params={'msfile':'concat-avg.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
 #    s.run(check=True)
 #    continue
 #
@@ -171,14 +171,14 @@ for i in xrange(5):
         # clean, mask, clean
         logging.info('Make widefield model - Widefield imaging...')
         imagename = 'img/clean-wide-c'+str(i)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
+        s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
                    params={'msfile':'concat.MS', imagename=imagename, imtype='wide'}, log='clean-wide1-c'+str(i)+'.log')
         s.run(check=True)
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_HBA/m87.crtf'})
+        s.add_casa('/home/stsf309/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/stsf309/scripts/autocal/VirA_HBA/m87.crtf'})
         s.run(check=True)
         logging.info('Make widefield model - Widefield imaging2...')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
+        s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
                     params={'msfile':'concat.MS', imagename=imagename.reaplce('wide','wode-masked'), mask=imagename+'.newmask' imtype='wide'}, log='clean-wide2-c'+str(i)+'.log')
         s.run(check=True)
 
@@ -186,19 +186,19 @@ for i in xrange(5):
         logging.info('Flagging - Subtracting wide-field model...')
         check_rm('concat.MS*')
         pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
+        s.add_casa('/home/stsf309/scripts/autocal/casa_comm/casa_ft.py', \
                     params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', 'wproj':512}, log='ft-flag-c'+str(i)+'.log')
         s.run(check=True)
         os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
         logging.info('Flagging - Flagging residuals...')
-        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_flag.py', params={'msfile':'concat.MS'}, log='flag-c'+str(i)+'.log')
+        run_casa(command='/home/stsf309/scripts/autocal/casa_comm/casa_flag.py', params={'msfile':'concat.MS'}, log='flag-c'+str(i)+'.log')
 
         # [PARALLEL] reapply NDPPP solutions - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
         # this because with the virtual concat the CORRECTED_DATA have been uvsubbed
         logging.info('Make widefield model - Re-correct...')
         for ms in mss_c:
-            s.add('NDPPP /home/fdg/scripts/autocal/VirA_HBA/parset_self/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
+            s.add('NDPPP /home/stsf309/scripts/autocal/VirA_HBA/parset_self/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
                     log=ms+'_selfcor-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -206,7 +206,7 @@ for i in xrange(5):
     logging.info('Subtracting wide-field model...')
     check_rm('concat.MS*')
     pt.msutil.msconcat(mss_clean, 'concat.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
+    s.add_casa('/home/stsf309/scripts/autocal/casa_comm/casa_ft.py', \
             params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', wproj=512}, log='ft-wide-c'+str(i)+'.log')
     s.run(check=True)
     os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
@@ -214,13 +214,13 @@ for i in xrange(5):
     # avg 1chanSB/20s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
     logging.info('Average...')
     check_rm('concat.MS*')
-    s.add('NDPPP /home/fdg/scripts/autocal/VirA_HBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat.MS', \
+    s.add('NDPPP /home/stsf309/scripts/autocal/VirA_HBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat.MS', \
             log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     # clean (make a new model of virgo)
     logging.info('Clean...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
+    s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
             params={'msfile':'concat.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
     s.run(check=True)
 
@@ -229,21 +229,21 @@ for i in xrange(5):
 # TODO: check if it doesn't crash
 logging.info('Concat...')
 check_rm('concat.MS*')
-s.add('NDPPP /home/fdg/scripts/autocal/VirA_HBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat.MS', \
+s.add('NDPPP /home/stsf309/scripts/autocal/VirA_HBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat.MS', \
         log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #########################################################################################################
 # group images of VirA
 logging.info('Full BW image...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
+s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
         params={'msfile':'concat.MS', imagename='img/clean-all'}, log='final_clean-all.log')
 s.run(check=True)
 
 #########################################################################################################
 # low-res image
 logging.info('Make low-resolution image...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
+s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
         params={'msfile':'concat.MS', imagename='img/clean-lr', imtype='lr'}, log='final_clean-lr.log')
 s.run(check=True)
 
@@ -252,13 +252,13 @@ s.run(check=True)
 check_rm('concat.MS*')
 pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
 logging.info('Ft+uvsub of M87 model...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
+s.add_casa('/home/stsf309/scripts/autocal/casa_comm/casa_ft.py', \
         params={'msfile':'concat.MS', 'model':'img/clean-c'+str(i)+'.model'}, log='final_ft.log')
 s.run(check=True)
 os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
 logging.info('Low-res wide field image...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
+s.add_casa('/home/stsf309/scripts/autocal/casa_comm/virgoHBA/casa_clean.py', \
         params={'msfile':'concat.MS', imagename='img/clean-wide', imtype='wide'}, log='final_clean-wide.log')
 s.run(check=True)
 
