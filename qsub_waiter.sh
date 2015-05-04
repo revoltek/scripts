@@ -2,8 +2,8 @@
 # run the argument in qsub and return when the process is finished
 # check if the called program might use more CPUs or not
 
-shopt -s expand_aliases
 sleep_time=10 # seconds; don't make this too short! don't want to tax system with excessive qstat calls
+shopt -s expand_aliases
 
 # choose number of processors to reserve
 case $@ in
@@ -15,22 +15,21 @@ case $@ in
     *) proc=1
 esac
 
-echo "Number of processors: $proc"
-
 # call the command and capture the stdout
 id=`qsub << EOF
 #!/bin/bash
-#PBS -N fdgjob
 #PBS -l walltime=100:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -o ./out
 #PBS -e ./err
+source /home/lofar/init-lofar.sh
 $@
 EOF`
 
+sleep 2
+
 # grep the process id
 id=`echo $id | cut -f1 -d"."`
-echo $@
 
 # status starts as Q (queue) and becomes E (executing)
 status=`qstat $id | grep $id | awk '{print $5}'`

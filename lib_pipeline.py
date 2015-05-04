@@ -141,6 +141,7 @@ class Scheduler():
         self.max_threads = max_threads
         self.qsub = qsub
         self.dry = dry
+        logging.debug("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+").")
 
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
@@ -175,6 +176,7 @@ class Scheduler():
         def worker(queue):
             for cmd in iter(queue.get, None):
                 if self.qsub: cmd = 'qsub_waiter.sh "cd '+os.getcwd()+'; '+cmd+'"'
+                #if self.qsub: cmd = 'qsub_waiter.sh "'+cmd+'"'
                 subprocess.call(cmd, shell=True)
     
         q = Queue()
@@ -187,8 +189,8 @@ class Scheduler():
         for action in self.action_list:
             if self.dry: continue # don't schedule if dry run
             q.put_nowait(action)
-            # CASA and other tasks may conflict if initialized to close together
-            time.sleep(1)
+            # qsub may conflict if jobs initialized too close together
+            #time.sleep(10)
         for _ in threads: q.put(None) # signal no more commands
         for t in threads: t.join()
 
