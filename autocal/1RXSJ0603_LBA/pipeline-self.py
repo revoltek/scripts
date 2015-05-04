@@ -155,7 +155,7 @@ for group in sorted(glob.glob('group*')):
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-                   params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1})
+                   params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
         logging.info('Cleaning 2...')
         s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
