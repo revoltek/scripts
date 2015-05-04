@@ -2,7 +2,7 @@ Strategy.InputColumn = DATA
 Strategy.ChunkSize = 10
 Strategy.Steps = [sub]
 
-Step.sub.Operation                    = SUB
+Step.sub.Operation                    = SUBTRACT
 Step.sub.Model.Sources                = [@MODEL_DATA]
 Step.sub.Model.CommonScalarPhase.Enable = T
 Step.sub.Model.TEC.Enable             = T

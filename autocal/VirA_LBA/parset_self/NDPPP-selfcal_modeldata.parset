@@ -13,4 +13,3 @@ cal.caltype = diagonal
 cal.usemodelcolumn = T
 cal.applybeamtomodelcolumn = F
 cal.maxiter = 100
-

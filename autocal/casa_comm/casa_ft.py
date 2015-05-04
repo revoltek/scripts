@@ -25,28 +25,32 @@ def casa_ft(msfile='', model='', incr=False, wproj=None):
     if os.path.exists(model+'.tt1'): tty = 2
     if os.path.exists(model+'.tt1') and os.path.exists(model+'.tt2'): tty = 3
 
-    default('ft')
-    default('ftw')
     if tty == 1:
         update_freq_range(model)
         if wproj != None:
+            default('ftw')
             ftw(vis=msfile, model=model, nterms=1, usescratch=True, incremental=incr, wprojplanes=wproj)
         else:
+            default('ft')
             ft(vis=msfile, model=model, nterms=1, usescratch=True, incremental=incr)
     if tty == 2:
         update_freq_range(model+'.tt0')
         update_freq_range(model+'.tt1')
         if wproj != None:
+            default('ftw')
             ftw(vis=msfile, model=[model+'.tt0', model+'.tt1'], nterms=2, usescratch=True, incremental=incr, wprojplanes=wproj)
         else:
+            default('ft')
             ft(vis=msfile, model=[model+'.tt0', model+'.tt1'], nterms=2, usescratch=True, incremental=incr)
     if tty == 3:
         update_freq_range(model+'.tt0')
         update_freq_range(model+'.tt1')
         update_freq_range(model+'.tt2')
         if wproj != None:
+            default('ftw')
             ftw(vis=msfile, model=[model+'.tt0', model+'.tt1', model+'.tt2'], nterms=3, usescratch=True, incremental=incr, wprojplanes=wproj)
         else:
+            default('ft')
             ft(vis=msfile, model=[model+'.tt0', model+'.tt1', model+'.tt2'], nterms=3, usescratch=True, incremental=incr)
 
 params = pickle.load( open( sys.argv[6], "rb" ) )

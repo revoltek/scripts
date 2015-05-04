@@ -7,11 +7,11 @@
 # 3 flag
 
 # initial self-cal model
-model = '/home/fdg/scripts/autocal/PerA_LBA/150328_LBA-VirgoA.model'
+model = '/home/fdg/scripts/autocal/PerA_LBA/perseusA.skymodel'
 # globaldb produced by pipeline-init
 globaldb = '../cals/globaldb'
 # fake skymodel with pointing direction
-fakeskymodel = '/home/fdg/scripts/autocal/PerA_LBA/virgo.fakemodel.skymodel'
+fakeskymodel = '/home/fdg/scripts/autocal/PerA_LBA/perseus.fakemodel.skymodel'
 # SB per block
 n = 20
 
@@ -34,7 +34,7 @@ logging.info('Cleaning...')
 check_rm('*log')
 check_rm('*last')
 check_rm('*h5')
-check_rm('concat*MS')
+check_rm('concat*')
 check_rm('block*MS')
 check_rm('img')
 os.makedirs('img')
@@ -51,24 +51,33 @@ for j, mss_block in enumerate(np.array_split(mss, Nblocks)):
 ##############################################
 # Initial processing
 logging.info('Fix beam table...')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 #################################################
 # Copy cal solution
 logging.info('Copy solutions...')
 for ms in mss:
     num = re.findall(r'\d+', ms)[-1]
+    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
     check_rm(ms+'/instrument')
     os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 #########################################################################################
 # [PARALLEL] apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
 logging.info('Correcting target MSs...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
+#          log=ms+'-init_corbeam.log', cmd_type='BBS')
+#s.run(check=True)
+
+# TODO: temporary for the skymodel
+# [PARALLEL] apply solutions and beam correction - SB.MS:MODEL_DATA (PerA model, linear==circular, with ARRA_FACTOR to simulate apparent sky)
+logging.info('Filling MODEL_DATA...')
 for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
-          log=ms+'-init_corbeam.log', cmd_type='BBS')
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-pre.parset '+model, \
+          log=ms+'-init_predict.log', cmd_type='BBS')
 s.run(check=True)
 
 #########################################################################################
@@ -84,7 +93,8 @@ for i in xrange(5):
 
     # MS for calibration, use all at cycle 0 and 4
     if i == 0 or i == 4:
-        mss_c = mss
+        mss_c = mss[::n]
+        #mss_c = mss
         mss_clean = mss[::n]
     else:
         mss_c = mss[::n]
@@ -96,11 +106,13 @@ for i in xrange(5):
     #####################################################################################
     # ft model, model is unpolarized CIRC == LIN - SB.MS:MODEL_DATA (best m87 model)
     # TODO: test if adding wprojplanes here improves the calibration
-    logging.info('Add models...')
-    check_rm('concat.MS*')
-    pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
-    s.run(check=True)
+    if i != 0:
+        logging.info('Add models...')
+        #check_rm('concat.MS*')
+        #pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
+        for ms in mss_c:
+            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model, 'wproj':512}, log=ms+'_ft-perseus-c'+str(i)+'.log')
+            s.run(check=True)
 
     #####################################################################################
     # [PARALLEL] calibrate - SB.MS:CIRC_DATA (no correction)
@@ -145,14 +157,15 @@ for i in xrange(5):
 #######################
 #   QUICK TEST LOOP
 #    # avg - SB.MS:CORRECTED_DATA -> concat-avg.MS:DATA
-#    logging.info('Average...')
-#    s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
-#    s.run(check=True)
-#    # clean (make a new model of virgo)
-#    logging.info('Clean...')
-#    s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', params={'msfile':'concat-avg.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
-#    s.run(check=True)
-#    continue
+    check_rm('concat-avg.MS*')
+    logging.info('Average...')
+    s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+#    # clean (make a new model of perseus)
+    logging.info('Clean...')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', params={'msfile':'concat-avg.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+    s.run(check=True)
+    continue
 #
 ######################
 
@@ -164,22 +177,22 @@ for i in xrange(5):
         check_rm('concat.MS*')
         pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
 
-        # uvsub, MODEL_DATA is still Virgo
-        logging.info('Make widefield model - UV-Subtracting Virgo A...')
+        # uvsub, MODEL_DATA is still PerA
+        logging.info('Make widefield model - UV-Subtracting Per A...')
         os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
         # clean, mask, clean
         logging.info('Make widefield model - Widefield imaging...')
         imagename = 'img/clean-wide-c'+str(i)
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', \
-                   params={'msfile':'concat.MS', imagename=imagename, imtype='wide'}, log='clean-wide1-c'+str(i)+'.log')
+                params={'msfile':'concat.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(i)+'.log')
         s.run(check=True)
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/PerA_LBA/m87.crtf'})
         s.run(check=True)
         logging.info('Make widefield model - Widefield imaging2...')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', \
-                    params={'msfile':'concat.MS', imagename=imagename.reaplce('wide','wode-masked'), mask=imagename+'.newmask' imtype='wide'}, log='clean-wide2-c'+str(i)+'.log')
+                params={'msfile':'concat.MS', 'imagename':imagename.reaplce('wide','wode-masked'), 'mask':imagename+'.newmask', 'imtype':'wide'}, log='clean-wide2-c'+str(i)+'.log')
         s.run(check=True)
 
         # Subtract widefield model using ft on a virtual concat - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
@@ -207,7 +220,7 @@ for i in xrange(5):
     check_rm('concat.MS*')
     pt.msutil.msconcat(mss_clean, 'concat.MS', concatTime=False)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
-            params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', wproj=512}, log='ft-wide-c'+str(i)+'.log')
+            params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', 'wproj':512}, log='ft-wide-c'+str(i)+'.log')
     s.run(check=True)
     os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
@@ -218,10 +231,10 @@ for i in xrange(5):
             log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    # clean (make a new model of virgo)
+    # clean (make a new model of perseus)
     logging.info('Clean...')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', \
-            params={'msfile':'concat.MS', imagename='img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+            params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
     s.run(check=True)
 
 ##########################################################################################################
@@ -237,14 +250,14 @@ s.run(check=True)
 # group images of PerA
 logging.info('Full BW image...')
 s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', \
-        params={'msfile':'concat.MS', imagename='img/clean-all'}, log='final_clean-all.log')
+        params={'msfile':'concat.MS', 'imagename':'img/clean-all'}, log='final_clean-all.log')
 s.run(check=True)
 
 #########################################################################################################
 # low-res image
 logging.info('Make low-resolution image...')
 s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', \
-        params={'msfile':'concat.MS', imagename='img/clean-lr', imtype='lr'}, log='final_clean-lr.log')
+        params={'msfile':'concat.MS', 'imagename':'img/clean-lr', 'imtype':'lr'}, log='final_clean-lr.log')
 s.run(check=True)
 
 ##########################################################################################################
@@ -259,7 +272,7 @@ os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DA
 
 logging.info('Low-res wide field image...')
 s.add_casa('/home/fdg/scripts/autocal/casa_comm/perseusLBA/casa_clean.py', \
-        params={'msfile':'concat.MS', imagename='img/clean-wide', imtype='wide'}, log='final_clean-wide.log')
+        params={'msfile':'concat.MS', 'imagename':'img/clean-wide', 'imtype':'wide'}, log='final_clean-wide.log')
 s.run(check=True)
 
 logging.info("Done.")
