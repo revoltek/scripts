@@ -217,6 +217,14 @@ for group in sorted(glob.glob('group*')):
         s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel, \
                log=ms+'_final-sub.log', cmd_type='BBS')
     s.run(check=True)
+
+    # Perform a final clean to create an inspection image which should be very empty
+    logging.info('Empty cleaning...')
+    imagename = 'img/empty'
+    s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+            -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 -datacolumn SUBTRACTED_DATA '+concat_ms, \
+            log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
+    s.run(check=True)
     
     # Copy last *model and *image
     logging.info('Copying models/images...')
@@ -224,6 +232,7 @@ for group in sorted(glob.glob('group*')):
     os.system('mv img/wide-lr-'+str(i)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
     os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/wide-g'+g+'.image')
     os.system('mv img/wide-lr-'+str(i)+'-masked-image.fits self/images/wide-lr-g'+g+'.image')
+    os.system('mv img/empty-image.fits self/images/empty-g'+g+'.image')
     os.system('mv *log '+group)
 
 logging.info("Done.")
