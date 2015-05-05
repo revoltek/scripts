@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [norm,plotA,plotA2,plotP,plotP2]
+LoSoTo.Steps = [plotA,plotA2,plotP,plotP2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -7,11 +7,6 @@ LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
-
-LoSoTo.Steps.norm.Operation = NORM
-LoSoTo.Steps.norm.NormVal = 1.
-LoSoTo.Steps.norm.NormAxes = [time,ant,pol,freq]
-LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
 
 # plot amp time/freq
 LoSoTo.Steps.plotA.Operation = PLOT
