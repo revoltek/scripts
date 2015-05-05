@@ -1,6 +1,6 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
-#LoSoTo.Steps = [merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
+#LoSoTo.Steps = [reweight, reweight2, clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
+LoSoTo.Steps = [reweight, reweight2, plotA2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -9,10 +9,15 @@ LoSoTo.pol = [XX, YY]
 LoSoTo.dir = [3C196]
 LoSoTo.Ncpu = 20
 
-# not included in obs
-#LoSoTo.Steps.reweight.Operation = REWEIGHT
-#LoSoTo.Steps.reweight.WeightVal = 0.
-#LoSoTo.Steps.reweight.ant = CS013LBA # wrong pol
+# bad ant
+LoSoTo.Steps.reweight.Operation = REWEIGHT
+LoSoTo.Steps.reweight.WeightVal = 0.
+LoSoTo.Steps.reweight.ant = [RS210LBA,RS409LBA,RS310LBA]
+
+# bad iono
+LoSoTo.Steps.reweight2.Operation = REWEIGHT
+LoSoTo.Steps.reweight2.WeightVal = 0.
+LoSoTo.Steps.reweight2.time.minmax = [4893152402.5034752,4893159602.503475]
 
 LoSoTo.Steps.clip.Operation = CLIP
 LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]

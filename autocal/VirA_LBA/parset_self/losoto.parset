@@ -10,7 +10,7 @@ LoSoTo.Ncpu = 10
 
 LoSoTo.Steps.norm.Operation = NORM
 LoSoTo.Steps.norm.NormVal = 1.
-LoSoTo.Steps.norm.NormAxes = [time,ant,pol]
+LoSoTo.Steps.norm.NormAxes = [time,ant,pol,freq]
 LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
 
 # plot amp time/freq
