@@ -18,7 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=30, dry=False)
+s = Scheduler(qsub=True, max_threads=64, dry=False)
 
 #################################################
 # Clear
@@ -96,7 +96,7 @@ for i, msg in enumerate(np.array_split(sorted(glob.glob('*.MS')), ngroups)):
     logging.info('Concatenating timechunks...')
     for tcnum in tcnums:
         group_tc = sorted(glob.glob('group'+str(i)+'/*_TC'+tcnum+'.MS'))
-        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout=group'+str(i)+'/group'+str(i)+'_TC'+tcnum+'.MS' \
+        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout=group'+str(i)+'/group'+str(i)+'_TC'+tcnum+'.MS', \
                 log='group'+str(i)+'/NDPPP_concat_TC'+tcnum+'.log', run_type='NDPPP')
     s.run(check=True)
 

@@ -15,22 +15,29 @@ case $@ in
     *) proc=1
 esac
 
-# call the command and capture the stdout
-id=`qsub << EOF
-#!/bin/bash
+# ugly workaround to catch qsub errors and resubmit
+until [[ $id =~ ^-?[0-9]+$ ]]; do
+
+    cmd="#!/bin/bash
+#PBS -N fdg
 #PBS -l walltime=100:00:00
 #PBS -l nodes=1:ppn=$proc
-#PBS -o ./out
-#PBS -e ./err
+#PBS -j oe
+#PBS -o output-\$PBS_JOBNAME
 source /home/lofar/init-lofar.sh
-cd $PBS_O_WORKDIR
-$@
+source /home/lofar/init-lofar-test.sh
+cd \$PBS_O_WORKDIR
+$@"
+
+    # call the command and capture the stdout
+    id=`qsub << EOF
+$cmd
 EOF`
 
-sleep 2
-
-# grep the process id
-id=`echo $id | cut -f1 -d"."`
+    # grep the process id
+    id=`echo $id | cut -f1 -d"."`
+    sleep 1
+done
 
 # status starts as Q (queue) and becomes E (executing)
 status=`qstat $id | grep $id | awk '{print $5}'`
