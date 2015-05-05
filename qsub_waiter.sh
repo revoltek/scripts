@@ -23,6 +23,7 @@ id=`qsub << EOF
 #PBS -o ./out
 #PBS -e ./err
 source /home/lofar/init-lofar.sh
+cd $PBS_O_WORKDIR
 $@
 EOF`
 
