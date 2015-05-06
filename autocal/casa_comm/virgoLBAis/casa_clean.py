@@ -12,11 +12,11 @@ def casa_clean(msfile='', imagename='', imtype='normal'):
 
     if imtype == 'normal': 
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf',imsize=[4096],cell=['0.3arcsec'],weighting="briggs",robust=1,cyclefactor=8,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf',imsize=[2048],cell=['0.6arcsec'],weighting="briggs",robust=1,cyclefactor=8,cyclespeedup=-1,nterms=3)
 
         default('clean')
         scales=[0, 5, 10, 20, 40, 80, 160, 320, 640]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=10000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf',imsize=[4096],cell=['0.3arcsec'],weighting="briggs",robust=1,cyclefactor=5,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=10000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf',imsize=[2048],cell=['0.6arcsec'],weighting="briggs",robust=1,cyclefactor=5,cyclespeedup=-1,nterms=3)
 
     elif imtype == 'lr':
         default('clean')

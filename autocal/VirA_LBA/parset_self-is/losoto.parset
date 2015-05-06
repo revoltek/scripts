@@ -11,13 +11,13 @@ LoSoTo.Ncpu = 10
 # plot amp time/freq
 LoSoTo.Steps.plotA.Operation = PLOT
 LoSoTo.Steps.plotA.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375]
+LoSoTo.Steps.plotA.freq = [30076599.12109375, 38865661.62109375, 47654724.12109375, 56443786.62109375, 65232849.12109375, 76951599.12109375]
 LoSoTo.Steps.plotA.Axes = time
 LoSoTo.Steps.plotA.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotA.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
 LoSoTo.Steps.plotA.PlotFlag = True
 LoSoTo.Steps.plotA.Prefix = plot/amp_
-LoSoTo.Steps.plotA.MinMax = [1e-4,5e-3] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotA.MinMax = [0,0] # min max value for the independent variable (0 means automatic)
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
