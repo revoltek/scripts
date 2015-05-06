@@ -143,12 +143,12 @@ for i in xrange(5):
 #   QUICK TEST LOOP
     # avg - SB.MS:CORRECTED_DATA -> concat-avg.MS:DATA
     logging.info('Average...')
-    check_rm('concat-avg.MS*')
-    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
+    check_rm('concat.MS*')
+    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-concat.parset msin="['+','.join(mss_clean)+']" msout=concat.MS', log='concat-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
     # clean (make a new model of virgo)
     logging.info('Clean...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', params={'msfile':'concat-avg.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
     s.run(check=True)
     continue
 ######################
