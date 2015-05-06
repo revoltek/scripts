@@ -40,13 +40,6 @@ check_rm('plot*')
 # all MS
 mss = sorted(glob.glob('*.MS'))
 
-##############################################
-# Initial processing
-#logging.info('Fix beam table...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-
 #################################################
 # Copy cal solution
 #logging.info('Copy solutions...')
@@ -145,14 +138,14 @@ for i in xrange(5):
 
 #######################
 #   QUICK TEST LOOP
-#    check_rm('concat-avg.MS*')
-#    # avg - SB.MS:CORRECTED_DATA -> concat-avg.MS:DATA
+    # avg - SB.MS:CORRECTED_DATA -> concat-avg.MS:DATA
     logging.info('Average...')
-    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
+    check_rm('concat.MS*')
+    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-concat.parset msin="['+','.join(mss_clean)+']" msout=concat.MS', log='concat-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
-#    # clean (make a new model of virgo)
+    # clean (make a new model of virgo)
     logging.info('Clean...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', params={'msfile':'concat-avg.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
     s.run(check=True)
     continue
 #

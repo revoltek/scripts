@@ -5,8 +5,8 @@
 # Output:
 # set of group*_TC*.MS file with DATA = calibrator corrected data, beam corrupted
 
-ngroups = 12 # number of groups (=total_time/chunk_time)
-initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
+ngroups = 12 # number of groups (totalSB/SBperFREQgroup)
+initc = 0 # initial tc num (useful for multiple observation of same target) - tooth6==20
 fakeskymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.fakemodel.skymodel'
 globaldb = '../cals/globaldb'
 
@@ -29,9 +29,9 @@ check_rm('*group*')
 ##############################################
 # Initial processing
 logging.info('Fix beam table')
-for ms in sorted(glob.glob('*MS')):
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#for ms in sorted(glob.glob('*MS')):
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 #################################################
 # Copy cal solution
@@ -44,16 +44,16 @@ for ms in sorted(glob.glob('*MS')):
 ###################################################################################################
 # [PARALLEL] Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
 logging.info('Apply solutions...')
-for ms in glob.glob('*MS'):
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
-s.run(check=True)
+#for ms in glob.glob('*MS'):
+#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
+#s.run(check=True)
 
 ###################################################################################################
 # [PARALLEL] To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
 logging.info('Convert to circular...')
-for ms in glob.glob('*MS'):
-    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#for ms in glob.glob('*MS'):
+#    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 # TODO: combine all SB and run aoflagger
 
@@ -97,7 +97,7 @@ for i, msg in enumerate(np.array_split(sorted(glob.glob('*.MS')), ngroups)):
     for tcnum in tcnums:
         group_tc = sorted(glob.glob('group'+str(i)+'/*_TC'+tcnum+'.MS'))
         s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout=group'+str(i)+'/group'+str(i)+'_TC'+tcnum+'.MS', \
-                log='group'+str(i)+'/NDPPP_concat_TC'+tcnum+'.log', run_type='NDPPP')
+                log='group'+str(i)+'/NDPPP_concat_TC'+tcnum+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     check_rm('group'+str(i)+'/*_group*_TC*.MS') # remove splitted files
