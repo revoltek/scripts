@@ -12,11 +12,11 @@ def casa_clean(msfile='', imagename='', imtype='normal'):
 
     if imtype == 'normal': 
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='',imsize=[512],cell=['5arcsec'],weighting="briggs",robust=1.,cyclefactor=8,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='',imsize=[512],cell=['5arcsec'],weighting="briggs",robust=0.,cyclefactor=8,cyclespeedup=-1,nterms=3)
 
         default('clean')
         scales=[0, 5, 10, 20]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=5000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='',imsize=[512],cell=['5arcsec'],weighting="briggs",robust=1.,cyclefactor=8,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=5000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='',imsize=[512],cell=['5arcsec'],weighting="briggs",robust=0.,cyclefactor=8,cyclespeedup=-1,nterms=3)
 
     elif imtype == 'lr':
         default('clean')

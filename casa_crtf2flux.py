@@ -17,20 +17,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Usage: casapy  --nogui --nologger -c ~/bin/scripts/crtf2flux.py region.crtf noise.reg image1 image2 image3 ...
+# Usage: casapy  --nogui --nologger -c ~/bin/scripts/casa_crtf2flux.py regions.crtf noise.crtf image1 image2 image3 ...
 # select flux in image1,image2... above a certain sigma threshold
 # images must be casa_img_armonize-ed
-# for every region in region.crtf extract the flux
+# for every region in regions.crtf extract the flux
 # if more then 1 img: do integrated spidx of that region
 
 # to set reffreq:
 # imhead(imagename,'put','restfreq',{'value': 323098000.0, 'unit': 'Hz'}
+# to solve for LELAttribute: coordinates of operands mismatch
+# reorder axis in casa with imtrans
 
 nsigma = 2 # number of sigma below which the image is masked out
 
 import os, sys, glob
 import numpy as np
 import linearfit
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pyplot as plt
 images = sys.argv[7:]
 regionfile = sys.argv[5]
 noiseregionfile = sys.argv[6]
@@ -59,7 +64,7 @@ for i, image in enumerate(images):
 print "Calculate fluxes:"
 flux = {}
 err = {}
-for region in glob.glob('__reg*crtf'):
+for region in sorted(glob.glob('__reg*crtf')):
     flux[region] = []
     err[region] = []
     print "### Working region:", region
@@ -85,10 +90,20 @@ for region in glob.glob('__reg*crtf'):
         print image+ " - flux:", flux[region][i], '±', err[region][i], 'Jy'
         lelexpr[i], lelexpr[0] = lelexpr[0], lelexpr[i]
 
-print "Calculate spidx"
-for region in glob.glob('__reg*crtf'):
-    (a, b, sa, sb) = linearfit.linear_fit(x=np.log10(freqs), y=np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]))
-    print region+" - spidx:", a, '±', sa
+if len(images) > 1:
+    print "Calculate spidx"
+    for region in sorted(glob.glob('__reg*crtf')):
+        (a, b, sa, sb) = linearfit.linear_fit(x=np.log10(freqs), y=np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]))
+        print region+" - spidx:", a, '±', sa
+        fig = plt.figure(figsize=(8, 8))
+        fig.subplots_adjust(wspace=0)
+        ax = fig.add_subplot(110)
+        ax.set_xlabel(r'Log Frequency [Hz]')
+        ax.set_ylabel(r'Log Flux [Jy]')
+        ax.errorbar(np.log10(freqs), np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]), fmt='ko')
+        ax.plot(np.log10(freqs), [b+a*x for x in np.log10(freqs)], 'r-')
+        fig.savefig(region+'.pdf', bbox_inches='tight')
+        fig.clf()
 
 os.system('rm __reg*crtf')
 print "Done."

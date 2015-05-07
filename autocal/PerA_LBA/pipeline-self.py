@@ -26,7 +26,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=20, dry=False)
+s = Scheduler(qsub=False, max_threads=10, dry=False)
 
 #################################################
 # Clear
@@ -51,35 +51,35 @@ mss = sorted(glob.glob('*.MS'))
 
 #################################################
 # Copy cal solution
-logging.info('Copy solutions...')
-for ms in mss:
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
-    check_rm(ms+'/instrument')
-    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+#logging.info('Copy solutions...')
+#for ms in mss:
+#    num = re.findall(r'\d+', ms)[-1]
+#    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
+#    check_rm(ms+'/instrument')
+#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 #########################################################################################
 # [PARALLEL] apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
-logging.info('Correcting target MSs...')
-for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
-          log=ms+'-init_corbeam.log', cmd_type='BBS')
-s.run(check=True)
+#logging.info('Correcting target MSs...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
+#          log=ms+'-init_corbeam.log', cmd_type='BBS')
+#s.run(check=True)
 
 # TODO: temporary for the skymodel
 # [PARALLEL] apply solutions and beam correction - SB.MS:MODEL_DATA (PerA model, linear==circular, with ARRAY_FACTOR to simulate apparent sky)
-logging.info('Filling MODEL_DATA...')
-for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-pre.parset '+model, \
-          log=ms+'-init_predict.log', cmd_type='BBS')
-s.run(check=True)
+#logging.info('Filling MODEL_DATA...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/PerA_LBA/parset_self/bbs-pre.parset '+model, \
+#          log=ms+'-init_predict.log', cmd_type='BBS')
+#s.run(check=True)
 
 #########################################################################################
 # [PARALLEL] Transform to circular pol - SB.MS:CALCOR_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Convert to circular...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+#s.run(check=True)
  
 # self-cal cycle -> 5
 for i in xrange(5):
@@ -87,7 +87,7 @@ for i in xrange(5):
 
     # MS for calibration, use all at cycle 0 and 4
     if i == 0 or i == 4:
-        mss_c = mss[::n]
+        mss_c = mss[::n] # DEBUG
         #mss_c = mss
         mss_clean = mss[::n]
     else:
@@ -101,8 +101,6 @@ for i in xrange(5):
     # ft model, model is unpolarized CIRC == LIN - SB.MS:MODEL_DATA (best m87 model)
     if i != 0:
         logging.info('Add models...')
-        #check_rm('concat.MS*')
-        #pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
         for ms in mss_c:
             s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model, 'wproj':512}, log=ms+'_ft-perseus-c'+str(i)+'.log')
             s.run(check=True)
@@ -242,13 +240,8 @@ for i in xrange(5):
 ##########################################################################################################
 # [PARALLEL] concat+avg - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circ)
 logging.info('Concat...')
-check_rm('concat*')
-s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss[len(mss_c)/2,:])+']" msout=concat1.MS', \
-        log='final_concatavg1.log', cmd_type='NDPPP')
-s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss[:,len(mss_c)/2])+']" msout=concat2.MS', \
-        log='final_concatavg2.log', cmd_type='NDPPP')
-s.run(check=True)
-s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concat.parset msin="concat1.MS,concat2.MS" msout=concat.MS', \
+check_rm('concat.MS*')
+s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat.MS', \
         log='final_concatavg.log', cmd_type='NDPPP')
 s.run(check=True)
 
