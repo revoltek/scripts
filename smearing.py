@@ -6,12 +6,12 @@ import scipy.special
 
 # USER INPUT
 freq = 60.0e6 # Hz. Observing freqency, from msoverview
-nchan= 1. # Channels per subband
+nchan= 16. # Channels per subband
 bw=195.0e3/nchan # Hz. 195kHz is the bandwidt of one subband
-delta_T = 20. # seconds. Averaging
-#b = 1158.0e3 # meters. IS longest baseline in meters. 
-b = 121.0e3 # meters. RS longest baseline in meters.
-delta_Theta = 1/2. # deg. Distance in image from phase centre, i.e. half the FWHM.
+delta_T = 2. # seconds. Averaging
+b = 1292.0e3 # meters. IS longest baseline in meters. 
+#b = 121.0e3 # meters. RS longest baseline in meters.
+delta_Theta = 1/4. # deg. Distance in image from phase centre, i.e. half the FWHM.
 
 c = 2.998e8 # m/s. Speed of light
 resolution = (c/freq)/b*180./np.pi # deg. Resolution

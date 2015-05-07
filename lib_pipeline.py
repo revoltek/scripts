@@ -58,7 +58,8 @@ def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
     """
     parmdb_gain: slow varying gain solutions
     parmdb_csp: fast varying common scalar phase + TEC solutions
-    parmdb_out: empty parmdb with gain and csp fast varying
+    parmdb_empty: empty parmdb with gain and csp/TEC fast varying
+    parmdb_out: copy of empty filled with parmdb_gain and parmdb_csp
     """
     
     pdb_gain = parmdb.parmdb(parmdb_gain)
