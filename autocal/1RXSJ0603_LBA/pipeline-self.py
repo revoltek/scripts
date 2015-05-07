@@ -23,7 +23,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=12, dry=False)
+s = Scheduler(qsub=True, max_threads=30, dry=False)
 
 # here an image+model for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
@@ -149,7 +149,8 @@ for group in sorted(glob.glob('group*')):
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
         logging.info('Cleaning 1...')
         imagename = 'img/wide-'+str(i)
-        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms, \
                 log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
@@ -158,7 +159,8 @@ for group in sorted(glob.glob('group*')):
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
         logging.info('Cleaning 2...')
-        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
+        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
+        s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
@@ -194,13 +196,15 @@ for group in sorted(glob.glob('group*')):
         # reclean low-resolution
         logging.info('Cleaning low resolution 1...')
         imagename = 'img/wide-lr-'+str(i)
-        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
+        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
                 -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         logging.info('Cleaning low resolution 2...')
-        s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
+        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
+        s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
                 -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
@@ -217,6 +221,15 @@ for group in sorted(glob.glob('group*')):
         s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel, \
                log=ms+'_final-sub.log', cmd_type='BBS')
     s.run(check=True)
+
+    # Perform a final clean to create an inspection image which should be very empty
+    logging.info('Empty cleaning...')
+    imagename = 'img/empty'
+    #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+            -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 -datacolumn SUBTRACTED_DATA '+concat_ms, \
+            log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
+    s.run(check=True)
     
     # Copy last *model and *image
     logging.info('Copying models/images...')
@@ -224,6 +237,7 @@ for group in sorted(glob.glob('group*')):
     os.system('mv img/wide-lr-'+str(i)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
     os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/wide-g'+g+'.image')
     os.system('mv img/wide-lr-'+str(i)+'-masked-image.fits self/images/wide-lr-g'+g+'.image')
+    os.system('mv img/empty-image.fits self/images/empty-g'+g+'.image')
     os.system('mv *log '+group)
 
 logging.info("Done.")

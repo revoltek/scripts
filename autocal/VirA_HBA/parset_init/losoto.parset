@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [reweight, clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
+LoSoTo.Steps = [reweight, clip, flagA2, flagA, flagextend, merge, plotA2, plotP2]
 #LoSoTo.Steps = [merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
@@ -63,7 +63,7 @@ LoSoTo.Steps.plotA.TableAxis = ant # the axis to plot on a page - e.g. ant to ge
 LoSoTo.Steps.plotA.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
 LoSoTo.Steps.plotA.PlotFlag = True
 LoSoTo.Steps.plotA.Prefix = plot/amp_
-LoSoTo.Steps.plotA.MinMax = [1e-4,5e-3] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotA.MinMax = [0,0] # min max value for the independent variable (0 means automatic)
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
