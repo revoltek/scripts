@@ -18,7 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=32, dry=False)
+s = Scheduler(qsub=True, max_threads=128, dry=False)
 mss = sorted(glob.glob('*MS'))
 
 #################################################
@@ -27,8 +27,8 @@ logging.info('Cleaning...')
 check_rm('*log')
 
 ##############################################
-# Initial processing
-logging.info('Fix beam table')
+# Initial processing (2/2013->2/2014)
+logging.warning('Fix beam table')
 for ms in mss:
     s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 s.run(check=False)
