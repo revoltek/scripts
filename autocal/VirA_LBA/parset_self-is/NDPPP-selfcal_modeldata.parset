@@ -4,11 +4,10 @@ msin.modelcolumn=MODEL_DATA
 msout = 
 msout.datacolumn=CORRECTED_DATA
 
-steps = [cal]
+steps = [cal, count]
 
 cal.type = gaincal
 cal.parmdb = 
 cal.caltype = diagonal
 cal.usemodelcolumn = T
-cal.applybeamtomodelcolumn = F
 cal.maxiter = 100

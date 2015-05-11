@@ -1,0 +1,11 @@
+msin =
+msin.datacolumn = CORRECTED_DATA
+
+msout = '.'
+
+steps = [flag]
+
+flag.type = madflagger
+flag.threshold = 3
+flag.timewindow = 251
+flag.freqwindow = 4
