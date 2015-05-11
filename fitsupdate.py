@@ -58,9 +58,9 @@ if ( not setbeam is None ):
 	bmaj = float(bmaj)/3600.
 	bmin = float(bmin)/3600.
 	pa = float(pa)
-	prihdr.update('BMAJ', bmaj)
-	prihdr.update('BMIN', bmin)
-	prihdr.update('BPA', pa)
+	prihdr['BMAJ'] = bmaj
+	prihdr['BMIN'] = bmin
+	prihdr['BPA'] = pa
 
 hdulist.flush()
 print "Done!"
