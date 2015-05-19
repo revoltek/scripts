@@ -3,7 +3,7 @@
 
 import sys, pickle
 
-def casa_clean(msfile='', imagename='', imtype='normal'):
+def casa_clean(msfile='', imagename='', imtype='normal', mask=''):
     """
     imtype: 'lr' for low resolution, large version of the image (larger FoV to get possible new extended emission)
             'wide' for wide FoV image
@@ -32,7 +32,7 @@ def casa_clean(msfile='', imagename='', imtype='normal'):
 
     elif imtype == 'wide':
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=5000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,imsize=[1024],cell=['10arcsec'],weighting="briggs",robust=0,cyclefactor=5,cyclespeedup=-1,nterms=3,uvtaper=T,outertaper='30arcsec')
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=5000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,imsize=[2048],cell=['10arcsec'],weighting="briggs",robust=0,cyclefactor=5,cyclespeedup=-1,nterms=3,uvtaper=T,outertaper='30arcsec', mask=mask)
 
     else:
         print "Wrong imtype."

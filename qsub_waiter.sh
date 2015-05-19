@@ -8,10 +8,10 @@ shopt -s expand_aliases
 # choose number of processors to reserve
 case $@ in
     *calibrate-stand-alone*) proc=1 ;;
-    *NDPPP*) proc=6 ;;
-    *wsclean*) proc=6 ;;
-    *casa*) proc=6 ;;
-    *awimager*) proc=6 ;;
+    *NDPPP*) proc=1 ;;
+    *wsclean*) proc=5 ;;
+    *casa*) proc=5 ;;
+    *awimager*) proc=5 ;;
     *) proc=1
 esac
 

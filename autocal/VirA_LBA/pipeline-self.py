@@ -41,6 +41,8 @@ check_rm('plot*')
 
 # all MS
 mss = sorted(glob.glob('*.MS'))
+mss_c = mss[::n]
+pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
 
 ##############################################
 # Initial processing
@@ -77,29 +79,15 @@ logging.info('Convert to circular...')
 for i in xrange(5):
     logging.info('Starting self-cal cycle: '+str(i))
 
-    # MS for calibration, use all at cycle 0 and 4
-    if i == 0 or i == 4:
-        mss_c = mss
-        mss_clean = mss[::n]
-    else:
-        mss_c = mss[::n]
-        mss_clean = mss[::n]
-
     if i != 0:    
         model = 'img/clean-c'+str(i-1)+'.model'
 
     #####################################################################################
     # ft model, model is unpolarized CIRC == LIN - SB.MS:MODEL_DATA (best m87 model)
-    # TODO: test if adding wprojplanes here improves the calibration
+    # TODO: test if adding wprojplanes here improves the calibration, wproj create cross problem in widefield?
     logging.info('Add models...')
-    check_rm('concat1.MS*')
-    pt.msutil.msconcat(mss_c[:len(mss_c)/2], 'concat1.MS', concatTime=False)
-    check_rm('concat2.MS*')
-    pt.msutil.msconcat(mss_c[len(mss_c)/2:], 'concat2.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat1.MS', 'model':model, 'wproj':512}, log='ft-virgo-c'+str(i)+'.log')
-    s.run(check=True)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat2.MS', 'model':model, 'wproj':512}, log='ft-virgo-c'+str(i)+'.log')
-    s.run(check=True)
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
+    s.run(check=False)
 
     #####################################################################################
     # [PARALLEL] calibrate - SB.MS:CIRC_DATA (no correction)
@@ -146,7 +134,7 @@ for i in xrange(5):
 #    # avg - SB.MS:CORRECTED_DATA -> concat-avg.MS:DATA
 #    logging.info('Average...')
 #    check_rm('concat-avg.MS*')
-#    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
+#    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_c)+']" msout=concat-avg.MS', log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
 #    s.run(check=True)
 #    # clean (make a new model of virgo)
 #    logging.info('Clean...')
@@ -156,52 +144,39 @@ for i in xrange(5):
 ######################
 
     # create widefield model
-    if i == 0 or i == 4:
-
-        # concatenate data - MS.MS -> concat.MS (selfcal corrected data, beam applied, circular)
-        # NOTE: split concat into two parts should avoid problems
-        logging.info('Make widefield model - Concatenating...')
-        check_rm('concat1.MS*')
-        pt.msutil.msconcat(mss_c[:len(mss_c)/2], 'concat1.MS', concatTime=False)
-        check_rm('concat2.MS*')
-        pt.msutil.msconcat(mss_c[len(mss_c)/2:], 'concat2.MS', concatTime=False)
+    if i%5 == 0:
 
         # uvsub, MODEL_DATA is still Virgo
         logging.info('Make widefield model - UV-Subtracting Virgo A...')
-        os.system('taql "update concat1.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
-        os.system('taql "update concat2.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
+        os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
         # clean, mask, clean
         logging.info('Make widefield model - Widefield imaging...')
-        check_rm('concat.MS*')
-        pt.msutil.msconcat(mss_clean, 'concat.MS', concatTime=False)
         imagename = 'img/clean-wide-c'+str(i)
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
                 params={'msfile':'concat.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(i)+'.log')
         s.run(check=True)
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87.crtf'}, log='blank-c'+str(i)+'.log')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87-blank.crtf'}, log='blank-c'+str(i)+'.log')
         s.run(check=True)
         logging.info('Make widefield model - Widefield imaging2...')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
-                params={'msfile':'concat.MS', 'imagename':imagename.repalce('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'wide'}, log='clean-wide2-c'+str(i)+'.log')
+                params={'msfile':'concat.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'wide'}, log='clean-wide2-c'+str(i)+'.log')
         s.run(check=True)
+        widemodel = imagename.replace('wide','wide-masked')+'.model'
 
-        # Subtract widefield model using ft on a virtual concat - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
+        # ft() + subtract widefield model - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA=CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
         logging.info('Flagging - Subtracting wide-field model...')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
-                    params={'msfile':'concat1.MS', 'model':'img/wide-masked-c'+str(i)+'.model', 'wproj':512}, log='ft-flag-c'+str(i)+'.log')
+                    params={'msfile':'concat.MS', 'model':'img/clean-wide-masked-c'+str(i)+'.model', 'wproj':512}, log='ft-flag-c'+str(i)+'.log')
         s.run(check=True)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
-                    params={'msfile':'concat2.MS', 'model':'img/wide-masked-c'+str(i)+'.model', 'wproj':512}, log='ft-flag-c'+str(i)+'.log')
-        s.run(check=True)
-        os.system('taql "update concat1.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
-        os.system('taql "update concat2.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
+        os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
-        logging.info('Flagging - Flagging residuals...')
-        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_flag.py', params={'msfile':'concat1.MS'}, log='flag-c'+str(i)+'.log')
-        s.run(check=True)
-        run_casa(command='/home/fdg/scripts/autocal/casa_comm/casa_flag.py', params={'msfile':'concat2.MS'}, log='flag-c'+str(i)+'.log')
+        # Flagging
+        logging.info('Flag - Flagging residuals...')
+        for ms in mss_c:
+            s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-flag.parset msin='+ms, \
+                    log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         # [PARALLEL] reapply NDPPP solutions - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
@@ -212,34 +187,34 @@ for i in xrange(5):
                     log=ms+'_selfcor-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-    # Subtract widefield model using ft on a virtual concat - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
+    # ft + subtract widefield model - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
     logging.info('Subtracting wide-field model...')
-    check_rm('concat.MS*')
-    pt.msutil.msconcat(mss_clean, 'concat.MS', concatTime=False)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', \
-            params={'msfile':'concat.MS', 'model':'img/wide-c'+str(i)+'.model', 'wproj':512}, log='ft-wide-c'+str(i)+'.log')
+            params={'msfile':'concat.MS', 'model':widemodel, 'wproj':512}, log='ft-wide-c'+str(i)+'.log')
     s.run(check=True)
     os.system('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
 
     # avg 1chanSB/20s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
     logging.info('Average...')
-    check_rm('concat.MS*')
-    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_clean)+']" msout=concat.MS', \
+    check_rm('concat-avg.MS*')
+    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss_c)+']" msout=concat-avg.MS', \
             log='concatavg-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     # clean (make a new model of virgo)
     logging.info('Clean...')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
-            params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
+            params={'msfile':'concat-avg.MS', 'imagename':'img/clean-c'+str(i)}, log='clean-c'+str(i)+'.log')
     s.run(check=True)
+
+# TODO: last run flag+sub on all mss
 
 ##########################################################################################################
 # [PARALLEL] concat+avg - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circ)
 logging.info('Concat...')
 check_rm('concat.MS*')
-s.add('NDPPP /home/fdg/scripts/autocal/PerA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat.MS', \
-                log='final_concatavg.log', cmd_type='NDPPP')
+s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat.MS', \
+        log='final_concatavg.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #########################################################################################################

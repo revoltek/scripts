@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # casapy --nogui --log2term --nologger -c this_script.py picklefile
+# Doesn't work on concat data?
 
 import sys, pickle
 

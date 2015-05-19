@@ -225,8 +225,8 @@ class Scheduler():
                 return 1
 
         elif cmd_type == 'CASA':
-            out = subprocess.check_output('grep -L "##### End Task" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-            out += subprocess.check_output('grep -l "TypeError" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out = subprocess.check_output('grep -l "[a-z]Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            #out += subprocess.check_output('grep -L "##### End Task" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('CASA run problem on:\n'+out)
                 return 1
@@ -238,7 +238,7 @@ class Scheduler():
                 return 1
 
         elif cmd_type == 'python':
-            out = subprocess.check_output('grep -l "TypeError" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out = subprocess.check_output('grep -l "[a-z]Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('WSClean run problem on:\n'+out)
                 return 1
