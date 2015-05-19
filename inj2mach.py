@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Compute the Mach number given the radio injection spectral index
-# Usage: mach_from_inj.py alpha alpha_err
+# Usage: mach_from_inj.py alpha +alpha_err -alpha_err
 
 import sys, os
 import numpy as np
