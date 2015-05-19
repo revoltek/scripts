@@ -6,7 +6,7 @@
 # set of group*_TC*.MS file with DATA = calibrator corrected data, beam corrupted
 
 ngroups = 12 # number of groups (totalSB/SBperFREQgroup)
-initc = 0 # initial tc num (useful for multiple observation of same target) - tooth6==20
+initc = 20 # initial tc num (useful for multiple observation of same target) - tooth6==20
 fakeskymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.fakemodel.skymodel'
 globaldb = '../cals/globaldb'
 
@@ -18,7 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=64, dry=False)
+s = Scheduler(qsub=False, max_threads=6, dry=False)
 
 #################################################
 # Clear
@@ -39,7 +39,7 @@ for ms in sorted(glob.glob('*MS')):
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument')
     logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 ###################################################################################################
 # [PARALLEL] Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
