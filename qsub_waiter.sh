@@ -23,10 +23,11 @@ until [[ $id =~ ^-?[0-9]+$ ]]; do
 #PBS -l walltime=100:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
-#PBS -o output-\$PBS_JOBNAME
+#PBS -o output-\$PBS_JOBID
 source /home/lofar/init-lofar.sh
 source /home/lofar/init-lofar-test.sh
 cd \$PBS_O_WORKDIR
+echo \"\$PBS_JOBID - $@\" >> commands.log
 $@"
 
     # call the command and capture the stdout

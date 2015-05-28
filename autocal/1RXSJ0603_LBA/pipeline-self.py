@@ -29,7 +29,7 @@ s = Scheduler(qsub=True, max_threads=32, dry=False)
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
 
-for group in sorted(glob.glob('group*')):
+for group in sorted(glob.glob('group*'))[::-1]:
 
     mss = sorted(glob.glob(group+'/group*_TC*.MS'))
     g = str(re.findall(r'\d+', mss[0])[0])
@@ -39,7 +39,7 @@ for group in sorted(glob.glob('group*')):
     ################################################################################################
     # Clear
     logging.info('Cleaning...')
-    check_rm(group+'/*log *log')
+    check_rm(group+'/*log *log *bak')
     check_rm(group+'/plot* plot')
     check_rm(group+'/*h5 *h5')
     check_rm('*last')
@@ -150,7 +150,7 @@ for group in sorted(glob.glob('group*')):
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
         logging.info('Cleaning 1...')
         imagename = 'img/wide-'+str(i)
-        s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms, \
                 log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
@@ -159,7 +159,7 @@ for group in sorted(glob.glob('group*')):
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
         logging.info('Cleaning 2...')
-        s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
+        s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 90 \
                 -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
@@ -172,7 +172,7 @@ for group in sorted(glob.glob('group*')):
             s.run(check=True)
         
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
-        s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"')
+        s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(i)+'.log')
         s.run(check=False)
     
         ####################################################################
@@ -183,19 +183,19 @@ for group in sorted(glob.glob('group*')):
         ####################################################################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql2-c'+str(i)+'.log')
         s.run(check=False)
     
         # reclean low-resolution
         logging.info('Cleaning low resolution 1...')
         imagename = 'img/wide-lr-'+str(i)
-        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90\
                 -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         logging.info('Cleaning low resolution 2...')
-        s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
+        s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
                 -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
@@ -203,7 +203,7 @@ for group in sorted(glob.glob('group*')):
         ###############################################################################################################
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
         logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log')
         s.run(check=False)
 
         # Flag on residuals
@@ -215,7 +215,7 @@ for group in sorted(glob.glob('group*')):
     
         # Concat models
         logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"')
+        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log')
         s.run(check=False)
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
@@ -243,8 +243,8 @@ for group in sorted(glob.glob('group*')):
     os.system('mv img/wide-'+str(i)+'-masked-model.fits self/models/wide-g'+g+'.model')
     os.system('mv img/wide-lr-'+str(i)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
     # Copy images
-    [ os.system('mv img/wide-'+str(i)+'-image.fits.newmask self/images/g'+g) for i in xrange(3) ]
-    [ os.system('mv img/wide-lr-'+str(i)+'-image.fits.newmask self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-'+str(i)+'.newmask self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'.newmask self/images/g'+g) for i in xrange(3) ]
     [ os.system('mv img/wide-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(3) ]
     [ os.system('mv img/wide-lr-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(3) ]
     [ os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(3) ]

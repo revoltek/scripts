@@ -1,5 +1,5 @@
 Strategy.InputColumn = CORRECTED_DATA_PHASE
-Strategy.ChunkSize = 60
+Strategy.ChunkSize = 120
 Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
@@ -10,8 +10,8 @@ Step.solve.Model.Beam.Enable = T
 Step.solve.Model.Beam.UseChannelFreq = T
 Step.solve.Solve.Parms = ["Gain:0:0:*", "Gain:1:1:*"]
 Step.solve.Solve.CellSize.Freq = 0
-Step.solve.Solve.CellSize.Time = 60
-Step.solve.Solve.CellChunkSize = 60
+Step.solve.Solve.CellSize.Time = 120
+Step.solve.Solve.CellChunkSize = 120
 Step.solve.Solve.PropagateSolutions = T
 Step.solve.Solve.Options.MaxIter = 100
 Step.solve.Solve.Options.EpsValue = 1e-9
