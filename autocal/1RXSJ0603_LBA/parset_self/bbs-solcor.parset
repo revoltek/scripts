@@ -1,5 +1,5 @@
 Strategy.InputColumn = DATA
-Strategy.ChunkSize = 10
+Strategy.ChunkSize = 50
 Strategy.Steps = [solve, correct]
 
 Step.solve.Operation = SOLVE
@@ -13,7 +13,7 @@ Step.solve.Model.Beam.Mode = ARRAY_FACTOR
 Step.solve.Solve.Parms = ["CommonScalarPhase:*", "TEC:*"]
 Step.solve.Solve.CellSize.Freq = 0
 Step.solve.Solve.CellSize.Time = 1
-Step.solve.Solve.CellChunkSize = 10
+Step.solve.Solve.CellChunkSize = 50
 Step.solve.Solve.PropagateSolutions = T
 Step.solve.Solve.Options.MaxIter = 100
 Step.solve.Solve.Options.EpsValue = 1e-9

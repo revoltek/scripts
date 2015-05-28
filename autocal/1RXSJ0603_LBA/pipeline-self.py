@@ -23,7 +23,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=30, dry=False)
+s = Scheduler(qsub=True, max_threads=32, dry=False)
 
 # here an image+model for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
@@ -45,6 +45,8 @@ for group in sorted(glob.glob('group*')):
     check_rm('*last')
     check_rm('img')
     os.makedirs('img')
+    check_rm('self/images/g'+g)
+    os.makedirs('self/images/g'+g)
     
     #################################################################################################
     # create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
@@ -53,6 +55,10 @@ for group in sorted(glob.glob('group*')):
         s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
+
+    # after columns creation
+    logging.info('Concatenating TCs...')
+    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
     
     ####################################################################################################
     # self-cal cycle
@@ -110,11 +116,11 @@ for group in sorted(glob.glob('group*')):
                 if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
             h5parm = 'global-c'+str(i)+'.h5'
 
-            s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+            s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
             s.run(check=False)
             s.add('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
             s.run(check=False)
-            s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
+            s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
             s.run(check=True)
 
             for num, ms in enumerate(mss):
@@ -140,16 +146,10 @@ for group in sorted(glob.glob('group*')):
     
         ###################################################################################################################
         # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
-        # NOTE: observations must have the same channels i.e. same SBs freq!
-        # NOTE: virtual concat or casa concat both fails if second observation SB is the first of the concat list (mss are now sorted), very strange bug
-        check_rm(concat_ms+'*')
-        logging.info('Concatenating TCs...')
-        pt.msutil.msconcat(mss, concat_ms, concatTime=False)
     
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
         logging.info('Cleaning 1...')
         imagename = 'img/wide-'+str(i)
-        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
         s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms, \
                 log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
@@ -159,9 +159,8 @@ for group in sorted(glob.glob('group*')):
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
         logging.info('Cleaning 2...')
-        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
         s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 \
-                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
+                -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
     
@@ -171,9 +170,9 @@ for group in sorted(glob.glob('group*')):
             for ms in mss:
                 s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
             s.run(check=True)
+        
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
-        for ms in mss:
-            s.add('taql "update '+ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"')
+        s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"')
         s.run(check=False)
     
         ####################################################################
@@ -183,61 +182,74 @@ for group in sorted(glob.glob('group*')):
     
         ####################################################################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
-        logging.info('Subtracting high-res model...')
-        for ms in mss:
-            s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
+        logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
         s.run(check=False)
-    
-        # concat all TCs in one MS - group*_TC*.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
-        check_rm(concat_ms+'*')
-        logging.info('Concatenating TCs...')
-        pt.msutil.msconcat(mss, concat_ms, concatTime=False)
     
         # reclean low-resolution
         logging.info('Cleaning low resolution 1...')
         imagename = 'img/wide-lr-'+str(i)
-        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
         s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 \
-                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
+                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         logging.info('Cleaning low resolution 2...')
-        #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
         s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 \
-                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
+                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
+
+        ###############################################################################################################
+        # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
+        logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"')
+        s.run(check=False)
+
+        # Flag on residuals
+        logging.info('Flagging residuals...')
+        for ms in mss:
+            s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/NDPPP-flag.parset msin='+ms, \
+                    log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
     
         # Concat models
         logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
-        for ms in mss:
-            s.add('taql "update '+ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"')
+        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"')
         s.run(check=False)
     
-    # Final subtract of the best model - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
+    # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     logging.info('Final subtraction...')
     for ms in mss:
         s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel, \
                log=ms+'_final-sub.log', cmd_type='BBS')
     s.run(check=True)
 
+    # re-create concat because SUBTRACTED_DATA has just been created
+    logging.info('Concatenating TCs...')
+    check_rm(concat_ms)
+    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+ 
     # Perform a final clean to create an inspection image which should be very empty
     logging.info('Empty cleaning...')
     imagename = 'img/empty'
-    #s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
-            -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 -datacolumn SUBTRACTED_DATA '+concat_ms, \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 0.75 -no-update-model-required -maxuv-l 8000 -datacolumn SUBTRACTED_DATA '+concat_ms, \
             log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
     s.run(check=True)
     
-    # Copy last *model and *image
+    # Copy last *model
     logging.info('Copying models/images...')
     os.system('mv img/wide-'+str(i)+'-masked-model.fits self/models/wide-g'+g+'.model')
     os.system('mv img/wide-lr-'+str(i)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
-    os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/wide-g'+g+'.image')
-    os.system('mv img/wide-lr-'+str(i)+'-masked-image.fits self/images/wide-lr-g'+g+'.image')
-    os.system('mv img/empty-image.fits self/images/empty-g'+g+'.image')
+    # Copy images
+    [ os.system('mv img/wide-'+str(i)+'-image.fits.newmask self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'-image.fits.newmask self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(3) ]
+    os.system('mv img/empty-image.fits self/images/g'+g)
     os.system('mv *log '+group)
 
 logging.info("Done.")
