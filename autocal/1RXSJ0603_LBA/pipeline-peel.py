@@ -326,7 +326,7 @@ s.run(check=True)
 
 ############################################################################################################################
 # in the corrected_data there's still the old facet model properly corrupted
-# [PARALLEL] shift original dataset -  group*_TC*.MS:CORRECTED_DATA -> group*_TC*-shifted.MS:DATA (empty, phase shifted)
+# [PARALLEL] shift original dataset -  group*_TC*.MS:CORRECTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
 logging.info('Shifting original dataset...')
 for ms in sorted(glob.glob('group*_TC*.MS')):
     msout = ms.replace('.MS','-shift.MS')

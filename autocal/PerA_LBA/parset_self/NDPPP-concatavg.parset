@@ -4,7 +4,7 @@ msout =
 msout.datacolumn = DATA
 msout.writefullresflag = False
 
-steps = [avg]
+steps = [avg, count]
 
 avg.type = averager
 avg.freqstep = 4

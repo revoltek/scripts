@@ -5,7 +5,7 @@ msin.baseline = [CR]S*&
 msout = 
 msout.datacolumn=CORRECTED_DATA
 
-steps = [cal]
+steps = [cal, count]
 
 cal.type = gaincal
 cal.parmdb = 
