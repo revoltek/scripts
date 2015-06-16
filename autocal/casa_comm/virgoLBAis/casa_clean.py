@@ -9,8 +9,11 @@ def casa_clean(msfile='', imagename='', imtype='normal', uvrange=''):
             'wide' for wide FoV image
             'normal' for full res M87 image
     """
+    if imtype == 'cocoon': 
+        default('clean')
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=1000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf',imsize=[512],cell=['0.5arcsec'],weighting="briggs",robust=0,cyclefactor=8,cyclespeedup=-1,nterms=3,uvrange=uvrange)
 
-    if imtype == 'normal': 
+    elif imtype == 'normal': 
         default('clean')
         clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='/home/fdg/scripts/autocal/VirA_LBA/m87.crtf',imsize=[2500],cell=['0.5arcsec'],weighting="briggs",robust=0,cyclefactor=8,cyclespeedup=-1,nterms=3,uvrange=uvrange)
 

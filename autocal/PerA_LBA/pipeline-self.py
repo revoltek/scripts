@@ -83,7 +83,7 @@ for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
-# NOTE: after all columns are created
+# After all columns are created
 logging.info('Concat...')
 pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
  

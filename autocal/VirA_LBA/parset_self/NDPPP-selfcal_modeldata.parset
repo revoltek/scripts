@@ -1,5 +1,5 @@
 msin=
-msin.datacolumn=CIRC_DATA
+msin.datacolumn=CIRC_DATA_SUB
 msin.modelcolumn=MODEL_DATA
 msin.baseline = [CR]S*&
 msout = 

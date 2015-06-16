@@ -54,6 +54,8 @@ mss = sorted(glob.glob('VirAis_*.MS'))
 # NOTE: no cal for IS obs    
 #    os.tystem('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
+#avg.freqstep = 4
+#avg.timestep = 2
 logging.info('Average...')
 for ms in mss:
     msout = ms.replace('VirAis','VirAis-avg')
@@ -83,23 +85,29 @@ s.run(check=True)
 for i in xrange(cycles):
     logging.info('Starting self-cal cycle: '+str(i))
 
-    # select uv-cut in clean
+    # select uv-cut in meters
     if i == 0:
-        uvrange = "0~25klambda" #TODO: new add
+        blmin = 100000
+        blmax = 1300000
     elif i == 1:
-        uvrange = "0~50klambda"
+        blmin = 50000
+        blmax = 1300000
     elif i == 2:
-        uvrange = "0~100klambda"
+        blmin = 25000
+        blmax = 1300000
     elif i == 3:
-        uvrange = "0~150klambda"
-    elif i == 4:
-        uvrange = "0~200klambda"
+        blmin = 10000
+        blmax = 1300000
     else:
-        uvrange = ""
+        blmin = 0
+        blmax = 1300000
+    uvrange = str(blmin)+'~'+str(blmax)+'meters'
 
     # first cycle use given model
     if i != 0:
         model = 'img/clean-c'+str(i-1)+'.model'
+
+    # last cycle do on all SBs
     if i == cycles-1:
         mss_c = mss
 
@@ -114,9 +122,33 @@ for i in xrange(cycles):
     # [PARALLEL] calibrate - SB.MS:CIRC_DATA (no correction)
     logging.info('Calibrate...')
     for ms in mss_c:
-        s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
+        s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument'+' msin.blrange="['+str(blmin)+','+str(blmax)+']"', \
               log=ms+'_selfcal-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
+
+    #######################################################################################
+    # flag
+    if i%3 == 0:
+
+        # [PARALLEL] correct - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
+        logging.info('Correct...')
+        for ms in mss_c:
+            s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
+                  log=ms+'_selfcor-c'+str(i)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        # uvsub, MODEL_DATA is still Virgo
+        logging.info('Make widefield model - UV-Subtracting Virgo A...')
+        check_rm('concat.MS*')
+        pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
+        s.add('taql "update concat.MS set SUBTRACTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
+        s.run(check=False)
+
+        logging.info('Flagging - Flagging residuals...')
+        for ms in mss_c:
+            s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-flag.parset msin='+ms, \
+                    log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
     #######################################################################################
     # Solution rescaling
@@ -149,22 +181,6 @@ for i in xrange(cycles):
               log=ms+'_selfcor-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    # create widefield model
-    if (i%5 == 0 and i != 0) or i == cycles-1:
-
-        # uvsub, MODEL_DATA is still Virgo
-        logging.info('Make widefield model - UV-Subtracting Virgo A...')
-        check_rm('concat.MS*')
-        pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-        s.add('taql "update concat.MS set SUBTRACTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
-        r.run(check=False)
-
-        logging.info('Flagging - Flagging residuals...')
-        for ms in mss_c:
-            s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-flag.parset msin='+ms, \
-                    log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-
     # Last cycle: recreate the concat using NDPPP
     check_rm('concat.MS*')
     if i == cycles-1:
@@ -177,8 +193,12 @@ for i in xrange(cycles):
 
     # clean (make a new model of virgo)
     logging.info('Clean...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', \
-            params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i), 'uvrange':uvrange}, log='clean-c'+str(i)+'.log')
+    if i <= 3:
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', \
+                params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i), 'imtype':'cocoon', 'uvrange':uvrange}, log='clean-c'+str(i)+'.log')
+    else:
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBAis/casa_clean.py', \
+                params={'msfile':'concat.MS', 'imagename':'img/clean-c'+str(i), 'imtype':'normal', 'uvrange':uvrange}, log='clean-c'+str(i)+'.log')
     s.run(check=True)
 
 #########################################################################################################
