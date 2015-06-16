@@ -1,0 +1,9 @@
+Strategy.InputColumn = CIRC_DATA
+Strategy.ChunkSize = 10
+Strategy.Steps = [sub]
+
+Step.sub.Operation                    = SUB
+Step.sub.Model.Sources                = [@MODEL_DATA]
+Step.sub.Model.Gain.Enable            = T
+Step.sub.Model.Beam.Enable            = F
+Step.sub.Output.Column = CIRC_DATA_SUB

@@ -3,10 +3,10 @@
 
 #skymodel = '/home/fdg/model/3C196-allfield.skymodel' # tooth
 #parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_init' # tooth
-#skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo LBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_init' # virgo LBA
-skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo HBA
-parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_init' # virgo HBA
+skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo LBA
+parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_init' # virgo LBA
+#skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo HBA
+#parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_init' # virgo HBA
 #skymodel = '/home/fdg/model/3C196-allfield.skymodel' # perseus LBA
 #parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_init' # perseus LBA
 
@@ -18,7 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=128, dry=False)
+s = Scheduler(qsub=False, max_threads=24, dry=False)
 mss = sorted(glob.glob('*MS'))
 
 #################################################
