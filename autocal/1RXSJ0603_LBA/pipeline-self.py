@@ -56,6 +56,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
+    logging.info('Creating MODEL_DATA_HIGHRES...')
+    for ms in mss:
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
+    s.run(check=True)
+
     # after columns creation
     logging.info('Concatenating TCs...')
     pt.msutil.msconcat(mss, concat_ms, concatTime=False)
@@ -163,14 +168,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
-    
-        # copy model column
-        if i == 0:
-            logging.info('Creating MODEL_DATA_HIGHRES...')
-            for ms in mss:
-                s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
-            s.run(check=True)
-        
+       
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
         s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(i)+'.log')
         s.run(check=False)
@@ -193,7 +191,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
-        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
+        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask') # TODO: add threshpix=6?
         logging.info('Cleaning low resolution 2...')
         s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
                 -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \

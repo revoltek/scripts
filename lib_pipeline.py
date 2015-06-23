@@ -176,7 +176,7 @@ class Scheduler():
         """
         def worker(queue):
             for cmd in iter(queue.get, None):
-                if self.qsub: cmd = 'qsub_waiter.sh "'+cmd+'"'
+                if self.qsub: cmd = 'qsub_waiter.sh \''+cmd+'\''
                 subprocess.call(cmd, shell=True)
     
         q = Queue()
