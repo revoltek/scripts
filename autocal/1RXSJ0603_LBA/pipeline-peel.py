@@ -101,6 +101,7 @@ s.run(check=True)
 
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel-avg_TC*.MS:DATA (empty+DD, avg, phase shifted)
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:MODEL_DATA -> peel-avg-model_TC*.MS:DATA (DD model, avg, phase shifted)
+# TODO: remove phase shifting, phase drift is driven by iono
 logging.info('Shifting+averaging...')
 for tc in tcs:
     logging.debug('Time chunk (DATA): '+tc)
@@ -167,6 +168,7 @@ for i in xrange(4):
                     log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
         s.run(check=True)
 
+        # TODO: amp should be done in blocks of 20 SB, because beam is freq dependent
         # [PARALLEL] calibrate amplitude 5 min timescale - peel-avg_TC*.MS:CORRECTED_DATA_PHASE (no correction)
         logging.info('Calibrating amplitude...')
         for ms in glob.glob('peel-avg_TC*.MS'):

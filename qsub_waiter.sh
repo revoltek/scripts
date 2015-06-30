@@ -18,17 +18,22 @@ esac
 # ugly workaround to catch qsub errors and resubmit
 until [[ $id =~ ^-?[0-9]+$ ]]; do
 
+# For DEBUG output add:
+#PBS -o output-\$PBS_JOBID
+# instead of /dev/null
+
     cmd="#!/bin/bash
 #PBS -N fdg
 #PBS -l walltime=100:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
-#PBS -o output-\$PBS_JOBID
+#PBS -o /dev/null
 source /home/lofar/init-lofar.sh
 source /home/lofar/init-lofar-test.sh
+PATH=\"/home/stsf309/scripts:${PATH}\"
 cd \$PBS_O_WORKDIR
-echo \"\$PBS_JOBID - $@\" >> commands.log
-$@"
+echo \"\$PBS_JOBID - ${@}\" >> commands.log
+${@}"
 
     # call the command and capture the stdout
     id=`qsub << EOF
