@@ -7,7 +7,7 @@
 # 3 flag
 
 # initial self-cal model
-model = '/home/fdg/scripts/autocal/VirA_LBA/150328_LBA-VirgoA.model'
+model = '/home/fdg/scripts/autocal/VirA_LBA/150621_LBA-VirgoA.model'
 # globaldb produced by pipeline-init
 globaldb = '../cals/globaldb'
 # fake skymodel with pointing direction
@@ -49,33 +49,33 @@ mss_c = mss[::n]
 ##############################################
 # Initial processing
 logging.info('Fix beam table...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 #################################################
 # Copy cal solution
 logging.info('Copy solutions...')
-#for ms in mss:
-#    num = re.findall(r'\d+', ms)[-1]
-#    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
-#    check_rm(ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+for ms in mss:
+    num = re.findall(r'\d+', ms)[-1]
+    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
+    check_rm(ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 #########################################################################################
 # [PARALLEL] apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
 logging.info('Correcting target MSs...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
-#          log=ms+'-init_corbeam.log', cmd_type='BBS')
-#s.run(check=True)
+for ms in mss:
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
+          log=ms+'-init_corbeam.log', cmd_type='BBS')
+s.run(check=True)
 
 #########################################################################################
 # [PARALLEL] Transform to circular pol - SB.MS:CALCOR_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
 logging.info('Convert to circular...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+for ms in mss:
+    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 ########################################################################################
 # [PARALLEL] Initialize columns - SB.MS:CIRC_DATA_SUB = CIRC_DATA
@@ -108,14 +108,14 @@ for i in xrange(cycles):
 
     #####################################################################################
     # ft model, model is unpolarized CIRC == LIN - SB.MS:MODEL_DATA (best m87 model)
-    # TODO: test if adding wprojplanes here improves the calibration, wproj create cross problem in widefield?
+    # TODO: test if adding wprojplanes here improves the calibration, but wproj create cross problem in widefield!
     logging.info('Add models...')
     if i == cycles-1:
         for ms in mss_c:
-            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_final-ft-virgo.log')
+            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model, 'wproj':1024}, log=ms+'_final-ft-virgo.log')
             s.run(check=True) # not parallel!
     else:
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':1024}, log='ft-virgo-c'+str(i)+'.log')
         s.run(check=True)
 
     #####################################################################################
@@ -143,20 +143,21 @@ for i in xrange(cycles):
         s.run(check=False)
 
         # clean, mask, clean
-        logging.info('Make widefield model - Widefield imaging...')
-        imagename = 'img/clean-wide-c'+str(i)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+        if i != cycles-1:
+            logging.info('Make widefield model - Widefield imaging...')
+            imagename = 'img/clean-wide-c'+str(i)
+            s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
                     params={'msfile':'concat.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(i)+'.log')
-        s.run(check=True)
-        logging.info('Make widefield model - Make mask...')
-        make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87-blank.crtf'}, log='blank-c'+str(i)+'.log')
-        s.run(check=True)
-        logging.info('Make widefield model - Widefield imaging2...')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
-                    params={'msfile':'concat.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'wide'}, log='clean-wide2-c'+str(i)+'.log')
-        s.run(check=True)
-        widemodel = imagename.replace('wide','wide-masked')+'.model'
+            s.run(check=True)
+            logging.info('Make widefield model - Make mask...')
+            make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
+            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87-blank.crtf'}, log='blank-c'+str(i)+'.log')
+            s.run(check=True)
+            logging.info('Make widefield model - Widefield imaging2...')
+            s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+                    params={'msfile':'concat.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(i)+'.log')
+            s.run(check=True)
+            widemodel = imagename.replace('wide','wide-masked')+'.model'
 
         ###############################################################################################################################
         # ft widefield model
@@ -175,13 +176,6 @@ for i in xrange(cycles):
         s.run('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
         s.run(check=False)
 
-        # [PARALLEL] subtract widefield model SB.MS:CIRC_DATA -> SB.MS:CIRC_DATA_SUB (uncal data with subtracted the widefield model)
-        logging.info('Make widefield model - subtract from uncal data...')
-        for ms in mss_c:
-            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/bbs-subcorpt.parset', \
-                log=ms+'_subcorpt-c'+str(i)+'.log', cmd_type='BBS')
-        s.run(check=True)
-
         ########################################################################################################################
         # [PARALLEL] Flagging on CORRECTED_DATA
         logging.info('Make widefield model - Flagging residuals...')
@@ -189,6 +183,22 @@ for i in xrange(cycles):
             s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-flag.parset msin='+ms, \
                     log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
+
+        ########################################################################################################################
+        # [PARALLEL] subtract widefield model SB.MS:CIRC_DATA -> SB.MS:CIRC_DATA_SUB (uncal data with subtracted the widefield model)
+        # if last cycle skip (useless), but if one but last cycle, do on all SBs
+        if i != cycles-1:
+            if i >= cycles-4:
+                logging.info('Make widefield model - subtract from uncal data on all MSs...')
+                this_mss = mss
+            else:
+                logging.info('Make widefield model - subtract from uncal data...')
+                this_mss = mss_c
+
+            for ms in this_mss:
+                s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/bbs-subcorpt.parset', \
+                    log=ms+'_subcorpt-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
 
     #######################################################################################
     # Solution rescaling
