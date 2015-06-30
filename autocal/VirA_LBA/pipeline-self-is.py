@@ -138,10 +138,10 @@ for i in xrange(cycles):
         s.run(check=True)
 
         # uvsub, MODEL_DATA is still Virgo
-        logging.info('Make widefield model - UV-Subtracting Virgo A...')
+        logging.info('Flagging - UV-Subtracting Virgo A...')
         check_rm('concat.MS*')
         pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
-        s.add('taql "update concat.MS set SUBTRACTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
+        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"') # uvsub
         s.run(check=False)
 
         logging.info('Flagging - Flagging residuals...')
@@ -181,15 +181,12 @@ for i in xrange(cycles):
               log=ms+'_selfcor-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    # Last cycle: recreate the concat using NDPPP
+    # concat using NDPPP
+    logging.info('Concat...')
     check_rm('concat.MS*')
-    if i == cycles-1:
-        logging.info('Final concat...')
-        s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-concat.parset msin="['+','.join(mss_c)+']" msout=concat.MS', \
-                log='final_concat.log', cmd_type='NDPPP')
-        s.run(check=True)
-    else:
-        pt.msutil.msconcat(mss_c, 'concat.MS', concatTime=False)
+    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self-is/NDPPP-concat.parset msin="['+','.join(mss_c)+']" msout=concat.MS', \
+                log='concat-c'+str(i)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
 
     # clean (make a new model of virgo)
     logging.info('Clean...')
