@@ -54,12 +54,13 @@ def set_logger():
     return logger
 
 
-def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
+def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out, interp_kind='nearest'):
     """
     parmdb_gain: slow varying gain solutions
     parmdb_csp: fast varying common scalar phase + TEC solutions
     parmdb_empty: empty parmdb with gain and csp/TEC fast varying
     parmdb_out: copy of empty filled with parmdb_gain and parmdb_csp
+    interp_kind: 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic' where 'slinear', 'quadratic' and 'cubic' refer to a spline 
     """
     
     pdb_gain = parmdb.parmdb(parmdb_gain)
@@ -80,7 +81,7 @@ def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
         v_gain = parms_gain[key]['values'][:,0]
 
         # interpolate gain values
-        parms_empty[key]['values'][:,0] = interp1d(t_gain, v_gain, kind='nearest', bounds_error=False)(t_empty)
+        parms_empty[key]['values'][:,0] = interp1d(t_gain, v_gain, kind=interp_kind, bounds_error=False)(t_empty)
 
         # put nearest values on the boundaries
         parms_empty[key]['values'][:,0][ np.where(t_empty<t_gain[0]) ] = v_gain[0]

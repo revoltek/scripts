@@ -8,6 +8,5 @@ Step.subtract.Model.Gain.Enable            = T
 Step.subtract.Model.TEC.Enable             = T
 Step.subtract.Model.CommonScalarPhase.Enable = T
 Step.subtract.Model.Beam.Enable            = F
-Step.subtract.Model.Beam.UseChannelFreq    = T
 Step.subtract.Output.WriteCovariance       = False
 Step.subtract.Output.Column = SUBTRACTED_DATA

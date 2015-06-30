@@ -94,7 +94,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
@@ -109,10 +109,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
             logging.info('Merging instrument tables...')
             for ms in mss:
                 check_rm(ms+'/instrument')
-                merge_parmdb(ms+'/instrument_amp', ms+'/instrument_csp', ms+'/instrument_empty', ms+'/instrument')
+                merge_parmdb(ms+'/instrument_amp', ms+'/instrument_csp', ms+'/instrument_empty', ms+'/instrument', interp_kind='linear')
     
             ########################################################
             # LoSoTo Amp rescaling
+            logging.info('LoSoTo...')
             os.makedirs('plot')
             check_rm('globaldb')
             os.makedirs('globaldb')
@@ -135,7 +136,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             os.system('mv '+h5parm+' '+group)
     
             # correct amplitude - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
-            logging.info('Correcting amplitude...')
+            logging.info('Correcting...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel, \
                       log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='BBS')
@@ -191,7 +192,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
-        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask') # TODO: add threshpix=6?
+        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
         logging.info('Cleaning low resolution 2...')
         s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
                 -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \

@@ -8,5 +8,4 @@ Step.correct.Model.Gain.Enable = T
 Step.correct.Model.CommonScalarPhase.Enable = T
 Step.correct.Model.TEC.Enable = T
 Step.correct.Model.Beam.Enable = F
-Step.correct.Model.Beam.UseChannelFreq = T
 Step.correct.Output.Column = CORRECTED_DATA
