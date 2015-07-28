@@ -148,7 +148,7 @@ for i in xrange(4):
         logging.info('FT model...')
         for ms in glob.glob('peel-avg_TC*.MS'):
             s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':imagename+'-masked.model'}, log=ms+'_ft-c'+str(i)+'.log')
-            s.run(check=True)
+            s.run(check=True) # no parallel
 
     if i < 2:
         ################################################################################################
@@ -168,8 +168,7 @@ for i in xrange(4):
                     log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
         s.run(check=True)
 
-        # TODO: amp should be done in blocks of 20 SB, because beam is freq dependent
-        # [PARALLEL] calibrate amplitude 5 min timescale - peel-avg_TC*.MS:CORRECTED_DATA_PHASE (no correction)
+        # [PARALLEL] calibrate amplitude 5 min timescale every 20 SBs - peel-avg_TC*.MS:CORRECTED_DATA_PHASE (no correction)
         logging.info('Calibrating amplitude...')
         for ms in glob.glob('peel-avg_TC*.MS'):
             s.add('calibrate-stand-alone -f --parmdb-name instrument_amp  '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_amp.parset '+skymodel, \
@@ -179,8 +178,7 @@ for i in xrange(4):
         # merge parmdbs
         logging.info('Merging instrument tables...')
         for ms in glob.glob('peel-avg_TC*.MS'):
-            check_rm(ms+'/instrument')
-            merge_parmdb(ms+'/instrument_amp', ms+'/instrument_csp', ms+'/instrument_empty', ms+'/instrument')
+            merge_parmdb(ms+'/instrument_csp', ms+'/instrument_amp', ms+'/instrument', clobber=True)
 
         ########################################################
         # LoSoTo Amp rescaling
@@ -205,7 +203,7 @@ for i in xrange(4):
         os.system('mv plot peel/'+dd['name']+'/plots/plot-c'+str(i))
         os.system('mv '+h5parm+' peel/'+dd['name']+'/h5')
 
-        # [PARALLEL] correct phase + amplitude - peel-avg_TC*.MS:DATA -> peel_avg_TC*.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
+        # [PARALLEL] correct phase + amplitude - peel-avg_TC*.MS:CORRECTED_DATA_PHASE -> peel_avg_TC*.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
         logging.info('Correcting phase+amplitude...')
         for ms in glob.glob('peel-avg_TC*.MS'):
             s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_ampcsp.parset '+skymodel, \
@@ -250,7 +248,7 @@ for ms in glob.glob('peel-avg_TC*.MS'):
     logging.debug('Creating: peel/'+dd['name']+'/instruments/'+ms.replace('MS','parmdb'))
     os.system('cp -r '+ms+'/instrument peel/'+dd['name']+'/instruments/'+ms.replace('MS','parmdb'))
 
-# now do as for the DDcal but for the entire facet to obtain a complete image of the facet and do a final subtraction
+# now do the same but for the entire facet to obtain a complete image of the facet and do a final subtraction
 ##############################################################################################################################
 # Add rest of the facet - group*_TC*.MS:MODEL_DATA (high+low resolution model)
 logging.info('Add facet model...')
@@ -293,7 +291,7 @@ for tc in tcs:
     os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
 logging.info('Correcting facet amplitude+phase...')
 for ms in glob.glob('facet-avg_TC*.MS'):
-    s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_ampcsp.parset '+skymodel, \
+    s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_ampcsp-facet.parset '+skymodel, \
             log=ms+'_facet-corampcsp.log', cmd_type='BBS')
 s.run(check=True)
 

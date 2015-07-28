@@ -49,10 +49,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.makedirs('self/images/g'+g)
     
     #################################################################################################
+    # TODO: useless? why add columns by hand gives problems?
     # create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
     logging.info('Creating fake parmdb...')
     for ms in mss:
-        s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
+        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
@@ -94,7 +95,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
@@ -104,12 +105,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol_amp.parset '+skymodel, \
                       log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
-    
+
             # merge parmdbs
             logging.info('Merging instrument tables...')
             for ms in mss:
-                check_rm(ms+'/instrument')
-                merge_parmdb(ms+'/instrument_amp', ms+'/instrument_csp', ms+'/instrument_empty', ms+'/instrument', interp_kind='linear')
+                merge_parmdb(ms+'/instrument_csp', ms+'/instrument_amp', ms+'/instrument', clobber=True)
     
             ########################################################
             # LoSoTo Amp rescaling
@@ -134,8 +134,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
             os.system('mv plot '+group+'/plot-c'+str(i))
             os.system('mv '+h5parm+' '+group)
-    
-            # correct amplitude - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
+        
+            # correct amplitude - group*_TC.MS:CORRECTED_DATA_PHASE -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel, \
