@@ -49,10 +49,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.makedirs('self/images/g'+g)
     
     #################################################################################################
+    # TODO: useless? why add columns by hand gives problems?
     # create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
     logging.info('Creating fake parmdb...')
     for ms in mss:
-        s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
+        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
@@ -104,15 +105,15 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol_amp.parset '+skymodel, \
                       log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
-    
+
             # merge parmdbs
             logging.info('Merging instrument tables...')
             for ms in mss:
-                check_rm(ms+'/instrument')
-                merge_parmdb(ms+'/instrument_amp', ms+'/instrument_csp', ms+'/instrument_empty', ms+'/instrument')
+                merge_parmdb(ms+'/instrument_csp', ms+'/instrument_amp', ms+'/instrument', clobber=True)
     
             ########################################################
             # LoSoTo Amp rescaling
+            logging.info('LoSoTo...')
             os.makedirs('plot')
             check_rm('globaldb')
             os.makedirs('globaldb')
@@ -133,9 +134,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
             os.system('mv plot '+group+'/plot-c'+str(i))
             os.system('mv '+h5parm+' '+group)
-    
-            # correct amplitude - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
-            logging.info('Correcting amplitude...')
+        
+            # correct amplitude - group*_TC.MS:CORRECTED_DATA_PHASE -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
+            logging.info('Correcting...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel, \
                       log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='BBS')
@@ -191,7 +192,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
-        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask') # TODO: add threshpix=6?
+        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
         logging.info('Cleaning low resolution 2...')
         s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
                 -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \

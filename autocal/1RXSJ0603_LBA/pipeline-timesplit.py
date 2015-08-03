@@ -29,9 +29,9 @@ check_rm('*group*')
 ##############################################
 # Initial processing
 logging.info('Fix beam table')
-#for ms in sorted(glob.glob('*MS')):
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+for ms in sorted(glob.glob('*MS')):
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 #################################################
 # Copy cal solution
@@ -39,21 +39,21 @@ for ms in sorted(glob.glob('*MS')):
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument')
     logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 ###################################################################################################
 # [PARALLEL] Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
 logging.info('Apply solutions...')
-#for ms in glob.glob('*MS'):
-#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
-#s.run(check=True)
+for ms in glob.glob('*MS'):
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
+s.run(check=True)
 
 ###################################################################################################
 # [PARALLEL] To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
 logging.info('Convert to circular...')
-#for ms in glob.glob('*MS'):
-#    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+for ms in glob.glob('*MS'):
+    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 # TODO: combine all SB and run aoflagger
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, sys, time, pickle, random
+import os, sys, time, pickle, random, shutil
 import subprocess
 import logging
 from threading import Thread
@@ -53,13 +53,59 @@ def set_logger():
     logger.addHandler(ch)
     return logger
 
+def merge_parmdb(parmdb_p, parmdb_a, parmdb_out, clobber=False):
+    """
+    Merges facet selfcal parmdbs into a parmdb for a single band
 
-def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
+    Parameters
+    ----------
+    parmdb_p : str
+        Filename of CommonScalarPhase and TEC parmdb
+    parmdb_a : str
+        Filename of Gain parmdb. The nearset match in frequency to that of the
+        input band will be used
+    parmdb_out : str
+        Filename of output file
+    clobber : bool, optional
+        If True, overwrite existing output file
+
+    """
+    if type(clobber) is str:
+        if clobber.lower() == 'true':
+            clobber = True
+        else:
+            clobber = False
+
+    if os.path.exists(parmdb_out):
+        if clobber:
+            shutil.rmtree(parmdb_out)
+        else:
+            return
+    pdb_out = parmdb.parmdb(parmdb_out, create=True)
+
+    # Copy over the CommonScalar phases and TEC
+    pdb_p = parmdb.parmdb(parmdb_p)
+    for parmname in pdb_p.getNames():
+        parms = pdb_p.getValuesGrid(parmname)
+        pdb_out.addValues(parms)
+
+    # Copy over the Gains
+    pdb_a = parmdb.parmdb(parmdb_a)
+    for parmname in pdb_a.getNames():
+        parms = pdb_a.getValuesGrid(parmname)
+        pdb_out.addValues(parms)
+
+    # Write values
+    pdb_out.flush()
+
+
+def merge_parmdb_dep(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out, interp_kind='nearest'):
     """
     parmdb_gain: slow varying gain solutions
     parmdb_csp: fast varying common scalar phase + TEC solutions
-    parmdb_empty: empty parmdb with gain and csp/TEC fast varying
+    parmdb_empty: empty parmdb with gain and csp/TEC fast varying (time must be as fast as parmdb_csp and freqs as many as parmdb_gain)
     parmdb_out: copy of empty filled with parmdb_gain and parmdb_csp
+    interp_kind: 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic' where 'slinear', 'quadratic' and 'cubic' refer to a spline 
     """
     
     pdb_gain = parmdb.parmdb(parmdb_gain)
@@ -71,20 +117,32 @@ def merge_parmdb(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out):
     parms_empty = pdb_empty.getValuesGrid('*')
 
     # copy over the common scalar phases and TEC
+    # NOTE: it is wrong to copy TEC+ph in all channels!!!
     for key in parms_csp.keys():
-        parms_empty[key]['values'] = parms_csp[key]['values']
+        np.testing.assert_array_equal(parms_empty[key]['times'], parms_csp[key]['times'])
+
+        # final parmdb might have more freqs, fill all of them with the same values
+        for f in xrange(len(parms_empty[key]['freqs'])):
+            parms_empty[key]['values'][:,f] = parms_csp[key]['values'][:,0]
 
     for key in parms_gain.keys():
         t_gain = parms_gain[key]['times']
         t_empty = parms_empty[key]['times']
-        v_gain = parms_gain[key]['values'][:,0]
+        np.testing.assert_array_equal(parms_empty[key]['freqs'], parms_gain[key]['freqs'])
 
-        # interpolate gain values
-        parms_empty[key]['values'][:,0] = interp1d(t_gain, v_gain, kind='nearest', bounds_error=False)(t_empty)
+        # cycle on all frequencies
+        for f in xrange(len(parms_empty[key]['freqs'])):
+            v_gain = parms_gain[key]['values']
 
-        # put nearest values on the boundaries
-        parms_empty[key]['values'][:,0][ np.where(t_empty<t_gain[0]) ] = v_gain[0]
-        parms_empty[key]['values'][:,0][ np.where(t_empty>t_gain[-1]) ] = v_gain[-1]
+            # if single value do not interpolate (error otherwise)
+            if len(t_gain) == 1: parms_empty[key]['values'][:,f] = v_gain[0,f]
+            else:
+                # interpolate gain values
+                parms_empty[key]['values'][:,f] = interp1d(t_gain, v_gain[:,f], kind=interp_kind, bounds_error=False)(t_empty)
+
+                # put nearest values on the boundaries
+                parms_empty[key]['values'][:,f][ np.where(t_empty<t_gain[0]) ] = v_gain[0,f]
+                parms_empty[key]['values'][:,f][ np.where(t_empty>t_gain[-1]) ] = v_gain[-1,f]
 
     pdbnew = parmdb.parmdb(parmdb_out, create=True)
     pdbnew.addValues(parms_empty)

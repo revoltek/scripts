@@ -1,7 +1,0 @@
-msin = 
-msin.datacolumn = CALCOR_DATA
-msout = 
-msout.datacolumn = DATA
-msout.writefullresflag = False
-
-steps = []
