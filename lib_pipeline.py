@@ -240,7 +240,7 @@ class Scheduler():
         elif cmd_type == 'python':
             out = subprocess.check_output('grep -l "[a-z]Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('WSClean run problem on:\n'+out)
+                logging.error('Python run problem on:\n'+out)
                 return 1
 
         else:
