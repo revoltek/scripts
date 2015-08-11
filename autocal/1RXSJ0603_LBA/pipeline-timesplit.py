@@ -52,7 +52,7 @@ s.run(check=True)
 # [PARALLEL] To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
 logging.info('Convert to circular...')
 for ms in glob.glob('*MS'):
-    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
+    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 # TODO: combine all SB and run aoflagger

@@ -247,8 +247,6 @@ class Scheduler():
         for action in self.action_list:
             if self.dry: continue # don't schedule if dry run
             q.put_nowait(action)
-            # qsub may conflict if jobs initialized too close together
-            #time.sleep(10)
         for _ in threads: q.put(None) # signal no more commands
         for t in threads: t.join()
 
