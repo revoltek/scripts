@@ -44,7 +44,7 @@ def setupiofiles(inms, outms, incolumn, outcolumn):
   to.close()
   return outms
 
-def mslin2circ(incol, outcol, outms):
+def mslin2circ(incol, outcol, outms, skipmetadata):
   tc = pt.table(outms,readonly=False)
   dataXY = tc.getcol(incol)
   I=numpy.complex(0.0,1.0)
@@ -66,15 +66,16 @@ def mslin2circ(incol, outcol, outms):
   tc.putcol('FLAG',flagXY)
 
   #Change metadata information to be circular feeds
-  feed = pt.table(tc.getkeyword('FEED'),readonly=False)
-  for tpart in feed.iter('ANTENNA_ID'):
-      tpart.putcell('POLARIZATION_TYPE',0,['R','L'])
+  if not skipmetadata:
+    feed = pt.table(tc.getkeyword('FEED'),readonly=False)
+    for tpart in feed.iter('ANTENNA_ID'):
+        tpart.putcell('POLARIZATION_TYPE',0,['R','L'])
 
-  polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False)
-  polariz.putcell('CORR_TYPE',0,[5,6,7,8])
+    polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False)
+    polariz.putcell('CORR_TYPE',0,[5,6,7,8])
   tc.close()
 
-def mscirc2lin(incol, outcol, outms):
+def mscirc2lin(incol, outcol, outms, skipmetadata):
   tc = pt.table(outms,readonly=False)
   dataRL = tc.getcol(incol)
   I=numpy.complex(0.0,1.0)
@@ -95,13 +96,14 @@ def mscirc2lin(incol, outcol, outms):
   print "Final flags:", numpy.count_nonzero(flagXY)
   tc.putcol('FLAG',flagXY)
 
-  #Change metadata information to be circular feeds
-  feed = pt.table(tc.getkeyword('FEED'),readonly=False)
-  for tpart in feed.iter('ANTENNA_ID'):
-      tpart.putcell('POLARIZATION_TYPE',0,['X','Y'])
+  if not skipmetadata:
+    #Change metadata information to be circular feeds
+    feed = pt.table(tc.getkeyword('FEED'),readonly=False)
+    for tpart in feed.iter('ANTENNA_ID'):
+        tpart.putcell('POLARIZATION_TYPE',0,['X','Y'])
 
-  polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False)
-  polariz.putcell('CORR_TYPE',0,[9,10,11,12])
+    polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False)
+    polariz.putcell('CORR_TYPE',0,[9,10,11,12])
   tc.close()
 
 
@@ -119,6 +121,7 @@ opt = optparse.OptionParser()
 opt.add_option('-i','--inms',help='Input MS (format: ms:COLUMN, default column: DATA)',default='')
 opt.add_option('-o','--outms',help='Output MS (format: ms:COLUMN, default ms: InputMS, default column: DATA)')
 opt.add_option('-r','--reverse',action="store_true",default=False,help='Convert from circular to linear')
+opt.add_option('-s','--skipmetadata',action="store_true",default=False,help='Skip setting the metadata correctly')
 options, arguments = opt.parse_args()
 
 if len( options.inms.split(':') ) == 2:
@@ -140,7 +143,7 @@ print "INFO: inms: "+inms+" (column: "+incolumn+")"
 print "INFO: outms: "+outms+" (column: "+outcolumn+")"
 
 if options.reverse == True:
-   mscirc2lin(incolumn, outcolumn, outms)
+   mscirc2lin(incolumn, outcolumn, outms, options.skipmetadata)
 else:
-   mslin2circ(incolumn, outcolumn, outms)
+   mslin2circ(incolumn, outcolumn, outms, options.skipmetadata)
 updatehistory(outms)

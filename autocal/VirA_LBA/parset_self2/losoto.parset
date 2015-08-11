@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [norm,plotA,plotA2,plotP,plotP2]
+LoSoTo.Steps = [reweight,norm,plotA,plotA2,plotP,plotP2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -7,6 +7,11 @@ LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
+
+LoSoTo.Steps.reweight.Operation = REWEIGHT
+LoSoTo.Steps.reweight.WeightVal = 0.
+LoSoTo.Steps.reweight.ant = [CS017LBA] # bad ant
+LoSoTo.Steps.reweight.FlagBad = False
 
 LoSoTo.Steps.norm.Operation = NORM
 LoSoTo.Steps.norm.NormVal = 1.
