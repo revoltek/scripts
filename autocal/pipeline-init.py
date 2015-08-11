@@ -30,10 +30,10 @@ check_rm('*log')
 
 ##############################################
 # Initial processing (2/2013->2/2014)
-logging.warning('Fix beam table')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.warning('Fix beam table')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ##############################################
 # [PARALLEL] initial calibrator
