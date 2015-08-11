@@ -16,7 +16,7 @@ case $@ in
 esac
 
 # ugly workaround to catch qsub errors and resubmit
-until [[ $id =~ ^-?[0-9]+$ ]]; do
+until [[ $id =~ ^[0-9]+$ ]]; do
 
 # For DEBUG output add:
 #PBS -o output-\$PBS_JOBID
@@ -31,12 +31,11 @@ until [[ $id =~ ^-?[0-9]+$ ]]; do
 source /home/lofar/init-lofar.sh
 source /home/lofar/init-lofar-test.sh
 PATH=\"/home/stsf309/scripts:${PATH}\"
-cd \$PBS_O_WORKDIR
 echo \"\$PBS_JOBID - ${@}\" >> commands.log
 ${@}"
 
     # call the command and capture the stdout
-    id=`qsub << EOF
+    id=`qsub /dev/stdin << EOF | perl -pe 's:^\D+(\d+).*$:$1:'
 $cmd
 EOF`
 

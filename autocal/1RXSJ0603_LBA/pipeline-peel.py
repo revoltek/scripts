@@ -29,7 +29,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=12, dry=False)
+s = Scheduler(qsub=True, max_threads=12, dry=False)
 
 # TODO: iterate on DD calibrators
 
@@ -192,7 +192,7 @@ for i in xrange(4):
 
         s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
         s.run(check=False)
-        s.add('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+        s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
         s.run(check=False)
         s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
         s.run(check=True)
