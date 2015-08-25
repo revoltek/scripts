@@ -1,5 +1,5 @@
 Strategy.InputColumn = CORRECTED_DATA_PHASE # DATA
-Strategy.ChunkSize = 120
+Strategy.ChunkSize = 20
 Strategy.Steps = [correct1, correct2]
 
 # TODO: not sure if merging the two steps is OK, to test

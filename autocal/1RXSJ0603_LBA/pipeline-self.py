@@ -50,26 +50,24 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
     #################################################################################################
     # TODO: useless? why add columns by hand gives problems?
-    # create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
-#    logging.info('Creating fake parmdb...')
-#    for ms in mss:
-#        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
-#              log=ms+'_fakeparmdb.log', cmd_type='BBS')
-#    s.run(check=True)
+    logging.info('Creating fake parmdb...')
+    for ms in mss:
+        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
+              log=ms+'_fakeparmdb.log', cmd_type='BBS')
+    s.run(check=True)
 
-#    logging.info('Creating MODEL_DATA_HIGHRES...')
-#    for ms in mss:
-#        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
-#    s.run(check=True)
+    logging.info('Creating MODEL_DATA_HIGHRES...')
+    for ms in mss:
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
+    s.run(check=True)
 
     # after columns creation
-#    logging.info('Concatenating TCs...')
-#    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+    logging.info('Concatenating TCs...')
+    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
     
     ####################################################################################################
     # self-cal cycle
-#    for i in xrange(3):
-    for i in xrange(1,3):
+    for i in xrange(3):
         logging.info('Start selfcal cycle: '+str(i))
     
         # TEST for circular
@@ -137,7 +135,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
             os.system('mv '+h5parm+' '+group)
         
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
-            # TODO: move to NDPPP
             logging.info('Correcting...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel, \
@@ -165,7 +162,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms, \
                 log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
         s.run(check=True)
-        sys.exir(1)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
@@ -185,31 +181,31 @@ for group in sorted(glob.glob('group*'))[::-1]:
         #continue
         ####################################################################
     
-        ####################################################################################################################################################
+        ############################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
         s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql2-c'+str(i)+'.log')
         s.run(check=False)
- # TODO: remove low-res   
+
         # reclean low-resolution
-#        logging.info('Cleaning low resolution 1...')
-#        imagename = 'img/wide-lr-'+str(i)
-#        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90\
-#                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
-#                log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
-#        s.run(check=True)
-#        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
-#        logging.info('Cleaning low resolution 2...')
-#        s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
-#                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
-#                log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
-#        s.run(check=True)
+        logging.info('Cleaning low resolution 1...')
+        imagename = 'img/wide-lr-'+str(i)
+        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90\
+                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
+                log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
+        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
+        logging.info('Cleaning low resolution 2...')
+        s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
+                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
+                log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.run(check=True)
 
         ###############################################################################################################
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
-#        logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-#        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log')
-#        s.run(check=False)
+        logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log')
+        s.run(check=False)
 
         # Flag on residuals
         logging.info('Flagging residuals...')
@@ -219,9 +215,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
     
         # Concat models
-#        logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
-#        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log')
-#        s.run(check=False)
+        logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
+        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log')
+        s.run(check=False)
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)

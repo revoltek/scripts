@@ -1,5 +1,5 @@
 Strategy.InputColumn = DATA
-Strategy.ChunkSize = 120
+Strategy.ChunkSize = 20
 Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
@@ -12,7 +12,7 @@ Step.solve.Model.Beam.Enable = F
 Step.solve.Solve.Parms = ["Gain:0:0:*", "Gain:1:1:*", "CommonScalarPhase:*", "TEC:*"]
 Step.solve.Solve.CellSize.Freq = 20
 Step.solve.Solve.CellSize.Time = 1
-Step.solve.Solve.CellChunkSize = 120
+Step.solve.Solve.CellChunkSize = 20
 Step.solve.Solve.PropagateSolutions = F
 Step.solve.Solve.Options.MaxIter = 1
 Step.solve.Solve.Options.UseSVD = T

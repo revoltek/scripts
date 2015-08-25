@@ -190,41 +190,62 @@ def size_from_facet(img, c_coord, pixsize):
 
 
 class Scheduler():
-    def __init__(self, qsub=False, max_threads = 12, dry=False):
+    def __init__(self, qsub=False, max_threads = 12, dry=False, max_processors=5):
         """
         qsub: if true call a shell script which call qsub and then wait 
         for the process to finish before returning
         max_threads: max number of parallel processes
         dry: don't schedule job
+        max_processors: max number of processors in a node
         """
         self.max_threads = max_threads
         self.qsub = qsub
         self.dry = dry
-        logging.debug("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+").")
+        self.max_processors = max_processors
+        logging.debug("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+", max_processors: "+str(max_processors)+").")
 
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
 
-    def add(self, cmd='', log='', log_append = False, cmd_type=''):
+    def add(self, cmd='', log='', log_append = False, cmd_type='', processors=None):
         """
         Add cmd to the scheduler list
         """
         if log != '' and not log_append: cmd += ' > '+log+' 2>&1'
         if log != '' and log_append: cmd += ' >> '+log+' 2>&1'
-        self.action_list.append(cmd)
+
+        if self.qsub:
+            # if number of processors not specified, try to find automatically
+            if processors == None:
+                processors = 1 # default use single CPU
+                if "calibrate-stand-alone" == cmd[:21]: processors = 1
+                if "NDPPP" == cmd[:5]: processors=1
+                if "wsclean" == cmd[:7]: processors=self.max_processors
+                if "awimager" == cmd[:8]: processors=self.max_processors
+            self.action_list.append(str(processors)+' \''+cmd+'\'')
+        else:
+            self.action_list.append(cmd)
+
         if log != '' and cmd_type != '':
             self.log_list.append((log,cmd_type))
 
-    def add_casa(self, cmd='', params={}, log='', log_append = False):
+    def add_casa(self, cmd='', params={}, log='', log_append = False, processors=None):
         """
         Run a casa command pickling the parameters passed in params
         NOTE: running casa commands in parallel is a problem for the log file, better avoid
         """
+        if processors == None: processors=self.max_processors # default use entire node
         pfile = 'casaparams_'+str(random.randint(0,1e9))+'.pickle'
         pickle.dump( params, open( pfile, "wb" ) )
-        if log != '' and not log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1')
-        elif log != '' and log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1')
-        else: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile)
+        if self.qsub:
+            if log != '' and not log_append: self.action_list.append(str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1\'')
+            elif log != '' and log_append: self.action_list.append(str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1\'')
+            else: self.action_list.append(str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+'\'')
+        else:
+            if log != '' and not log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1')
+            elif log != '' and log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1')
+            else: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile)
+
         if log != '':
             self.log_list.append((log,'CASA'))
 
@@ -234,7 +255,7 @@ class Scheduler():
         """
         def worker(queue):
             for cmd in iter(queue.get, None):
-                if self.qsub: cmd = 'qsub_waiter.sh \''+cmd+'\''
+                if self.qsub: cmd = 'qsub_waiter.sh '+cmd
                 subprocess.call(cmd, shell=True)
     
         q = Queue()

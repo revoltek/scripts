@@ -24,6 +24,8 @@ def casa_blank(imgs = [], region = '', inverse=False, setTo = 0):
             ia.open(img)
             reg = rg.fromtextfile(filename=region, shape=ia.shape(), csys=ia.coordsys().torecord())
             ia.set(pixels=setTo, region=reg)
+            del reg
+            ia.done()
             ia.close()
 
 params = pickle.load( open( sys.argv[6], "rb" ) )

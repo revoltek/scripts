@@ -29,7 +29,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=12, dry=False)
+s = Scheduler(qsub=True, max_threads=12, dry=False, max_processors=5)
 
 # TODO: iterate on DD calibrators
 
@@ -126,16 +126,17 @@ s.run(check=True)
 for ms in glob.glob('peel-avg-model_TC*.MS'):
     msout = ms.replace('peel-avg-model','peel-avg')
     logging.debug(ms+':DATA -> '+msout+':MODEL_DATA')
-    s.add('taql \'update '+msout+', '+ms+' as model set MODEL_DATA=model.DATA\'')
+    s.add('taql \'update '+msout+', '+ms+' as model set MODEL_DATA=model.DATA\'', log=msout+'_init-taql.log')
 s.run(check=False)
+sys.exit(1)
 check_rm('peel-avg-model_TC*.MS')
 
 # [PARALLEL] create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
-logging.info('Creating fake parmdb...')
-for ms in glob.glob('peel-avg_TC*.MS'):
-    s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-fakeparmdb.parset '+skymodel, \
-            log=ms+'_init-fakeparmdb.log', cmd_type='BBS')
-s.run(check=True)
+#logging.info('Creating fake parmdb...')
+#for ms in glob.glob('peel-avg_TC*.MS'):
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-fakeparmdb.parset '+skymodel, \
+#            log=ms+'_init-fakeparmdb.log', cmd_type='BBS')
+#s.run(check=True)
 
 ###################################################################################################################
 # self-cal cycle
@@ -172,7 +173,7 @@ for i in xrange(4):
         logging.info('Calibrating amplitude...')
         for ms in glob.glob('peel-avg_TC*.MS'):
             s.add('calibrate-stand-alone -f --parmdb-name instrument_amp  '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_amp.parset '+skymodel, \
-                    log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
+                    log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS', processors = 5)
         s.run(check=True)
 
         # merge parmdbs
@@ -211,11 +212,12 @@ for i in xrange(4):
         s.run(check=True)
 
     # [PARALLEL] averaging before cleaning peel-avg_TC*.MS:CORRECTED_DATA -> peel-avgavg_TC*.MS:DATA
+    # TODO: hardcoded use 240 channels (must be divisible by 4), should check available channels and use the max possible
     check_rm('peel-avgavg_TC*.MS')
     logging.info('Averaging before cleaning...')
     for ms in glob.glob('peel-avg_TC*.MS'):
         msout = ms.replace('avg','avgavg')
-        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA msout='+msout+' avg.freqstep=4 avg.timestep=10', \
+        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.nchan=240 msin.datacolumn=CORRECTED_DATA msout='+msout+' avg.freqstep=4 avg.timestep=10', \
                 log=ms+'_avgclean-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 

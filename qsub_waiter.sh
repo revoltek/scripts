@@ -5,15 +5,9 @@
 sleep_time=10 # seconds; don't make this too short! don't want to tax system with excessive qstat calls
 shopt -s expand_aliases
 
-# choose number of processors to reserve
-case $@ in
-    *calibrate-stand-alone*) proc=1 ;;
-    *NDPPP*) proc=1 ;;
-    *wsclean*) proc=5 ;;
-    *casa*) proc=5 ;;
-    *awimager*) proc=5 ;;
-    *) proc=1
-esac
+# get number of processors
+proc=$1
+shift
 
 # ugly workaround to catch qsub errors and resubmit
 until [[ $id =~ ^[0-9]+$ ]]; do
@@ -24,14 +18,14 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 
     cmd="#!/bin/bash
 #PBS -N fdg
-#PBS -l walltime=100:00:00
+#PBS -l walltime=10:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
 #PBS -o /dev/null
 source /home/lofar/init-lofar.sh
 source /home/lofar/init-lofar-test.sh
 PATH=\"/home/stsf309/scripts:${PATH}\"
-echo \"\$PBS_JOBID - ${@}\" >> commands.log
+echo \"\$PBS_JOBID (proc:${proc}) - ${@}\" >> commands.log
 ${@}"
 
     # call the command and capture the stdout

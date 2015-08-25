@@ -1,17 +1,6 @@
 Strategy.InputColumn = DATA
 Strategy.ChunkSize = 120
-Strategy.Steps = [correct2, correct1]
-
-Step.correct1.Operation = CORRECT
-Step.correct1.Model.Gain.Enable = F
-Step.correct1.Model.CommonScalarPhase.Enable = T
-Step.correct1.Model.TEC.Enable = T
-
-Step.correct2.Operation = CORRECT
-Step.correct2.Model.Gain.Enable = T
-Step.correct2.Model.CommonScalarPhase.Enable = F
-Step.correct2.Model.TEC.Enable = F
-Step.correct2.Output.Column = CORRECTED_DATA
+Strategy.Steps = [correct]
 
 Step.correct.Operation = CORRECT
 Step.correct.Model.Sources = []
