@@ -23,44 +23,45 @@ import pyfits,sys,optparse
 
 opt = optparse.OptionParser(usage="%prog [-setbeam max,min,pa] [-setkeyword keyword=value] fitsfile", version="%prog 0.1")
 opt.add_option('-b', '--setbeam', help='Set beam minaxis maxaxis and position angle to three comma-separated numbers (arcsec,arcsec,degree) [ex: 123,123,90]')
-opt.add_option('-k', '--setkeyword', help='Set a keyword to a specific value')
+opt.add_option('-k', '--setkeyword', help='Set a keyword to a specific value (e.g. --k CRPIX1=10)')
 (options, img) = opt.parse_args()
 setbeam = options.setbeam
 setkeyword = options.setkeyword
 sys.stdout.flush()
 
 try:
-	hdulist = pyfits.open(img[0], mode='update')
+    hdulist = pyfits.open(img[0], mode='update')
 except:
-	print "ERROR: problems opening file "+img[0]
-	sys.exit(1)
+    print "ERROR: problems opening file "+img[0]
+    sys.exit(1)
 
 if setkeyword is None and setbeam is None:
     print hdulist[0].header.__repr__()
     sys.exit(0)
 
 if ( not setkeyword is None ):
-	try: keyword, value = setkeyword.split('=')
-	except:
-		print "ERROR: the format for \"--setkeyword\" is keyword=value"
-		sys.exit(1)
-	prihdr = hdulist[0].header
-	print "Setting",keyword,"=",value
-	prihdr.update(keyword, value)
+    try: keyword, value = setkeyword.split('=')
+    except:
+        print "ERROR: the format for \"--setkeyword\" is keyword=value"
+        sys.exit(1)
+    prihdr = hdulist[0].header
+    print "Setting",keyword,"=",value
+    print "Type is found to be: ", type(prihdr[keyword])
+    prihdr[keyword] = type(prihdr[keyword])(value)
 
 if ( not setbeam is None ):
-	try: bmaj,bmin,pa = setbeam.split(',')
-	except:
-		print "ERROR: the format for \"--setbeam\" is max,min,pa (arcsec,arcsec,deg)"
-		sys.exit(1)
-	prihdr = hdulist[0].header
-	print "Setting beam to ",bmaj,bmin,pa
-	bmaj = float(bmaj)/3600.
-	bmin = float(bmin)/3600.
-	pa = float(pa)
-	prihdr['BMAJ'] = bmaj
-	prihdr['BMIN'] = bmin
-	prihdr['BPA'] = pa
+    try: bmaj,bmin,pa = setbeam.split(',')
+    except:
+        print "ERROR: the format for \"--setbeam\" is max,min,pa (arcsec,arcsec,deg)"
+        sys.exit(1)
+    prihdr = hdulist[0].header
+    print "Setting beam to ",bmaj,bmin,pa
+    bmaj = float(bmaj)/3600.
+    bmin = float(bmin)/3600.
+    pa = float(pa)
+    prihdr['BMAJ'] = bmaj
+    prihdr['BMIN'] = bmin
+    prihdr['BPA'] = pa
 
 hdulist.flush()
 print "Done!"
