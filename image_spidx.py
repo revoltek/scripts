@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # in case of pyrap RuntimeError: Failed Always Assert "coords[nc-1] != 0"
-# try to convert the map in fits, and then back to MS using pyrap "saveas"
+# try to convert the map in fits (in casa, e.g. with the armonizer), and then back to MS using pyrap "saveas"
 
 import sys, os
 import optparse
@@ -83,10 +83,15 @@ for name in imglist:
     # get frequencies
     t = pyrap.tables.table(name, ack=False)
     try:
+        _null = t.getkeyword('coords.spectral2')
         frequencies.append(t.getkeyword('coords.worldreplace2')[0])
     except:
-        #frequencies.append(image.coordinates().get_referencevalue()[0])
-        frequencies.append(t.getkeyword('coords.worldreplace1')[0])
+        try:
+            _null = t.getkeyword('coords.spectral1')
+            frequencies.append(t.getkeyword('coords.worldreplace1')[0])
+        except:
+            print "Cannot find spectral axis."
+            sys.exit(1)
     t.close()
     print "Freq: ", frequencies[-1]
 

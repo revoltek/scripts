@@ -33,9 +33,7 @@ def main(args):
    break
  print pbcounter,'x 4 =',pbcounter*4,'zeros replaced'
  if args.output == '':
-  while image[-1]=='/':
-   image=image[:-1]
-  outim = image+'z'
+  outim = image.rstrip('/')+'z'
  else:
   outim = args.output
  print 'Writing',outim

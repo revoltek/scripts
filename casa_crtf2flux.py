@@ -24,11 +24,21 @@
 # if more then 1 img: do integrated spidx of that region
 
 # to set reffreq:
-# imhead(imagename,'put','restfreq',{'value': 323098000.0, 'unit': 'Hz'}
-# to solve for LELAttribute: coordinates of operands mismatch
-# reorder axis in casa with imtrans
+# imhead(imagename,'put','restfreq',{'value': 323098000.0, 'unit': 'Hz'})
 
-nsigma = 2 # number of sigma below which the image is masked out
+# to solve for LELAttribute: coordinates of operands mismatch
+# reorder axis in casa with imtrans (typically order='0132' to switch freq and stokes)
+
+# to add from scratch missing axes:
+# ia.open(filename)
+# im2 = ia.adddegaxes(stokes='I') # if stokes axis missing
+# im3 = im2.adddegaxes(spectral=T) # if spectral axis missing
+# im3.subimage('test.image')
+# then maybe reorder as explained above
+
+# number of sigma below which the image is masked out
+# if 0 then the entire region is used 
+nsigma = 3
 
 import os, sys, glob
 import numpy as np
@@ -39,6 +49,13 @@ import matplotlib.pyplot as plt
 images = sys.argv[7:]
 regionfile = sys.argv[5]
 noiseregionfile = sys.argv[6]
+
+# get the right freq not the rest freq
+def getFreq(image):
+    h = imhead(imagename=image, mode='list')
+    for i in xrange(10):
+        if h['ctype'+str(i+1)] == 'Frequency':
+            return float(h['crval'+str(i+1)])
 
 print "Split region file"
 lines = sum(1 for line in open(regionfile))
@@ -56,7 +73,7 @@ freqs = []
 lelexpr = []
 for i, image in enumerate(images):
     rms.append(imstat(imagename=image, region=noiseregionfile)['rms'][0])
-    freqs.append(imhead(imagename=image,mode='get',hdkey='restfreq')['value'])
+    freqs.append(getFreq(image))
     print image+ "(freq:", freqs[i], ") - rms:", rms[i], 'Jy/b'
     # make mask that selects only pixels above the noise in all images
     lelexpr.append('"'+image+'" > '+str(nsigma)+'*'+str(rms[i]))
@@ -81,8 +98,9 @@ for region in sorted(glob.glob('__reg*crtf')):
         ia.close()
         pixperbeam = (bmaj['value']*bmin['value']*1.1331)/abs(xpix*ypix)
 
-        # in some cases casa crash if the first image of the lel expression is not the one in imagename
+        # in some cases casa crashes if the first image of the lel expression is not the one in imagename
         lelexpr[0], lelexpr[i] = lelexpr[i], lelexpr[0]
+        print lelexpr
 
         stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr))
         flux[region].append(stat['flux'][0])
@@ -101,7 +119,8 @@ if len(images) > 1:
         ax.set_xlabel(r'Log Frequency [Hz]')
         ax.set_ylabel(r'Log Flux [Jy]')
         ax.errorbar(np.log10(freqs), np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]), fmt='ko')
-        ax.plot(np.log10(freqs), [b+a*x for x in np.log10(freqs)], 'r-')
+        ax.plot(np.log10(freqs), [b+a*x for x in np.log10(freqs)], 'r-', label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(a,sa))
+        ax.legend(loc=1)
         fig.savefig(region+'.pdf', bbox_inches='tight')
         fig.clf()
 

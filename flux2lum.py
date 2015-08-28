@@ -21,9 +21,14 @@
 
 import sys, os
 import numpy as np
+
+if len(sys.argv) == 1:
+    print "flux2lum.py redshift flux(in Jy) [error=0] [alpha=-1]"
+    sys.exit(0)
+
 from astropy.cosmology import FlatLambdaCDM
-cosmo = FlatLambdaCDM(H0=70, Om0=0.27)
-print "Using Flat LmbdaCDM H0=0.70 Om0=0.27"
+cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
+print "Using Flat LmbdaCDM H0=0.70 Om0=0.3"
 
 # k-correction
 def kcorr(flux, z, alpha):
@@ -31,10 +36,11 @@ def kcorr(flux, z, alpha):
 
 z = float(sys.argv[1]) # redshift
 flux = float(sys.argv[2]) # in Jy
-try:flux_err = float(sys.argv[3])
-except: flux_err = 0.
 try: alpha = float(sys.argv[4])
 except: alpha = -1
+try:flux_err = float(sys.argv[3])
+except: flux_err = 0.
+
 
 print "z=",z
 print "flux=",flux," Jy"
