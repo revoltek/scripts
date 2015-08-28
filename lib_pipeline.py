@@ -226,7 +226,7 @@ class Scheduler():
         else:
             self.action_list.append(cmd)
 
-        if log != '' and cmd_type != '':
+        if log != '':
             self.log_list.append((log,cmd_type))
 
     def add_casa(self, cmd='', params={}, log='', log_append = False, processors=None):
@@ -285,6 +285,7 @@ class Scheduler():
         Produce a warning if a command didn't close the log properly i.e. it crashed
         NOTE: grep, -L inverse match, -l return only filename
         """
+
         if not os.path.exists(log):
             logging.warning('No log file found to check results: '+log)
             return 1
@@ -320,8 +321,14 @@ class Scheduler():
                 logging.error('Python run problem on:\n'+out)
                 return 1
 
+        elif cmd_type == 'general':
+            out = subprocess.check_output('grep -l -i "error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            if out != '':
+                logging.error('Run problem on:\n'+out)
+                return 1
+
         else:
-            logging.warning('Unknown command type for log checking: '+cmd)
+            logging.warning('Unknown command type for log checking: "'+cmd_type+'"')
             return 1
 
         return 0

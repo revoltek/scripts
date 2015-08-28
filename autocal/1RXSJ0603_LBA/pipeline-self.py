@@ -173,8 +173,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
        
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
-        s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(i)+'.log')
-        s.run(check=False)
+        s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(i)+'.log', cmd_type='general')
+        s.run(check=True)
     
         ####################################################################
         # FAST VERSION (no low-res)
@@ -184,8 +184,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
         ############################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql2-c'+str(i)+'.log')
-        s.run(check=False)
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql2-c'+str(i)+'.log', cmd_type='general')
+        s.run(check=True)
 
         # reclean low-resolution
         logging.info('Cleaning low resolution 1...')
@@ -204,8 +204,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
         ###############################################################################################################
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
         logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log')
-        s.run(check=False)
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log', cmd_type='general')
+        s.run(check=True)
 
         # Flag on residuals
         logging.info('Flagging residuals...')
@@ -216,8 +216,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
         # Concat models
         logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log')
-        s.run(check=False)
+        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log', cmd_type='general')
+        s.run(check=True)
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
