@@ -29,7 +29,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=12, dry=False, max_processors=5)
+s = Scheduler(qsub=True, max_threads=50, dry=False, max_processors=6)
 
 # TODO: iterate on DD calibrators
 
@@ -82,15 +82,15 @@ for i, model in enumerate(sorted(glob.glob('self/models/wide*-g*model*'))):
 # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
 logging.info('Add DD calibrator...')
 for g in groups:
+    logging.debug('Working group: '+g)
     model = 'peel/'+dd['name']+'/models/peel-g'+g+'.model'
     modellr = 'peel/'+dd['name']+'/models/peel-lr-g'+g+'.model'
-    logging.debug('Concatenating group: '+g)
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
-    s.run(check=True)
+    s.run(check=True) # no parallel
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True}, log='init-g'+g+'-ft2.log')
-    s.run(check=True)
+    s.run(check=True) # no parallel
 
 # [PARALLEL] ADD (corrupt) group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
 logging.info('Add and corrupt model...')
@@ -121,22 +121,14 @@ s.run(check=True)
 # Copy the phase-shifted MODEL_DATA - peel-avg-model_TC*.MS':DATA -> peel-avg_TC*.MS':MODEL_DATA
 logging.info('Copy MODEL_DATA...')
 for ms in glob.glob('peel-avg_TC*.MS'):
-    s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA', log=ms+'_init-addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors=5)
 s.run(check=True)
 for ms in glob.glob('peel-avg-model_TC*.MS'):
     msout = ms.replace('peel-avg-model','peel-avg')
     logging.debug(ms+':DATA -> '+msout+':MODEL_DATA')
-    s.add('taql \'update '+msout+', '+ms+' as model set MODEL_DATA=model.DATA\'', log=msout+'_init-taql.log')
-s.run(check=False)
-sys.exit(1)
+    s.add('taql "update '+msout+', '+ms+' as model set MODEL_DATA=model.DATA"', log=msout+'_init-taql.log', cmd_type='general')
+s.run(check=True)
 check_rm('peel-avg-model_TC*.MS')
-
-# [PARALLEL] create a fake parmdb to be used later for merging slow-amp and fast-phase parmdbs
-#logging.info('Creating fake parmdb...')
-#for ms in glob.glob('peel-avg_TC*.MS'):
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument_empty '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-fakeparmdb.parset '+skymodel, \
-#            log=ms+'_init-fakeparmdb.log', cmd_type='BBS')
-#s.run(check=True)
 
 ###################################################################################################################
 # self-cal cycle
