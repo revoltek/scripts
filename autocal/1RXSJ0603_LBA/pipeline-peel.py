@@ -14,6 +14,7 @@
 # coordinate of the region to find the DD
 #coord = [90.833333,42.233333] # toorhbrush
 #coord = [91.733333,41.680000] # strong pts
+# TODO: extract coords from ms or models
 dd = {'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou1.crtf', 'reg_facet': 'facet1.crtf'}
 phasecentre = [90.833333,42.233333] # toorhbrush
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
@@ -80,24 +81,24 @@ for i, model in enumerate(sorted(glob.glob('self/models/wide*-g*model*'))):
 
 ###############################################################################################################################
 # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
-#logging.info('Add DD calibrator...')
-#for g in groups:
-#    logging.debug('Working group: '+g)
-#    model = 'peel/'+dd['name']+'/models/peel-g'+g+'.model'
-#    modellr = 'peel/'+dd['name']+'/models/peel-lr-g'+g+'.model'
-#    check_rm('concat.MS*')
-#    pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
-#    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
-#    s.run(check=True) # no parallel
-#    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True}, log='init-g'+g+'-ft2.log')
-#    s.run(check=True) # no parallel
+logging.info('Add DD calibrator...')
+for g in groups:
+    logging.debug('Working group: '+g)
+    model = 'peel/'+dd['name']+'/models/peel-g'+g+'.model'
+    modellr = 'peel/'+dd['name']+'/models/peel-lr-g'+g+'.model'
+    check_rm('concat.MS*')
+    pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
+    s.run(check=True) # no parallel
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True}, log='init-g'+g+'-ft2.log')
+    s.run(check=True) # no parallel
 
 # [PARALLEL] ADD (corrupt) group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
-#logging.info('Add and corrupt model...')
-#for ms in sorted(glob.glob('group*_TC*.MS')):
-#    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset', \
-#            log=ms+'_init-addcor.log', cmd_type='BBS')
-#s.run(check=True)
+logging.info('Add and corrupt model...')
+for ms in sorted(glob.glob('group*_TC*.MS')):
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset', \
+            log=ms+'_init-addcor.log', cmd_type='BBS')
+s.run(check=True)
 
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel-avg_TC*.MS:DATA (empty+DD, avg, phase shifted)
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:MODEL_DATA -> peel-avg-model_TC*.MS:DATA (DD model, avg, phase shifted)

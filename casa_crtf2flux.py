@@ -38,7 +38,7 @@
 
 # number of sigma below which the image is masked out
 # if 0 then the entire region is used 
-nsigma = 3
+nsigma = 0
 
 import os, sys, glob
 import numpy as np
@@ -75,7 +75,7 @@ for i, image in enumerate(images):
     rms.append(imstat(imagename=image, region=noiseregionfile)['rms'][0])
     freqs.append(getFreq(image))
     print image+ "(freq:", freqs[i], ") - rms:", rms[i], 'Jy/b'
-    # make mask that selects only pixels above the noise in all images
+    # make mask that selects only pixels above the noise in all or one of the images
     lelexpr.append('"'+image+'" > '+str(nsigma)+'*'+str(rms[i]))
 
 print "Calculate fluxes:"
@@ -100,9 +100,11 @@ for region in sorted(glob.glob('__reg*crtf')):
 
         # in some cases casa crashes if the first image of the lel expression is not the one in imagename
         lelexpr[0], lelexpr[i] = lelexpr[i], lelexpr[0]
-        print lelexpr
 
-        stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr))
+        stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr)) # cut at 3 sigma in all images
+        print "Use this cut:"+str(lelexpr)
+        #stat = imstat(imagename=image, region=region, mask=lelexpr[0]) # cut at 3 sigma in THIS image
+        #print "Cut at 3 sigma on this image"
         flux[region].append(stat['flux'][0])
         err[region].append(rms[i]*np.sqrt(stat['npts'][0]/pixperbeam)) 
         print image+ " - flux:", flux[region][i], '±', err[region][i], 'Jy'

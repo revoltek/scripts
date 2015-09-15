@@ -6,7 +6,7 @@ import scipy.special
 
 # USER INPUT
 freq = 60.0e6 # Hz. Observing freqency, from msoverview
-nchan= 8. # Channels per subband
+nchan= 16. # Channels per subband
 bw=195.0e3/nchan # Hz. 195kHz is the bandwidt of one subband
 delta_T = 1. # seconds. Averaging
 #b = 1292.0e3 # meters. IS longest baseline in meters. 
