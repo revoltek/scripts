@@ -1,16 +1,10 @@
 Strategy.InputColumn = CORRECTED_DATA_PHASE # DATA
 Strategy.ChunkSize = 20
-Strategy.Steps = [correct1, correct2]
+Strategy.Steps = [correct]
 
-# TODO: not sure if merging the two steps is OK, to test
 Step.correct.Operation = CORRECT
 Step.correct.Model.Sources = []
 Step.correct.Model.CommonScalarPhase.Enable = T
 Step.correct.Model.TEC.Enable = T
+Step.correct.Model.Gain.Enable = T
 Step.correct.Model.Beam.Enable = F
-
-Step.correct2.Operation = CORRECT
-Step.correct2.Model.Sources = []
-Step.correct2.Model.Gain.Enable = T
-Step.correct2.Model.Beam.Enable = F
-Step.correct2.Output.Column = CORRECTED_DATA

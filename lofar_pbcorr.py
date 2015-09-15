@@ -187,8 +187,8 @@ def pbcorr(mosaicfits, pbfits, mosaicpbfits='', mosaicpbcutfits='', Pcut = 0.4):
 
 def main(opts, args):
     
-    if opts.optuput == None:
-        opts.output == args[1].rstrip('/')+'_PBcor'
+    if opts.output == None:
+        opts.output = args[1].rstrip('/')+'_PBcor'
     if opts.pbcut > 1 or opts.pbcut < 0:
         print "ERROR: PBcut must be between 0 and 1."
         sys.exit(1)
@@ -200,12 +200,14 @@ def main(opts, args):
     img_out = opts.output.rstrip('/')
     data_col = opts.datacol
     pbcut = opts.pbcut
+    npix = opts.npix
 
     img_tmp = 'awimg_'+str(random.randint(0,1e9))
-    cellsize = np.ceil(fov*3600./4096.)
-    os.system('awimager ms='+ms+' image='+img_tmp+' niter=0 data='+data_col+' weight=briggs npix=4096 cellsize='+cellsize+'arcsec padding=1. stokes=I operation=mfclark oversample=5 timewindow=300 ApplyElement=0 FindNWplanes=True PBCut=1e-2 wmax=20000 SpheSupport=15')
-    os.system('avgpbz.py '+img_tmp+'.avgpb')
-    os.system('image2fits in='+img_tmp+'.avgpbz out='+img_tmp+'.fits')
+    cellsize = np.ceil(fov*3600./npix)
+    print 'running: awimager ms='+ms+' image='+img_tmp+' niter=0 data='+data_col+' weight=briggs robust=0 npix='+str(npix)+' cellsize='+str(cellsize)+'arcsec padding=1. stokes=I operation=mfclark FindNWplanes=True PBCut=1e-2'
+    os.system('awimager ms='+ms+' image='+img_tmp+' niter=0 data='+data_col+' weight=briggs robust=0 npix='+str(npix)+' cellsize='+str(cellsize)+'arcsec padding=1. stokes=I operation=mfclark FindNWplanes=True PBCut=1e-2')
+    os.system('avgpbz.py '+img_tmp+'0.avgpb')
+    os.system('image2fits in='+img_tmp+'0.avgpbz out='+img_tmp+'.fits')
 
     pbcorr(mosaicfits = img_in, pbfits = img_tmp+'.fits', Pcut = pbcut)
 
@@ -215,10 +217,11 @@ def main(opts, args):
 usage = "%prog [options] msfile image"
 opt = optparse.OptionParser(usage)
 opt.add_option('-v','--verbose',help='Verbose mode', default=False, action='store_true')
-opt.add_option('-f','--fov',help='Linear size of the field of view (degrees) [10]', default=10, type='float')
+opt.add_option('-f','--fov',help='Linear size of the field of view (degrees) [5]', default=5, type='float')
 opt.add_option('-o','--output',help='Output image name [input image + "_PBcor"]', default=None, type='string')
 opt.add_option('-d','--datacol',help='Data column to image [CORRECTED_DATA]', default='CORRECTED_DATA', type='string')
-opt.add_option('-p','--pcut',help='Cut at PB value, must be a number from 0 to 1 [0.4]', default='0.4', type='float')
+opt.add_option('-p','--pbcut',help='Cut at PB value, must be a number from 0 to 1 [0.4]', default='0.4', type='float')
+opt.add_option('-n','--npix',help='Number of pixel in the pb image made by awimager [512]', default='512', type='int')
 opts,args = opt.parse_args()
 if len(args) != 2:
     print 'Need required argument msname, image'

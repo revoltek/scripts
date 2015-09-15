@@ -5,10 +5,12 @@
 # TCs are blocks of SBs should have calibrator corrected (a+p) data in DATA (beam not applied).
 # file format of TCs is: group#_TC###.MS.
 # Output:
-# TCs with selfcal corrected source subtracted data in SUBTRACTED_DATA
+# TCs with selfcal NOT corrected source subtracted data in SUBTRACTED_DATA
+# TCs with selfcal corrected source subtracted data in CORRECTED_DATA
 # instrument tables contain gain (slow) + fast (scalarphase+TEC) solutions
 # last high/low resolution models are copied in the "self/models" dir
-# last high/low resolution images are copied in the "self/images" dir
+# last high/low resolution images + masks + empty images (CORRECTED_DATA) are copied in the "self/images" dir
+# h5parm solutions and plots are copied in the "self/solutions" dir
 
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel'
 
@@ -23,11 +25,12 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=32, dry=False)
+s = Scheduler(qsub=True, max_threads=32, dry=False, max_processors=6)
 
 # here an image+model for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
+if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 
 for group in sorted(glob.glob('group*'))[::-1]:
 
@@ -47,6 +50,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.makedirs('img')
     check_rm('self/images/g'+g)
     os.makedirs('self/images/g'+g)
+    check_rm('self/solutions/g'+g)
+    os.makedirs('self/solutions/g'+g)
     
     #################################################################################################
     # TODO: useless? why add columns by hand gives problems?
@@ -131,8 +136,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
             for num, ms in enumerate(mss):
                 check_rm(ms+'/instrument')
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-            os.system('mv plot '+group+'/plot-c'+str(i))
-            os.system('mv '+h5parm+' '+group)
+            os.system('mv plot self/solutions/g'+group+'/plot-c'+str(i))
+            os.system('mv '+h5parm+' self/solutions/g'+group)
         
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')
@@ -221,7 +226,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
-    # TODO: move to NDPPP
     logging.info('Final subtraction...')
     for ms in mss:
         s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel, \

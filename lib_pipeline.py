@@ -189,6 +189,18 @@ def size_from_facet(img, c_coord, pixsize):
     return shape
 
 
+def find_nchan(ms):
+    """
+    Find number of channel in this ms
+    """
+    import pyrap.tables as tb
+    t = tb.table(ms+'/SPECTRAL_WINDOW', ack=False)
+    nchan = t.getcol('NUM_CHAN')
+    t.close()
+    logging.debug('Channels in '+ms+': '+str(nchan)+' (NOTE: all numbers must be equal!) ')
+    return nchan[0]
+
+
 class Scheduler():
     def __init__(self, qsub=False, max_threads = 12, dry=False, max_processors=5):
         """
@@ -210,9 +222,16 @@ class Scheduler():
     def add(self, cmd='', log='', log_append = False, cmd_type='', processors=None):
         """
         Add cmd to the scheduler list
+        cmd: the command to run
+        log: log file name that can be checked at the end
+        log_append: if true append, otherwise replace
+        cmd_type: can be a list of known command types as "BBS", "NDPPP"...
+        processors: number of processors to use, can be "max" to automatically use max number of processors per node
         """
         if log != '' and not log_append: cmd += ' > '+log+' 2>&1'
         if log != '' and log_append: cmd += ' >> '+log+' 2>&1'
+
+        if processors != None and processors.lower() == 'max': processors = self.max_processors
 
         if self.qsub:
             # if number of processors not specified, try to find automatically
@@ -234,13 +253,17 @@ class Scheduler():
         Run a casa command pickling the parameters passed in params
         NOTE: running casa commands in parallel is a problem for the log file, better avoid
         """
+
+        if processors != None and processors.lower() == 'max': processors = self.max_processors
         if processors == None: processors=self.max_processors # default use entire node
+
         pfile = 'casaparams_'+str(random.randint(0,1e9))+'.pickle'
         pickle.dump( params, open( pfile, "wb" ) )
         if self.qsub:
-            if log != '' and not log_append: self.action_list.append(str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1\'')
-            elif log != '' and log_append: self.action_list.append(str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1\'')
-            else: self.action_list.append(str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+'\'')
+            if log != '' and not log_append: casacmd = str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1'
+            elif log != '' and log_append: casacmd = str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1'
+            else: casacmd = str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile
+            self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'') # clean up casa remnants
         else:
             if log != '' and not log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1')
             elif log != '' and log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1')
@@ -255,7 +278,7 @@ class Scheduler():
         """
         def worker(queue):
             for cmd in iter(queue.get, None):
-                if self.qsub: cmd = 'qsub_waiter.sh '+cmd
+                if self.qsub: cmd = 'qsub_waiter.sh '+cmd+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
         q = Queue()

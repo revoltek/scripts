@@ -12,6 +12,7 @@ def update_freq_range(modelfile):
     q['numeric'][3] = 1e10 # a random large value
     csys.setincrement(q)
     ia.setcoordsys(csys.torecord())
+    ia.done()
     ia.close()
 
 def casa_ft(msfile='', model='', incr=False, wproj=None):
