@@ -37,12 +37,8 @@ s = Scheduler(qsub=True, max_threads=25, dry=False, max_processors=6)
 #########################################################################################
 # Clear
 logging.info('Cleaning...')
-check_rm('peel*MS') 
-check_rm('facet*MS')
-check_rm('*shift.MS') 
 check_rm('concat*') 
 check_rm('*log *last *pickle')
-check_rm('plot')
 check_rm('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name']+'/models')
@@ -66,8 +62,8 @@ tcs = list(set(tcs))
 logging.info('Add DD calibrator...')
 for g in groups:
     logging.debug('Working group: '+g)
-    model = 'self/models/wide-g'+g+'model*'
-    model = 'self/models/wide-lr-g'+g+'model*'
+    model = 'self/models/wide-g'+g+'.model'
+    modellr = 'self/models/wide-lr-g'+g+'.model'
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
@@ -82,26 +78,29 @@ for ms in sorted(glob.glob('group*_TC*.MS')):
             log=ms+'_init-addcor.log', cmd_type='BBS')
 s.run(check=True)
 
-# [PARALLEL] averaging before cleaning peel-avg_TC*.MS:CORRECTED_DATA -> peel-avgavg_TC*.MS:DATA
-check_rm('peel-avgavg_TC*.MS')
-logging.info('Averaging before cleaning...')
-nchan = find_nchan('group8_TC0.MS')
-for ms in glob.glob('group*_TC*.MS'):
-    msout = ms.replace('.MS','avg.MS')
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
-                msout='+msout+' avg.freqstep=4 avg.timestep=10', log=ms+'_avgclean-c'+str(i)+'.log', cmd_type='NDPPP')
-s.run(check=True)
+# pre-concat
+#logging.info('Averaging...')
+#check_rm('peel*MS') 
+#for tc in tcs:
+#    logging.debug('Time chunk (DATA): '+tc)
+#    mss = glob.glob('group*_TC'+tc+'.MS')
+#    msout = 'peel-avg_TC'+tc+'.MS'
+#    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+#           avg.freqstep=4 avg.timestep=10', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 # Concatenating (in time) before imaging peel-avgavg_TC*.MS:DATA -> concat.MS:DATA (beam corrected, only source to peel in the data, all chan)
-check_rm('concat.MS*')
-logging.info('Concatenating TCs...')
-pt.msutil.msconcat(glob.glob('group*_TC*.MS'), 'concat.MS', concatTime=False)
+#check_rm('concat.MS*')
+#logging.info('Concatenating TCs...')
+#pt.msutil.msconcat(glob.glob('peel-avg_TC*.MS'), 'concat.MS', concatTime=False)
 
 # Clean mask clean
-imagename = 'peel/'+dd['name']+'/images/peel-'+str(i)
-imsize = 4096
-logging.debug('Image size set to '+str(imsize))
-logging.info('Cleaning...')
+imagename = 'peel/'+dd['name']+'/images/peel-test'
+logging.info('Cleaning 1...')
 s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':50000, 'multiscale':[0], 'wproj':512}, log='casaclean1-c'+str(i)+'.log')
+            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':4096, 'niter':5000, 'multiscale':[0,3,9,18], 'wproj':512}, log='casaclean1.log')
 s.run(check=True)
+#logging.info('Cleaning 2...')
+#s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
+#            params={'msfile':'concat.MS', 'imagename':imagename+'-lr', 'imsize':1024, 'cell':'10arcsec', 'niter':5000, 'multiscale':[0], 'wproj':512, 'uvtaper':True, 'outertaper':'60arcsec'}, log='casaclean2.log')
+#s.run(check=True)

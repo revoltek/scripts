@@ -1,5 +1,5 @@
 Strategy.InputColumn = SUBTRACTED_DATA
-Strategy.ChunkSize = 10
+Strategy.ChunkSize = 50
 Strategy.Steps = [add]
 
 Step.add.Operation                    = ADD
