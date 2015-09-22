@@ -30,7 +30,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=25, dry=False, max_processors=6)
+s = Scheduler(qsub=True, max_threads=50, dry=False, max_processors=6)
 
 # TODO: iterate on DD calibrators
 
@@ -66,16 +66,24 @@ for g in groups:
     modellr = 'self/models/wide-lr-g'+g+'.model'
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='init-g'+g+'-ft1.log')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':1024}, log='init-g'+g+'-ft1.log')
     s.run(check=True) # no parallel
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True}, log='init-g'+g+'-ft2.log')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'wproj':1024, 'incr':True}, log='init-g'+g+'-ft2.log')
     s.run(check=True) # no parallel
 
+####################################################################################################
 # [PARALLEL] ADD (corrupt) group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
-logging.info('Add and corrupt model...')
+#logging.info('Add and corrupt model...')
+#for ms in sorted(glob.glob('group*_TC*.MS')):
+#    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add-test.parset', \
+#            log=ms+'_init-addcor.log', cmd_type='BBS')
+#s.run(check=True)
+
+#####################################################################################################
+logging.info('Correct...')
 for ms in sorted(glob.glob('group*_TC*.MS')):
-    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add-test.parset', \
-            log=ms+'_init-addcor.log', cmd_type='BBS')
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' bbs-subadd.parset', \
+            log=ms+'_subadd.log', cmd_type='BBS')
 s.run(check=True)
 
 # pre-concat
@@ -90,17 +98,23 @@ s.run(check=True)
 #s.run(check=True)
 
 # Concatenating (in time) before imaging peel-avgavg_TC*.MS:DATA -> concat.MS:DATA (beam corrected, only source to peel in the data, all chan)
-#check_rm('concat.MS*')
-#logging.info('Concatenating TCs...')
+check_rm('concat.MS*')
+logging.info('Concatenating TCs...')
+pt.msutil.msconcat(sorted(glob.glob('group*_TC*.MS')), 'concat.MS', concatTime=False)
 #pt.msutil.msconcat(glob.glob('peel-avg_TC*.MS'), 'concat.MS', concatTime=False)
 
 # Clean mask clean
 imagename = 'peel/'+dd['name']+'/images/peel-test'
 logging.info('Cleaning 1...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':4096, 'niter':5000, 'multiscale':[0,3,9,18], 'wproj':512}, log='casaclean1.log')
+s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 \
+        -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 concat.MS', \
+        log='wsclean.log', cmd_type='wsclean')
 s.run(check=True)
+#s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
+#            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':4096, 'niter':5000, 'multiscale':[0,3,9,18], 'wproj':512}, log='casaclean1.log')
+#s.run(check=True)
 #logging.info('Cleaning 2...')
 #s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
 #            params={'msfile':'concat.MS', 'imagename':imagename+'-lr', 'imsize':1024, 'cell':'10arcsec', 'niter':5000, 'multiscale':[0], 'wproj':512, 'uvtaper':True, 'outertaper':'60arcsec'}, log='casaclean2.log')
 #s.run(check=True)
+logging.info('Done.')

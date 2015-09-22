@@ -259,4 +259,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.system('mv img/empty-image.fits self/images/g'+g)
     os.system('mv *log '+group)
 
+# TODO: add final imaging with all SBs
+
 logging.info("Done.")
