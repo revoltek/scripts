@@ -31,45 +31,43 @@ logging.basicConfig(level=logging.DEBUG)
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-i', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
-opt.add_option('-o', '--overwrite', help='If active, overwrite the input MS or create a new one [default: False, output is inMS-BLavg.MS]', action="store_true", default=False)
+opt.add_option('-o', '--overwrite', help='If active, overwrite the input MS or create a new one [default: False, output is "inMS"-BLavg.MS]', action="store_true", default=False)
 opt.add_option('-c', '--clobber', help='If active, delete the output file if different from input and exists [default: False]', action="store_true", default=False)
 opt.add_option('-l', '--column', help='Column name to average, output will always be the same column [default: DATA]', type='string', default='DATA')
-(options, msfile_in) = opt.parse_args()
+(options, msfile) = opt.parse_args()
 ionfactor = options.ionfactor
 
-if msfile_in == []:
+if msfile == []:
     opt.print_help()
     sys.exit(0)
-msfile_in = msfile_in[0]
+msfile = msfile[0]
 
-if not os.path.exists(msfile_in):
+if not os.path.exists(msfile):
     logging.error("Cannot find MS file.")
     sys.exit(1)
 
-# open input MS
-if options.overwrite: msin = pt.table(msfile_in, readonly=False, ack=False)
-else: msin = pt.table(msfile_in, readonly=True, ack=False)
-
-# prepare output ms
+# prepare new ms
 if not options.overwrite:
-    msfile_out = msfile_in.replace('.MS','-BLavg.MS')
-    if os.path.exists(msfile_out):
+    msfile_new = msfile.replace('.MS','-BLavg.MS')
+    if os.path.exists(msfile_new):
         if not options.clobber:
             logging.error("Output file exists and clobber=False")
             sys.exit(1)
-        os.system('rm -r '+msfile_out)
+        os.system('rm -r '+msfile_new)
     logging.info("Copying MS, this may take a while.")
-    os.system('cp -r '+msfile_in+' '+msfile_out)
-    logging.info("Copy done.")
-    msout = pt.table(msfile_out, readonly=False, ack=False)
+    os.system('cp -r '+msfile+' '+msfile_new)
+    msfile = msfile_new
+
+# open input/output MS
+ms = pt.table(msfile, readonly=False, ack=False)
         
-freqtab = pt.table(msfile_in + '/SPECTRAL_WINDOW', ack=False)
+freqtab = pt.table(msfile + '/SPECTRAL_WINDOW', ack=False)
 freq = freqtab.getcol('REF_FREQUENCY')
 freqtab.close()
 wav = 299792458. / freq
 
 # iteration on baselines
-for t in msin.iter(["ANTENNA1", "ANTENNA2"]):
+for t in ms.iter(["ANTENNA1", "ANTENNA2"]):
     ant1 = t.getcell('ANTENNA1', 0)
     ant2 = t.getcell('ANTENNA2', 0)
     if ant1 >= ant2: continue
@@ -104,16 +102,8 @@ for t in msin.iter(["ANTENNA1", "ANTENNA2"]):
     data = (dataR + 1j * dataI)/weights # can I do it?
 
     # write the BL
-    if options.overwrite:
-        t.putcol(options.column, data)
-        t.putcol('WEIGHT_SPECTRUM', weights)
-    else:
-        tout = msout.query('ANTENNA1 == '+str(ant1)+' and ANTENNA2 == '+str(ant2))
-        tout.putcol(options.column, data)
-        tout.putcol('WEIGHT_SPECTRUM', weights)
-        tout.close()
+    t.putcol(options.column, data)
+    t.putcol('WEIGHT_SPECTRUM', weights)
 
-msin.close()
-if not options.overwrite: msout.close()
-
+ms.close()
 logging.info("Done.")

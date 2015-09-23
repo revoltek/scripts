@@ -34,14 +34,15 @@ if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 
 for group in sorted(glob.glob('group*'))[::-1]:
 
-    mss = sorted(glob.glob(group+'/group*_TC*.MS'))
+    mss = sorted(glob.glob(group+'/group*_TC[0-9][0-9].MS'))
+    concat_ms = group+'/concat.MS'
     g = str(re.findall(r'\d+', mss[0])[0])
     logging.info('Working on group: '+g+'...')
-    concat_ms = group+'/concat.MS'
     
     ################################################################################################
     # Clear
     logging.info('Cleaning...')
+    check_rm('*-BLavg.MS')
     check_rm(group+'/*log *log *bak')
     check_rm(group+'/plot* plot')
     check_rm(group+'/*h5 *h5')
@@ -52,7 +53,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.makedirs('self/images/g'+g)
     check_rm('self/solutions/g'+g)
     os.makedirs('self/solutions/g'+g)
-    
+
     #################################################################################################
     # TODO: useless? why add columns by hand gives problems?
     logging.info('Creating fake parmdb...')
@@ -90,10 +91,23 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
         if i == 0:
             # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
+            logging.info('Smoothing...')
+            check_rm('*-BLavg.MS')
+            for ms in mss:
+                s.add('BLavg.py -c '+ms, log=ms+'_smooth-c'+str(i)+'.log', cmd_type='python')
+            s.run(check=True)
             logging.info('Calibrating phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor.parset '+skymodel, \
-                      log=ms+'_cal-c'+str(i)+'.log', cmd_type='BBS')
+                s.add('calibrate-stand-alone -f '+ms.replace('.MS','-BLavg.MS')+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol.parset '+skymodel, \
+                      log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
+            for ms in mss:
+                checkrm(ms+'/instrument')
+                os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
+            logging.info('Correcting phase...')
+            for ms in mss:
+                s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor.parset '+skymodel, \
+                      log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
