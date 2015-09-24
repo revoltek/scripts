@@ -67,6 +67,12 @@ freq = freqtab.getcol('REF_FREQUENCY')
 freqtab.close()
 wav = 299792458. / freq
 timepersample = ms.getcell('INTERVAL',0)
+all_time = ms.getcol('TIME_CENTROID')
+
+# check if ms is time-ordered
+if not all(all_time[i] <= all_time[i+1] for i in xrange(len(all_time)-1)):
+    logging.critical('This code cannot handle MS that are not time-sorted.')
+    sys.exit(1)
 
 # check if loading all data in memory
 if options.memory:
@@ -79,13 +85,14 @@ if options.memory:
 
     # iteration on baseline combination
     for ant in itertools.product(set(ant1), set(ant2)):
+
         if ant[0] >= ant[1]: continue
         sel1 = np.where(ant1 == ant[0])[0]
         sel2 = np.where(ant2 == ant[1])[0]
-        sel = set(sel1).intersection(sel2)
+        sel = sorted(list(frozenset(sel1).intersection(sel2)))
     
         # compute the FWHM
-        uvw = all_uvw[list(sel),:]
+        uvw = all_uvw[sel,:]
         uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
         dist = np.mean(uvw_dist) / 1.e3
         stddev = options.ionfactor * np.sqrt((25.e3 / dist)) * (freq / 60.e6) # in sec
@@ -97,12 +104,10 @@ if options.memory:
 #    running weighted average with a Gaussian window function.
     
         # get weights
-        flags = all_flags[list(sel),:,:]
-        weights = all_weights[list(sel),:,:]*~flags # set flagged data weight to 0
-        #print 'w', weights.shape
+        flags = all_flags[sel,:,:]
+        weights = all_weights[sel,:,:]*~flags # set flagged data weight to 0
         # get data
-        data = all_data[list(sel),:,:]*weights
-        #print 'd', data.shape
+        data = all_data[sel,:,:]*weights
     
         # smear weighted data and weights
         dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
@@ -110,12 +115,13 @@ if options.memory:
         weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
     
         # re-create data
-        all_data[list(sel),:,:] = (dataR + 1j * dataI)/weights # can I do it?
-        all_weights[list(sel),:,:] = weights
-    
+        all_data[sel,:,:] = (dataR + 1j * dataI)/weights # can I do it?
+        all_weights[sel,:,:] = weights
+
     ms.putcol('DATA', all_data)
     ms.putcol('WEIGHT_SPECTRUM', all_weights)
 
+# load BL per BL, cleaner but much slower
 else:
 
     # iteration on baselines
@@ -139,10 +145,8 @@ else:
         # get weights
         flags = t.getcol('FLAG')
         weights = t.getcol('WEIGHT_SPECTRUM')*~flags # set flagged data weight to 0
-        #print 'w', weights.shape
         # get data
         data = t.getcol(options.column)*weights
-        #print 'd', data.shape
     
         # smear weighted data and weights
         dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
