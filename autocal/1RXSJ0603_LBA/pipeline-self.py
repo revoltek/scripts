@@ -34,7 +34,7 @@ if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 
 for group in sorted(glob.glob('group*'))[::-1]:
 
-    mss = sorted(glob.glob(group+'/group*_TC[0-9][0-9].MS'))
+    mss = sorted(glob.glob(group+'/group*_TC*[0-9].MS'))
     concat_ms = group+'/concat.MS'
     g = str(re.findall(r'\d+', mss[0])[0])
     logging.info('Working on group: '+g+'...')
@@ -42,7 +42,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     ################################################################################################
     # Clear
     logging.info('Cleaning...')
-    check_rm('*-BLavg.MS')
+    check_rm(group+'/*-BLavg.MS')
     check_rm(group+'/*log *log *bak')
     check_rm(group+'/plot* plot')
     check_rm(group+'/*h5 *h5')
@@ -61,6 +61,12 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
+
+    logging.info('Smoothing...')
+    for ms in mss:
+        if not os.path.exists(ms.replace('.MS','-BLavg.MS')): s.add('BLavg.py -c '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.run(check=True)
+    mssavg = sorted(glob.glob(group+'/group*_TC*-BLavg.MS'))
 
     logging.info('Creating MODEL_DATA_HIGHRES...')
     for ms in mss:
@@ -91,42 +97,44 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
         if i == 0:
             # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
-            logging.info('Smoothing...')
-            check_rm('*-BLavg.MS')
-            for ms in mss:
-                s.add('BLavg.py -c '+ms, log=ms+'_smooth-c'+str(i)+'.log', cmd_type='python')
-            s.run(check=True)
             logging.info('Calibrating phase...')
-            for ms in mss:
-                s.add('calibrate-stand-alone -f '+ms.replace('.MS','-BLavg.MS')+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol.parset '+skymodel, \
+            for ms in mssavg:
+                s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol.parset '+skymodel, \
                       log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
             for ms in mss:
-                checkrm(ms+'/instrument')
+                check_rm(ms+'/instrument')
                 os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
             logging.info('Correcting phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor.parset '+skymodel, \
+                s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor.parset '+skymodel, \
                       log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
+            # copy MODEL_DATA in avg data - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
+            logging.info('Copying MODEL_DATA to the averaged datasets...')
+            for ms in mss:
+                msavg = ms.replace('.MS','-BLavg.MS')
+                s.add('taql "update '+ms+', '+msavg+' as avg set avg.MODEL_DATA=MODEL_DATA"', log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
+            s.run(check=True)
+
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
-            for ms in mss:
+            for ms in mssavg:
                 s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
             # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
             logging.info('Calibrating amplitude...')
-            for ms in mss:
+            for ms in mssavg:
                 s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol_amp.parset '+skymodel, \
                       log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
 
             # merge parmdbs
             logging.info('Merging instrument tables...')
-            for ms in mss:
+            for ms in mssavg:
                 merge_parmdb(ms+'/instrument_csp', ms+'/instrument_amp', ms+'/instrument', clobber=True)
     
             ########################################################
@@ -135,7 +143,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             os.makedirs('plot')
             check_rm('globaldb')
             os.makedirs('globaldb')
-            for num, ms in enumerate(mss):
+            for num, ms in enumerate(mssavg):
                 os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
                 if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
             h5parm = 'global-c'+str(i)+'.h5'
@@ -147,6 +155,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
             s.run(check=True)
 
+            # Copy instrument from globaldb (msavg) to ms
             for num, ms in enumerate(mss):
                 check_rm(ms+'/instrument')
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
