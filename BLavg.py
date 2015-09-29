@@ -115,8 +115,12 @@ if options.memory:
         weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
     
         # re-create data
-        all_data[sel,:,:] = (dataR + 1j * dataI)/weights # can I do it?
+        d = (dataR + 1j * dataI)
+        weights[np.where(data == 0)] = np.nan # prevent 0/0
+        all_data[sel,:,:] = d/weights # when weights == 0 or nan -> nan
         all_weights[sel,:,:] = weights
+
+
 
     ms.putcol('DATA', all_data)
     ms.putcol('WEIGHT_SPECTRUM', all_weights)
@@ -154,8 +158,10 @@ else:
         weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
     
         # re-create data
-        data = (dataR + 1j * dataI)/weights # can I do it?
-    
+        d = (dataR + 1j * dataI)
+        weights[np.where(data == 0)] = np.nan # prevent 0/0
+        data = d/weights # when weights == 0 or nan -> nan
+
         # write the BL
         t.putcol(options.column, data)
         t.putcol('WEIGHT_SPECTRUM', weights)
