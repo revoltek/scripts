@@ -115,12 +115,13 @@ if options.memory:
         weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
     
         # re-create data
+        # NOTE: both data and/or weight might be 0
         d = (dataR + 1j * dataI)
-        weights[np.where(data == 0)] = np.nan # prevent 0/0
-        all_data[sel,:,:] = d/weights # when weights == 0 or nan -> nan
-        all_weights[sel,:,:] = weights
-
-
+        weights[np.where(data == 0)] = np.nan # prevent 0/0 exception
+        d = d/weights # when weights == 0 or nan -> data is nan
+        # if data is nan, put data to 0 (anyway they must be flagged)
+        all_data[sel,:,:] = np.nan_to_num(d)
+        all_weights[sel,:,:] = np.nan_to_num(weights)
 
     ms.putcol('DATA', all_data)
     ms.putcol('WEIGHT_SPECTRUM', all_weights)
@@ -158,13 +159,14 @@ else:
         weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
     
         # re-create data
-        d = (dataR + 1j * dataI)
+        data = (dataR + 1j * dataI)
         weights[np.where(data == 0)] = np.nan # prevent 0/0
-        data = d/weights # when weights == 0 or nan -> nan
+        data = data/weights # when weights == 0 or nan -> nan
 
         # write the BL
-        t.putcol(options.column, data)
-        t.putcol('WEIGHT_SPECTRUM', weights)
+        # if data is nan, put data to 0 (anyway they must be flagged)
+        t.putcol(options.column, np.nan_to_num(data))
+        t.putcol('WEIGHT_SPECTRUM', np.nan_to_num(weights))
 
 ms.close()
 logging.info("Done.")
