@@ -64,7 +64,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     logging.info('Smoothing...')
     for ms in mss:
-        if not os.path.exists(ms.replace('.MS','-BLavg.MS')): s.add('BLavg.py -c '+ms, log=ms+'_smooth.log', cmd_type='python')
+        s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.run(check=True)
     mssavg = sorted(glob.glob(group+'/group*_TC*-BLavg.MS'))
 
@@ -111,11 +111,13 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
-            # copy MODEL_DATA in avg data - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
-            logging.info('Copying MODEL_DATA to the averaged datasets...')
+            # copy FLAG and MODEL_DATA in avgBL - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
+            logging.info('Copying FLAG and MODEL_DATA to the averaged datasets...')
             for ms in mss:
                 msavg = ms.replace('.MS','-BLavg.MS')
-                s.add('taql "update '+ms+', '+msavg+' as avg set avg.MODEL_DATA=MODEL_DATA"', log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
+                s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA=orig.MODEL_DATA" && \
+                       taql "update '+msavg+', '+ms+' as orig set FLAG=orig.FLAG"', \
+                       log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
             s.run(check=True)
 
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
@@ -159,8 +161,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
             for num, ms in enumerate(mss):
                 check_rm(ms+'/instrument')
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-            os.system('mv plot self/solutions/g'+group+'/plot-c'+str(i))
-            os.system('mv '+h5parm+' self/solutions/g'+group)
+            os.system('mv plot self/solutions/g'+g+'/plot-c'+str(i))
+            os.system('mv '+h5parm+' self/solutions/g'+g)
         
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')

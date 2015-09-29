@@ -14,4 +14,4 @@ Step.solve.Solve.CellChunkSize = 120
 Step.solve.Solve.PropagateSolutions = T
 Step.solve.Solve.Options.MaxIter = 300
 Step.solve.Solve.Options.UseSVD = T
-Step.solve.Solve.UVRange = [300] # TEST
+Step.solve.Solve.UVRange = [100] 
