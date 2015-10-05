@@ -202,7 +202,7 @@ def find_nchan(ms):
 
 
 class Scheduler():
-    def __init__(self, qsub = False, max_threads = 12, dry = False, max_processors = 5):
+    def __init__(self, qsub = False, max_threads = 12, dry = False, max_processors = 6):
         """
         qsub: if true call a shell script which call qsub and then wait 
         for the process to finish before returning
@@ -214,7 +214,7 @@ class Scheduler():
         self.qsub = qsub
         self.dry = dry
         self.max_processors = max_processors
-        logging.debug("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+", max_processors: "+str(max_processors)+").")
+        logging.info("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+", max_processors: "+str(max_processors)+").")
 
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)

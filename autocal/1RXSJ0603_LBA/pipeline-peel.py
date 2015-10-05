@@ -22,7 +22,6 @@ skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel'
 ##########################################################################################
 
 import sys, os, glob, re
-from lofar import bdsm
 import pyrap.tables as pt
 import numpy as np
 import lsmtool
@@ -33,6 +32,53 @@ set_logger()
 s = Scheduler(qsub=True, max_threads=25, dry=False, max_processors=6)
 
 # TODO: iterate on DD calibrators
+
+def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
+    """
+    c = cycle/name
+    mss = list of mss to avg/clean
+    """
+    mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
+    # [PARALLEL] averaging before cleaning *.MS:CORRECTED_DATA -> *-avg.MS:DATA
+    logging.info('Averaging before cleaning...')
+    nchan = find_nchan(mss[0])
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS')
+        check_rm(msout)
+        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
+                msout='+msout+' avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log=ms+'_avgclean-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA (beam corrected, only source to peel in the data, all chan)
+    check_rm('concat.MS*')
+    logging.info('Concatenating TCs...')
+    pt.msutil.msconcat(mssavg, 'concat.MS', concatTime=False)
+
+    imagename = 'peel/'+dd['name']+'/images/peel-'+str(c)
+    if facet:
+        imsize = size_from_facet('peel/'+dd['name']+'/models/peel_facet-g'+g+'.model', dd['coord'], 3)
+        wproj = 512
+        niter = 5000
+    else:
+        imsize = size_from_facet('peel/'+dd['name']+'/models/peel-g'+groups[0]+'.model', dd['coord'], 3)
+        wproj = 128
+        niter = 2000
+
+    # Clean mask clean
+    logging.debug('Image size set to '+str(imsize))
+    if dd['extended']: multiscale = [0,3,9,18]
+    else: multiscale = []
+    logging.info('Cleaning...')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
+            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':niter, 'multiscale':multiscale, 'wproj':wproj}, log='casaclean1-c'+str(c)+'.log')
+    s.run(check=True)
+    make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
+    logging.info('Cleaning (with mask)...')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
+            params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':int(niter/2.), 'multiscale':multiscale, 'wproj':wproj, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(c)+'.log')
+    s.run(check=True)
+
+    return imagename+'-masked.model'
 
 #########################################################################################
 # Clear
@@ -86,7 +132,7 @@ for model in sorted(glob.glob('self/models/wide*-g*model*')):
     os.system('cp -r '+model+' '+modeldir+'/'+peelmodel+'-tmp/'+peelmodel)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
             params={'imgs':peelmodel, 'region':os.getcwd()+'/'+dd['reg_facet'], 'inverse':True}, wkd=modeldir+'/'+peelmodel+'-tmp', log='split_skymodels2-g'+g+'.log')
-s.run(check=True) # TEST parallel
+s.run(check=True)
 
 # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
 logging.info('Add DD calibrator...')
@@ -97,7 +143,7 @@ for g in groups:
     check_rm(concat+'*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), concat, concatTime=False)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model}, wkd=tmpdir, log='init-g'+g+'-ft1.log')
-s.run(check=True) # TEST parallel
+s.run(check=True)
 
 logging.info('Add DD calibrator (lr)...')
 for g in groups:
@@ -107,7 +153,7 @@ for g in groups:
     check_rm(concat+'*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), concat, concatTime=False)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'incr':True}, wkd=tmpdir, log='init-g'+g+'-ft2.log')
-s.run(check=True) # TEST parallel
+s.run(check=True)
 
 # cleanup the tmp dirs
 for d in sorted(glob.glob(modeldir+'/*-tmp')):
@@ -125,16 +171,16 @@ s.run(check=True)
 
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel_TC*.MS:DATA (empty+DD, avg, phase shifted)
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:MODEL_DATA -> peel-model_TC*.MS:DATA (DD model, avg, phase shifted)
-logging.info('Shifting+averaging...')
+# NOTE DEBUG: do only shifting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+logging.info('Shifting+averaging (CORRECTED_DATA)...')
 for tc in tcs:
-    logging.debug('Time chunk (DATA): '+tc)
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'peel_TC'+tc+'.MS'
     s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
             shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
 s.run(check=True)
+logging.info('Shifting+averaging (MODEL_DATA)...')
 for tc in tcs:
-    logging.debug('Time chunk (MODEL_DATA): '+tc)
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'peel-model_TC'+tc+'.MS'
     s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
@@ -151,7 +197,7 @@ s.run(check=True)
 for ms in peelmss:
     msmodel = ms.replace('peel', 'peel-model')
     logging.debug(msmodel+':DATA -> '+ms+':MODEL_DATA')
-    s.add('taql "update '+ms+', '+msmodel+' as model set MODEL_DATA=model.DATA"', log=msout+'_init-taql.log', cmd_type='general')
+    s.add('taql "update '+ms+', '+msmodel+' as model set MODEL_DATA=model.DATA"', log=msmodel+'_init-taql.log', cmd_type='general')
 s.run(check=True)
 check_rm('peel-model_TC*.MS')
 
@@ -160,29 +206,52 @@ logging.info('BL-based averaging...')
 for ms in peelmss:
     s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
+
 BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
-sys.exit(1)
+
+##############################################################################################3
+# TEST
+# correct the DDcal-added data
+check_rm('test*MS')
+logging.info('Correct...')
+for ms in allmss:
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_cor.parset', \
+            log=ms+'_init-cor.log', cmd_type='BBS')
+s.run(check=True)
+# shift and avg th corrected data
+logging.info('Shifting+averaging (CORRECTED_DATA)...')
+for tc in tcs:
+    mss = glob.glob('group*_TC'+tc+'.MS')
+    msout = 'test_TC'+tc+'.MS'
+    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
+s.run(check=True)
+testmss = sorted(glob.glob('test_TC*.MS'))
+for ms in testmss:
+    s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
+s.run(check=True)
+# do a first hi-res clean
+model = clean('init', testmss, dd, groups)
+clean('init_facet', testmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
 
 ###################################################################################################################
 # self-cal cycle
-for i in xrange(4):
-    logging.info('Start peel cycle: '+str(i))
+for c in xrange(4):
+    logging.info('Start peel cycle: '+str(c))
 
     # ft model - peel_TC*.MS:MODEL_DATA (best available model)
-    # on cycle0 it is already into the MODEL_DATA and it comes from the selfcal image
-    if i > 0:
-        logging.info('FT model...')
-        for ms in BLavgpeelmss:
-            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':imagename+'-masked.model'}, log=ms+'_ft-c'+str(i)+'.log')
-            s.run(check=True) # no parallel (problem multiple accesses to model file)
+    logging.info('FT model...')
+    for ms in BLavgpeelmss:
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
+        s.run(check=True) # no parallel (problem multiple accesses to model file)
 
-    if i < 2:
+    if c < 2:
         ################################################################################################
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Calibrating TEC...')
         for ms in BLavgpeelmss:
             s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol.parset '+skymodel, \
-                    log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
+                    log=ms+'_sol-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
         for ms in peelmss:
             check_rm(ms+'/instrument')
@@ -191,7 +260,7 @@ for i in xrange(4):
         logging.info('Correcting TEC...')
         for ms in peelmss:
             s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor.parset '+skymodel, \
-                    log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
+                    log=ms+'_cor-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
     else:
         ##################################################################################################
@@ -199,14 +268,14 @@ for i in xrange(4):
         logging.info('Calibrating phase...')
         for ms in peelmss:
             s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-solcor_tec.parset '+skymodel, \
-                    log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
+                    log=ms+'_calpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
         # [PARALLEL] calibrate amplitude 5 min timescale every 20 SBs - peel_TC*.MS:CORRECTED_DATA_PHASE (no correction)
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone -f --parmdb-name instrument_amp  '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_amp.parset '+skymodel, \
-                    log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS', processors = 'max')
+            s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_amp.parset '+skymodel, \
+                    log=ms+'_calamp-c'+str(c)+'.log', cmd_type='BBS', processors = 'max')
         s.run(check=True)
 
         # merge parmdbs
@@ -222,58 +291,30 @@ for i in xrange(4):
         for num, ms in enumerate(peelmss):
             os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
             if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-        h5parm = 'global-c'+str(i)+'.h5'
+        h5parm = 'global-c'+str(c)+'.h5'
 
-        s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+        s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
         s.run(check=False)
-        s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+        s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
         s.run(check=False)
-        s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+        s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
         s.run(check=True)
 
         for num, ms in enumerate(peelmss):
             check_rm(ms+'/instrument')
             os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-        os.system('mv plot peel/'+dd['name']+'/plots/plot-c'+str(i))
+        os.system('mv plot peel/'+dd['name']+'/plots/plot-c'+str(c))
         os.system('mv '+h5parm+' peel/'+dd['name']+'/h5')
 
         # [PARALLEL] correct phase + amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
         logging.info('Correcting phase+amplitude...')
         for ms in peelmss:
             s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_amptec.parset '+skymodel, \
-                    log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='BBS')
+                    log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
-    # [PARALLEL] averaging before cleaning peel_TC*.MS:CORRECTED_DATA -> peel_TC*-avg.MS:DATA
-    check_rm('peel_TC*-avg.MS')
-    logging.info('Averaging before cleaning...')
-    nchan = find_nchan(peelmss[0])
-    for ms in peelmss:
-        msout = ms.replace('.MS','-avg.MS')
-        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
-                msout='+msout+' avg.freqstep=4 avg.timestep=10', log=ms+'_avgclean-c'+str(i)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
-
-    # Concatenating (in time) before imaging peel_TC*-avg.MS:DATA -> concat.MS:DATA (beam corrected, only source to peel in the data, all chan)
-    check_rm('concat.MS*')
-    logging.info('Concatenating TCs...')
-    pt.msutil.msconcat(sorted(glob.glob('peel_TC*-avg.MS')), 'concat.MS', concatTime=False)
-
-    # Clean mask clean
-    imagename = 'peel/'+dd['name']+'/images/peel-'+str(i)
-    imsize = size_from_facet('peel/'+dd['name']+'/models/peel-g'+groups[0]+'.model', dd['coord'], 3)
-    logging.debug('Image size set to '+str(imsize))
-    if dd['extended']: multiscale = [0,3,9,18]
-    else: multiscale = []
-    logging.info('Cleaning...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':1000, 'multiscale':multiscale, 'wproj':128}, log='casaclean1-c'+str(i)+'.log')
-    s.run(check=True)
-    make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
-    logging.info('Cleaning (with mask)...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-            params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':1000, 'multiscale':multiscale, 'wproj':128, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(i)+'.log')
-    s.run(check=True)
+    # clean
+    model = clean(c, peelmss, dd, groups)
 
     # TODO: flag residuals
 
@@ -294,10 +335,10 @@ for g in groups:
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), 'concat.MS', concatTime=False)
     logging.debug('Ft high res model')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='facet-g'+g+'-ft1.log')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':1024}, log='facet-g'+g+'-ft1.log')
     s.run(check=True) # no parallel
     logging.debug('Ft low res model')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True, 'wproj':512}, log='facet-g'+g+'-ft2.log')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True, 'wproj':1024}, log='facet-g'+g+'-ft2.log')
     s.run(check=True) # no parallel
 
 # [PARALLEL] ADD and corrupt group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
@@ -328,39 +369,12 @@ for tc in tcs:
     os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
 logging.info('Correcting facet amplitude+phase...')
 for ms in facetmss:
-    s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_amptec-facet.parset '+skymodel, \
+    s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_amptec.parset '+skymodel, \
             log=ms+'_facet-coramptec.log', cmd_type='BBS')
 s.run(check=True)
 
-# [PARALLEL] averaging before cleaning facet_TC*.MS:CORRECTED_DATA -> facet_TC*-avg.MS:DATA
-logging.info('Averaging before cleaning...')
-nchan = find_nchan(facetmss[0])
-for ms in facetmss:
-    msout = ms.replace('.MS','-avg.MS')
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msout='+msout+'\
-            avg.freqstep=2 avg.timestep=5', log=ms+'_facet-avgclean.log', cmd_type='NDPPP')
-s.run(check=True)
-
-# Concatenating (in time) before imaging facet_TC*-avg.MS -> concat.MS (beam corrected, only source to peel in the data, all chan)
-check_rm('concat.MS*')
-logging.info('Concatenating TCs...')
-pt.msutil.msconcat(sorted(glob.glob('facet_TC*-avg.MS')), 'concat.MS', concatTime=False)
-
-# Image of the entire facet
-imagename = 'peel/'+dd['name']+'/images/facet'
-imsize = size_from_facet('peel/'+dd['name']+'/models/peel_facet-g'+g+'.model', dd['coord'], 3)
-logging.debug('Image size set to '+str(imsize))
-if dd['extended']: multiscale = [0,3,9,18]
-else: multiscale = []
-logging.info('Cleaning facet...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-        params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':5000, 'multiscale':multiscale, 'wproj':512}, log='casaclean1-facet.log')
-s.run(check=True)
-make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['facet_extended'])
-logging.info('Cleaning facet (with mask)...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-        params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':5000, 'multiscale':multiscale, 'wproj':512, 'mask':imagename+'.newmask'}, log='casaclean2-facet.log')
-s.run(check=True)
+# cleaning
+clean('facet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
 
 sys.exit(1)
 

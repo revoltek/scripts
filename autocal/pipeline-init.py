@@ -20,7 +20,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=24, dry=False)
+s = Scheduler(qsub=True, max_threads=24, dry=False, max_processors=6)
 mss = sorted(glob.glob('*MS'))
 
 #################################################
