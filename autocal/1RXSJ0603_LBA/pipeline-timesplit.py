@@ -18,7 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=6, dry=False)
+s = Scheduler(qsub=True, max_threads=24, dry=False)
 
 #################################################
 # Clear
@@ -45,7 +45,7 @@ for ms in sorted(glob.glob('*MS')):
 # [PARALLEL] Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
 logging.info('Apply solutions...')
 for ms in glob.glob('*MS'):
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/stsf309/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
 s.run(check=True)
 
 ###################################################################################################

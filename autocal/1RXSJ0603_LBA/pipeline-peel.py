@@ -56,7 +56,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
 
     imagename = 'peel/'+dd['name']+'/images/peel-'+str(c)
     if facet:
-        imsize = size_from_facet('peel/'+dd['name']+'/models/peel_facet-g'+g+'.model', dd['coord'], 3)
+        imsize = size_from_facet('peel/'+dd['name']+'/models/peel_facet-g'+groups[0]+'.model', dd['coord'], 3)
         wproj = 512
         niter = 5000
     else:
@@ -79,6 +79,31 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     s.run(check=True)
 
     return imagename+'-masked.model'
+
+
+def losoto(c, mss, dd, parset):
+    check_rm('plots')
+    os.makedirs('plots')
+    check_rm('globaldb')
+    os.makedirs('globaldb')
+    for num, ms in enumerate(mss):
+        os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+    if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+    h5parm = 'global-c'+str(c)+'.h5'
+
+    s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.run(check=False)
+    s.add('losoto -v '+h5parm+' '+parset, log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.run(check=False)
+    s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.run(check=True)
+
+    for num, ms in enumerate(mss):
+        check_rm(ms+'/instrument')
+        os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('mv plots peel/'+dd['name']+'/plots/plots-c'+str(c))
+    os.system('mv '+h5parm+' peel/'+dd['name']+'/h5')
+
 
 #########################################################################################
 # Clear
@@ -233,10 +258,11 @@ s.run(check=True)
 # do a first hi-res clean
 model = clean('init', testmss, dd, groups)
 clean('init_facet', testmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
+check_rm('test*MS')
 
 ###################################################################################################################
 # self-cal cycle
-for c in xrange(4):
+for c in xrange(2):
     logging.info('Start peel cycle: '+str(c))
 
     # ft model - peel_TC*.MS:MODEL_DATA (best available model)
@@ -245,7 +271,7 @@ for c in xrange(4):
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
         s.run(check=True) # no parallel (problem multiple accesses to model file)
 
-    if c < 2:
+    if c < 1:
         ################################################################################################
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Calibrating TEC...')
@@ -257,6 +283,9 @@ for c in xrange(4):
             check_rm(ms+'/instrument')
             os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
 
+        # LoSoTo plotting
+        losoto(c, peelmss, dd, '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto-plot.parset')
+
         logging.info('Correcting TEC...')
         for ms in peelmss:
             s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor.parset '+skymodel, \
@@ -266,45 +295,29 @@ for c in xrange(4):
         ##################################################################################################
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA_PHASE
         logging.info('Calibrating phase...')
-        for ms in peelmss:
+        for ms in BLavgpeelmss:
             s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-solcor_tec.parset '+skymodel, \
                     log=ms+'_calpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
         # [PARALLEL] calibrate amplitude 5 min timescale every 20 SBs - peel_TC*.MS:CORRECTED_DATA_PHASE (no correction)
         logging.info('Calibrating amplitude...')
-        for ms in peelmss:
+        for ms in BLavgpeelmss:
             s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_amp.parset '+skymodel, \
                     log=ms+'_calamp-c'+str(c)+'.log', cmd_type='BBS', processors = 'max')
         s.run(check=True)
 
         # merge parmdbs
         logging.info('Merging instrument tables...')
-        for ms in peelmss:
+        for ms in BLavgpeelmss:
             merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
 
-        ########################################################
-        # LoSoTo Amp rescaling
-        os.makedirs('plot')
-        check_rm('globaldb')
-        os.makedirs('globaldb')
-        for num, ms in enumerate(peelmss):
-            os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-            if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-        h5parm = 'global-c'+str(c)+'.h5'
-
-        s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
-        s.run(check=False)
-        s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
-        s.run(check=False)
-        s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
-        s.run(check=True)
-
-        for num, ms in enumerate(peelmss):
+        for ms in peelmss:
             check_rm(ms+'/instrument')
-            os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-        os.system('mv plot peel/'+dd['name']+'/plots/plot-c'+str(c))
-        os.system('mv '+h5parm+' peel/'+dd['name']+'/h5')
+            os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
+
+        # LoSoTo Amp rescaling
+        losoto(c, peelmss, dd, '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset')
 
         # [PARALLEL] correct phase + amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
         logging.info('Correcting phase+amplitude...')
