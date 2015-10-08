@@ -20,7 +20,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=24, dry=False, max_processors=6)
+s = Scheduler(qsub=False, max_threads=24, dry=False, max_processors=6)
 mss = sorted(glob.glob('*MS'))
 
 #################################################
@@ -36,9 +36,17 @@ for ms in mss:
 s.run(check=False)
 
 ##############################################
+# Avg data
+logging.warning('BL-averaging')
+for ms in mss:
+    s.add('BLavg.py -m '+ms, log=ms+'_avg.log')
+s.run(check=False)
+mssavg = sorted(glob.glob(group+'/group*_TC*-BLavg.MS'))
+
+##############################################
 # [PARALLEL] initial calibrator
 logging.info('Calibrating with skymodel: '+skymodel)
-for ms in mss:
+for ms in mssavg:
     s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-cal_field.parset '+skymodel, log=ms+'_cal.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -48,14 +56,14 @@ check_rm('globaldb')
 os.system('mkdir globaldb')
 
 logging.info('Running LoSoTo...')
-for i, ms in enumerate(mss):
+for i, ms in enumerate(mssavg):
     num = re.findall(r'\d+', ms)[-1]
     logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
 
-check_rm('plot')
-os.makedirs('plot')
+check_rm('plots')
+os.makedirs('plots')
 check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
 s.run(check=False)
