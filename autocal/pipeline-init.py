@@ -54,8 +54,8 @@ for i, ms in enumerate(mss):
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
 
-check_rm('plot')
-os.makedirs('plot')
+check_rm('plots')
+os.makedirs('plots')
 check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
 s.run(check=False)
