@@ -344,6 +344,7 @@ class Scheduler():
 
         elif cmd_type == 'CASA':
             out = subprocess.check_output('grep -l "[a-z]Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+#            out += subprocess.check_output('grep -l "SEVERE" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "\*\*\* Error \*\*\*" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('CASA run problem on:\n'+out)

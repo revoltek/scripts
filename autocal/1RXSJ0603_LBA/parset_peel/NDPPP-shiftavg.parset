@@ -4,8 +4,7 @@ msout =
 msout.datacolumn = DATA
 msout.writefullresflag = False
 
-steps = [shift]
-#steps = [shift, avg]
+steps = [shift, avg]
 
 shift.type = phaseshifter
 shift.phasecenter = 

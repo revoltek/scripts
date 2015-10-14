@@ -82,13 +82,14 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
 
 
 def losoto(c, mss, dd, parset):
+    logging.info('Running LoSoTo...')
     check_rm('plots')
     os.makedirs('plots')
     check_rm('globaldb')
     os.makedirs('globaldb')
     for num, ms in enumerate(mss):
         os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     h5parm = 'global-c'+str(c)+'.h5'
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
@@ -146,7 +147,7 @@ for model in sorted(glob.glob('self/models/wide*-g*model*')):
     g = re.findall(r'\d+', model)[0] # group number
     logging.debug('Splitting group: '+g+' ('+model+')')
     peelmodel = os.path.basename(model).replace('wide','peel')
-    # tmp directory are created to run CASA inside
+    # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
     os.system('mkdir '+modeldir+'/'+peelmodel+'-tmp')
     os.system('cp -r '+model+' '+modeldir+'/'+peelmodel+'-tmp/'+peelmodel)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
@@ -162,6 +163,8 @@ s.run(check=True)
 # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
 logging.info('Add DD calibrator...')
 for g in groups:
+    logging.debug('Preparing concat for group '+g)
+    # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
     tmpdir = os.getcwd()+'/'+'peel/'+dd['name']+'/models/peel-g'+g+'.model-tmp'
     model = tmpdir+'/peel-g'+g+'.model'
     concat = tmpdir+'/concat.MS'
@@ -172,6 +175,8 @@ s.run(check=True)
 
 logging.info('Add DD calibrator (lr)...')
 for g in groups:
+    logging.debug('Preparing concat for group '+g)
+    # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
     tmpdir = os.getcwd()+'/'+'peel/'+dd['name']+'/models/peel-lr-g'+g+'.model-tmp'
     model = tmpdir+'/peel-lr-g'+g+'.model'
     concat = tmpdir+'/concat.MS'
@@ -187,7 +192,7 @@ check_rm(modeldir+'/*-tmp')
 
 ###########################################################################################################
 # [PARALLEL] ADD (corrupt) group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
-# TODO: modify to account for changes in pipeline-self
+# TODO: modify to account for changes (TEC sol only?) in pipeline-self
 logging.info('Add and corrupt model...')
 for ms in allmss:
     s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset', \
@@ -196,7 +201,6 @@ s.run(check=True)
 
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel_TC*.MS:DATA (empty+DD, avg, phase shifted)
 # [PARALLEL] concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:MODEL_DATA -> peel-model_TC*.MS:DATA (DD model, avg, phase shifted)
-# NOTE DEBUG: do only shifting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 logging.info('Shifting+averaging (CORRECTED_DATA)...')
 for tc in tcs:
     mss = glob.glob('group*_TC'+tc+'.MS')
@@ -255,9 +259,12 @@ testmss = sorted(glob.glob('test_TC*.MS'))
 for ms in testmss:
     s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
 s.run(check=True)
+
+sys.exit(1)
+
 # do a first hi-res clean
 model = clean('init', testmss, dd, groups)
-clean('init_facet', testmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
+#clean('init_facet', testmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
 check_rm('test*MS')
 
 ###################################################################################################################
@@ -276,7 +283,7 @@ for c in xrange(2):
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Calibrating TEC...')
         for ms in BLavgpeelmss:
-            s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol.parset '+skymodel, \
+            s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_tec.parset '+skymodel, \
                     log=ms+'_sol-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
         for ms in peelmss:
@@ -288,7 +295,7 @@ for c in xrange(2):
 
         logging.info('Correcting TEC...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor.parset '+skymodel, \
+            s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_tec.parset '+skymodel, \
                     log=ms+'_cor-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
     else:
