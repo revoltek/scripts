@@ -44,7 +44,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     logging.info('Cleaning...')
     check_rm(group+'/*-BLavg.MS')
     check_rm(group+'/*log *log *bak')
-    check_rm(group+'/plot* plot')
+    check_rm(group+'/plots* plots')
     check_rm(group+'/*h5 *h5')
     check_rm('*last')
     check_rm('img')
@@ -142,7 +142,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             ########################################################
             # LoSoTo Amp rescaling
             logging.info('LoSoTo...')
-            os.makedirs('plot')
+            os.makedirs('plots')
             check_rm('globaldb')
             os.makedirs('globaldb')
             for num, ms in enumerate(mssavg):
@@ -161,7 +161,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             for num, ms in enumerate(mss):
                 check_rm(ms+'/instrument')
                 os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-            os.system('mv plot self/solutions/g'+g+'/plot-c'+str(i))
+            os.system('mv plots self/solutions/g'+g+'/plots-c'+str(i))
             os.system('mv '+h5parm+' self/solutions/g'+g)
         
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
