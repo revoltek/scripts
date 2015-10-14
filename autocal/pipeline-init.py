@@ -37,11 +37,11 @@ s.run(check=False)
 
 ##############################################
 # Avg data
-logging.warning('BL-averaging')
+logging.info('BL-averaging')
 for ms in mss:
-    s.add('BLavg.py -m '+ms, log=ms+'_avg.log')
+    s.add('BLavg.py -m -c '+ms, log=ms+'_avg.log')
 s.run(check=False)
-mssavg = sorted(glob.glob(group+'/group*_TC*-BLavg.MS'))
+mssavg = sorted(glob.glob('*-BLavg.MS'))
 
 ##############################################
 # [PARALLEL] initial calibrator
@@ -51,7 +51,7 @@ for ms in mssavg:
 s.run(check=True)
 
 ##############################################
-# Clock check and flagging
+# Clock/TEC check and flagging
 check_rm('globaldb')
 os.system('mkdir globaldb')
 
