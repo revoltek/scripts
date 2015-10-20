@@ -1,10 +1,10 @@
 #!/usr/bin/python
 # initial calibration of the calibrator, sol flag
 
-skymodel = '/home/fdg/model/3C196-allfield.skymodel' # tooth LBA
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_init' # tooth LBA
-#skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo LBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_init' # virgo LBA
+#skymodel = '/home/fdg/model/3C196-allfield.skymodel' # tooth LBA
+#parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_init' # tooth LBA
+skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo LBA
+parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_init' # virgo LBA
 #skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo HBA
 #parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_init' # virgo HBA
 #skymodel = '/home/fdg/model/3C196-allfield.skymodel' # perseus LBA

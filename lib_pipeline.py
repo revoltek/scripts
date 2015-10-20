@@ -214,7 +214,7 @@ def find_nchan(ms):
 
 
 class Scheduler():
-    def __init__(self, qsub = None, max_threads = None, dry = False, max_processors = 6):
+    def __init__(self, qsub = None, max_threads = None, max_processors = None, dry = False):
         """
         qsub: if true call a shell script which call qsub and then wait 
         for the process to finish before returning
@@ -228,14 +228,14 @@ class Scheduler():
         if qsub == None:
             if self.cluster == 'Hamburg': self.qsub = True
             elif self.cluster == 'Leiden': self.qsub = True
-            else: self.qsub == False
+            else: self.qsub = False
         else:
-            if (self.qsub == False and (self.cluster == 'Hamburg' or self.cluster == 'Leiden')) or
+            if (self.qsub == False and (self.cluster == 'Hamburg' or self.cluster == 'Leiden')) or \
                (self.qsub == True and self.cluster == 'CEP3'):
                 logging.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
                 sys.exit(1)
 
-        if max_thread == None:
+        if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 32
             elif self.cluster == 'Leiden': self.max_threads = 64
             elif self.cluster == 'CEP3': self.max_threads = 40
