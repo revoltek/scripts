@@ -236,7 +236,7 @@ class Scheduler():
                 sys.exit(1)
 
         if max_thread == None:
-            if self.cluster == 'Hamburg': self.max_threads = 24
+            if self.cluster == 'Hamburg': self.max_threads = 32
             elif self.cluster == 'Leiden': self.max_threads = 64
             elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
