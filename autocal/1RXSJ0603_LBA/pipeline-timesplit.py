@@ -19,43 +19,43 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=24, dry=False)
+s = Scheduler(dry=False)
+
+################################################
+# Clear
+logging.info('Cleaning...')
+check_rm('*log')
+check_rm('*group*')
+
+mss = sorted(glob.glob('*MS'))
+
+##############################################
+# Initial processing
+logging.info('Fix beam table')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 ##################################################
-## Clear
-#logging.info('Cleaning...')
-#check_rm('*log')
-#check_rm('*group*')
-#
-mss = sorted(glob.glob('*MS'))
-#
-###############################################
-## Initial processing
-#logging.info('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-#
-##################################################
-## Copy cal solution
-#for ms in mss:
-#    num = re.findall(r'\d+', ms)[-1]
-#    check_rm(ms+'/instrument')
-#    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#
-## Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
-#logging.info('Apply solutions...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
-#s.run(check=True)
-#
-####################################################################################################
-## To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
-#logging.info('Convert to circular...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+# Copy cal solution
+for ms in mss:
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument')
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+
+# Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
+logging.info('Apply solutions...')
+for ms in mss:
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
+s.run(check=True)
+
+###################################################################################################
+# To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
+logging.info('Convert to circular...')
+for ms in mss:
+    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 ###################################################################################################
 # split each MS in timechunks of 1 h and create groups
@@ -65,20 +65,20 @@ logging.info('Concatenating in frequency...')
 for i, msg in enumerate(np.array_split(mss, ngroups)):
     groupname = 'group%02i' %i
     groupnames.append(groupname)
-#    check_rm(groupname)
-#    os.system('mkdir '+groupname)
+    check_rm(groupname)
+    os.system('mkdir '+groupname)
 
     # prepare concatenated time chunks (TC) - SB.MS:CALCOR_DATA_CIRC -> group#.MS:DATA (cal corr data, beam corrected, circular)
-#    s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
-#                log=groupname+'/NDPPP_concat.log', cmd_type='NDPPP')
-#s.run(check=True)
+    s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
+                log=groupname+'/NDPPP_concat.log', cmd_type='NDPPP')
+s.run(check=True)
 
 # Flagging on concatenated dataset
-#logging.info('Flagging...')
-#for groupname in groupnames:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+groupname+'/'+groupname+'.MS', \
-#                log=groupname+'/NDPPP_flag.log', cmd_type='NDPPP')
-#s.run(check=True)
+logging.info('Flagging...')
+for groupname in groupnames:
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+groupname+'/'+groupname+'.MS', \
+                log=groupname+'/NDPPP_flag.log', cmd_type='NDPPP')
+s.run(check=True)
 
 for groupname in groupnames:
     ms = groupname+'/'+groupname+'.MS'

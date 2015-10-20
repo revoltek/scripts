@@ -29,7 +29,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-s = Scheduler(qsub=True, max_threads=25, dry=False, max_processors=6)
+s = Scheduler(dry=False)
 
 # TODO: iterate on DD calibrators
 

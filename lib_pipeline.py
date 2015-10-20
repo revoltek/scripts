@@ -9,6 +9,18 @@ from scipy.interpolate import interp1d
 import numpy as np
 import lofar.parmdb as parmdb
 
+def get_cluster():
+    """
+        
+    """
+    import socket
+    hostname = socket.gethostname()
+    if hostname == 'lgc1' or hostname == 'lgc2': return 'Hamburg'
+    elif 'leidenuniv' in hostname: return 'Leiden'
+    elif hostname[0:3] == 'lof': return 'CEP3'
+    else: 
+        logging.error('Hostname %s unknown.' % hostname)
+        return 'Unknown'
 
 def add_coloring_to_emit_ansi(fn):
     # add methods we need to the class
@@ -202,7 +214,7 @@ def find_nchan(ms):
 
 
 class Scheduler():
-    def __init__(self, qsub = False, max_threads = 12, dry = False, max_processors = 6):
+    def __init__(self, qsub = None, max_threads = None, dry = False, max_processors = 6):
         """
         qsub: if true call a shell script which call qsub and then wait 
         for the process to finish before returning
@@ -210,11 +222,37 @@ class Scheduler():
         dry: don't schedule job
         max_processors: max number of processors in a node
         """
-        self.max_threads = max_threads
-        self.qsub = qsub
+        self.cluster = get_cluster()
+        # if qsub/max_thread/max_processors not set, guess from the cluster
+        # if they are set, double check number are reasonable
+        if qsub == None:
+            if self.cluster == 'Hamburg': self.qsub = True
+            elif self.cluster == 'Leiden': self.qsub = True
+            else: self.qsub == False
+        else:
+            if (self.qsub == False and (self.cluster == 'Hamburg' or self.cluster == 'Leiden')) or
+               (self.qsub == True and self.cluster == 'CEP3'):
+                logging.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
+                sys.exit(1)
+
+        if max_thread == None:
+            if self.cluster == 'Hamburg': self.max_threads = 24
+            elif self.cluster == 'Leiden': self.max_threads = 64
+            elif self.cluster == 'CEP3': self.max_threads = 40
+            else: self.max_threads = 12
+        else:
+            self.max_threads = max_threads
+
+        if max_processors == None:
+            if self.cluster == 'Hamburg': self.max_processors = 6
+            elif self.cluster == 'Leiden': self.max_processors = 12
+            elif self.cluster == 'CEP3': self.max_processors = 40
+            else: self.max_processors = 12
+        else:
+            self.max_processors = max_processors
+
         self.dry = dry
-        self.max_processors = max_processors
-        logging.info("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+", max_processors: "+str(max_processors)+").")
+        logging.info("Scheduler initialized for cluster "+self.cluster+" (Nproc: "+str(self.max_threads)+", multinode: "+str(self.qsub)+", max_processors: "+str(self.max_processors)+").")
 
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
@@ -277,10 +315,13 @@ class Scheduler():
             if log != '' and not log_append: casacmd = str(processors)+' \''+casacmd+' > '+log+' 2>&1'
             elif log != '' and log_append: casacmd = str(processors)+' \''+casacmd+' >> '+log+' 2>&1'
             else: casacmd = str(processors)+' \''+casacmd
-            self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'') # clean up casa remnants, what if parallel?!
-            if processors != self.max_processors:
-                logging.error('To clean annoying CASA remnants no more than 1 CASA per node is allowed.')
-                sys.exit(1)
+
+            # clean up casa remnants in HAmburg cluster
+            if self.cluster == 'Hamburg':
+                self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'')
+                if processors != self.max_processors:
+                    logging.error('To clean annoying CASA remnants no more than 1 CASA per node is allowed.')
+                    sys.exit(1)
         else:
             if log != '' and not log_append: self.action_list.append(casacmd+' > '+log+' 2>&1')
             elif log != '' and log_append: self.action_list.append(casacmd+' >> '+log+' 2>&1')
@@ -295,7 +336,8 @@ class Scheduler():
         """
         def worker(queue):
             for cmd in iter(queue.get, None):
-                if self.qsub: cmd = 'qsub_waiter.sh '+cmd+' >> qsub.log'
+                if self.qsub and self.cluster == 'Hamburg': cmd = 'qsub_waiter_ham.sh '+cmd+' >> qsub.log'
+                elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
         q = Queue()
