@@ -101,10 +101,10 @@ for region in sorted(glob.glob('__reg*crtf')):
         # in some cases casa crashes if the first image of the lel expression is not the one in imagename
         lelexpr[0], lelexpr[i] = lelexpr[i], lelexpr[0]
 
-        stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr)) # cut at 3 sigma in all images
-        print "Use this cut:"+str(lelexpr)
-        #stat = imstat(imagename=image, region=region, mask=lelexpr[0]) # cut at 3 sigma in THIS image
-        #print "Cut at 3 sigma on this image"
+        #stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr)) # cut at 3 sigma in all images
+        #print "Use this cut:"+str(lelexpr)
+        stat = imstat(imagename=image, region=region, mask=lelexpr[0]) # cut at 3 sigma in THIS image
+        print "Cut on this image"
         flux[region].append(stat['flux'][0])
         err[region].append(rms[i]*np.sqrt(stat['npts'][0]/pixperbeam)) 
         print image+ " - flux:", flux[region][i], '±', err[region][i], 'Jy'
