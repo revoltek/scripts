@@ -1,0 +1,29 @@
+# losoto parset
+LoSoTo.Steps = [plotPf1, plotPf2]
+LoSoTo.Solset = [sol000]
+LoSoTo.Soltab = []
+LoSoTo.SolType = []
+LoSoTo.ant = []
+LoSoTo.pol = [XX, YY]
+LoSoTo.dir = []
+LoSoTo.Ncpu = 6
+
+LoSoTo.Steps.plotPf1.Operation = PLOT
+LoSoTo.Steps.plotPf1.Soltab = [sol000/tec000]
+LoSoTo.Steps.plotPf1.Axes = time
+LoSoTo.Steps.plotPf1.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
+LoSoTo.Steps.plotPf1.PlotFlag = True
+LoSoTo.Steps.plotPf1.Prefix = plots/tec1_
+LoSoTo.Steps.plotPf1.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPf1.time.minmax = [4868800000,4868900000]
+LoSoTo.Steps.plotPf1.MinMax = [-0.025,0.025]
+
+LoSoTo.Steps.plotPf2.Operation = PLOT
+LoSoTo.Steps.plotPf2.Soltab = [sol000/tec000]
+LoSoTo.Steps.plotPf2.Axes = time
+LoSoTo.Steps.plotPf2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
+LoSoTo.Steps.plotPf2.PlotFlag = True
+LoSoTo.Steps.plotPf2.Prefix = plots/tec2_
+LoSoTo.Steps.plotPf2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPf2.time.minmax = [4869000000,4869900000]
+LoSoTo.Steps.plotPf2.MinMax = [-0.025,0.025]

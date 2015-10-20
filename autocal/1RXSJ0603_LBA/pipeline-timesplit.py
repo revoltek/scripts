@@ -18,7 +18,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(qsub=False, max_threads=6, dry=False)
+s = Scheduler(qsub=False, max_threads=24, dry=False)
 
 #################################################
 # Clear
@@ -45,7 +45,7 @@ for ms in sorted(glob.glob('*MS')):
 # [PARALLEL] Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
 logging.info('Apply solutions...')
 for ms in glob.glob('*MS'):
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/stsf309/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
 s.run(check=True)
 
 ###################################################################################################
@@ -62,8 +62,9 @@ s.run(check=True)
 logging.info('Splitting MSs...')
 for i, msg in enumerate(np.array_split(sorted(glob.glob('*.MS')), ngroups)):
     logging.info('Working on group: '+str(i))
-    check_rm('group'+str(i))
-    os.system('mkdir group'+str(i))
+    groupname = 'group%02i' %i
+    check_rm(groupname)
+    os.system('mkdir '+groupname)
 
     # iterate ms
     for ms in msg:
@@ -79,27 +80,27 @@ for i, msg in enumerate(np.array_split(sorted(glob.glob('*.MS')), ngroups)):
             logging.debug('Splitting timerange '+str(timerange[0])+' - '+str(timerange[-1]))
             t1 = t.query('TIME >= ' + str(timerange[0]) + ' && \
                       TIME <= ' + str(timerange[-1]), sortlist='TIME,ANTENNA1,ANTENNA2')
-            splitms = ms.replace('.MS','_group'+str(i)+'_TC'+str(tc)+'.MS')
+            splitms = ms.replace('.MS','_group%02i_TC%02i.MS' % (i, tc))
             check_rm(splitms)
             t1.copy(splitms, True)
             t1.close()
-            os.system('mv '+splitms+' group'+str(i))
+            os.system('mv '+splitms+' '+groupname)
 
         t.close()
 
     tcnums = []
-    for ms in sorted(glob.glob('group'+str(i)+'/*.MS')):
+    for ms in sorted(glob.glob(groupname+'/*.MS')):
         tcnums.append(re.findall(r'\d+', ms)[-1])
     tcnums = set(tcnums)
 
     # prepare concatenated time chunks (TC) - SB_group#_TC#.MS:CALCOR_DATA_CIRC -> group#_TC#.MS:DATA (cal corr data, beam corrected, circular)
     logging.info('Concatenating timechunks...')
     for tcnum in tcnums:
-        group_tc = sorted(glob.glob('group'+str(i)+'/*_TC'+tcnum+'.MS'))
-        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout=group'+str(i)+'/group'+str(i)+'_TC'+tcnum+'.MS', \
-                log='group'+str(i)+'/NDPPP_concat_TC'+tcnum+'.log', cmd_type='NDPPP')
+        group_tc = sorted(glob.glob(groupname+'/*_TC'+tcnum+'.MS'))
+        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/NDPPP-concat.parset msin="['+','.join(group_tc)+']"  msout='+groupname+'/'+groupname+'_TC'+tcnum+'.MS', \
+                log=groupname+'/NDPPP_concat_TC'+tcnum+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    check_rm('group'+str(i)+'/*_group*_TC*.MS') # remove splitted files
+    check_rm(groupname+'/*_group*_TC*.MS') # remove splitted files
 
 logging.info("Done.")

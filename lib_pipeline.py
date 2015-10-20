@@ -202,7 +202,7 @@ def find_nchan(ms):
 
 
 class Scheduler():
-    def __init__(self, qsub=False, max_threads = 12, dry=False, max_processors=5):
+    def __init__(self, qsub = False, max_threads = 12, dry = False, max_processors = 6):
         """
         qsub: if true call a shell script which call qsub and then wait 
         for the process to finish before returning
@@ -214,12 +214,12 @@ class Scheduler():
         self.qsub = qsub
         self.dry = dry
         self.max_processors = max_processors
-        logging.debug("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+", max_processors: "+str(max_processors)+").")
+        logging.info("Scheduler initialized (Nproc: "+str(max_threads)+", multinode: "+str(qsub)+", max_processors: "+str(max_processors)+").")
 
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
 
-    def add(self, cmd='', log='', log_append = False, cmd_type='', processors=None):
+    def add(self, cmd='', log='', log_append = False, cmd_type='', processors = None):
         """
         Add cmd to the scheduler list
         cmd: the command to run
@@ -248,26 +248,43 @@ class Scheduler():
         if log != '':
             self.log_list.append((log,cmd_type))
 
-    def add_casa(self, cmd='', params={}, log='', log_append = False, processors=None):
+    def add_casa(self, cmd = '', params = {}, wkd = None, log = '', log_append = False, processors = None):
         """
         Run a casa command pickling the parameters passed in params
         NOTE: running casa commands in parallel is a problem for the log file, better avoid
+        alternatively all used MS and CASA must be in a separate working dir
+
+        wkd = working dir (logs and pickle are in the pipeline dir)
         """
 
-        if processors != None and processors.lower() == 'max': processors = self.max_processors
+        if processors != None and processors == 'max': processors = self.max_processors
         if processors == None: processors=self.max_processors # default use entire node
 
-        pfile = 'casaparams_'+str(random.randint(0,1e9))+'.pickle'
+        # since CASA can run in another dir, be sure log and pickle are in the pipeline working dir
+        if log != '': log = os.getcwd()+'/'+log
+        pfile = os.getcwd()+'/casaparams_'+str(random.randint(0,1e9))+'.pickle'
         pickle.dump( params, open( pfile, "wb" ) )
-        if self.qsub:
-            if log != '' and not log_append: casacmd = str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1'
-            elif log != '' and log_append: casacmd = str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1'
-            else: casacmd = str(processors)+' \'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile
-            self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'') # clean up casa remnants
+
+        # exec in the script dir?
+        if wkd == None: casacmd = 'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile
+        elif os.path.isdir(wkd):
+            casacmd = 'cd '+wkd+'; casapy --nogui --log2term --nologger -c '+cmd+' '+pfile
         else:
-            if log != '' and not log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' > '+log+' 2>&1')
-            elif log != '' and log_append: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile+' >> '+log+' 2>&1')
-            else: self.action_list.append('casapy --nogui --log2term --nologger -c '+cmd+' '+pfile)
+            logging.error('Cannot find CASA working dir: '+wkd)
+            sys.exit(1)
+
+        if self.qsub:
+            if log != '' and not log_append: casacmd = str(processors)+' \''+casacmd+' > '+log+' 2>&1'
+            elif log != '' and log_append: casacmd = str(processors)+' \''+casacmd+' >> '+log+' 2>&1'
+            else: casacmd = str(processors)+' \''+casacmd
+            self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'') # clean up casa remnants, what if parallel?!
+            if processors != self.max_processors:
+                logging.error('To clean annoying CASA remnants no more than 1 CASA per node is allowed.')
+                sys.exit(1)
+        else:
+            if log != '' and not log_append: self.action_list.append(casacmd+' > '+log+' 2>&1')
+            elif log != '' and log_append: self.action_list.append(casacmd+' >> '+log+' 2>&1')
+            else: self.action_list.append(casacmd)
 
         if log != '':
             self.log_list.append((log,'CASA'))
@@ -327,6 +344,7 @@ class Scheduler():
 
         elif cmd_type == 'CASA':
             out = subprocess.check_output('grep -l "[a-z]Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+#            out += subprocess.check_output('grep -l "SEVERE" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "\*\*\* Error \*\*\*" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('CASA run problem on:\n'+out)
