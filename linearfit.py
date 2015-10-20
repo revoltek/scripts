@@ -23,8 +23,66 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def f(x, B0, B1):
     return B0*x + B1
+
+
+def linear_fit_bootstrap(x, y, yerr=None):
+    # An issue arises with scipy.curve_fit when errors in the y data points
+    # are given.  Only the relative errors are used as weights, so the fit
+    # parameter errors, determined from the covariance do not depended on the
+    # magnitude of the errors in the individual data points.  This is clearly wrong. 
+    # 
+    # To circumvent this problem I have implemented a simple bootstraping 
+    # routine that uses some Monte-Carlo to determine the errors in the fit
+    # parameters.  This routines generates random datay points starting from
+    # the given datay plus a random variation. 
+    #
+    # The random variation is determined from average standard deviation of y
+    # points in the case where no errors in the y data points are avaiable.
+    #
+    # If errors in the y data points are available, then the random variation 
+    # in each point is determined from its given error. 
+    # 
+    # A large number of random data sets are produced, each one of the is fitted
+    # an in the end the variance of the large number of fit results is used as 
+    # the error for the fit parameters. 
+
+    # Estimate the confidence interval of the fitted parameter using
+    # the bootstrap Monte-Carlo method
+    # http://phe.rockefeller.edu/LogletLab/whitepaper/node17.html
+
+    from scipy import optimize
+
+    errfunc = lambda B, x, y: f(x, B[0], B[1]) - y
+
+    pfit, pcov, infodict, errmsg, success = optimize.leastsq( errfunc, [0, -1], args=(x, y), full_output=1)
+
+    residuals = errfunc( pfit, x, y )
+    s_res = np.std(residuals)
+
+    ps = []
+    # n random data sets are generated and fitted
+    for i in range(1000):
+      if yerr is None:
+          randomDelta = np.random.normal(0., s_res, len(y))
+          randomdataY = y + randomDelta
+      else:
+          randomDelta = np.array( [ np.random.normal(0., derr, 1)[0] for derr in yerr ] ) 
+          randomdataY = y + randomDelta
+      randomfit, randomcov = optimize.leastsq( errfunc, [-1, 0], args=(x, randomdataY), full_output=0)
+      ps.append( randomfit ) 
+
+    ps = np.array(ps)
+    mean_pfit = np.mean(ps,0)
+    Nsigma = 1. # 1sigma gets approximately the same as methods above
+                # 1sigma corresponds to 68.3% confidence interval
+                # 2sigma corresponds to 95.44% confidence interval
+    err_pfit = Nsigma * np.std(ps,0) 
+
+    return (mean_pfit[0], mean_pfit[1], err_pfit[0], err_pfit[1])
+
 
 # extimate errors and accept errors on ydata
 def linear_fit(x, y, yerr=None):

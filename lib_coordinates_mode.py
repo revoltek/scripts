@@ -159,11 +159,11 @@ def dmstodec(decd,decm,decs):
     decdegs -- Dec in decimal degrees
 
     """
-    if decd < 0:
-        decm = -1*decm
-        decs = -1*decs
+    if float(decd) < 0:
+        decm = -1*float(decm)
+        decs = -1*float(decs)
         
-    decdegs = float(decd)+(float(decm)/60)+(float(decs)/3600.0)
+    decdegs = float(decd)+(float(decm)/60.)+(float(decs)/3600.0)
     
     if abs(decdegs) > 90:
         raise ValueError
