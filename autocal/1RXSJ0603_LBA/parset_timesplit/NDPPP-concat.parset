@@ -2,6 +2,5 @@ msin =
 msin.datacolumn = CALCOR_DATA_CIRC
 msout = 
 msout.datacolumn = DATA
-msout.writefullresflag = False
 
 steps = []

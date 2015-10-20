@@ -136,9 +136,9 @@ for i in range(0, imgsizeX):
       sa = np.nan
     else:
       # err of log of quadrature sum of rms and fluxscale-error
-      yerr=0.434*np.sqrt(rmsvalues**2+(fluxerr*val4reg/100)**2)/val4reg
-      (a, b, sa, sb) = linear_fit(x=np.log10(frequencies), y=np.log10(val4reg), yerr=yerr)
-#      (a, b, sa, sb) = linear_fit_odr(x=np.log10(frequencies), y=np.log10(val4reg), yerr=yerr)
+      if rmsmask != None: yerr = 0.434*np.sqrt(rmsvalues**2+(fluxerr*val4reg/100)**2)/val4reg
+      else: yerr = None
+      (a, b, sa, sb) = linear_fit_bootstrap(x=np.log10(frequencies), y=np.log10(val4reg), yerr=yerr)
 #      if i == 100 and j == 100:
 #          plotlogax({'flux':val4reg, 'freq':frequencies, 'rms':rmsvalues}, 'testodr.png')
 

@@ -113,7 +113,7 @@ for region in sorted(glob.glob('__reg*crtf')):
 if len(images) > 1:
     print "Calculate spidx"
     for region in sorted(glob.glob('__reg*crtf')):
-        (a, b, sa, sb) = linearfit.linear_fit(x=np.log10(freqs), y=np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]))
+        (a, b, sa, sb) = linearfit.linear_fit_bootstrap(x=np.log10(freqs), y=np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]))
         print region+" - spidx:", a, '±', sa
         fig = plt.figure(figsize=(8, 8))
         fig.subplots_adjust(wspace=0)

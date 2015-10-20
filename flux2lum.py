@@ -32,7 +32,7 @@ print "Using Flat LmbdaCDM H0=0.70 Om0=0.3"
 
 # k-correction
 def kcorr(flux, z, alpha):
-    return flux*(1+z)**(-1-alpha)
+    return flux*(1+z)**(1+alpha)
 
 z = float(sys.argv[1]) # redshift
 flux = float(sys.argv[2]) # in Jy
