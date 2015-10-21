@@ -1,0 +1,23 @@
+Strategy.InputColumn = DATA
+Strategy.ChunkSize = 50
+Strategy.UseSolver = F
+Strategy.Steps = [predict2,predict3]
+
+# predict VirA
+Step.predict1.Operation      = PREDICT
+Step.predict1.Model.Sources      = [VirA] 
+Step.predict1.Model.Cache.Enable = T
+Step.predict1.Model.Beam.Enable = T
+Step.predict1.Output.Column  = MODEL_DATA
+# predict CasA
+Step.predict2.Operation      = PREDICT
+Step.predict2.Model.Sources      = [CasA] 
+Step.predict2.Model.Cache.Enable = T
+Step.predict2.Model.Beam.Enable = T
+Step.predict2.Output.Column  = MODEL_DATA_CASA
+# predict VirA
+Step.predict3.Operation      = PREDICT
+Step.predict3.Model.Sources      = [CygA]
+Step.predict3.Model.Cache.Enable = T
+Step.predict3.Model.Beam.Enable = T
+Step.predict3.Output.Column  = MODEL_DATA_CYGA

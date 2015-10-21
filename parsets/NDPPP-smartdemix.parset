@@ -1,0 +1,26 @@
+msin                   = L215947_SB030_uv.dppp.MS
+msin.autoweight        = False
+msin.datacolumn        = DATA
+msout                  = L215947_SB030_demix.MS
+msout.writefullresflag = False
+steps                  = [demix]
+
+demix.type             = smartdemix
+demix.instrumentmodel  = L215947_SB030.parmdb
+demix.ateam.skymodel   = /home/fdg/model/demix_highres_CasACygA.skydb
+demix.estimate.skymodel= /home/fdg/model/demix_lowres_CasACygA.skydb
+demix.target.skymodel  = /home/fdg/model/3C295-allfield.skydb
+demix.ntimechunk       = 6 # parallel/CPU
+demix.demixtimestep = 10 # 10 sec
+demix.demixfreqstep = 16 # 1 channel
+demix.timestep  = 1  # 10 sec
+demix.freqstep  = 4  # 2 channel
+demix.chunksize = 180 
+demix.sources = [CasA,CygA]
+demix.distance.threshold = 60
+demix.distance.reffreq = 60e6
+demix.ateam.threshold = 1.0
+demix.ratio1 = 10
+demix.target.threshold = 10.0 # target flux is between 40 and 50 Jy
+demix.solveboth = False
+demix.defaultgain = 1e-8
