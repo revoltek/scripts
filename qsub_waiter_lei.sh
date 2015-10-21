@@ -15,6 +15,8 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 # For DEBUG output add:
 #PBS -o output-\$PBS_JOBID
 # instead of /dev/null
+# To limit to a node, e.g. para11, use:
+#PBS -l nodes=1:ppn=$proc:para11
 
     cmd="#!/bin/bash
 #PBS -M astro@voo.it
@@ -24,14 +26,14 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
 #PBS -o /dev/null
-echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - ${@}\" >> commands.log
+cd \$PBS_O_WORKDIR
 source /net/para34/data1/oonk/tjd_upd/lofim.sh
 PATH=\"/home/fdg/scripts:${PATH}\"
-cd $PBS_O_WORKDIR
+echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - ${@}\" >> commands.log
 ${@}"
 
     # call the command and capture the stdout
-    id=`qsub /dev/stdin << EOF | perl -pe 's:^\D+(\d+).*$:$1:'
+    id=`qsub -q lofarq /dev/stdin << EOF | perl -pe 's:^\D+(\d+).*$:$1:'
 $cmd
 EOF`
 
