@@ -12,6 +12,7 @@
 # last high/low resolution images + masks + empty images (CORRECTED_DATA) are copied in the "self/images" dir
 # h5parm solutions and plots are copied in the "self/solutions" dir
 
+parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/'
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel'
 
 #######################################################################################
@@ -58,7 +59,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     # TODO: useless? why add columns by hand gives problems?
     logging.info('Creating fake parmdb...')
     for ms in mss:
-        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-fakeparmdb.parset '+skymodel, \
+        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, \
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
@@ -99,7 +100,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
             for ms in mssavg:
-                s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol.parset '+skymodel, \
                       log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
             for ms in mss:
@@ -107,7 +108,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
             logging.info('Correcting phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor.parset '+skymodel, \
+                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor.parset '+skymodel, \
                       log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
@@ -123,14 +124,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
             for ms in mssavg:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-solcor_csp.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' '+parset_dir+'/bbs-solcor_csp.parset '+skymodel, \
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
             # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
             logging.info('Calibrating amplitude...')
             for ms in mssavg:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-sol_amp.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
                       log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
 
@@ -152,7 +153,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
             s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
             s.run(check=False)
-            s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+            s.add('losoto -v '+h5parm+' '+parset_dir+'/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
             s.run(check=False)
             s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
             s.run(check=True)
@@ -167,9 +168,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')
             for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-cor_ampcsp.parset '+skymodel, \
+                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_ampcsp.parset '+skymodel, \
                       log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='BBS')
-#                s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/NDPPP-cor_ampcsp.parset msin='+ms+' \
+#                s.add('NDPPP '+parset_dir+'/NDPPP-cor_ampcsp.parset msin='+ms+' \
 #                      cor3.parmdb='+ms+'/instrument', \
 #                      log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='NDPPP')
             s.run(check=True)
@@ -240,7 +241,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # Flag on residuals
         logging.info('Flagging residuals...')
         for ms in mss:
-            s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/NDPPP-flag.parset msin='+ms, \
+            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
                     log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
     
@@ -253,7 +254,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
     logging.info('Final subtraction...')
     for ms in mss:
-        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/bbs-subfinal.parset '+skymodel, \
+        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
                log=ms+'_final-sub.log', cmd_type='BBS')
     s.run(check=True)
 

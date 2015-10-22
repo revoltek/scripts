@@ -7,7 +7,7 @@
 
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit'
 ngroups = 12 # number of groups (totalSB/SBperFREQgroup) ~ 20 SB/group
-initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
+initc = 12 # initial tc num (useful for multiple observation of same target) - tooth10==12
 fakeskymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.fakemodel.skymodel'
 globaldb = 'globaldb-blavg'
 
@@ -31,10 +31,10 @@ mss = sorted(glob.glob('*MS'))
 
 ##############################################
 # Initial processing
-#logging.info('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+logging.info('Fix beam table')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 ##################################################
 # Copy cal solution
