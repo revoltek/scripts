@@ -25,7 +25,7 @@ images = sys.argv[5:]
 
 do_convolve = True
 do_regrid = True
-newincr = None # arcsec, pixsize of final image
+newincr = None # arcsec, pixsize of final image. If None: a fourth of final beam
 do_cut = True
 region_file = 'cut.crtf' # region to cut the image
 to_fits = True
