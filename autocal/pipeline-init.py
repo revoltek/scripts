@@ -27,6 +27,7 @@ mss = sorted(glob.glob('*MS'))
 # Clean
 logging.info('Cleaning...')
 check_rm('*log')
+os.makedirs('log')
 
 ##############################################
 # Initial processing (2/2013->2/2014)
@@ -67,7 +68,7 @@ os.makedirs('plots')
 check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
 s.run(check=False)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto.log', log_append=True, cmd_type='python')
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=False)
 s.add('H5parm_exporter.py -v cal.h5 globaldb', log='losoto.log', log_append=True, cmd_type='python')
 s.run(check=True)

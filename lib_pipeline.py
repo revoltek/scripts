@@ -276,9 +276,10 @@ class Scheduler():
             if processors == None:
                 processors = 1 # default use single CPU
                 if "calibrate-stand-alone" == cmd[:21]: processors = 1
-                if "NDPPP" == cmd[:5]: processors=1
-                if "wsclean" == cmd[:7]: processors=self.max_processors
-                if "awimager" == cmd[:8]: processors=self.max_processors
+                if "NDPPP" == cmd[:5]: processors = 1
+                if "wsclean" == cmd[:7]: processors = self.max_processors
+                if "awimager" == cmd[:8]: processors = self.max_processors
+            if processors > self.max_processors: processors = self.max_processors
             self.action_list.append(str(processors)+' \''+cmd+'\'')
         else:
             self.action_list.append(cmd)
@@ -304,9 +305,9 @@ class Scheduler():
         pickle.dump( params, open( pfile, "wb" ) )
 
         # exec in the script dir?
-        if wkd == None: casacmd = 'casapy --nogui --log2term --nologger -c '+cmd+' '+pfile
+        if wkd == None: casacmd = 'casa --nogui --log2term --nologger -c '+cmd+' '+pfile
         elif os.path.isdir(wkd):
-            casacmd = 'cd '+wkd+'; casapy --nogui --log2term --nologger -c '+cmd+' '+pfile
+            casacmd = 'cd '+wkd+'; casa --nogui --log2term --nologger -c '+cmd+' '+pfile
         else:
             logging.error('Cannot find CASA working dir: '+wkd)
             sys.exit(1)
@@ -316,12 +317,14 @@ class Scheduler():
             elif log != '' and log_append: casacmd = str(processors)+' \''+casacmd+' >> '+log+' 2>&1'
             else: casacmd = str(processors)+' \''+casacmd
 
-            # clean up casa remnants in HAmburg cluster
+            # clean up casa remnants in Hamburg cluster
             if self.cluster == 'Hamburg':
                 self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'')
                 if processors != self.max_processors:
                     logging.error('To clean annoying CASA remnants no more than 1 CASA per node is allowed.')
                     sys.exit(1)
+            else:
+                self.action_list.append(casacmd+'\'')
         else:
             if log != '' and not log_append: self.action_list.append(casacmd+' > '+log+' 2>&1')
             elif log != '' and log_append: self.action_list.append(casacmd+' >> '+log+' 2>&1')

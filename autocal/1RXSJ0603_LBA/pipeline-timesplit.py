@@ -26,6 +26,7 @@ s = Scheduler(dry=False)
 logging.info('Cleaning...')
 check_rm('*log')
 check_rm('*group*')
+os.makedirs('log')
 
 mss = sorted(glob.glob('*MS'))
 

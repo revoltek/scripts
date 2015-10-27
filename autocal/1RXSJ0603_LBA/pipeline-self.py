@@ -21,7 +21,6 @@ import sys, os, glob, re
 import numpy as np
 from lofar import bdsm
 import pyrap.tables as pt
-import lsmtool
 from lib_pipeline import *
 from make_mask import make_mask
 
@@ -44,10 +43,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
     # Clear
     logging.info('Cleaning...')
     check_rm(group+'/*-BLavg.MS')
-    check_rm(group+'/*log *log *bak')
+    check_rm(group+'/*log *log *bak *last *pickle')
     check_rm(group+'/plots* plots')
     check_rm(group+'/*h5 *h5')
     check_rm('*last')
+    os.makedirs('log')
     check_rm('img')
     os.makedirs('img')
     check_rm('self/images/g'+g)
@@ -76,6 +76,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     # after columns creation
     logging.info('Concatenating TCs...')
+    check_rm(concat_ms+'*')
     pt.msutil.msconcat(mss, concat_ms, concatTime=False)
     
     ####################################################################################################
@@ -100,7 +101,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
             for ms in mssavg:
-                s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                       log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
             for ms in mss:
@@ -108,8 +109,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
             logging.info('Correcting phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor.parset '+skymodel, \
-                      log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
+                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+                log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
             # copy FLAG and MODEL_DATA in avgBL - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
@@ -124,7 +125,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
             for ms in mssavg:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_csp '+ms+' '+parset_dir+'/bbs-solcor_csp.parset '+skymodel, \
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
@@ -138,7 +139,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # merge parmdbs
             logging.info('Merging instrument tables...')
             for ms in mssavg:
-                merge_parmdb(ms+'/instrument_csp', ms+'/instrument_amp', ms+'/instrument', clobber=True)
+                merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
     
             ########################################################
             # LoSoTo Amp rescaling
@@ -168,11 +169,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')
             for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_ampcsp.parset '+skymodel, \
-                      log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='BBS')
-#                s.add('NDPPP '+parset_dir+'/NDPPP-cor_ampcsp.parset msin='+ms+' \
+                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
+                      log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='BBS')
+#                s.add('NDPPP '+parset_dir+'/NDPPP-cor_amptec.parset msin='+ms+' \
 #                      cor3.parmdb='+ms+'/instrument', \
-#                      log=ms+'_corampcsp-c'+str(i)+'.log', cmd_type='NDPPP')
+#                      log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='NDPPP')
             s.run(check=True)
     
         # TEST for circular
@@ -189,18 +190,18 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
         logging.info('Cleaning 1...')
         imagename = 'img/wide-'+str(i)
-        s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 \
-                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 8000 '+concat_ms, \
-                log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
+        s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms, \
+                log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
         logging.info('Cleaning 2...')
-        s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 90 \
-                -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 0.75 -update-model-required -maxuv-l 8000 -casamask '+imagename+'.newmask '+concat_ms, \
-                log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean')
+        s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+                -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 1 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
+                log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
@@ -221,15 +222,15 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # reclean low-resolution
         logging.info('Cleaning low resolution 1...')
         imagename = 'img/wide-lr-'+str(i)
-        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90\
-                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 '+concat_ms, \
-                log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 4000 4000 -mem 30 -j '+str(s.max_processors)+'\
+                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 1 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms, \
+                log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
         logging.info('Cleaning low resolution 2...')
-        s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 90\
-                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 0.75 -update-model-required -maxuv-l 2500 -casamask '+imagename+'.newmask '+concat_ms, \
-                log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean')
+        s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' \
+                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 1 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
+                log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
         ###############################################################################################################
@@ -266,9 +267,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
     # Perform a final clean to create an inspection image which should be very empty
     logging.info('Empty cleaning...')
     imagename = 'img/empty'
-    s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 \
-            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 0.75 -no-update-model-required -maxuv-l 8000 -datacolumn CORRECTED_DATA '+concat_ms, \
-            log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean')
+    s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn CORRECTED_DATA '+concat_ms, \
+            log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
     # Copy last *model

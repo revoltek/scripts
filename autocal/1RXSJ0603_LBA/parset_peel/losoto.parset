@@ -6,7 +6,7 @@ LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
-LoSoTo.Ncpu = 6
+LoSoTo.Ncpu = 10
 
 LoSoTo.Steps.norm.Operation = NORM
 LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
