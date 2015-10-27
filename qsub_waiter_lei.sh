@@ -25,7 +25,7 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 #PBS -l walltime=9:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
-#PBS -o /dev/null
+#PBS -o log/\${PBS_JOBID}
 cd \$PBS_O_WORKDIR
 source /net/para34/data1/oonk/tjd_upd/lofim.sh
 PATH=\"/home/fdg/scripts:${PATH}\"

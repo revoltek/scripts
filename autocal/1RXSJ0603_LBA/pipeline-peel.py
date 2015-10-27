@@ -118,6 +118,7 @@ check_rm('plot')
 check_rm('tmpCASA_*')
 
 logging.info('Creating dirs...')
+os.makedirs('log')
 check_rm('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name']+'/models')
