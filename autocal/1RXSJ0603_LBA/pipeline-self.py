@@ -141,9 +141,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                       log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
-            for ms in mss:
-                check_rm(ms+'/instrument')
-                os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
+            losoto(str(i)+'rr', mssrr, mssavgrr, g, parset_dir+'/losoto-plot.parset')
+            losoto(str(i)+'ll', mssll, mssavgll, g, parset_dir+'/losoto-plot.parset')
             logging.info('Correcting phase...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
