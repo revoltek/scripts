@@ -28,7 +28,8 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 #PBS -o log/\${PBS_JOBID}
 cd \$PBS_O_WORKDIR
 source /net/para34/data1/oonk/tjd_upd/lofim.sh
-PATH=\"/home/fdg/scripts:${PATH}\"
+export PATH=\"${PATH}\"
+export PYTHONPATH=\"${PYTHONPATH}\"
 echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - ${@}\" >> commands.log
 ${@}"
 
