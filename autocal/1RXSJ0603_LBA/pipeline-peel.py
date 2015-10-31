@@ -18,6 +18,8 @@
 dd = {'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou1.crtf', 'reg_facet': 'facet1.crtf'}
 phasecentre = [90.833333,42.233333] # toorhbrush
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
+parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
+niter = 5
 
 ##########################################################################################
 
@@ -45,7 +47,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS')
         check_rm(msout)
-        s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
                 msout='+msout+' avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log=ms+'_avgclean-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -192,10 +194,10 @@ for d in sorted(glob.glob(modeldir+'/*-tmp')):
 check_rm(modeldir+'/*-tmp')
 
 ###########################################################################################################
-# [PARALLEL] ADD model group*_TC*.MS:CORRECTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
+# [PARALLEL] ADD model group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
 logging.info('Add model...')
 for ms in allmss:
-    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset', \
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_add.parset', \
             log=ms+'_init-addcor.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -205,14 +207,14 @@ logging.info('Shifting+averaging (CORRECTED_DATA)...')
 for tc in tcs:
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'peel_TC'+tc+'.MS'
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
             shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
 s.run(check=True)
 logging.info('Shifting+averaging (MODEL_DATA)...')
 for tc in tcs:
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'peel-model_TC'+tc+'.MS'
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
+    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
             shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
 s.run(check=True)
 
@@ -244,7 +246,7 @@ BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
 #check_rm('test*MS')
 #logging.info('Correct...')
 #for ms in allmss:
-#    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_cor.parset', \
+#    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_cor.parset', \
 #            log=ms+'_init-cor.log', cmd_type='BBS')
 #s.run(check=True)
 ## shift and avg th corrected data
@@ -252,7 +254,7 @@ BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
 #for tc in tcs:
 #    mss = glob.glob('group*_TC'+tc+'.MS')
 #    msout = 'test_TC'+tc+'.MS'
-#    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+#    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
 #            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
 #s.run(check=True)
 #testmss = sorted(glob.glob('test_TC*.MS'))
@@ -267,7 +269,7 @@ clean('init_facet', mss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
 
 ###################################################################################################################
 # self-cal cycle
-for c in xrange(2):
+for c in xrange(niter):
     logging.info('Start peel cycle: '+str(c))
 
     # ft model - peel_TC*.MS:MODEL_DATA (best available model)
@@ -281,7 +283,7 @@ for c in xrange(2):
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Calibrating TEC...')
         for ms in BLavgpeelmss:
-            s.add('calibrate-stand-alone -f '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_tec.parset '+skymodel, \
+            s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                     log=ms+'_sol-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
         for ms in peelmss:
@@ -289,11 +291,11 @@ for c in xrange(2):
             os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
 
         # LoSoTo plotting
-        losoto(c, peelmss, dd, '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto-plot.parset')
+        losoto(c, peelmss, dd, parset_dir+'/losoto-plot.parset')
 
         logging.info('Correcting TEC...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_tec.parset '+skymodel, \
+            s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
                     log=ms+'_cor-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
     else:
@@ -301,14 +303,14 @@ for c in xrange(2):
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA_PHASE
         logging.info('Calibrating phase...')
         for ms in BLavgpeelmss:
-            s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-solcor_tec.parset '+skymodel, \
+            s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
                     log=ms+'_calpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
         # [PARALLEL] calibrate amplitude 5 min timescale every 20 SBs - peel_TC*.MS:CORRECTED_DATA_PHASE (no correction)
         logging.info('Calibrating amplitude...')
         for ms in BLavgpeelmss:
-            s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-sol_amp.parset '+skymodel, \
+            s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
                     log=ms+'_calamp-c'+str(c)+'.log', cmd_type='BBS', processors = 'max')
         s.run(check=True)
 
@@ -322,12 +324,12 @@ for c in xrange(2):
             os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
 
         # LoSoTo Amp rescaling
-        losoto(c, peelmss, dd, '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/losoto.parset')
+        losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
 
         # [PARALLEL] correct phase + amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
         logging.info('Correcting phase+amplitude...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_amptec.parset '+skymodel, \
+            s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
                     log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
@@ -345,6 +347,7 @@ for ms in peelmss:
 # now do the same but for the entire facet to obtain a complete image of the facet and do a final subtraction
 ##############################################################################################################################
 # Add rest of the facet - group*_TC*.MS:MODEL_DATA (high+low resolution model)
+# TODO: parallelize as above
 logging.info('Add facet model...')
 for g in groups: 
     model = 'peel/'+dd['name']+'/models/peel_facet-g'+g+'.model'
@@ -362,7 +365,7 @@ for g in groups:
 # [PARALLEL] ADD and corrupt group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
 logging.info('Add and corrupt facet model...')
 for ms in allmss:
-    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset '+skymodel, \
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_add.parset '+skymodel, \
         log=ms+'_facet-add.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -371,7 +374,7 @@ logging.info('Shifting+averaging facet...')
 for tc in tcs:
     mss = glob.glob('group*_TC'+tc+'.MS')
     msout = 'facet_TC'+tc+'.MS'
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
             shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', \
             log=msout+'_facet-shiftavg.log', cmd_type='NDPPP')
 s.run(check=True)
@@ -387,7 +390,7 @@ for tc in tcs:
     os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
 logging.info('Correcting facet amplitude+phase...')
 for ms in facetmss:
-    s.add('calibrate-stand-alone '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-cor_amptec.parset '+skymodel, \
+    s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
             log=ms+'_facet-coramptec.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -402,7 +405,7 @@ sys.exit(1)
 logging.info('Shifting original dataset...')
 for ms in allmss:
     msout = ms.replace('.MS','-shift.MS')
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shift.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA msout='+msout+' \
+    s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA msout='+msout+' \
             msout.datacolumn=DATA shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', \
             log=msout+'_final-shift.log', cmd_type='NDPPP')
 s.run(check=True)
@@ -411,7 +414,7 @@ for ms in peelmss:
     for g in groups:
         msout = ms.replace('peel','group'+g).replace('.MS','-shift.MS')
         logging.debug(ms+'/instrument -> '+msout+'/instrument')
-        os.system('cp -r '+ms+'/instrument '+msout+'')
+        os.system('cp -r '+ms+'/instrument '+msout)
 
 # Add new facet model - group*_TC*-shift.MS:MODEL_DATA (new facet model)
 logging.info('Add new facet model...')
@@ -426,7 +429,7 @@ s.run(check=True)
 # TODO: check that a parmdb for an avg freq works fine
 logging.info('Subtracting new facet model...')
 for ms in sorted(glob.glob('group*_TC*-shift.MS')):
-    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-final_sub.parset', \
+    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-final_sub.parset', \
             log=ms+'_final-add.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -434,7 +437,7 @@ s.run(check=True)
 logging.info('Shifting back original dataset...')
 for ms in sorted(glob.glob('group*_TC*-shift.MS')):
     msout = ms.replace('-shift.MS','.MS')
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shift.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA msout='+msout+' \
+    s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA msout='+msout+' \
             msout.datacolumn=SUBTRACTED_DATA shift.phasecenter=\['+str(phasecentre[0])+'deg,'+str(phasecentre[1])+'deg\]', \
             log=msout+'_final-shift2.log', cmd_type='NDPPP')
 s.run(check=True)
