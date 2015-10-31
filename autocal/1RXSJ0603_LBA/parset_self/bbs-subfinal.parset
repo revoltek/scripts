@@ -6,7 +6,6 @@ Step.subtract.Operation                    = SUBTRACT
 Step.subtract.Model.Sources                = [@MODEL_DATA]
 Step.subtract.Model.Gain.Enable            = T
 Step.subtract.Model.TEC.Enable             = T
-Step.subtract.Output.Column = SUBTRACTED_DATA
 
 Step.correct.Operation = CORRECT
 Step.correct.Model.Sources = [@MODEL_DATA]

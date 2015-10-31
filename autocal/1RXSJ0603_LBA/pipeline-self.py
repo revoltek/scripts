@@ -127,6 +127,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     logging.info('Creating MODEL_DATA_HIGHRES...')
     for ms in mss_orig:
         s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
+        s.add('addcol2ms.py -i '+ms+' -o SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
     
     ####################################################################################################
@@ -175,6 +176,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
+            # TODO: RECOMBINE RR/LL BEFORE SOLVING? MIGHT BE A PROBLEM LATER WHEN DOING FINAL SUBTRACTION
             # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
             logging.info('Calibrating amplitude...')
             for ms in mssavg:
@@ -284,22 +286,24 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
-    logging.info('Final subtraction...')
-    for ms in mss:
-        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
-               log=ms+'_final-sub.log', cmd_type='BBS')
-    s.run(check=True)
-
-    # re-create concat because SUBTRACTED_DATA has just been created
-    logging.info('Concatenating TCs...')
-    check_rm(concat_ms)
-    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+    # TODO: add LL/RR compilancy
+#    logging.info('Final subtraction...')
+#    for ms in mss:
+#        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
+#               log=ms+'_final-sub.log', cmd_type='BBS')
+#    s.run(check=True)
+#
+#    # re-create concat because SUBTRACTED_DATA has just been created
+#    logging.info('Concatenating TCs...')
+#    check_rm(concat_ms)
+#    pt.msutil.msconcat(mss_orig, concat_ms, concatTime=False)
  
-    # Perform a final clean to create an inspection image which should be very empty
+    # Perform a final clean to create an inspection image of SUBTRACTED_DATA which should be very empty
     logging.info('Empty cleaning...')
+    s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql5.log', cmd_type='general')
     imagename = 'img/empty'
     s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn CORRECTED_DATA '+concat_ms, \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms, \
             log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
