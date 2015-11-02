@@ -88,6 +88,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     check_rm('self/solutions/g'+g)
     os.makedirs('self/solutions/g'+g)
 
+    #################################################################################################
     # TODO: useless? why add columns by hand gives problems?
     logging.info('Creating fake parmdb...')
     for ms in mss_orig:
