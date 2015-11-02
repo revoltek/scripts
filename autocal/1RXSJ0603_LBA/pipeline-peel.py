@@ -192,9 +192,8 @@ for d in sorted(glob.glob(modeldir+'/*-tmp')):
 check_rm(modeldir+'/*-tmp')
 
 ###########################################################################################################
-# [PARALLEL] ADD (corrupt) group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
-# TODO: modify to account for changes (TEC sol only?) in pipeline-self
-logging.info('Add and corrupt model...')
+# [PARALLEL] ADD model group*_TC*.MS:CORRECTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
+logging.info('Add model...')
 for ms in allmss:
     s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_add.parset', \
             log=ms+'_init-addcor.log', cmd_type='BBS')
@@ -242,31 +241,29 @@ BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
 ##############################################################################################3
 # TEST
 # correct the DDcal-added data
-check_rm('test*MS')
-logging.info('Correct...')
-for ms in allmss:
-    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_cor.parset', \
-            log=ms+'_init-cor.log', cmd_type='BBS')
-s.run(check=True)
-# shift and avg th corrected data
-logging.info('Shifting+averaging (CORRECTED_DATA)...')
-for tc in tcs:
-    mss = glob.glob('group*_TC'+tc+'.MS')
-    msout = 'test_TC'+tc+'.MS'
-    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
-            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
-s.run(check=True)
-testmss = sorted(glob.glob('test_TC*.MS'))
-for ms in testmss:
-    s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
-s.run(check=True)
-
-sys.exit(1)
+#check_rm('test*MS')
+#logging.info('Correct...')
+#for ms in allmss:
+#    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/bbs-init_cor.parset', \
+#            log=ms+'_init-cor.log', cmd_type='BBS')
+#s.run(check=True)
+## shift and avg th corrected data
+#logging.info('Shifting+averaging (CORRECTED_DATA)...')
+#for tc in tcs:
+#    mss = glob.glob('group*_TC'+tc+'.MS')
+#    msout = 'test_TC'+tc+'.MS'
+#    s.add('NDPPP /home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+#            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
+#s.run(check=True)
+#testmss = sorted(glob.glob('test_TC*.MS'))
+#for ms in testmss:
+#    s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
+#s.run(check=True)
 
 # do a first hi-res clean
-model = clean('init', testmss, dd, groups)
-#clean('init_facet', testmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
-check_rm('test*MS')
+model = clean('init', mss, dd, groups)
+clean('init_facet', mss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
+#check_rm('test*MS')
 
 ###################################################################################################################
 # self-cal cycle
