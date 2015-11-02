@@ -120,7 +120,6 @@ check_rm('plot')
 check_rm('tmpCASA_*')
 
 logging.info('Creating dirs...')
-os.makedirs('log')
 check_rm('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name'])
 os.makedirs('peel/'+dd['name']+'/models')
@@ -240,31 +239,14 @@ s.run(check=True)
 
 BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
 
-##############################################################################################3
-# TEST
-# correct the DDcal-added data
-#check_rm('test*MS')
-#logging.info('Correct...')
-#for ms in allmss:
-#    s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_cor.parset', \
-#            log=ms+'_init-cor.log', cmd_type='BBS')
-#s.run(check=True)
-## shift and avg th corrected data
-#logging.info('Shifting+averaging (CORRECTED_DATA)...')
-#for tc in tcs:
-#    mss = glob.glob('group*_TC'+tc+'.MS')
-#    msout = 'test_TC'+tc+'.MS'
-#    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
-#            shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
-#s.run(check=True)
-#testmss = sorted(glob.glob('test_TC*.MS'))
-#for ms in testmss:
-#    s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
-#s.run(check=True)
-
+# Add CORRECTED_DATA to newly created peelmss for initial imaging - CORRECTED_DATE = DATA
+logging.info('Initialize CORRECTED_DATA...')
+for ms in peelmss:
+    s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
+s.run(check=True)
 # do a first hi-res clean
-model = clean('init', mss, dd, groups)
-clean('init_facet', mss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
+model = clean('init', peelmss, dd, groups)
+clean('init_facet', peelmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
 #check_rm('test*MS')
 
 ###################################################################################################################
@@ -284,11 +266,14 @@ for c in xrange(niter):
         logging.info('Calibrating TEC...')
         for ms in BLavgpeelmss:
             s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
-                    log=ms+'_sol-c'+str(c)+'.log', cmd_type='BBS')
+                    log=ms+'-sol_tec-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
         for ms in peelmss:
             check_rm(ms+'/instrument')
             os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
+            # prevent losoto problem
+            check_rm(ms+'/sky')
+            os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/sky '+ms+'/sky')
 
         # LoSoTo plotting
         losoto(c, peelmss, dd, parset_dir+'/losoto-plot.parset')
@@ -296,7 +281,7 @@ for c in xrange(niter):
         logging.info('Correcting TEC...')
         for ms in peelmss:
             s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-                    log=ms+'_cor-c'+str(c)+'.log', cmd_type='BBS')
+                    log=ms+'-cor_tec-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
     else:
         ##################################################################################################

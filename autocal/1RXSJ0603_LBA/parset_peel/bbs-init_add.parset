@@ -4,8 +4,4 @@ Strategy.Steps = [add]
 
 Step.add.Operation                    = ADD
 Step.add.Model.Sources                = [@MODEL_DATA]
-Step.add.Model.CommonScalarPhase.Enable = F
-Step.add.Model.TEC.Enable             = F
-Step.add.Model.Gain.Enable            = F
-Step.add.Model.Beam.Enable            = F
 Step.add.Output.Column = CORRECTED_DATA
