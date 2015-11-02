@@ -266,7 +266,6 @@ class Scheduler():
         cmd_type: can be a list of known command types as "BBS", "NDPPP"...
         processors: number of processors to use, can be "max" to automatically use max number of processors per node
         """
-        print cmd
         if log != '' and not log_append: cmd += ' > '+log+' 2>&1'
         if log != '' and log_append: cmd += ' >> '+log+' 2>&1'
 
