@@ -21,11 +21,12 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
-#PBS -o log/\${PBS_JOBID}
+#PBS -o /dev/null
 echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - ${@}\" >> commands.log
 source /home/lofar/init-lofar.sh
 source /home/lofar/init-lofar-test.sh
-PATH=\"/home/stsf309/scripts:${PATH}\"
+export PATH=\"${PATH}\"
+export PYTHONPATH=\"${PYTHONPATH}\"
 ${@}"
 
     # call the command and capture the stdout

@@ -14,6 +14,7 @@
 
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/'
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel'
+niter = 2
 
 #######################################################################################
 
@@ -27,6 +28,38 @@ from make_mask import make_mask
 set_logger()
 s = Scheduler(dry=False)
 
+def losoto(c, mss, mssavg, g, parset):
+    """
+    c = cycle
+    mss = list of mss
+    g = group number
+    parset = losoto parset
+    """
+    logging.info('Running LoSoTo...')
+    check_rm('plots')
+    os.makedirs('plots')
+    check_rm('globaldb')
+    os.makedirs('globaldb')
+
+    for num, ms in enumerate(mssavg):
+        os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+    h5parm = 'global-c'+str(c)+'.h5'
+
+    s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.run(check=False)
+    s.add('losoto -v '+h5parm+' '+parset, log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.run(check=False)
+    s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.run(check=True)
+
+    for num, ms in enumerate(mss):
+        check_rm(ms+'/instrument')
+        os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('mv plots self/solutions/g'+g+'/plots-c'+str(c))
+    os.system('mv '+h5parm+' self/solutions/g'+g)
+
+
 # here an image+model for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
@@ -34,9 +67,9 @@ if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 
 for group in sorted(glob.glob('group*'))[::-1]:
 
-    mss = sorted(glob.glob(group+'/group*_TC*[0-9].MS'))
+    mss_orig = sorted(glob.glob(group+'/group*_TC*[0-9].MS'))
     concat_ms = group+'/concat.MS'
-    g = str(re.findall(r'\d+', mss[0])[0])
+    g = str(re.findall(r'\d+', mss_orig[0])[0])
     logging.info('Working on group: '+g+'...')
     
     ################################################################################################
@@ -45,9 +78,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
     check_rm(group+'/*-BLavg.MS')
     check_rm(group+'/*log *log *bak *last *pickle')
     check_rm(group+'/plots* plots')
-    check_rm(group+'/*h5 *h5')
+    check_rm(group+'/*h5 *h5 globaldb')
     check_rm('*last')
-    os.makedirs('log')
     check_rm('img')
     os.makedirs('img')
     check_rm('self/images/g'+g)
@@ -58,45 +90,54 @@ for group in sorted(glob.glob('group*'))[::-1]:
     #################################################################################################
     # TODO: useless? why add columns by hand gives problems?
     logging.info('Creating fake parmdb...')
-    for ms in mss:
+    for ms in mss_orig:
         s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, \
               log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
+    ###################################################################################################
+    # separate LL and RR
+    logging.info('Separating RR and LL...')
+    for ms in mss_orig:
+        msLL = ms.replace('.MS','-LL.MS')
+        if os.path.exists(msLL): os.system('rm -r '+msLL)
+        os.system( 'cp -r '+ms+' '+msLL )
+
+        msRR = ms.replace('.MS','-RR.MS')
+        if os.path.exists(msRR): os.system('rm -r '+msRR)
+        os.system( 'cp -r '+ms+' '+msRR )
+
+        s.add('taql "update '+msRR+' set DATA[,3]=DATA[,0]"', log=ms+'_init-taql.log', cmd_type='general')
+        s.add('taql "update '+msLL+' set DATA[,0]=DATA[,3]"', log=ms+'_init-taql.log', cmd_type='general', log_append=True)
+    s.run(check=True)
+
+    mss = sorted(glob.glob(group+'/group*_TC*[0-9]-*.MS'))
+    mssrr = sorted(glob.glob(group+'/group*_TC*[0-9]-RR.MS'))
+    mssll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL.MS'))
+
+    #################################################################################################
     logging.info('Smoothing...')
     for ms in mss:
         s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.run(check=True)
     mssavg = sorted(glob.glob(group+'/group*_TC*-BLavg.MS'))
+    mssavgrr = sorted(glob.glob(group+'/group*_TC*[0-9]-RR-BLavg.MS'))
+    mssavgll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL-BLavg.MS'))
 
     logging.info('Creating MODEL_DATA_HIGHRES...')
-    for ms in mss:
+    for ms in mss_orig:
         s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
     s.run(check=True)
-
-    # after columns creation
-    logging.info('Concatenating TCs...')
-    check_rm(concat_ms+'*')
-    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+    logging.info('Creating SUBTRACTED_DATA...')
+    for ms in mss_orig:
+        s.add('addcol2ms.py -i '+ms+' -o SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python', log_append=True)
+    s.run(check=True)
     
     ####################################################################################################
     # self-cal cycle
-    for i in xrange(3):
+    for i in xrange(niter):
         logging.info('Start selfcal cycle: '+str(i))
-    
-        # TEST for circular
-        # separate LL and RR
-        #msLL = ms.replace('.MS','-LL.MS')
-        #if os.path.exists(msLL): os.system('rm -r '+msLL)
-        #msRR = ms.replace('.MS','-RR.MS')
-        #if os.path.exists(msRR): os.system('rm -r '+msRR)
-        #os.system( 'cp -r '+ms+' '+msLL )
-        #os.system( 'mv '+ms+' '+msRR )
-        #print 'taql \'update '+msRR+' set DATA[,3]=DATA[,0]\''
-        #os.system( 'taql \'update '+msRR+' set DATA[,3]=DATA[,0]\'' )
-        #print 'taql \'update '+msLL+' set DATA[,0]=DATA[,3]\''
-        #os.system( 'taql \'update '+msLL+' set DATA[,0]=DATA[,3]\'' )
-    
+   
         if i == 0:
             # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
@@ -104,9 +145,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                       log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
-            for ms in mss:
-                check_rm(ms+'/instrument')
-                os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
+            losoto(str(i)+'rr', mssrr, mssavgrr, g, parset_dir+'/losoto-plot.parset')
+            losoto(str(i)+'ll', mssll, mssavgll, g, parset_dir+'/losoto-plot.parset')
             logging.info('Correcting phase...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
@@ -115,10 +155,20 @@ for group in sorted(glob.glob('group*'))[::-1]:
         else:
             # copy FLAG and MODEL_DATA in avgBL - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
             logging.info('Copying FLAG and MODEL_DATA to the averaged datasets...')
-            for ms in mss:
-                msavg = ms.replace('.MS','-BLavg.MS')
-                s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA=orig.MODEL_DATA" && \
-                       taql "update '+msavg+', '+ms+' as orig set FLAG=orig.FLAG"', \
+            for ms in mss_orig:
+                msavg = ms.replace('.MS','-RR-BLavg.MS')
+                s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,0]" && \
+                       taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,0]" && \
+                       taql "update '+msavg+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,0]" && \
+                       taql "update '+msavg+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,0]"', \
+                       log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
+            s.run(check=True)
+            for ms in mss_orig:
+                msavg = ms.replace('.MS','-LL-BLavg.MS')
+                s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,3]" && \
+                       taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,3]" && \
+                       taql "update '+msavg+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,3]" && \
+                       taql "update '+msavg+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
                        log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
             s.run(check=True)
 
@@ -143,46 +193,31 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
             ########################################################
             # LoSoTo Amp rescaling
-            logging.info('LoSoTo...')
-            os.makedirs('plots')
-            check_rm('globaldb')
-            os.makedirs('globaldb')
-            for num, ms in enumerate(mssavg):
-                os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-                if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-            h5parm = 'global-c'+str(i)+'.h5'
-
-            s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
-            s.run(check=False)
-            s.add('losoto -v '+h5parm+' '+parset_dir+'/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
-            s.run(check=False)
-            s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
-            s.run(check=True)
-
-            # Copy instrument from globaldb (msavg) to ms
-            for num, ms in enumerate(mss):
-                check_rm(ms+'/instrument')
-                os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-            os.system('mv plots self/solutions/g'+g+'/plots-c'+str(i))
-            os.system('mv '+h5parm+' self/solutions/g'+g)
+            losoto(str(i)+'rr', mssrr, mssavgrr, g, parset_dir+'/losoto.parset')
+            losoto(str(i)+'ll', mssll, mssavgll, g, parset_dir+'/losoto.parset')
         
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
                       log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='BBS')
-#                s.add('NDPPP '+parset_dir+'/NDPPP-cor_amptec.parset msin='+ms+' \
-#                      cor3.parmdb='+ms+'/instrument', \
-#                      log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='NDPPP')
             s.run(check=True)
     
-        # TEST for circular
         # join RR and LL
-        #if os.path.exists(ms): os.system('rm -r '+ms)
-        #os.system('mv '+msRR+' '+ms)
-        #print 'taql \'update '+ms+', '+msLL+' as ll set DATA[3,]=ll.DATA[3,]\''
-        #os.system('taql \'update '+ms+', '+msLL+' as ll set DATA[3,]=ll.DATA[3,]\'')
-        #os.system('rm -r '+msLL)
+        logging.info('Reconstructing polarizations...')
+        for ms in mss_orig:
+            msRR = ms.replace('.MS','-RR.MS')
+            s.add('taql "update '+ms+', '+msRR+' as rr set CORRECTED_DATA[,0]=rr.CORRECTED_DATA[,0]"', log=ms+'_taql-c'+str(i)+'.log', cmd_type='general')
+        s.run(check=True)
+        for ms in mss_orig:
+            msLL = ms.replace('.MS','-LL.MS')
+            s.add('taql "update '+ms+', '+msLL+' as ll set CORRECTED_DATA[,3]=ll.CORRECTED_DATA[,3]"', log=ms+'_taql-c'+str(i)+'.log', cmd_type='general', log_append=True)
+        s.run(check=True)
+
+        # after columns creation
+        logging.info('Concatenating TCs...')
+        check_rm(concat_ms+'*')
+        pt.msutil.msconcat(mss_orig, concat_ms, concatTime=False)
     
         ###################################################################################################################
         # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
@@ -241,7 +276,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
         # Flag on residuals
         logging.info('Flagging residuals...')
-        for ms in mss:
+        for ms in mss_orig:
             s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
                     log=ms+'_flag-c'+str(i)+'.log', cmd_type='NDPPP')
         s.run(check=True)
@@ -253,22 +288,23 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
-    logging.info('Final subtraction...')
-    for ms in mss:
-        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
-               log=ms+'_final-sub.log', cmd_type='BBS')
-    s.run(check=True)
-
-    # re-create concat because SUBTRACTED_DATA has just been created
-    logging.info('Concatenating TCs...')
-    check_rm(concat_ms)
-    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+#    logging.info('Final subtraction...')
+#    for ms in mss:
+#        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
+#               log=ms+'_final-sub.log', cmd_type='BBS')
+#    s.run(check=True)
+#
+#    # re-create concat because SUBTRACTED_DATA has just been created
+#    logging.info('Concatenating TCs...')
+#    check_rm(concat_ms)
+#    pt.msutil.msconcat(mss_orig, concat_ms, concatTime=False)
  
-    # Perform a final clean to create an inspection image which should be very empty
+    # Perform a final clean to create an inspection image of SUBTRACTED_DATA which should be very empty
     logging.info('Empty cleaning...')
+    s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql5.log', cmd_type='general')
     imagename = 'img/empty'
     s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn CORRECTED_DATA '+concat_ms, \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms, \
             log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
@@ -277,12 +313,12 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.system('mv img/wide-'+str(i)+'-masked-model.fits self/models/wide-g'+g+'.model')
     os.system('mv img/wide-lr-'+str(i)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
     # Copy images
-    [ os.system('mv img/wide-'+str(i)+'.newmask self/images/g'+g) for i in xrange(3) ]
-    [ os.system('mv img/wide-lr-'+str(i)+'.newmask self/images/g'+g) for i in xrange(3) ]
-    [ os.system('mv img/wide-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(3) ]
-    [ os.system('mv img/wide-lr-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(3) ]
-    [ os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(3) ]
-    [ os.system('mv img/wide-lr-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(3) ]
+    [ os.system('mv img/wide-'+str(i)+'.newmask self/images/g'+g) for i in xrange(niter) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'.newmask self/images/g'+g) for i in xrange(niter) ]
+    [ os.system('mv img/wide-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(niter) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'-image.fits self/images/g'+g) for i in xrange(niter) ]
+    [ os.system('mv img/wide-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(niter) ]
+    [ os.system('mv img/wide-lr-'+str(i)+'-masked-image.fits self/images/g'+g) for i in xrange(niter) ]
     os.system('mv img/empty-image.fits self/images/g'+g)
     os.system('mv *log '+group)
 
