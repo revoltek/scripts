@@ -80,7 +80,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
     check_rm(group+'/plots* plots')
     check_rm(group+'/*h5 *h5 globaldb')
     check_rm('*last')
-    os.makedirs('log')
     check_rm('img')
     os.makedirs('img')
     check_rm('self/images/g'+g)
@@ -128,6 +127,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
     logging.info('Creating MODEL_DATA_HIGHRES...')
     for ms in mss_orig:
         s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
+    s.run(check=True)
+    logging.info('Creating SUBTRACTED_DATA...')
+    for ms in mss_orig:
         s.add('addcol2ms.py -i '+ms+' -o SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
     
@@ -177,7 +179,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
     
-            # TODO: RECOMBINE RR/LL BEFORE SOLVING? MIGHT BE A PROBLEM LATER WHEN DOING FINAL SUBTRACTION
             # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
             logging.info('Calibrating amplitude...')
             for ms in mssavg:
@@ -287,7 +288,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
     # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
     #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
-    # TODO: add LL/RR compilancy
 #    logging.info('Final subtraction...')
 #    for ms in mss:
 #        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
