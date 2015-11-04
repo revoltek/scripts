@@ -1,0 +1,5 @@
+msin = 'XXX'
+msin.datacolumn = DATA
+msout =.
+
+steps = [count]
