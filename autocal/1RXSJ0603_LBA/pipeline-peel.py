@@ -40,7 +40,6 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     c = cycle/name
     mss = list of mss to avg/clean
     """
-    mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
     # [PARALLEL] averaging before cleaning *.MS:CORRECTED_DATA -> *-avg.MS:DATA
     logging.info('Averaging before cleaning...')
     nchan = find_nchan(mss[0])
@@ -50,6 +49,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
         s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
                 msout='+msout+' avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log=ms+'_avgclean-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
+    mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
 
     # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA (beam corrected, only source to peel in the data, all chan)
     check_rm('concat.MS*')
@@ -239,7 +239,7 @@ s.run(check=True)
 
 BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
 
-# Add CORRECTED_DATA to newly created peelmss for initial imaging - CORRECTED_DATE = DATA
+# Add CORRECTED_DATA to newly created peelmss for initial imaging - CORRECTED_DATA = DATA
 logging.info('Initialize CORRECTED_DATA...')
 for ms in peelmss:
     s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
@@ -260,7 +260,7 @@ for c in xrange(niter):
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
         s.run(check=True) # no parallel (problem multiple accesses to model file)
 
-    if c < 1:
+    if c < 1 and False: # TODO: skip phase-only
         ################################################################################################
         # [PARALLEL] calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Calibrating TEC...')
@@ -347,7 +347,7 @@ for g in groups:
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':modellr, 'incr':True, 'wproj':1024}, log='facet-g'+g+'-ft2.log')
     s.run(check=True) # no parallel
 
-# [PARALLEL] ADD and corrupt group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
+# [PARALLEL] ADD group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
 logging.info('Add and corrupt facet model...')
 for ms in allmss:
     s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_add.parset '+skymodel, \

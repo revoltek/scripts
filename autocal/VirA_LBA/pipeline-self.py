@@ -7,7 +7,7 @@
 # 3 flag
 
 # initial self-cal model
-model = '/home/fdg/scripts/autocal/VirA_LBA/150702_LBA-VirgoA.model'
+model = '/home/fdg/scripts/autocal/VirA_LBA/150328_LBA-VirgoA.model'
 # globaldb produced by pipeline-init
 globaldb = '../cals/globaldb'
 # fake skymodel with pointing direction
@@ -32,23 +32,23 @@ s = Scheduler(dry=False)
 # Clear
 logging.info('Cleaning...')
 check_rm('*log *last *pickle')
-check_rm('*h5')
+check_rm('*h5 globaldb')
 check_rm('concat*')
 check_rm('img')
 os.makedirs('img')
-check_rm('plots')
+check_rm('plots*')
 
 # all MS
 mss = sorted(glob.glob('*.MS'))
 
-##############################################
+###############################################
 # Initial processing
 logging.info('Fix beam table...')
 for ms in mss:
     s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 s.run(check=False)
 
-#################################################
+################################################
 # Copy cal solution
 logging.info('Copy solutions...')
 for ms in mss:
@@ -82,12 +82,23 @@ logging.info('Reset CIRC_DATA_SUB...')
 for ms in mss:
     s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'_init-taql.log', cmd_type='general')
 s.run(check=True)
+
+###
+# TEST avg:
+# BL avg 
+logging.info('BL-based averaging...')
+for ms in mss:
+    s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
+s.run(check=True)
+BLavgmss = sorted(glob.glob('*-BLavg.MS'))
+
 # After all columns are created
 logging.info('Concat...')
 pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
+# Smaller concat for ft
+for i, msg in enumerate(np.array_split(BLavgmss,10)):
+    pt.msutil.msconcat(msg, 'concat-'+str(i)+'.MS', concatTime=False)
 
-sys.exit(1)
- 
 # self-cal cycle
 for i in xrange(cycles):
     logging.info('Starting self-cal cycle: '+str(i))
@@ -105,14 +116,14 @@ for i in xrange(cycles):
     #        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_final-ft-virgo.log')
     #        s.run(check=True) # not parallel!
 
-    # TODO: probably has to be aplitted in two
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model}, log='ft-virgo-c'+str(i)+'.log')
-    s.run(check=True)
+    for j, msg in enumerate(np.array_split(BLavgmss,10)):
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':model}, log='ft-virgo-c'+str(i)+'-g'+str(j)+'.log')
+        s.run(check=True) # not parallel!
 
     #####################################################################################
     # calibrate - SB.MS:CIRC_DATA_SUB (no correction)
     logging.info('Calibrate...')
-    for ms in mss:
+    for ms in BLavgmss:
         s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
               log=ms+'_selfcal-c'+str(i)+'.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -188,14 +199,14 @@ for i in xrange(cycles):
     os.makedirs('plots')
     check_rm('globaldb')
     os.makedirs('globaldb')
-    for num, ms in enumerate(mss):
+    for num, ms in enumerate(BLavgmss):
         os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
         if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     h5parm = 'global-c'+str(i)+'.h5'
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', cmd_type='python')
     s.run(check=False)
-    s.add('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
+    s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/losoto.parset', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
     s.run(check=False)
     s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(i)+'.log', log_append=True, cmd_type='python')
     s.run(check=True)
