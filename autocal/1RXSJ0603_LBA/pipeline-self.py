@@ -89,10 +89,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     #################################################################################################
     # TODO: useless? why add columns by hand gives problems?
-    logging.info('Creating fake parmdb...')
+#    logging.info('Creating fake parmdb...')
+#    for ms in mss_orig:
+#        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, \
+#              log=ms+'_fakeparmdb.log', cmd_type='BBS')
+#    s.run(check=True)
+    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
     for ms in mss_orig:
-        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, \
-              log=ms+'_fakeparmdb.log', cmd_type='BBS')
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################
@@ -124,14 +128,10 @@ for group in sorted(glob.glob('group*'))[::-1]:
     mssavgrr = sorted(glob.glob(group+'/group*_TC*[0-9]-RR-BLavg.MS'))
     mssavgll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL-BLavg.MS'))
 
-    logging.info('Creating MODEL_DATA_HIGHRES...')
-    for ms in mss_orig:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
-    s.run(check=True)
-    logging.info('Creating SUBTRACTED_DATA...')
-    for ms in mss_orig:
-        s.add('addcol2ms.py -i '+ms+' -o SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python', log_append=True)
-    s.run(check=True)
+#    logging.info('Creating MODEL_DATA_HIGHRES and SUBTRACTED_DATA...')
+#    for ms in mss_orig:
+#        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python', log_append=True)
+#    s.run(check=True)
     
     ####################################################################################################
     # self-cal cycle
@@ -143,14 +143,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
             logging.info('Calibrating phase...')
             for ms in mssavg:
                 s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
-                      log=ms+'_sol-c'+str(i)+'.log', cmd_type='BBS')
+                      log=ms+'_soltec-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
             losoto(str(i)+'rr', mssrr, mssavgrr, g, parset_dir+'/losoto-plot.parset')
             losoto(str(i)+'ll', mssll, mssavgll, g, parset_dir+'/losoto-plot.parset')
             logging.info('Correcting phase...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-                log=ms+'_cor-c'+str(i)+'.log', cmd_type='BBS')
+                log=ms+'_cortec-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
             # copy FLAG and MODEL_DATA in avgBL - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
@@ -160,7 +160,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,0]" && \
                        taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,0]" && \
                        taql "update '+msavg+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,0]" && \
-                       taql "update '+msavg+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,0]"', \
+                       taql "update '+msavg+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
                        log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
             s.run(check=True)
             for ms in mss_orig:
@@ -178,6 +178,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
                       log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
+
+            # TODO: problem here as TEC are applied to smoothed data!!!
     
             # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
             logging.info('Calibrating amplitude...')
@@ -223,7 +225,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
     
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
-        logging.info('Cleaning 1...')
+        logging.info('Cleaning 1 (cycle: '+str(i)+')...')
         imagename = 'img/wide-'+str(i)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms, \
@@ -233,7 +235,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
-        logging.info('Cleaning 2...')
+        logging.info('Cleaning 2 (cycle: '+str(i)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 1 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
@@ -255,14 +257,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
 
         # reclean low-resolution
-        logging.info('Cleaning low resolution 1...')
+        logging.info('Cleaning low resolution 1 (cycle: '+str(i)+')...')
         imagename = 'img/wide-lr-'+str(i)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 4000 4000 -mem 30 -j '+str(s.max_processors)+'\
                 -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 1 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
-        logging.info('Cleaning low resolution 2...')
+        logging.info('Cleaning low resolution 2 (cycle: '+str(i)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 1 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
@@ -302,6 +304,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     # Perform a final clean to create an inspection image of SUBTRACTED_DATA which should be very empty
     logging.info('Empty cleaning...')
     s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql5.log', cmd_type='general')
+    s.run(check=True)
     imagename = 'img/empty'
     s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
             -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms, \
