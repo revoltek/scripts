@@ -1,5 +1,5 @@
 Strategy.InputColumn = DATA
-Strategy.ChunkSize = 24
+Strategy.ChunkSize = 240
 Strategy.Steps = [correct]
 
 Step.correct.Operation = CORRECT

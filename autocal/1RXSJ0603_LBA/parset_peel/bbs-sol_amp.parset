@@ -1,5 +1,5 @@
 Strategy.InputColumn = CORRECTED_DATA_PHASE
-Strategy.ChunkSize = 12
+Strategy.ChunkSize = 240
 Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
@@ -9,8 +9,8 @@ Step.solve.Model.Gain.Enable = T
 Step.solve.Model.Beam.Enable = F
 Step.solve.Solve.Parms = ["Gain:0:0:*", "Gain:1:1:*"]
 Step.solve.Solve.CellSize.Freq = 80 # channels (should end up to be 1 sol every 20 SB or one "group"
-Step.solve.Solve.CellSize.Time = 12 # 5sec*120 = 10 min
-Step.solve.Solve.CellChunkSize = 12
+Step.solve.Solve.CellSize.Time = 240 # 5sec*120 = 10 min
+Step.solve.Solve.CellChunkSize = 240
 Step.solve.Solve.PropagateSolutions = T
 Step.solve.Solve.Options.MaxIter = 300
 Step.solve.Solve.Options.LMFactor       = 1.0
