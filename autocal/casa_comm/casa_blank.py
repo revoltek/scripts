@@ -20,6 +20,9 @@ def casa_blank(imgs = [], region = '', inverse=False, setTo = 0):
             immath(imagename = img, mode = 'evalexpr', expr = 'IM0', region = region, outfile = img+'-out')
             os.system('rm -r '+img)
             os.system('mv '+img+'-out '+img)
+            ia.open(img)
+            ia.replacemaskedpixels(0.0)
+            ia.close()
         else:
             ia.open(img)
             reg = rg.fromtextfile(filename=region, shape=ia.shape(), csys=ia.coordsys().torecord())
