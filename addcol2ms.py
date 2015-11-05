@@ -27,7 +27,7 @@ def main(options):
             data = t.getcol('DATA')
             t.putcol(outcol, data)
         else:
-            print outcol, 'Column'+outcol+' already exists.'
+            print 'Column '+outcol+' already exists.'
         
 opt = optparse.OptionParser()
 opt.add_option('-i','--inms',help='Input MS [no default].',default='')
