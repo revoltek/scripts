@@ -29,25 +29,20 @@ from scipy.ndimage.filters import gaussian_filter1d as gfilter
 import pyrap.tables as pt
 logging.basicConfig(level=logging.DEBUG)
 
-def addcol(ms, incol, outcol):
+def addcol(ms, incol, outcol, overwrite):
     if outcol not in ms.colnames():
         logging.info('Adding column: '+outcol)
         coldmi = ms.getdminfo(incol)
         coldmi['NAME'] = outcol
         ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype='complex', shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
+        overwrite = True # col just created, so overwrite
     # copy columns val
-    logging.info('Set '+outcol+'='+incol)
-    data = ms.getcol(incol)
-    ms.putcol(outcol, data)
-
-def bkpweights(ms):
-    if 'WEIGHT_SPECTRUM_ORIG' not in ms.colnames():
-        logging.info('Backup WEIGHT_SPECTRUM')
-        coldmi = ms.getdminfo('WEIGHT_SPECTRUM')
-        coldmi['NAME'] = 'WEIGHT_SPECTRUM_ORIG'
-        ms.addcols(pt.maketabdesc(pt.makearrcoldesc('WEIGHT_SPECTRUM_ORIG', 0., valuetype='complex', shape=np.array(ms.getcell('WEIGHT_SPECTRUM',0)).shape)), coldmi)
+    if overwrite:
+        logging.info('Set '+outcol+'='+incol)
+        data = ms.getcol(incol)
+        ms.putcol(outcol, data)
     else:
-        logging.warning('Do not backup WEIGHT_SPECTRUM because WEIGHT_SPECTRUM_ORIG already exists.')
+        logging.warning('Do not overwrite '+outcol+' because it already exists.')
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
@@ -83,10 +78,11 @@ if not all(all_time[i] <= all_time[i+1] for i in xrange(len(all_time)-1)):
     sys.exit(1)
 
 # create column to smooth
-addcol(ms, options.incol, options.outcol)
+addcol(ms, options.incol, options.outcol, overwrite=True)
 
 # backup WEIGHT_SPECTRUM
-if options.weight and not options.nobackup: bkpweights(ms)
+if options.weight and not options.nobackup:
+    addcol(ms, 'WEIGHTED_SPECTRUM', 'WEIGHTED_SPECTRUM_ORIG', overwrite=False)
 
 ant1 = ms.getcol('ANTENNA1')
 ant2 = ms.getcol('ANTENNA2')
