@@ -69,6 +69,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     mss_orig = sorted(glob.glob(group+'/group*_TC*[0-9].MS'))
     concat_ms = group+'/concat.MS'
+    concat_ms_orig = group+'/concat_orig.MS'
     g = str(re.findall(r'\d+', mss_orig[0])[0])
     logging.info('Working on group: '+g+'...')
     
@@ -88,9 +89,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     #################################################################################################
     # Create columns
-    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
+    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA, SMOOTHED_DATA and CORRECTED_DATA...')
     for ms in mss_orig:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SMOOTHED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################
@@ -108,32 +109,25 @@ for group in sorted(glob.glob('group*'))[::-1]:
     for ms in mss_orig:
         msLL = ms.replace('.MS','-LL.MS')
         msRR = ms.replace('.MS','-RR.MS')
-        s.add('taql "update '+msRR+' set DATA[,3]=DATA[,0]"', log=ms+'_init-taql.log', cmd_type='general')
+        s.add('taql "update '+msRR+' set DATA[,3]=DATA[,0]"', log=ms+'_init-taql.log', cmd_type='general', log_append=True)
         s.add('taql "update '+msLL+' set DATA[,0]=DATA[,3]"', log=ms+'_init-taql.log', cmd_type='general', log_append=True)
     s.run(check=True)
     for ms in mss_orig:
         msLL = ms.replace('.MS','-LL.MS')
         msRR = ms.replace('.MS','-RR.MS')
-        s.add('taql "update '+msRR+' set WEIGHT_SPECTRUM[,3]=WEIGHT_SPECTRUM[,0]"', log=ms+'_init-taql2.log', cmd_type='general')
+        s.add('taql "update '+msRR+' set WEIGHT_SPECTRUM[,3]=WEIGHT_SPECTRUM[,0]"', log=ms+'_init-taql2.log', cmd_type='general', log_append=True)
         s.add('taql "update '+msLL+' set WEIGHT_SPECTRUM[,0]=WEIGHT_SPECTRUM[,3]"', log=ms+'_init-taql2.log', cmd_type='general', log_append=True)
     s.run(check=True)
     for ms in mss_orig:
         msLL = ms.replace('.MS','-LL.MS')
         msRR = ms.replace('.MS','-RR.MS')
-        s.add('taql "update '+msRR+' set FLAGS[,3]=FLAGS[,0]"', log=ms+'_init-taql3.log', cmd_type='general')
+        s.add('taql "update '+msRR+' set FLAGS[,3]=FLAGS[,0]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
         s.add('taql "update '+msLL+' set FLAGS[,0]=FLAGS[,3]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
     s.run(check=True)
 
     mss = sorted(glob.glob(group+'/group*_TC*[0-9]-*.MS'))
     mssrr = sorted(glob.glob(group+'/group*_TC*[0-9]-RR.MS'))
     mssll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL.MS'))
-
-    #################################################################################################
-    # Smooth
-    logging.info('Smoothing...')
-    for ms in mss:
-        s.add('BLavg.py -w -i DATA -i SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-    s.run(check=True)
 
     logging.info('Concatenating TCs...')
     check_rm(concat_ms+'*')
@@ -143,28 +137,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
     # Self-cal cycle
     for i in xrange(niter):
         logging.info('Start selfcal cycle: '+str(i))
-   
-        if i == 0:
-            # calibrate phase-only - group*_TC.MS:SMOOTHED_DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
-            logging.info('Calibrating phase...')
-            for ms in mss:
-                s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
-                      log=ms+'_soltec-c'+str(i)+'.log', cmd_type='BBS')
-            s.run(check=True)
-
-            losoto(str(i)+'rr', mssrr, g, parset_dir+'/losoto-plot.parset')
-            losoto(str(i)+'ll', mssll, g, parset_dir+'/losoto-plot.parset')
-
-            logging.info('Restoring WEIGHT_SPECTRUM...')
-            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
-
-            logging.info('Correcting phase...')
-            for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-                log=ms+'_cortec-c'+str(i)+'.log', cmd_type='BBS')
-            s.run(check=True)
-        else:
-            # copy FLAG and MODEL_DATA in avgBL - group*_TC-*-[RR|LL].MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
+        
+        if i != 0:
+            # copy FLAG and MODEL_DATA in RR/LL - group*_TC-*-[RR|LL].MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
             logging.info('Copying FLAG and MODEL_DATA to the averaged datasets...')
             for ms in mss_orig:
                 msrr = ms.replace('.MS','-RR.MS')
@@ -182,6 +157,33 @@ for group in sorted(glob.glob('group*'))[::-1]:
                        taql "update '+msll+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
                        log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
             s.run(check=True)
+
+        #################################################################################################
+        # Smooth
+        logging.info('Smoothing...')
+        for ms in mss:
+            s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+        s.run(check=True)
+
+        if i == 0:
+            # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA (beam: ARRAY_FACTOR)
+            logging.info('Calibrating phase...')
+            for ms in mss:
+                s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
+                      log=ms+'_soltec-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
+
+            # plots
+            losoto(str(i)+'rr', mssrr, g, parset_dir+'/losoto-plot.parset')
+            losoto(str(i)+'ll', mssll, g, parset_dir+'/losoto-plot.parset')
+
+            # correct phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
+            logging.info('Correcting phase...')
+            for ms in mss:
+                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+                log=ms+'_cortec-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
+        else:
 
             # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
             logging.info('Calibrating phase...')
@@ -202,7 +204,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
             logging.info('Smoothing...')
             for ms in mss:
-                s.add('BLavg.py -w -i CORRECTED_DATA -i SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+                s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(i)+'.log', cmd_type='python')
             s.run(check=True)
 
             # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
@@ -228,24 +230,34 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
                       log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
-            logging.info('Restoring WEIGHT_SPECTRUM...')
-            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
+        
+        logging.info('Restoring WEIGHT_SPECTRUM...')
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general', append=True)
     
         # join RR and LL
         logging.info('Reconstructing polarizations...')
         for ms in mss_orig:
             msRR = ms.replace('.MS','-RR.MS')
-            s.add('taql "update '+ms+', '+msRR+' as rr set CORRECTED_DATA[,0]=rr.CORRECTED_DATA[,0]"', log=ms+'_taql-c'+str(i)+'.log', cmd_type='general')
+            s.add('taql "update '+ms+', '+msRR+' as rr set CORRECTED_DATA[,0]=rr.CORRECTED_DATA[,0]"', log=ms+'_taql1-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
         for ms in mss_orig:
             msLL = ms.replace('.MS','-LL.MS')
-            s.add('taql "update '+ms+', '+msLL+' as ll set CORRECTED_DATA[,3]=ll.CORRECTED_DATA[,3]"', log=ms+'_taql-c'+str(i)+'.log', cmd_type='general', log_append=True)
+            s.add('taql "update '+ms+', '+msLL+' as ll set CORRECTED_DATA[,3]=ll.CORRECTED_DATA[,3]"', log=ms+'_taql1-c'+str(i)+'.log', cmd_type='general', log_append=True)
+        s.run(check=True)
+        # do also FLAG in case losoto made them
+        for ms in mss_orig:
+            msRR = ms.replace('.MS','-RR.MS')
+            s.add('taql "update '+ms+', '+msRR+' as rr set FLAGS[,0]=rr.FLAGS[,0]"', log=ms+'_taql2-c'+str(i)+'.log', cmd_type='general')
+        s.run(check=True)
+        for ms in mss_orig:
+            msLL = ms.replace('.MS','-LL.MS')
+            s.add('taql "update '+ms+', '+msLL+' as ll set FLAGS[,3]=ll.FLAGS[,3]"', log=ms+'_taql2-c'+str(i)+'.log', cmd_type='general', log_append=True)
         s.run(check=True)
 
         # after columns creation
         logging.info('Concatenating TCs...')
-        check_rm(concat_ms+'*')
-        pt.msutil.msconcat(mss_orig, concat_ms, concatTime=False)
+        check_rm(concat_ms_orig+'*')
+        pt.msutil.msconcat(mss_orig, concat_ms_orig, concatTime=False)
     
         ###################################################################################################################
         # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
@@ -254,7 +266,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         logging.info('Cleaning (cycle: '+str(i)+')...')
         imagename = 'img/wide-'+str(i)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms, \
+                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms_orig, \
                 log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
@@ -263,12 +275,12 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
         logging.info('Cleaning low resolution (cycle: '+str(i)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 1 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
+                -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 1 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
         logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
-        s.add('taql "update '+concat_ms+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(i)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms_orig+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
     
         ####################################################################
@@ -279,27 +291,27 @@ for group in sorted(glob.glob('group*'))[::-1]:
         ############################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql2-c'+str(i)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms_orig+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql2-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
 
         # reclean low-resolution
         logging.info('Cleaning low resolution (cycle: '+str(i)+')...')
         imagename = 'img/wide-lr-'+str(i)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 4000 4000 -mem 30 -j '+str(s.max_processors)+'\
-                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 1 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms, \
+                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 1 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms_orig, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
         logging.info('Cleaning low resolution with mask (cycle: '+str(i)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 1 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
+                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 1 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_oirg, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
         ###############################################################################################################
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
         logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms_orig+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
 
         # Flag on residuals
@@ -311,16 +323,16 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
         # Concat models
         logging.info('Adding model data columns (MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms_orig+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
     
     # Perform a final clean to create an inspection image of SUBTRACTED_DATA which should be very empty
     logging.info('Empty cleaning...')
-    s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql5.log', cmd_type='general')
+    s.add('taql "update '+concat_ms_orig+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql5.log', cmd_type='general')
     s.run(check=True)
     imagename = 'img/empty'
     s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms, \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms_orig, \
             log='wscleanA-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     

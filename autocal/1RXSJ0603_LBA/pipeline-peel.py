@@ -50,10 +50,10 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     s.run(check=True)
     mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
 
-    # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA (beam corrected, only source to peel in the data, all chan)
+    # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA
     check_rm('concat.MS*')
     logging.info('Concatenating TCs...')
-    pt.msutil.msconcat(mssavg, 'concat.MS', concatTime=False)
+    pt.msutil.msconcat(mssavg, 'concat-avg.MS', concatTime=False)
 
     # set image name
     imagename = 'peel/'+dd['name']+'/images/peel-'+str(c)
@@ -89,7 +89,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     else: multiscale = []
     logging.info('Cleaning (cycle: '+str(c)+')...')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-            params={'msfile':'concat.MS', 'imagename':imagename, 'imsize':imsize, 'niter':niter, 'multiscale':multiscale, 'wproj':wproj}, log='casaclean1-c'+str(c)+'.log')
+            params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imsize':imsize, 'niter':niter, 'multiscale':multiscale, 'wproj':wproj}, log='casaclean1-c'+str(c)+'.log')
     s.run(check=True)
     if dd['faint'] or facet:
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
@@ -97,7 +97,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=20)
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
-            params={'msfile':'concat.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':int(niter/2.), 'multiscale':multiscale, 'wproj':wproj, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(c)+'.log')
+            params={'msfile':'concat-avg.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':int(niter/2.), 'multiscale':multiscale, 'wproj':wproj, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(c)+'.log')
     s.run(check=True)
 
     return imagename+'-masked.model'
@@ -109,6 +109,7 @@ def losoto(c, mss, dd, parset):
     os.makedirs('plots')
     check_rm('globaldb')
     os.makedirs('globaldb')
+
     for num, ms in enumerate(mss):
         os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
         if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
@@ -141,7 +142,6 @@ def peel(dd):
     check_rm('concat*') 
     check_rm('*log *last *pickle')
     check_rm('plot')
-    check_rm('tmpCASA_*')
     
     logging.info('Creating dirs...')
     check_rm('peel/'+dd['name'])
@@ -241,7 +241,7 @@ def peel(dd):
     # Copy the phase-shifted MODEL_DATA - peel-model_TC*.MS':DATA -> peel_TC*.MS':MODEL_DATA
     logging.info('Copy MODEL_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,SMOOTHED_DATA,CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
     s.run(check=True)
     for ms in peelmss:
         msmodel = ms.replace('peel', 'peel-model')
@@ -249,60 +249,64 @@ def peel(dd):
         s.add('taql "update '+ms+', '+msmodel+' as model set MODEL_DATA=model.DATA"', log=msmodel+'_init-taql.log', cmd_type='general')
     s.run(check=True)
     check_rm('peel-model_TC*.MS')
-    
-    # BL avg 
-    logging.info('BL-based averaging...')
-    for ms in peelmss:
-        s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
-    s.run(check=True)
-    
-    BLavgpeelmss = sorted(glob.glob('peel_TC*-BLavg.MS'))
-    
-    # Add CORRECTED_DATA to newly created peelmss for initial imaging - CORRECTED_DATA = DATA
-    logging.info('Initialize CORRECTED_DATA...')
-    for ms in peelmss:
-        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
-    s.run(check=True)
-    # do a first hi-res clean
+       
+    # do a first hi-res clean (CORRECTED_DATA is == DATA now)
     model = clean('init', peelmss, dd, groups)
+
+    logging.info('Concatenating TCs...')
+    check_rm('concat.MS*')
+    pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
     
     ###################################################################################################################
     # self-cal cycle
     for c in xrange(niter):
         logging.info('Start peel cycle: '+str(c))
+
+        # BL avg 
+        logging.info('BL-based averaging...')
+        for ms in peelmss:
+            s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
     
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
-        for ms in BLavgpeelmss:
+        for ms in peelmss:
             s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
             s.run(check=True) # no parallel (problem multiple accesses to model file)
     
-        # calibrate phase-only - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA_PHASE
+        # calibrate phase-only (solve only) - peel_TC*.MS:DATA
         logging.info('Calibrating phase...')
-        for ms in BLavgpeelmss:
-            s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
+        for ms in peelmss:
+            s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                     log=ms+'_calpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
     
-        # TODO: problem here as applying solution on BLavg-ed data!!!
+        # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
+        logging.info('Correcting phase...')
+        for ms in peelmss:
+            s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+            log=ms+'_corpreamp-c'+str(i)+'.log', cmd_type='BBS')
+        s.run(check=True)
 
-        # calibrate amplitude - peel_TC*.MS:CORRECTED_DATA_PHASE (no correction)
+        # Smooth
+        logging.info('Restoring WEIGHT_SPECTRUM...')
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
+        logging.info('Smoothing...')
+        for ms in peelmss:
+            s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
+
+        # calibrate amplitude (solve only) - peel_TC*.MS:SMOOTH_DATA
         logging.info('Calibrating amplitude...')
-        for ms in BLavgpeelmss:
+        for ms in peelmss:
             s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
                     log=ms+'_calamp-c'+str(c)+'.log', cmd_type='BBS', processors = 'max')
         s.run(check=True)
     
         # merge parmdbs
         logging.info('Merging instrument tables...')
-        for ms in BLavgpeelmss:
-            merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
-    
         for ms in peelmss:
-            check_rm(ms+'/instrument')
-            os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/instrument '+ms+'/instrument')
-            check_rm(ms+'/sky')
-            os.system('cp -r '+ms.replace('.MS','-BLavg.MS')+'/sky '+ms+'/sky')
+            merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
     
         # LoSoTo Amp rescaling
         losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
@@ -313,6 +317,9 @@ def peel(dd):
             s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
                     log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
+
+        logging.info('Restoring WEIGHT_SPECTRUM...')
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general', append=True)
     
         ############################################################################################################
         # Sub data
