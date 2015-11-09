@@ -202,6 +202,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # Smooth
             logging.info('Restoring WEIGHT_SPECTRUM...')
             s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
+            s.run(check=True)
             logging.info('Smoothing...')
             for ms in mss:
                 s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(i)+'.log', cmd_type='python')
@@ -233,6 +234,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         
         logging.info('Restoring WEIGHT_SPECTRUM...')
         s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general', log_append=True)
+        s.run(check=True)
     
         # join RR and LL
         logging.info('Reconstructing polarizations...')

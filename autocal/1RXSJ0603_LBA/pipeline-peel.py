@@ -291,6 +291,7 @@ def peel(dd):
         # Smooth
         logging.info('Restoring WEIGHT_SPECTRUM...')
         s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+        s.run(check=True)
         logging.info('Smoothing...')
         for ms in peelmss:
             s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
@@ -320,6 +321,7 @@ def peel(dd):
 
         logging.info('Restoring WEIGHT_SPECTRUM...')
         s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', append=True)
+        s.run(check=True)
     
         ############################################################################################################
         # Sub data

@@ -49,7 +49,7 @@ opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is t
 opt.add_option('-i', '--incol', help='Column name to smooth [default: DATA]', type='string', default='DATA')
 opt.add_option('-o', '--outcol', help='Output column [default: DATA_SMOOTH]', type="string", default='DATA_SMOOTH')
 opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, this action permanently modify the MS! [default: False]', action="store_true", default=False)
-opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: True if -w]', action="store_false", default=True)
+opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: do backup if -w]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
 ionfactor = options.ionfactor
 
