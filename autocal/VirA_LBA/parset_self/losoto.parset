@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [norm,plotA,plotA2,plotP,plotP2]
+LoSoTo.Steps = [clip,norm,plotA,plotA2,plotP,plotP2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -12,6 +12,12 @@ LoSoTo.Steps.norm.Operation = NORM
 LoSoTo.Steps.norm.NormVal = 1.
 LoSoTo.Steps.norm.NormAxes = [time,ant,pol,freq]
 LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
+
+#clip
+LoSoTo.Steps.clip.Operation = CLIP
+LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.clip.ClipLevel = 5 # factor above/below median at which to clip
+LoSoTo.Steps.clip.Axes = [time] # axis along which to calculate the median
 
 # plot amp time/freq
 LoSoTo.Steps.plotA.Operation = PLOT
