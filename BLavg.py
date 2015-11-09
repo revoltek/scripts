@@ -82,7 +82,7 @@ addcol(ms, options.incol, options.outcol, overwrite=True)
 
 # backup WEIGHT_SPECTRUM
 if options.weight and not options.nobackup:
-    addcol(ms, 'WEIGHTED_SPECTRUM', 'WEIGHTED_SPECTRUM_ORIG', overwrite=False)
+    addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG', overwrite=False)
 
 ant1 = ms.getcol('ANTENNA1')
 ant2 = ms.getcol('ANTENNA2')

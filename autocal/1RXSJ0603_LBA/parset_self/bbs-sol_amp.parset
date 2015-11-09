@@ -1,4 +1,4 @@
-Strategy.InputColumn = CORRECTED_DATA_PHASE
+Strategy.InputColumn = SMOOTHED_DATA
 Strategy.ChunkSize = 120
 Strategy.Steps = [solve]
 

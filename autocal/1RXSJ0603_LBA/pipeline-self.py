@@ -28,7 +28,7 @@ from make_mask import make_mask
 set_logger()
 s = Scheduler(dry=False)
 
-def losoto(c, mss, mssavg, g, parset):
+def losoto(c, mss, g, parset):
     """
     c = cycle
     mss = list of mss
@@ -41,7 +41,7 @@ def losoto(c, mss, mssavg, g, parset):
     check_rm('globaldb')
     os.makedirs('globaldb')
 
-    for num, ms in enumerate(mssavg):
+    for num, ms in enumerate(mss):
         os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
         if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     h5parm = 'global-c'+str(c)+'.h5'
@@ -60,7 +60,7 @@ def losoto(c, mss, mssavg, g, parset):
     os.system('mv '+h5parm+' self/solutions/g'+g)
 
 
-# here an image+model for each group will be saved
+# here images, models, solutions for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
@@ -75,7 +75,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
     ################################################################################################
     # Clear
     logging.info('Cleaning...')
-    check_rm(group+'/*-BLavg.MS')
     check_rm(group+'/*log *log *bak *last *pickle')
     check_rm(group+'/plots* plots')
     check_rm(group+'/*h5 *h5 globaldb')
@@ -106,8 +105,23 @@ for group in sorted(glob.glob('group*'))[::-1]:
         if os.path.exists(msRR): os.system('rm -r '+msRR)
         os.system( 'cp -r '+ms+' '+msRR )
 
+    for ms in mss_orig:
+        msLL = ms.replace('.MS','-LL.MS')
+        msRR = ms.replace('.MS','-RR.MS')
         s.add('taql "update '+msRR+' set DATA[,3]=DATA[,0]"', log=ms+'_init-taql.log', cmd_type='general')
         s.add('taql "update '+msLL+' set DATA[,0]=DATA[,3]"', log=ms+'_init-taql.log', cmd_type='general', log_append=True)
+    s.run(check=True)
+    for ms in mss_orig:
+        msLL = ms.replace('.MS','-LL.MS')
+        msRR = ms.replace('.MS','-RR.MS')
+        s.add('taql "update '+msRR+' set WEIGHT_SPECTRUM[,3]=WEIGHT_SPECTRUM[,0]"', log=ms+'_init-taql2.log', cmd_type='general')
+        s.add('taql "update '+msLL+' set WEIGHT_SPECTRUM[,0]=WEIGHT_SPECTRUM[,3]"', log=ms+'_init-taql2.log', cmd_type='general', log_append=True)
+    s.run(check=True)
+    for ms in mss_orig:
+        msLL = ms.replace('.MS','-LL.MS')
+        msRR = ms.replace('.MS','-RR.MS')
+        s.add('taql "update '+msRR+' set FLAGS[,3]=FLAGS[,0]"', log=ms+'_init-taql3.log', cmd_type='general')
+        s.add('taql "update '+msLL+' set FLAGS[,0]=FLAGS[,3]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
     s.run(check=True)
 
     mss = sorted(glob.glob(group+'/group*_TC*[0-9]-*.MS'))
@@ -118,11 +132,12 @@ for group in sorted(glob.glob('group*'))[::-1]:
     # Smooth
     logging.info('Smoothing...')
     for ms in mss:
-        s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
+        s.add('BLavg.py -w -i DATA -i SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.run(check=True)
-    mssavg = sorted(glob.glob(group+'/group*_TC*-BLavg.MS'))
-    mssavgrr = sorted(glob.glob(group+'/group*_TC*[0-9]-RR-BLavg.MS'))
-    mssavgll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL-BLavg.MS'))
+
+    logging.info('Concatenating TCs...')
+    check_rm(concat_ms+'*')
+    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
 
     ####################################################################################################
     # Self-cal cycle
@@ -130,64 +145,82 @@ for group in sorted(glob.glob('group*'))[::-1]:
         logging.info('Start selfcal cycle: '+str(i))
    
         if i == 0:
-            # calibrate phase-only - group*_TC.MS:DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
+            # calibrate phase-only - group*_TC.MS:SMOOTHED_DATA (beam: ARRAY_FACTOR) -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
             logging.info('Calibrating phase...')
-            for ms in mssavg:
+            for ms in mss:
                 s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                       log=ms+'_soltec-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
-            losoto(str(i)+'rr', mssrr, mssavgrr, g, parset_dir+'/losoto-plot.parset')
-            losoto(str(i)+'ll', mssll, mssavgll, g, parset_dir+'/losoto-plot.parset')
+
+            losoto(str(i)+'rr', mssrr, g, parset_dir+'/losoto-plot.parset')
+            losoto(str(i)+'ll', mssll, g, parset_dir+'/losoto-plot.parset')
+
+            logging.info('Restoring WEIGHT_SPECTRUM...')
+            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
+
             logging.info('Correcting phase...')
             for ms in mss:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
                 log=ms+'_cortec-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
         else:
-            # copy FLAG and MODEL_DATA in avgBL - group*_TC-avgBL.MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
+            # copy FLAG and MODEL_DATA in avgBL - group*_TC-*-[RR|LL].MS:MODEL_DATA = group*_TC.MS:MODEL_DATA
             logging.info('Copying FLAG and MODEL_DATA to the averaged datasets...')
             for ms in mss_orig:
-                msavg = ms.replace('.MS','-RR-BLavg.MS')
-                s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,0]" && \
-                       taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,0]" && \
-                       taql "update '+msavg+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,0]" && \
-                       taql "update '+msavg+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
+                msrr = ms.replace('.MS','-RR.MS')
+                s.add('taql "update '+msrr+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,0]" && \
+                       taql "update '+msrr+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,0]" && \
+                       taql "update '+msrr+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,0]" && \
+                       taql "update '+msrr+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
                        log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
             s.run(check=True)
             for ms in mss_orig:
-                msavg = ms.replace('.MS','-LL-BLavg.MS')
-                s.add('taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,3]" && \
-                       taql "update '+msavg+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,3]" && \
-                       taql "update '+msavg+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,3]" && \
-                       taql "update '+msavg+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
+                msll = ms.replace('.MS','-LL.MS')
+                s.add('taql "update '+msll+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,3]" && \
+                       taql "update '+msll+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,3]" && \
+                       taql "update '+msll+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,3]" && \
+                       taql "update '+msll+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
                        log=ms+'taql_copymodel-c'+str(i)+'.log', cmd_type='general')
             s.run(check=True)
 
-            # calibrate phase-only - group*_TC.MS:DATA @ MODEL_DATA -> group*_TC.MS:CORRECTED_DATA_PHASE (selfcal phase corrected, beam corrected)
+            # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
             logging.info('Calibrating phase...')
-            for ms in mssavg:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
-                      log=ms+'_calpreamp-c'+str(i)+'.log', cmd_type='BBS')
+            for ms in mss:
+                s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-sol_tec-preamp.parset '+skymodel, \
+                      log=ms+'_solpreamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
 
-            # TODO: problem here as TEC are applied to smoothed data!!!
-    
-            # calibrate amplitude (only solve) - group*_TC.MS:CORRECTED_DATA_PHASE @ MODEL_DATA
+            # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
+            logging.info('Correcting phase...')
+            for ms in mss:
+                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec-preamp.parset '+skymodel, \
+                log=ms+'_corpreamp-c'+str(i)+'.log', cmd_type='BBS')
+            s.run(check=True)
+
+            # Smooth
+            logging.info('Restoring WEIGHT_SPECTRUM...')
+            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
+            logging.info('Smoothing...')
+            for ms in mss:
+                s.add('BLavg.py -w -i CORRECTED_DATA -i SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+            s.run(check=True)
+
+            # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
             logging.info('Calibrating amplitude...')
-            for ms in mssavg:
+            for ms in mss:
                 s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
                       log=ms+'_calamp-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
 
             # merge parmdbs
             logging.info('Merging instrument tables...')
-            for ms in mssavg:
+            for ms in mss:
                 merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
     
             ########################################################
             # LoSoTo Amp rescaling
-            losoto(str(i)+'rr', mssrr, mssavgrr, g, parset_dir+'/losoto.parset')
-            losoto(str(i)+'ll', mssll, mssavgll, g, parset_dir+'/losoto.parset')
+            losoto(str(i)+'rr', mssrr, g, parset_dir+'/losoto.parset')
+            losoto(str(i)+'ll', mssll, g, parset_dir+'/losoto.parset')
         
             # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
             logging.info('Correcting...')
@@ -195,6 +228,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
                       log=ms+'_coramptec-c'+str(i)+'.log', cmd_type='BBS')
             s.run(check=True)
+            logging.info('Restoring WEIGHT_SPECTRUM...')
+            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
     
         # join RR and LL
         logging.info('Reconstructing polarizations...')
