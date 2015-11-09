@@ -88,19 +88,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.makedirs('self/solutions/g'+g)
 
     #################################################################################################
-    # TODO: useless? why add columns by hand gives problems?
-#    logging.info('Creating fake parmdb...')
-#    for ms in mss_orig:
-#        s.add('calibrate-stand-alone -f --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, \
-#              log=ms+'_fakeparmdb.log', cmd_type='BBS')
-#    s.run(check=True)
+    # Create columns
     logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
     for ms in mss_orig:
         s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################
-    # separate LL and RR
+    # Separate LL and RR
     logging.info('Separating RR and LL...')
     for ms in mss_orig:
         msLL = ms.replace('.MS','-LL.MS')
@@ -120,6 +115,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     mssll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL.MS'))
 
     #################################################################################################
+    # Smooth
     logging.info('Smoothing...')
     for ms in mss:
         s.add('BLavg.py -m '+ms, log=ms+'_smooth.log', cmd_type='python')
@@ -128,13 +124,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
     mssavgrr = sorted(glob.glob(group+'/group*_TC*[0-9]-RR-BLavg.MS'))
     mssavgll = sorted(glob.glob(group+'/group*_TC*[0-9]-LL-BLavg.MS'))
 
-#    logging.info('Creating MODEL_DATA_HIGHRES and SUBTRACTED_DATA...')
-#    for ms in mss_orig:
-#        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python', log_append=True)
-#    s.run(check=True)
-    
     ####################################################################################################
-    # self-cal cycle
+    # Self-cal cycle
     for i in xrange(niter):
         logging.info('Start selfcal cycle: '+str(i))
    
@@ -225,7 +216,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
     
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
-        logging.info('Cleaning 1 (cycle: '+str(i)+')...')
+        logging.info('Cleaning (cycle: '+str(i)+')...')
         imagename = 'img/wide-'+str(i)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms, \
@@ -235,7 +226,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(i)+'.log')
         s.run(check=True)
-        logging.info('Cleaning 2 (cycle: '+str(i)+')...')
+        logging.info('Cleaning low resolution (cycle: '+str(i)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 1 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
@@ -257,14 +248,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
 
         # reclean low-resolution
-        logging.info('Cleaning low resolution 1 (cycle: '+str(i)+')...')
+        logging.info('Cleaning low resolution (cycle: '+str(i)+')...')
         imagename = 'img/wide-lr-'+str(i)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 4000 4000 -mem 30 -j '+str(s.max_processors)+'\
                 -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 1 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms, \
                 log='wscleanA-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
-        logging.info('Cleaning low resolution 2 (cycle: '+str(i)+')...')
+        logging.info('Cleaning low resolution with mask (cycle: '+str(i)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 1 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-lr-c'+str(i)+'.log', cmd_type='wsclean', processors='max')
@@ -288,19 +279,6 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES + MODEL_DATA"', log='taql4-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
     
-    # Subtract of the best model (currupted) - group*_TC*.MS:DATA - MODEL_DATA -> group*_TC*.MS:SUBTRACTED_DATA (not corrected data - all source subtracted, beam corrected, circular)
-    #                                        - group*_TC*.MS:DATA -> group*_TC*.MS:CORRECTED_DATA (corrected data - all source subtracted, beam corrected, circular)
-#    logging.info('Final subtraction...')
-#    for ms in mss:
-#        s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-subfinal.parset '+skymodel, \
-#               log=ms+'_final-sub.log', cmd_type='BBS')
-#    s.run(check=True)
-#
-#    # re-create concat because SUBTRACTED_DATA has just been created
-#    logging.info('Concatenating TCs...')
-#    check_rm(concat_ms)
-#    pt.msutil.msconcat(mss_orig, concat_ms, concatTime=False)
- 
     # Perform a final clean to create an inspection image of SUBTRACTED_DATA which should be very empty
     logging.info('Empty cleaning...')
     s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql5.log', cmd_type='general')

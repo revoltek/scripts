@@ -16,7 +16,7 @@ def main(options):
             return
     outcols = options.outcols
     
-    t = pt.table(inms, readonly=False, ack=True)
+    t = pt.table(inms, readonly=False, ack=False)
 
     for outcol in outcols.split(','):
         if outcol not in t.colnames():
