@@ -121,8 +121,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
     for ms in mss_orig:
         msLL = ms.replace('.MS','-LL.MS')
         msRR = ms.replace('.MS','-RR.MS')
-        s.add('taql "update '+msRR+' set FLAGS[,3]=FLAGS[,0]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
-        s.add('taql "update '+msLL+' set FLAGS[,0]=FLAGS[,3]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
+        s.add('taql "update '+msRR+' set FLAG[,3]=FLAG[,0]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
+        s.add('taql "update '+msLL+' set FLAG[,0]=FLAG[,3]"', log=ms+'_init-taql3.log', cmd_type='general', log_append=True)
     s.run(check=True)
 
     mss = sorted(glob.glob(group+'/group*_TC*[0-9]-*.MS'))
@@ -232,7 +232,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             s.run(check=True)
         
         logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general', append=True)
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general', log_append=True)
     
         # join RR and LL
         logging.info('Reconstructing polarizations...')
@@ -247,11 +247,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # do also FLAG in case losoto made them
         for ms in mss_orig:
             msRR = ms.replace('.MS','-RR.MS')
-            s.add('taql "update '+ms+', '+msRR+' as rr set FLAGS[,0]=rr.FLAGS[,0]"', log=ms+'_taql2-c'+str(i)+'.log', cmd_type='general')
+            s.add('taql "update '+ms+', '+msRR+' as rr set FLAG[,0]=rr.FLAG[,0]"', log=ms+'_taql2-c'+str(i)+'.log', cmd_type='general')
         s.run(check=True)
         for ms in mss_orig:
             msLL = ms.replace('.MS','-LL.MS')
-            s.add('taql "update '+ms+', '+msLL+' as ll set FLAGS[,3]=ll.FLAGS[,3]"', log=ms+'_taql2-c'+str(i)+'.log', cmd_type='general', log_append=True)
+            s.add('taql "update '+ms+', '+msLL+' as ll set FLAG[,3]=ll.FLAG[,3]"', log=ms+'_taql2-c'+str(i)+'.log', cmd_type='general', log_append=True)
         s.run(check=True)
 
         # after columns creation

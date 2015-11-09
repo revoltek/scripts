@@ -285,12 +285,12 @@ def peel(dd):
         logging.info('Correcting phase...')
         for ms in peelmss:
             s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-            log=ms+'_corpreamp-c'+str(i)+'.log', cmd_type='BBS')
+            log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
         # Smooth
         logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general')
+        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
         logging.info('Smoothing...')
         for ms in peelmss:
             s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
@@ -319,7 +319,7 @@ def peel(dd):
         s.run(check=True)
 
         logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(i)+'.log', cmd_type='general', append=True)
+        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', append=True)
     
         ############################################################################################################
         # Sub data
