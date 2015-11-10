@@ -158,7 +158,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # Smooth
         logging.info('Smoothing...')
         for ms in mss:
-            s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         if c == 0:
@@ -202,12 +202,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
             s.run(check=True)
 
             # Smooth
-            logging.info('Restoring WEIGHT_SPECTRUM...')
-            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
-            s.run(check=True)
             logging.info('Smoothing...')
             for ms in mss:
-                s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
+                s.add('BLavg.py -w -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
             s.run(check=True)
 
             # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
@@ -234,8 +231,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
             s.run(check=True)
         
-        logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', log_append=True)
+        logging.info('Restoring WEIGHT_SPECTRUM before imging...')
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         # join RR and LL

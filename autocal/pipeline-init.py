@@ -41,7 +41,7 @@ s.run(check=False)
 # NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
 logging.info('BL-averaging')
 for ms in mss:
-    s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_avg.log')
+    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_avg.log')
 s.run(check=False)
 
 ##############################################

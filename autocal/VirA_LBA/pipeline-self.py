@@ -14,6 +14,8 @@ globaldb = '../cals/globaldb'
 fakeskymodel = '/home/fdg/scripts/autocal/VirA_LBA/virgo.fakemodel.skymodel'
 # number of selfcal cycles
 cycles = 10
+# parset directory
+parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_self/'
 
 ##############################################################
 
@@ -62,7 +64,7 @@ for ms in mss:
 # TODO: convert to NDPPP
 logging.info('Correcting target MSs...')
 for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/bbs-corbeam.parset '+fakeskymodel, \
+    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-corbeam.parset '+fakeskymodel, \
           log=ms+'-init_corbeam.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -95,7 +97,7 @@ for c in xrange(cycles):
     # BL avg 
     logging.info('BL-based averaging...')
     for ms in mss:
-        s.add('BLavg.py -w -i CIRC_DATA_SUB -o SMOOTHED_CIRC_DATA_SUB '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        s.add('BLavg.py -r -w -i CIRC_DATA_SUB -o SMOOTHED_CIRC_DATA_SUB '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     if c == 0:
@@ -122,7 +124,7 @@ for c in xrange(cycles):
     # calibrate - SB.MS:SMOOTHED_CIRC_DATA_SUB (no correction)
     logging.info('Calibrate...')
     for ms in mss:
-        s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
+        s.add('NDPPP '+parset_dir+'/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
               log=ms+'_selfcal-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -139,7 +141,7 @@ for c in xrange(cycles):
 #        s.run(check=True)
 #        logging.info('Make widefield model - Correct...')
 #        for ms in mss:
-#            s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-selfcor.parset msin='+ms+' msin.datacolumn=CIRC_DATA cor.parmdb='+ms+'/instrument', \
+#            s.add('NDPPP '+parset_dir+'/NDPPP-selfcor.parset msin='+ms+' msin.datacolumn=CIRC_DATA cor.parmdb='+ms+'/instrument', \
 #                    log=ms+'_flag-selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
 #        s.run(check=True)
 #
@@ -180,7 +182,7 @@ for c in xrange(cycles):
 #        # Flagging on CORRECTED_DATA
 #        logging.info('Make widefield model - Flagging residuals...')
 #        for ms in mss:
-#            s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-flag.parset msin='+ms, \
+#            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
 #                    log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
 #        s.run(check=True)
 #
@@ -188,7 +190,7 @@ for c in xrange(cycles):
 #        # subtract widefield model SB.MS:CIRC_DATA -> SB.MS:CIRC_DATA_SUB (uncal data with subtracted the widefield model)
 #        # if last cycle skip (useless), but if one but last cycle, do on all SBs
 #        for ms in mss:
-#            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/bbs-subcorpt.parset', \
+#            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-subcorpt.parset', \
 #                  log=ms+'_subcorpt-c'+str(c)+'.log', cmd_type='BBS')
 #        s.run(check=True)
 
@@ -205,7 +207,7 @@ for c in xrange(cycles):
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', cmd_type='python')
     s.run(check=False)
-    s.add('losoto -v '+h5parm+' /home/fdg/scripts/autocal/VirA_LBA/parset_self/losoto.parset', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.add('losoto -v '+h5parm+' '+parset_dir+'/losoto.parset', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
     s.run(check=False)
     s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
     s.run(check=True)
@@ -223,7 +225,7 @@ for c in xrange(cycles):
 
     logging.info('Correct...')
     for ms in mss:
-        s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
+        s.add('NDPPP '+parset_dir+'/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument', \
               log=ms+'_selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -231,7 +233,7 @@ for c in xrange(cycles):
     # avg 1chanSB/20s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
     logging.info('Average...')
     check_rm('concat-avg.MS*')
-    s.add('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parset_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS', \
+    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS', \
             log='concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
