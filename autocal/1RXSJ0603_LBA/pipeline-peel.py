@@ -268,7 +268,7 @@ def peel(dd):
             # make concat after the smoother to have the WEIGHT_SPECTRUM_ORIG included
             logging.info('Concatenating TCs...')
             check_rm('concat.MS*')
-            pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
+            pt.msutil.msconcat(peelmss, 'concat.MS', concatTime=False)
     
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
