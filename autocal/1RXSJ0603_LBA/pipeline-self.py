@@ -89,9 +89,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     #################################################################################################
     # Create columns
-    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA, SMOOTHED_DATA and CORRECTED_DATA...')
+    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
     for ms in mss_orig:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SMOOTHED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################
@@ -142,7 +142,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('taql "update '+msrr+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,0]" && \
                        taql "update '+msrr+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,0]" && \
                        taql "update '+msrr+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,0]" && \
-                       taql "update '+msrr+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
+                       taql "update '+msrr+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,0]"', \
                        log=ms+'taql_copymodel-c'+str(c)+'.log', cmd_type='general')
             s.run(check=True)
             for ms in mss_orig:

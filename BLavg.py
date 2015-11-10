@@ -29,26 +29,23 @@ from scipy.ndimage.filters import gaussian_filter1d as gfilter
 import pyrap.tables as pt
 logging.basicConfig(level=logging.DEBUG)
 
-def addcol(ms, incol, outcol, overwrite):
+def addcol(ms, incol, outcol):
     if outcol not in ms.colnames():
         logging.info('Adding column: '+outcol)
         coldmi = ms.getdminfo(incol)
         coldmi['NAME'] = outcol
         ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype='complex', shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
-        overwrite = True # col just created, so overwrite
     # copy columns val
-    if overwrite:
-        logging.info('Set '+outcol+'='+incol)
-        data = ms.getcol(incol)
-        ms.putcol(outcol, data)
-    else:
-        logging.warning('Do not overwrite '+outcol+' because it already exists.')
+    logging.info('Set '+outcol+'='+incol)
+    data = ms.getcol(incol)
+    ms.putcol(outcol, data)
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
 opt.add_option('-i', '--incol', help='Column name to smooth [default: DATA]', type='string', default='DATA')
 opt.add_option('-o', '--outcol', help='Output column [default: DATA_SMOOTH]', type="string", default='DATA_SMOOTH')
 opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, this action permanently modify the MS! [default: False]', action="store_true", default=False)
+opt.add_option('-r', '--restore', help='If WEIGHT_SPECTRUM_ORIG exists then restore it before smoothing [default: False]', action="store_true", default=False)
 opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: do backup if -w]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
 ionfactor = options.ionfactor
@@ -78,11 +75,14 @@ if not all(all_time[i] <= all_time[i+1] for i in xrange(len(all_time)-1)):
     sys.exit(1)
 
 # create column to smooth
-addcol(ms, options.incol, options.outcol, overwrite=True)
+addcol(ms, options.incol, options.outcol)
 
+# retore WEIGHT_SPECTRUM
+if 'WEIGHT_SPECTRUM_ORIG' in ms.colnames() and options.restore:
+    addcol(ms,'WEIGHT_SPECTRUM_ORIG','WEIGHT_SPECTRUM')
 # backup WEIGHT_SPECTRUM
-if options.weight and not options.nobackup:
-    addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG', overwrite=False)
+elif options.weight and not options.nobackup:
+    addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG')
 
 ant1 = ms.getcol('ANTENNA1')
 ant2 = ms.getcol('ANTENNA2')
