@@ -252,11 +252,7 @@ def peel(dd):
        
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
     model = clean('init', peelmss, dd, groups)
-
-    logging.info('Concatenating TCs...')
-    check_rm('concat.MS*')
-    pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
-    
+   
     ###################################################################################################################
     # self-cal cycle
     for c in xrange(niter):
@@ -267,6 +263,12 @@ def peel(dd):
         for ms in peelmss:
             s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
+
+        if c == 0:
+            # make concat after the smoother to have the WEIGHT_SPECTRUM_ORIG included
+            logging.info('Concatenating TCs...')
+            check_rm('concat.MS*')
+            pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
     
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
@@ -320,7 +322,7 @@ def peel(dd):
         s.run(check=True)
 
         logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', append=True)
+        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', log_append=True)
         s.run(check=True)
     
         ############################################################################################################
@@ -422,8 +424,7 @@ def peel(dd):
     
     # Cleaning
     clean('facet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
-    clean('smallfinal', facetmss, dd, groups) # DEBUG
-    
+
     sys.exit(1)
     
     ############################################################################################################################
