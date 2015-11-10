@@ -345,12 +345,12 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.system('mv img/wide-'+str(c)+'-masked-model.fits self/models/wide-g'+g+'.model')
     os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
     # Copy images
-    [ os.system('mv img/wide-'+str(c)+'.newmask self/images/g'+g) for i in xrange(niter) ]
-    [ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images/g'+g) for i in xrange(niter) ]
-    [ os.system('mv img/wide-'+str(c)+'-image.fits self/images/g'+g) for i in xrange(niter) ]
-    [ os.system('mv img/wide-lr-'+str(c)+'-image.fits self/images/g'+g) for i in xrange(niter) ]
-    [ os.system('mv img/wide-'+str(c)+'-masked-image.fits self/images/g'+g) for i in xrange(niter) ]
-    [ os.system('mv img/wide-lr-'+str(c)+'-masked-image.fits self/images/g'+g) for i in xrange(niter) ]
+    [ os.system('mv img/wide-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
+    [ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
+    [ os.system('mv img/wide-'+str(c)+'-image.fits self/images/g'+g) for c in xrange(niter) ]
+    [ os.system('mv img/wide-lr-'+str(c)+'-image.fits self/images/g'+g) for c in xrange(niter) ]
+    [ os.system('mv img/wide-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
+    [ os.system('mv img/wide-lr-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
     os.system('mv img/empty-image.fits self/images/g'+g)
     os.system('mv *log '+group)
 
