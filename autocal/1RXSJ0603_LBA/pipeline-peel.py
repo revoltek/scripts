@@ -241,7 +241,7 @@ def peel(dd):
     # Copy the phase-shifted MODEL_DATA - peel-model_TC*.MS':DATA -> peel_TC*.MS':MODEL_DATA
     logging.info('Copy MODEL_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,SMOOTHED_DATA,CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
     s.run(check=True)
     for ms in peelmss:
         msmodel = ms.replace('peel', 'peel-model')
@@ -261,7 +261,7 @@ def peel(dd):
         # BL avg 
         logging.info('BL-based averaging...')
         for ms in peelmss:
-            s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         if c == 0:
@@ -291,12 +291,9 @@ def peel(dd):
         s.run(check=True)
 
         # Smooth
-        logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
-        s.run(check=True)
         logging.info('Smoothing...')
         for ms in peelmss:
-            s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         # calibrate amplitude (solve only) - peel_TC*.MS:SMOOTH_DATA
@@ -322,7 +319,7 @@ def peel(dd):
         s.run(check=True)
 
         logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', log_append=True)
+        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         ############################################################################################################

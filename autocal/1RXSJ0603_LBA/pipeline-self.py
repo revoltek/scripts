@@ -89,9 +89,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     #################################################################################################
     # Create columns
-    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA, SMOOTHED_DATA and CORRECTED_DATA...')
+    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
     for ms in mss_orig:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SMOOTHED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################
@@ -142,7 +142,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('taql "update '+msrr+', '+ms+' as orig set MODEL_DATA[,0]=orig.MODEL_DATA[,0]" && \
                        taql "update '+msrr+', '+ms+' as orig set MODEL_DATA[,3]=orig.MODEL_DATA[,0]" && \
                        taql "update '+msrr+', '+ms+' as orig set FLAG[,0]=orig.FLAG[,0]" && \
-                       taql "update '+msrr+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,3]"', \
+                       taql "update '+msrr+', '+ms+' as orig set FLAG[,3]=orig.FLAG[,0]"', \
                        log=ms+'taql_copymodel-c'+str(c)+'.log', cmd_type='general')
             s.run(check=True)
             for ms in mss_orig:
@@ -158,7 +158,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # Smooth
         logging.info('Smoothing...')
         for ms in mss:
-            s.add('BLavg.py -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         if c == 0:
@@ -202,12 +202,9 @@ for group in sorted(glob.glob('group*'))[::-1]:
             s.run(check=True)
 
             # Smooth
-            logging.info('Restoring WEIGHT_SPECTRUM...')
-            s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
-            s.run(check=True)
             logging.info('Smoothing...')
             for ms in mss:
-                s.add('BLavg.py -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
+                s.add('BLavg.py -w -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
             s.run(check=True)
 
             # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
@@ -234,8 +231,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
             s.run(check=True)
         
-        logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general', log_append=True)
+        logging.info('Restoring WEIGHT_SPECTRUM before imging...')
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         # join RR and LL
