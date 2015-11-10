@@ -34,7 +34,9 @@ def addcol(ms, incol, outcol):
         logging.info('Adding column: '+outcol)
         coldmi = ms.getdminfo(incol)
         coldmi['NAME'] = outcol
-        ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype='complex', shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
+        datatype = ms.col(incol).datatype()
+        print datatype
+        ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype=datatype, shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
     # copy columns val
     logging.info('Set '+outcol+'='+incol)
     data = ms.getcol(incol)
