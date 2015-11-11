@@ -38,8 +38,7 @@ def addcol(ms, incol, outcol):
         ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype=datatype, shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
     # copy columns val
     logging.info('Set '+outcol+'='+incol)
-    data = ms.getcol(incol)
-    ms.putcol(outcol, data)
+    ms.putcol(outcol, ms.getcol(incol))
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)

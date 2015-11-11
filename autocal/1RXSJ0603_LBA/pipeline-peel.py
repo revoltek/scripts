@@ -288,7 +288,7 @@ def peel(dd):
         # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
         logging.info('Correcting phase...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+            s.add('calibrate-stand-alone --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
             log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
