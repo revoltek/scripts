@@ -4,8 +4,6 @@ Strategy.Steps = [sub]
 
 Step.sub.Operation                    = SUBTRACT
 Step.sub.Model.Sources                = [@MODEL_DATA]
-Step.sub.Model.CommonScalarPhase.Enable = T
 Step.sub.Model.TEC.Enable             = T
 Step.sub.Model.Gain.Enable            = T
-Step.sub.Model.Beam.Enable            = F
 Step.sub.Output.Column = SUBTRACTED_DATA

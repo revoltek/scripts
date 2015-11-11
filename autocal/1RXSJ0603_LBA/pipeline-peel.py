@@ -16,11 +16,12 @@
 #coord = [91.733333,41.680000] # strong pts
 # TODO: extract coords from ms or models
 ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
-         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False}]
+         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
+         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': True, 'facet_extended': True, 'mask':'', 'reg': 'sou3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
 phasecentre = [90.833333,42.233333] # toorhbrush
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
-niter = 2
+niter = 3
 
 ##########################################################################################
 
@@ -51,7 +52,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
 
     # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA
-    check_rm('concat.MS*')
+    check_rm('concat-avg.MS*')
     logging.info('Concatenating TCs...')
     pt.msutil.msconcat(mssavg, 'concat-avg.MS', concatTime=False)
 
@@ -95,6 +96,9 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
     else:
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=20)
+
+    # TODO: add possibility of manual mask with dd['mask']
+
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
             params={'msfile':'concat-avg.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':int(niter/2.), 'multiscale':multiscale, 'wproj':wproj, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(c)+'.log')
@@ -215,8 +219,6 @@ def peel(dd):
     logging.info('Add model...')
     for ms in allmss:
         s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
-   #     s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_add.parset', \
-   #             log=ms+'_init-addcor.log', cmd_type='BBS')
     s.run(check=True)
     
     # concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel_TC*.MS:DATA (empty+DD, avg, phase shifted)
@@ -346,7 +348,7 @@ def peel(dd):
         # clean
         model = clean(c, peelmss, dd, groups)
     
-    clean('emptyfacet', peelmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
+    #clean('emptyfacet', peelmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
 
     # backup instrument tables
     logging.info('Back up instrument tables...')
@@ -422,10 +424,8 @@ def peel(dd):
     # Cleaning
     clean('facet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
 
-    sys.exit(1)
-    
     ############################################################################################################################
-    # in the corrected_data there's still the old facet model properly corrupted
+    # in the corrected_data there's still the empty dataset + the old facet model
     # shift original dataset -  group*_TC*.MS:CORRECTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
     logging.info('Shifting original dataset...')
     for ms in allmss:
@@ -445,12 +445,12 @@ def peel(dd):
     logging.info('Add new facet model...')
     check_rm('concat.MS*')
     pt.msutil.msconcat(sorted(glob.glob('group*_TC*-shift.MS')), 'concat.MS', concatTime=False)
-    model = 'peel/'+dd['name']+'/images/facet.model'
+    model = 'peel/'+dd['name']+'/images/peel-facet-masked.model'
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='final-ft.log')
     s.run(check=True)
     
     # here the best facet model is subtracted after corruption with DD solution
-    # SUB corrupted facet model group*_TC*-shift.MS:DATA - MODEL_DATA -> group*_TC*-shift.MS:CORRECTED_DATA (empty data + facet from model)
+    # SUB corrupted facet model group*_TC*-shift.MS:DATA - MODEL_DATA -> group*_TC*-shift.MS:SUBTRACTED_DATA (empty data + facet from model)
     # TODO: check that a parmdb for an avg freq works fine
     logging.info('Subtracting new facet model...')
     for ms in sorted(glob.glob('group*_TC*-shift.MS')):
@@ -458,22 +458,28 @@ def peel(dd):
                 log=ms+'_final-add.log', cmd_type='BBS')
     s.run(check=True)
     
-    # Shift back dataset -  group*_TC*-shifted.MS:CORRECTED_DATA -> group*_TC*.MS:DATA (empty, phase shifted)
+    # Shift back dataset -  group*_TC*-shifted.MS:CORRECTED_DATA -> group*_TC*-shiftback.MS:DATA (empty, phase shifted)
     logging.info('Shifting back original dataset...')
     for ms in sorted(glob.glob('group*_TC*-shift.MS')):
-        msout = ms.replace('-shift.MS','.MS')
+        msout = ms.replace('-shift.MS','-shiftback.MS')
         s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA msout='+msout+' \
-                msout.datacolumn=SUBTRACTED_DATA shift.phasecenter=\['+str(phasecentre[0])+'deg,'+str(phasecentre[1])+'deg\]', \
+                msout.datacolumn=DATA shift.phasecenter=\['+str(phasecentre[0])+'deg,'+str(phasecentre[1])+'deg\]', \
                 log=msout+'_final-shift2.log', cmd_type='NDPPP')
     s.run(check=True)
-    check_rm('group*_TC*-shift.MS') # otherwise next wildcard select them
+
+    for ms in sorted(glob.glob('group*_TC*-shiftback.MS')):
+        msorig = ms.replace('-shiftback.MS','.MS')
+        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=msmodel+'_final-taql.log', cmd_type='general')
+    s.run(check=True)
+
+    check_rm('group*_TC*-shift*.MS') # otherwise next wildcard select them
     
     # Make inspection image 
     logging.info('Inspection image...')
     check_rm('concat.MS*')
     pt.msutil.msconcat(allmss, 'concat.MS', concatTime=False)
     imagename = 'peel/'+dd['name']+'/images/inspection'
-    s.add('/opt/cep/WSClean/wsclean-1.7/build/wsclean -datacolumn SUBTRACTED_DATA -reorder -name ' + imagename + ' -size 4000 4000 \
+    s.add('wsclean -datacolumn SUBTRACTED_DATA -reorder -name ' + imagename + ' -size 4000 4000 \
                -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 concat.MS', \
                log='final-wsclean.log', cmd_type='wsclean')
     s.run(check=True)
