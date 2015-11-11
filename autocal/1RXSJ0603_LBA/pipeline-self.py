@@ -185,6 +185,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
                 log=ms+'_cortec-c'+str(c)+'.log', cmd_type='BBS')
             s.run(check=True)
+
         else:
 
             # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
@@ -197,14 +198,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
             # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
             logging.info('Correcting phase...')
             for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec-preamp.parset '+skymodel, \
+                s.add('calibrate-stand-alone --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-cor_tec-preamp.parset '+skymodel, \
                 log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
             s.run(check=True)
 
             # Smooth
             logging.info('Smoothing...')
             for ms in mss:
-                s.add('BLavg.py -w -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
+                s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
             s.run(check=True)
 
             # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
