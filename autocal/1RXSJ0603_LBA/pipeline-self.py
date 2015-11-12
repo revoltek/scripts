@@ -268,7 +268,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         logging.info('Cleaning (cycle: '+str(c)+')...')
         imagename = 'img/wide-'+str(c)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 5arcsec -weight briggs 0.0 -niter 100000 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms_orig, \
+                -scale 5arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms_orig, \
                 log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
@@ -277,7 +277,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
         logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 5arcsec -weight briggs 0.0 -niter 20000 -mgain 1 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
+                -scale 5arcsec -weight briggs 0.0 -niter 20000 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
                 log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
@@ -300,13 +300,13 @@ for group in sorted(glob.glob('group*'))[::-1]:
         logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
         imagename = 'img/wide-lr-'+str(c)
         s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 4000 4000 -mem 30 -j '+str(s.max_processors)+'\
-                -scale 15arcsec -weight briggs 0.0 -niter 50000 -mgain 1 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms_orig, \
+                -scale 15arcsec -weight briggs 0.0 -niter 50000 -no-update-model-required -maxuv-l 2500 -mgain 0.85 '+concat_ms_orig, \
                 log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
         logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 15arcsec -weight briggs 0.0 -niter 10000 -mgain 1 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
+                -scale 15arcsec -weight briggs 0.0 -niter 10000 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
                 log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
@@ -334,7 +334,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     s.run(check=True)
     imagename = 'img/empty'
     s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-            -scale 5arcsec -weight briggs 0.0 -niter 1 -mgain 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms_orig, \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -datacolumn SUBTRACTED_DATA '+concat_ms_orig, \
             log='wsclean-empty.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     

@@ -35,7 +35,7 @@ from make_mask import make_mask
 set_logger()
 s = Scheduler(dry=False)
 
-def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
+def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     """
     c = cycle/name
     mss = list of mss to avg/clean
@@ -92,6 +92,9 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False):
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
             params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imsize':imsize, 'niter':niter, 'multiscale':multiscale, 'wproj':wproj}, log='casaclean1-c'+str(c)+'.log')
     s.run(check=True)
+
+    if skip_mask: return imagename+'.model'
+
     if dd['faint'] or facet:
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
     else:
@@ -348,7 +351,7 @@ def peel(dd):
         # clean
         model = clean(c, peelmss, dd, groups)
     
-    #clean('emptyfacet', peelmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
+    #clean('emptyfacet', peelmss, dd, groups, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
 
     # backup instrument tables
     logging.info('Back up instrument tables...')
@@ -406,7 +409,7 @@ def peel(dd):
     for ms in facetmss:
         s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
-    clean('precalfacet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True) # DEBUG
+    clean('precalfacet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
     
     # Correct amp+ph - facet_TC*.MS:DATA -> facet_TC*.MS:CORRECTED_DATA (selfcal phase+amp corrected)
     # Copy instrument table in facet dataset
@@ -426,11 +429,11 @@ def peel(dd):
 
     ############################################################################################################################
     # in the corrected_data there's still the empty dataset + the old facet model
-    # shift original dataset -  group*_TC*.MS:CORRECTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
+    # shift original dataset -  group*_TC*.MS:SUBTRACTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
     logging.info('Shifting original dataset...')
     for ms in allmss:
         msout = ms.replace('.MS','-shift.MS')
-        s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA msout='+msout+' \
+        s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA msout='+msout+' \
                 msout.datacolumn=DATA shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', \
                 log=msout+'_final-shift.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -457,7 +460,7 @@ def peel(dd):
         s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-final_sub.parset', \
                 log=ms+'_final-add.log', cmd_type='BBS')
     s.run(check=True)
-    
+
     # Shift back dataset -  group*_TC*-shifted.MS:CORRECTED_DATA -> group*_TC*-shiftback.MS:DATA (empty, phase shifted)
     logging.info('Shifting back original dataset...')
     for ms in sorted(glob.glob('group*_TC*-shift.MS')):
@@ -479,9 +482,9 @@ def peel(dd):
     check_rm('concat.MS*')
     pt.msutil.msconcat(allmss, 'concat.MS', concatTime=False)
     imagename = 'peel/'+dd['name']+'/images/inspection'
-    s.add('wsclean -datacolumn SUBTRACTED_DATA -reorder -name ' + imagename + ' -size 4000 4000 \
-               -scale 15arcsec -weight briggs 0.0 -niter 100000 -mgain 0.75 -no-update-model-required -maxuv-l 2500 concat.MS', \
-               log='final-wsclean.log', cmd_type='wsclean')
+    s.add('wsclean_1.8 -datacolumn SUBTRACTED_DATA -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 concat.MS', \
+            log='wsclean-empty.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
     os.system('cp *log peel/'+dd['name']+'/log')
