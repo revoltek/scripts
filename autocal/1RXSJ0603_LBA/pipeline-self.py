@@ -232,7 +232,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
             s.run(check=True)
         
-        logging.info('Restoring WEIGHT_SPECTRUM before imging...')
+        logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
         s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
