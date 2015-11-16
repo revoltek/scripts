@@ -156,7 +156,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
         #################################################################################################
         # Smooth
-        logging.info('Smoothing...')
+        logging.info('BL-based smoothing...')
         for ms in mss:
             s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)

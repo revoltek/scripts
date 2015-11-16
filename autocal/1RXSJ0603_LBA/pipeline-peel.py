@@ -17,7 +17,7 @@
 # TODO: extract coords from ms or models
 ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
          {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
-         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': True, 'facet_extended': True, 'mask':'', 'reg': 'sou3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
+         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': True, 'facet_extended': True, 'mask':'tooth_mask.crtf', 'reg': 'sou3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
 phasecentre = [90.833333,42.233333] # toorhbrush
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
@@ -100,7 +100,11 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False, skip_mask=Fals
     else:
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=20)
 
-    # TODO: add possibility of manual mask with dd['mask']
+    # if dd['mask'] is set then add it to the new mask
+    if dd['mask'] != '':
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
+            params={'imgs':imagename+'.newmask', 'region':dd['mask'], 'setTo':1}, log='casablank-c'+str(c)+'.log')
+        s.run(check=True)
 
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
@@ -263,8 +267,8 @@ def peel(dd):
     for c in xrange(niter):
         logging.info('Start peel cycle: '+str(c))
 
-        # BL avg 
-        logging.info('BL-based averaging...')
+        # Smooth
+        logging.info('BL-based smoothing...')
         for ms in peelmss:
             s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
@@ -324,7 +328,7 @@ def peel(dd):
         s.run(check=True)
 
         logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         ############################################################################################################
@@ -424,11 +428,16 @@ def peel(dd):
                 log=ms+'_facet-coramptec.log', cmd_type='BBS')
     s.run(check=True)
     
-    # Cleaning
-    clean('facet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
+    # Cleaning facet
+    facetmodel = clean('facet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
+
+    # Blank pixels outside facet, new foccussed sources are cleaned (so they don't interfere) but we don't want to subtract them
+    for m in glob.glob(facetmodel+'*'):
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
+                params={'imgs':m, 'region':dd['reg_facet'], 'inverse':True}, log='final_casablank.log', log_append=True)
+    s.run(check=True)
 
     ############################################################################################################################
-    # in the corrected_data there's still the empty dataset + the old facet model
     # shift original dataset -  group*_TC*.MS:SUBTRACTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
     logging.info('Shifting original dataset...')
     for ms in allmss:
@@ -443,22 +452,58 @@ def peel(dd):
             msout = ms.replace('peel','group'+g).replace('.MS','-shift.MS')
             logging.debug(ms+'/instrument -> '+msout+'/instrument')
             os.system('cp -r '+ms+'/instrument '+msout)
-    
-    # Add new facet model - group*_TC*-shift.MS:MODEL_DATA (new facet model)
-    logging.info('Add new facet model...')
-    check_rm('concat.MS*')
-    pt.msutil.msconcat(sorted(glob.glob('group*_TC*-shift.MS')), 'concat.MS', concatTime=False)
-    model = 'peel/'+dd['name']+'/images/peel-facet-masked.model'
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':model, 'wproj':512}, log='final-ft.log')
+
+    allmssshifted = sorted(glob.glob('group*_TC*-shift.MS'))
+
+    # add columns that will be used lated in concat mode
+    for ms in allmssshifted:
+        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA,MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
     
-    # here the best facet model is subtracted after corruption with DD solution
-    # SUB corrupted facet model group*_TC*-shift.MS:DATA - MODEL_DATA -> group*_TC*-shift.MS:SUBTRACTED_DATA (empty data + facet from model)
-    # TODO: check that a parmdb for an avg freq works fine
+    ######################################################################
+    # Add old facet - group*_TC*-shift.MS:MODEL_DATA (high+low resolution model)
+    logging.info('Ft old facet model...')
+    for g in groups:
+        # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
+        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
+        model = os.getcwd()+'/'+modeldir+'/peel_facet-g'+g+'.model'
+        os.makedirs(tmpdir)
+        concat = tmpdir+'/concat.MS'
+        check_rm(concat+'*')
+        pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*-shift.MS')), concat, concatTime=False)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log')
+    s.run(check=True)
+    
+    logging.info('Ft facet model (lr)...')
+    for g in groups:
+        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
+        model = os.getcwd()+'/'+modeldir+'/peel_facet-lr-g'+g+'.model'
+        concat = tmpdir+'/concat.MS'
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log', log_append=True)
+    s.run(check=True)
+    
+    # cleanup the tmp dirs
+    check_rm(modeldir+'/tmp*')
+ 
+    # ADD group*_TC*-shift.MS:DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
+    logging.info('Add facet model...')
+    for ms in allmssshifted:
+        s.add('taql "update '+ms+' set CORRECTED_DATA = DATA + MODEL_DATA"', log=ms+'_final-taql1.log', cmd_type='general')
+    s.run(check=True)
+    
+    #################################################################
+    # here the new best facet model is subtracted after corruption with DD solution
+    # ft model - group*_TC*-shift.MS:MODEL_DATA (best available model)
+    logging.info('FT new facet model...')
+    for ms in allmssshifted:
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':facetmodel, 'wproj':512}, log=ms+'_final_ft.log')
+        s.run(check=True) # no parallel (problem multiple accesses to model file)
+ 
+    # SUB corrupted facet model group*_TC*-shift.MS:CORRECTED_DATA - MODEL_DATA -> group*_TC*-shift.MS:SUBTRACTED_DATA (empty data + facet from model)
     logging.info('Subtracting new facet model...')
-    for ms in sorted(glob.glob('group*_TC*-shift.MS')):
+    for ms in allmssshifted:
         s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-final_sub.parset', \
-                log=ms+'_final-add.log', cmd_type='BBS')
+                log=ms+'_final-sub.log', cmd_type='BBS')
     s.run(check=True)
 
     # Shift back dataset -  group*_TC*-shifted.MS:CORRECTED_DATA -> group*_TC*-shiftback.MS:DATA (empty, phase shifted)
@@ -487,7 +532,7 @@ def peel(dd):
             log='wsclean-empty.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
-    os.system('cp *log peel/'+dd['name']+'/log')
+    os.system('mv *log peel/'+dd['name']+'/log')
 # end peeling function
 
 for dd in ddset: peel(dd)
