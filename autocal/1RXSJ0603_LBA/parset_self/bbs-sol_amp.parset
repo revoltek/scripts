@@ -1,5 +1,5 @@
-Strategy.InputColumn = CORRECTED_DATA_PHASE
-Strategy.ChunkSize = 40
+Strategy.InputColumn = SMOOTHED_DATA
+Strategy.ChunkSize = 120
 Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
@@ -8,8 +8,8 @@ Step.solve.Model.Cache.Enable = T
 Step.solve.Model.Gain.Enable = T
 Step.solve.Solve.Parms = ["Gain:0:0:*", "Gain:1:1:*"]
 Step.solve.Solve.CellSize.Freq = 0 # 0 in original
-Step.solve.Solve.CellSize.Time = 40 # 120 in original
-Step.solve.Solve.CellChunkSize = 40
+Step.solve.Solve.CellSize.Time = 60 # 120 in original
+Step.solve.Solve.CellChunkSize = 120
 Step.solve.Solve.PropagateSolutions = T
 Step.solve.Solve.Options.MaxIter = 300
 Step.solve.Solve.Options.LMFactor       = 1.0

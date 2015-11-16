@@ -36,17 +36,18 @@ for ms in mss:
 s.run(check=False)
 
 ##############################################
-# Avg data
+# Avg data DATA -> SMOOTHED_DATA (BL-based smoothing)
+# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
 logging.info('BL-averaging')
 for ms in mss:
-    s.add('BLavg.py -m -c '+ms, log=ms+'_avg.log')
+    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_avg.log')
 s.run(check=False)
-mssavg = sorted(glob.glob('*-BLavg.MS'))
 
 ##############################################
 # Initial calibrator
+# only solve on SMOOTHED_DATA 
 logging.info('Calibrating with skymodel: '+skymodel)
-for ms in mssavg:
+for ms in mss:
     s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-cal_field.parset '+skymodel, log=ms+'_cal.log', cmd_type='BBS')
 s.run(check=True)
 
@@ -56,7 +57,7 @@ check_rm('globaldb')
 os.system('mkdir globaldb')
 
 logging.info('Running LoSoTo...')
-for i, ms in enumerate(mssavg):
+for i, ms in enumerate(mss):
     num = re.findall(r'\d+', ms)[-1]
     logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))

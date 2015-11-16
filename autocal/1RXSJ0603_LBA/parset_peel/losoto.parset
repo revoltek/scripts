@@ -62,6 +62,7 @@ LoSoTo.Steps.plotPf1.PlotFlag = True
 LoSoTo.Steps.plotPf1.Prefix = plots/tec1_
 LoSoTo.Steps.plotPf1.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPf1.time.minmax = [4868800000,4868900000]
+LoSoTo.Steps.plotPf1.MinMax = [-0.01,0.01]
 
 LoSoTo.Steps.plotPf2.Operation = PLOT
 LoSoTo.Steps.plotPf2.Soltab = [sol000/tec000]
@@ -71,3 +72,4 @@ LoSoTo.Steps.plotPf2.PlotFlag = True
 LoSoTo.Steps.plotPf2.Prefix = plots/tec2_
 LoSoTo.Steps.plotPf2.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPf2.time.minmax = [4869000000,4869900000]
+LoSoTo.Steps.plotPf2.MinMax = [-0.01,0.01]

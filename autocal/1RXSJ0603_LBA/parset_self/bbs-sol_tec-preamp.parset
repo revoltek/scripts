@@ -1,6 +1,6 @@
-Strategy.InputColumn = DATA
+Strategy.InputColumn = SMOOTHED_DATA
 Strategy.ChunkSize = 50
-Strategy.Steps = [solve, correct]
+Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
 Step.solve.Model.Sources = [@MODEL_DATA]
@@ -19,8 +19,3 @@ Step.solve.Solve.Options.ColFactor      = 1e-9
 Step.solve.Solve.Options.BalancedEqs    = F
 Step.solve.Solve.Options.UseSVD         = T
 Step.solve.Solve.UVRange = [100]
-
-Step.correct.Operation = CORRECT
-Step.correct.Model.Sources = []
-Step.correct.Model.TEC.Enable = T
-Step.correct.Output.Column = CORRECTED_DATA_PHASE

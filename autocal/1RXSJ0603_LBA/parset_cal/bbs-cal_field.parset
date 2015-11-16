@@ -1,4 +1,4 @@
-Strategy.InputColumn = DATA
+Strategy.InputColumn = SMOOTHED_DATA
 Strategy.ChunkSize   = 50
 Strategy.UseSolver   = F
 Strategy.Steps       = [solve, subtract, solve2]

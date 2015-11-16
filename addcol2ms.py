@@ -16,7 +16,7 @@ def main(options):
             return
     outcols = options.outcols
     
-    t = pt.table(inms, readonly=False, ack=True)
+    t = pt.table(inms, readonly=False, ack=False)
 
     for outcol in outcols.split(','):
         if outcol not in t.colnames():
@@ -27,7 +27,7 @@ def main(options):
             data = t.getcol('DATA')
             t.putcol(outcol, data)
         else:
-            print outcol, 'Column'+outcol+' already exists.'
+            print 'Column '+outcol+' already exists.'
         
 opt = optparse.OptionParser()
 opt.add_option('-i','--inms',help='Input MS [no default].',default='')

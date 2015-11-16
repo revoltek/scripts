@@ -1,7 +1,0 @@
-Strategy.InputColumn = SUBTRACTED_DATA
-Strategy.ChunkSize = 50
-Strategy.Steps = [add]
-
-Step.add.Operation                    = ADD
-Step.add.Model.Sources                = [@MODEL_DATA]
-Step.add.Output.Column = CORRECTED_DATA
