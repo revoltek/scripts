@@ -2,15 +2,15 @@
 # initial calibration of the calibrator, sol flag
 
 #skymodel = '/home/fdg/model/3C196-allfield.skymodel' # tooth LBA
-#parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_init' # tooth LBA
+#parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
 skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo LBA
-parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_init' # virgo LBA
+parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_cal' # virgo LBA
 #skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo HBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_init' # virgo HBA
+#parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_cal' # virgo HBA
 #skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # perseus LBA
-#parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_init' # perseus LBA
+#parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_cal' # perseus LBA
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # mode-test LBA
-#parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_init' # mode-test LBA
+#parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_cal' # mode-test LBA
 
 ###################################################
 
@@ -27,7 +27,6 @@ mss = sorted(glob.glob('*MS'))
 # Clean
 logging.info('Cleaning...')
 check_rm('*log')
-os.makedirs('log')
 
 ##############################################
 # Initial processing (2/2013->2/2014)
@@ -45,6 +44,7 @@ for ms in mss:
 s.run(check=False)
 
 ##############################################
+# Initial calibrator
 # only solve on SMOOTHED_DATA 
 logging.info('Calibrating with skymodel: '+skymodel)
 for ms in mss:
