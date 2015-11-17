@@ -438,11 +438,12 @@ def peel(dd):
     s.run(check=True)
 
     ############################################################################################################################
-    # shift original dataset -  group*_TC*.MS:SUBTRACTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
+    # in CORRECTED_DATA there's still SUBTRACTED_DATA + (old) MODEL_DATA
+    # shift original dataset -  group*_TC*.MS:CORRECTED_DATA -> group*_TC*-shifted.MS:DATA (empty+facet, phase shifted)
     logging.info('Shifting original dataset...')
     for ms in allmss:
         msout = ms.replace('.MS','-shift.MS')
-        s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA msout='+msout+' \
+        s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA msout='+msout+' \
                 msout.datacolumn=DATA shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', \
                 log=msout+'_final-shift.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -455,42 +456,42 @@ def peel(dd):
 
     allmssshifted = sorted(glob.glob('group*_TC*-shift.MS'))
 
-    # add columns that will be used lated in concat mode
-    for ms in allmssshifted:
-        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA,MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
-    s.run(check=True)
+#    # add columns that will be used lated in concat mode
+#    for ms in allmssshifted:
+#        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA,MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
+#    s.run(check=True)
     
-    ######################################################################
-    # Add old facet - group*_TC*-shift.MS:MODEL_DATA (high+low resolution model)
-    logging.info('Ft old facet model...')
-    for g in groups:
-        # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
-        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel_facet-g'+g+'.model'
-        os.makedirs(tmpdir)
-        concat = tmpdir+'/concat.MS'
-        check_rm(concat+'*')
-        pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*-shift.MS')), concat, concatTime=False)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log')
-    s.run(check=True)
-    
-    logging.info('Ft facet model (lr)...')
-    for g in groups:
-        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel_facet-lr-g'+g+'.model'
-        concat = tmpdir+'/concat.MS'
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log', log_append=True)
-    s.run(check=True)
-    
-    # cleanup the tmp dirs
-    check_rm(modeldir+'/tmp*')
- 
-    # ADD group*_TC*-shift.MS:DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
-    logging.info('Add facet model...')
-    for ms in allmssshifted:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = DATA + MODEL_DATA"', log=ms+'_final-taql1.log', cmd_type='general')
-    s.run(check=True)
-    
+#    ######################################################################
+#    # Add old facet - group*_TC*-shift.MS:MODEL_DATA (high+low resolution model)
+#    logging.info('Ft old facet model...')
+#    for g in groups:
+#        # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
+#        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
+#        model = os.getcwd()+'/'+modeldir+'/peel_facet-g'+g+'.model'
+#        os.makedirs(tmpdir)
+#        concat = tmpdir+'/concat.MS'
+#        check_rm(concat+'*')
+#        pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*-shift.MS')), concat, concatTime=False)
+#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log')
+#    s.run(check=True)
+#    
+#    logging.info('Ft facet model (lr)...')
+#    for g in groups:
+#        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
+#        model = os.getcwd()+'/'+modeldir+'/peel_facet-lr-g'+g+'.model'
+#        concat = tmpdir+'/concat.MS'
+#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log', log_append=True)
+#    s.run(check=True)
+#    
+#    # cleanup the tmp dirs
+#    check_rm(modeldir+'/tmp*')
+#
+#    # ADD group*_TC*-shift.MS:DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
+#    logging.info('Add facet model...')
+#    for ms in allmssshifted:
+#        s.add('taql "update '+ms+' set CORRECTED_DATA = DATA + MODEL_DATA"', log=ms+'_final-taql1.log', cmd_type='general')
+#    s.run(check=True)
+   
     #################################################################
     # here the new best facet model is subtracted after corruption with DD solution
     # ft model - group*_TC*-shift.MS:MODEL_DATA (best available model)
@@ -499,14 +500,14 @@ def peel(dd):
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':facetmodel, 'wproj':512}, log=ms+'_final_ft.log')
         s.run(check=True) # no parallel (problem multiple accesses to model file)
  
-    # SUB corrupted facet model group*_TC*-shift.MS:CORRECTED_DATA - MODEL_DATA -> group*_TC*-shift.MS:SUBTRACTED_DATA (empty data + facet from model)
+    # SUB corrupted facet model group*_TC*-shift.MS:DATA - MODEL_DATA -> group*_TC*-shift.MS:SUBTRACTED_DATA (empty data + facet from model)
     logging.info('Subtracting new facet model...')
     for ms in allmssshifted:
         s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-final_sub.parset', \
                 log=ms+'_final-sub.log', cmd_type='BBS')
     s.run(check=True)
 
-    # Shift back dataset -  group*_TC*-shifted.MS:CORRECTED_DATA -> group*_TC*-shiftback.MS:DATA (empty, phase shifted)
+    # Shift back dataset -  group*_TC*-shifted.MS:SUBTRACTED_DATA -> group*_TC*-shiftback.MS:DATA (empty, phase shifted)
     logging.info('Shifting back original dataset...')
     for ms in sorted(glob.glob('group*_TC*-shift.MS')):
         msout = ms.replace('-shift.MS','-shiftback.MS')
@@ -520,7 +521,7 @@ def peel(dd):
         s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=msmodel+'_final-taql.log', cmd_type='general')
     s.run(check=True)
 
-    check_rm('group*_TC*-shift*.MS') # otherwise next wildcard select them
+    check_rm('group*_TC*-shift*.MS') # otherwise next wildcard selects them
     
     # Make inspection image 
     logging.info('Inspection image...')
