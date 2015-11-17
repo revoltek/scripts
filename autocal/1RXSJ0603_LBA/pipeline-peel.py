@@ -484,13 +484,23 @@ def peel(dd):
     
     # cleanup the tmp dirs
     check_rm(modeldir+'/tmp*')
+
+    # DEBUG: Make inspection image 
+    logging.info('Inspection image...')
+    check_rm('concat.MS*')
+    pt.msutil.msconcat(allmssshifted, 'concat.MS', concatTime=False)
+    imagename = 'peel/'+dd['name']+'/images/inspection-shifted'
+    s.add('wsclean_1.8 -datacolumn DATA -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+            -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.85 concat.MS', \
+            log='wsclean-empty.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
  
     # ADD group*_TC*-shift.MS:DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
     logging.info('Add facet model...')
     for ms in allmssshifted:
         s.add('taql "update '+ms+' set CORRECTED_DATA = DATA + MODEL_DATA"', log=ms+'_final-taql1.log', cmd_type='general')
     s.run(check=True)
-    
+   
     #################################################################
     # here the new best facet model is subtracted after corruption with DD solution
     # ft model - group*_TC*-shift.MS:MODEL_DATA (best available model)
@@ -520,7 +530,7 @@ def peel(dd):
         s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=msmodel+'_final-taql.log', cmd_type='general')
     s.run(check=True)
 
-    check_rm('group*_TC*-shift*.MS') # otherwise next wildcard select them
+    check_rm('group*_TC*-shift*.MS') # otherwise next wildcard selects them
     
     # Make inspection image 
     logging.info('Inspection image...')
