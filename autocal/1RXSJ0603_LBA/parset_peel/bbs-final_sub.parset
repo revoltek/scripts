@@ -1,4 +1,4 @@
-Strategy.InputColumn = CORRECTED_DATA
+Strategy.InputColumn = DATA
 Strategy.ChunkSize = 10
 Strategy.Steps = [sub]
 
