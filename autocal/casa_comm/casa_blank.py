@@ -5,7 +5,7 @@
 
 import os, sys, pickle
 
-def casa_blank(imgs = [], region = '', inverse=False, setTo = 0):
+def casa_blank(imgs = [], region = '', inverse=False, setTo = 0.):
     """
     img = image to blank
     region = blank all pixels inside this region to the value "setTo"
@@ -16,13 +16,27 @@ def casa_blank(imgs = [], region = '', inverse=False, setTo = 0):
     if type(imgs) is str: imgs = [imgs]
     for img in imgs:
         if inverse:
-            default('immath')
-            immath(imagename = img, mode = 'evalexpr', expr = 'IM0', region = region, outfile = img+'-out')
-            os.system('rm -r '+img)
-            os.system('mv '+img+'-out '+img)
-            ia.open(img)
-            ia.replacemaskedpixels(0.0)
+            # create a mask
+            os.system('cp -r '+img+' '+img+'.tmp')
+            ia.open(img+'.tmp')
+            ia.set(pixels=0.)
+            reg = rg.fromtextfile(filename=region, shape=ia.shape(), csys=ia.coordsys().torecord())
+            ia.set(pixels=1., region=reg)
+            del reg
+            ia.done()
             ia.close()
+
+            # mask using the created mask
+            default('immath')
+            immath(imagename = img, mode = 'evalexpr', expr = 'IM0', mask=img+'.tmp', outfile = img+'.out')
+            os.system('rm -r '+img+'.tmp '+img)
+            os.system('mv '+img+'.out '+img)
+
+            # replaced masked pixels with 0 (compensate bug in ft() that ignore masks)
+            ia.open(img)
+            ia.replacemaskedpixels(setTo)
+            ia.close()
+
         else:
             ia.open(img)
             reg = rg.fromtextfile(filename=region, shape=ia.shape(), csys=ia.coordsys().torecord())
