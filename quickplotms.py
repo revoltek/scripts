@@ -33,6 +33,7 @@ opt.add_option('-c', '--col', help='Column name to plot [default: DATA]', type='
 opt.add_option('-a', '--ant', help='Baseline to plot [default: 0&1]', type="string", default='0&1')
 opt.add_option('-p', '--pol', help='Pol to plot, accept: 0,1,2,3 [default: 0]', type="int", default=0)
 opt.add_option('-n', '--chan', help='Which chan to plot [default: 0]', type="int", default=0)
+opt.add_option('-f', '--flag', help='Plot flags? [default: False]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
 
 if msfile == []:
@@ -62,9 +63,9 @@ ax.tick_params('both', length=5, width=1, which='minor')
 ax.set_xlabel(r'Time [s]')
 ax.set_ylabel(r'Amplitude [Jy]')
 ax.label_outer()
-ax.plot( time, data[:,options.pol,options.chan], 'ko' )
-ax.plot( time, data[:,options.pol,options.chan], 'k-' )
-ax.plot( time[flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][flags[:,options.pol,options.chan]], 'ro' ) # flags
+ax.plot( time[~flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][~flags[:,options.pol,options.chan]], 'ko' )
+ax.plot( time[~flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][~flags[:,options.pol,options.chan]], 'k-' )
+if options.flag: ax.plot( time[flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][flags[:,options.pol,options.chan]], 'ro' ) # flags
 
 if options.save != '':
     logging.info('Save file: '+options.save)
