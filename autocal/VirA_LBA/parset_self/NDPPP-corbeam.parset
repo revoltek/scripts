@@ -1,7 +1,7 @@
 msin =
 msin.datacolumn = DATA
 msout = .
-msout.datacolumn = DATA
+msout.datacolumn = CALCOR_DATA
 
 steps = [corrg, corrbeam]
 

@@ -61,11 +61,13 @@ for ms in mss:
 
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
-# TODO: convert to NDPPP
+# TODO: convert to NDPPP - problem: does not handle DD solution
 logging.info('Correcting target MSs...')
 for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-corbeam.parset '+fakeskymodel, \
-          log=ms+'-init_corbeam.log', cmd_type='BBS')
+    s.add('NDPPP '+parset_dir+'/NDPPP-corbeam.parset msin='+ms+' corrg.parmdb='+ms+'/instrument', \
+              log=ms+'_init_corbeam.log', cmd_type='NDPPP')
+#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-corbeam.parset '+fakeskymodel, \
+#          log=ms+'-init_corbeam.log', cmd_type='BBS')
 s.run(check=True)
 
 #########################################################################################
@@ -95,18 +97,18 @@ for c in xrange(cycles):
 
     ###########################################################################################
     # BL avg 
-    logging.info('BL-based averaging...')
-    for ms in mss:
-        s.add('BLavg.py -r -w -i CIRC_DATA_SUB -o SMOOTHED_CIRC_DATA_SUB '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
-    s.run(check=True)
+    #logging.info('BL-based averaging...')
+    #for ms in mss:
+    #    s.add('BLavg.py -r -w -i CIRC_DATA_SUB -o SMOOTHED_CIRC_DATA_SUB '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+    #s.run(check=True)
 
     if c == 0:
         # After all columns are created
         logging.info('Concat...')
         pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
         # Smaller concat for ft
-        for c, msg in enumerate(np.array_split(mss,10)):
-            pt.msutil.msconcat(msg, 'concat-'+str(c)+'.MS', concatTime=False)
+        for i, msg in enumerate(np.array_split(mss,10)):
+            pt.msutil.msconcat(msg, 'concat-'+str(i)+'.MS', concatTime=False)
     else:
         # first cycle use given model
         model = 'img/clean-c'+str(c-1)+'.model'
@@ -121,7 +123,7 @@ for c in xrange(cycles):
         s.run(check=True) # not parallel!
 
     #####################################################################################
-    # calibrate - SB.MS:SMOOTHED_CIRC_DATA_SUB (no correction)
+    # calibrate - SB.MS:CIRC_DATA_SUB (no correction)
     logging.info('Calibrate...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
@@ -219,9 +221,9 @@ for c in xrange(cycles):
 
     ########################################################################################
     # correct - SB.MS:CIRC_DATA_SUB -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
-    logging.info('Restoring WEIGHT_SPECTRUM')
-    s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
-    s.run(check=True)
+#    logging.info('Restoring WEIGHT_SPECTRUM')
+#    s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+#    s.run(check=True)
 
     logging.info('Correct...')
     for ms in mss:
