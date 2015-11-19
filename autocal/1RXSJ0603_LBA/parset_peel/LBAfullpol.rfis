@@ -9,10 +9,10 @@ rfi detector by André Offringa (offringa@astro.rug.nl).
         <new-flagging>0</new-flagging>
       </action>
       <action type="ForEachPolarisationBlock">
-        <on-xx>0</on-xx>
+        <on-xx>1</on-xx>
         <on-xy>1</on-xy>
         <on-yx>1</on-yx>
-        <on-yy>0</on-yy>
+        <on-yy>1</on-yy>
         <on-stokes-i>0</on-stokes-i>
         <on-stokes-q>0</on-stokes-q>
         <on-stokes-u>0</on-stokes-u>
