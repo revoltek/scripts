@@ -237,27 +237,27 @@ def peel(dd):
         s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
                 shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
     s.run(check=True)
-    logging.info('Shifting+averaging (MODEL_DATA)...')
-    for tc in tcs:
-        mss = glob.glob('group*_TC'+tc+'.MS')
-        msout = 'peel-model_TC'+tc+'.MS'
-        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
-                shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
-    s.run(check=True)
+#    logging.info('Shifting+averaging (MODEL_DATA)...')
+#    for tc in tcs:
+#        mss = glob.glob('group*_TC'+tc+'.MS')
+#        msout = 'peel-model_TC'+tc+'.MS'
+#        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
+#                shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
+#    s.run(check=True)
     
     peelmss = sorted(glob.glob('peel_TC*.MS'))
     
-    # Copy the phase-shifted MODEL_DATA - peel-model_TC*.MS':DATA -> peel_TC*.MS':MODEL_DATA
-    logging.info('Copy MODEL_DATA...')
-    for ms in peelmss:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
-    s.run(check=True)
-    for ms in peelmss:
-        msmodel = ms.replace('peel', 'peel-model')
-        logging.debug(msmodel+':DATA -> '+ms+':MODEL_DATA')
-        s.add('taql "update '+ms+', '+msmodel+' as model set MODEL_DATA=model.DATA"', log=msmodel+'_init-taql.log', cmd_type='general')
-    s.run(check=True)
-    check_rm('peel-model_TC*.MS')
+#    # Copy the phase-shifted MODEL_DATA - peel-model_TC*.MS':DATA -> peel_TC*.MS':MODEL_DATA
+#    logging.info('Copy MODEL_DATA...')
+#    for ms in peelmss:
+#        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+#    s.run(check=True)
+#    for ms in peelmss:
+#        msmodel = ms.replace('peel', 'peel-model')
+#        logging.debug(msmodel+':DATA -> '+ms+':MODEL_DATA')
+#        s.add('taql "update '+ms+', '+msmodel+' as model set MODEL_DATA=model.DATA"', log=msmodel+'_init-taql.log', cmd_type='general')
+#    s.run(check=True)
+#    check_rm('peel-model_TC*.MS')
        
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
     model = clean('init', peelmss, dd, groups)
