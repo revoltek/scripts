@@ -232,7 +232,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                       log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
             s.run(check=True)
         
-        logging.info('Restoring WEIGHT_SPECTRUM before imging...')
+        logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
         s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
@@ -340,8 +340,11 @@ for group in sorted(glob.glob('group*'))[::-1]:
     
     # Copy last *model
     logging.info('Copying models/images...')
-    os.system('mv img/wide-'+str(c)+'-masked-model.fits self/models/wide-g'+g+'.model')
-    os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide-lr-g'+g+'.model')
+    os.system('mv img/wide-'+str(c)+'-masked-model.fits self/models/wide_g'+g+'.model.fits')
+    os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide_lr_g'+g+'.model.fits')
+
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
+                    params={'imgs':['self/models/wide_g'+g+'.model.fits', 'self/models/wide_g'+g+'.model.fits'], 'del_fits':True}, log='casa_fits2ms.log')
     # Copy images
     [ os.system('mv img/wide-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
     [ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
