@@ -12,7 +12,7 @@ def casa_fits2ms(imgs = [], del_fits = False):
     if type(imgs) is str: imgs = [imgs]
     for img in imgs:
         # define output name
-        if img[-5:] = '.fits': imagename = img.replace('.fits','.ms')
+        if img[-5:] == '.fits': imagename = img.replace('.fits','.ms')
         else: imagename = img+'.ms'
 
         default('importfits')

@@ -411,7 +411,7 @@ class Scheduler():
                 return 1
 
         elif cmd_type == 'wsclean':
-            out = subprocess.check_output('grep -L "Writing restored image... DONE" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out = subprocess.check_output('grep -L "Cleaning up temporary files..." '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('WSClean run problem on:\n'+out)
                 return 1

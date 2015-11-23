@@ -233,7 +233,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
             s.run(check=True)
         
         logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
-        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         # join RR and LL
@@ -281,14 +281,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
                 log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
-        logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
-        s.add('taql "update '+concat_ms_orig+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(c)+'.log', cmd_type='general')
-        s.run(check=True)
-    
         ####################################################################
         # FAST VERSION (no low-res)
         #continue
         ####################################################################
+
+        logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
+        s.add('taql "update '+concat_ms_orig+' set MODEL_DATA_HIGHRES = MODEL_DATA"', log='taql1-c'+str(c)+'.log', cmd_type='general')
+        s.run(check=True)
     
         ############################################################################################################
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)

@@ -3,9 +3,7 @@ msin.datacolumn = CORRECTED_DATA
 
 msout = '.'
 
-steps = [flag, count]
+steps = [aoflagger, count]
 
-flag.type = madflagger
-flag.threshold = 5
-flag.timewindow = 51
-flag.freqwindow = 16
+aoflagger.strategy=/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/LBAfullpol.rfis
+aoflagger.memoryperc=6
