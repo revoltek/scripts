@@ -97,6 +97,7 @@ for c in xrange(cycles):
 
     ###########################################################################################
     # BL avg 
+    # does not give good results...
     #logging.info('BL-based averaging...')
     #for ms in mss:
     #    s.add('BLavg.py -r -w -i CIRC_DATA_SUB -o SMOOTHED_CIRC_DATA_SUB '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
@@ -182,6 +183,7 @@ for c in xrange(cycles):
 #
 #        ########################################################################################################################
 #        # Flagging on CORRECTED_DATA
+#        # TODO: use aoflagger
 #        logging.info('Make widefield model - Flagging residuals...')
 #        for ms in mss:
 #            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \

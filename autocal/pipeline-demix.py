@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # demix of a set of SBs from a given dir, output is on local dir
 
-skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
-parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_demix/'
-origmss_dir = '/lofar2/fdg/virgoHBA/...'
+parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_demix/'
+#origmss_dir = '/data/scratch/fdg/virgoLBAis/tgts-bkp/'
+origmss_dir = '/data/scratch/fdg/virgoLBAis/demix-test/orig/'
 
 ###################################################
 
@@ -30,9 +30,9 @@ check_rm('*log')
 
 ##############################################
 # Demix
-logging.info('Calibrating with skymodel: '+skymodel)
+logging.info('Demixing...')
 for ms in mss:
-    s.add('NDPPP msin='+ms+' msout='+os.path.basename(ms)+' '+parset_dir+'/NDPPP_demix.parset '+skymodel, log=ms+'_demix.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP_demix.parset msin='+ms+' msout='+os.path.basename(ms)+' demixer.instrumentmodel='+os.path.basename(ms)+'/instrument_demix', log=os.path.basename(ms)+'_demix.log', cmd_type='NDPPP')
 s.run(check=True)
 
 logging.info("Done.")
