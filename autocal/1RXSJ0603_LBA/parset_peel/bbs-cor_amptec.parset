@@ -5,4 +5,5 @@ Strategy.Steps = [correct]
 Step.correct.Operation = CORRECT
 Step.correct.Model.Gain.Enable = T
 Step.correct.Model.TEC.Enable = T
+Step.correct.Model.CommonScalarPhase.Enable = T
 Step.correct.Output.Column = CORRECTED_DATA
