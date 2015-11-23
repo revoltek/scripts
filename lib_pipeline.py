@@ -213,6 +213,20 @@ def find_nchan(ms):
     return nchan[0]
 
 
+def get_phase_centre(ms):
+    """
+    Get the phase centre of the first source (is it a problem?) of an MS
+    """
+    import pyrap.tables as pt
+    field_table = pt.table(ms + '/FIELD')
+    field_no = 0
+    ant_no = 0
+    direction = field_table.getcol('PHASE_DIR')
+    ra = direction[ ant_no, field_no, 0 ]
+    dec = direction[ ant_no, field_no, 1 ]
+    return (ra*180/np.pi, dec*180/np.pi)
+
+
 class Scheduler():
     def __init__(self, qsub = None, max_threads = None, max_processors = None, dry = False):
         """
@@ -397,7 +411,7 @@ class Scheduler():
                 return 1
 
         elif cmd_type == 'wsclean':
-            out = subprocess.check_output('grep -L "Writing restored image... DONE" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out = subprocess.check_output('grep -L "Cleaning up temporary files..." '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('WSClean run problem on:\n'+out)
                 return 1

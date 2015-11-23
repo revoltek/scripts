@@ -3,9 +3,9 @@ msin.datacolumn = CORRECTED_DATA
 
 msout = '.'
 
-steps = [flag]
+steps = [flag, count]
 
 flag.type = madflagger
 flag.threshold = 5
-flag.timewindow = 251
-flag.freqwindow = 4
+flag.timewindow = 51
+flag.freqwindow = 16

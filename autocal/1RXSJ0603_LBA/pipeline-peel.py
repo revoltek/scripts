@@ -15,10 +15,9 @@
 #coord = [90.833333,42.233333] # toorhbrush
 #coord = [91.733333,41.680000] # strong pts
 # TODO: extract coords from ms or models
-ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
-         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'sou2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
-         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': True, 'facet_extended': True, 'mask':'tooth_mask.crtf', 'reg': 'sou3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
-phasecentre = [90.833333,42.233333] # toorhbrush
+ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
+         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
+         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': True, 'facet_extended': True, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
 niter = 3
@@ -35,7 +34,7 @@ from make_mask import make_mask
 set_logger()
 s = Scheduler(dry=False)
 
-def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
+def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     """
     c = cycle/name
     mss = list of mss to avg/clean
@@ -61,10 +60,10 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False, skip_mask=Fals
 
     # set imsize and niter
     if facet:
-        imsize = size_from_facet('peel/'+dd['name']+'/models/peel_facet-g'+groups[0]+'.model', dd['coord'], 3)
+        imsize = size_from_facet('peel/'+dd['name']+'/models/facet.cut', dd['coord'], 3)
         niter = 5000
     else:
-        imsize = size_from_facet('peel/'+dd['name']+'/models/peel-g'+groups[0]+'.model', dd['coord'], 3)
+        imsize = size_from_facet('peel/'+dd['name']+'/models/dd.cut', dd['coord'], 3)
         niter = 2000
 
     # get wproj scaled with pixels
@@ -103,7 +102,7 @@ def clean(c, mss, dd, groups, avgfreq=4, avgtime=10, facet=False, skip_mask=Fals
     # if dd['mask'] is set then add it to the new mask
     if dd['mask'] != '':
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-            params={'imgs':imagename+'.newmask', 'region':dd['mask'], 'setTo':1}, log='casablank-c'+str(c)+'.log')
+            params={'imgs':imagename+'.newmask', 'region':dd['mask'], 'setTo':1}, log='casablank-c'+str(c)+'.log', log_append=True)
         s.run(check=True)
 
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
@@ -166,6 +165,7 @@ def peel(dd):
     
     logging.info('Indexing...')
     allmss = sorted(glob.glob('group*_TC*.MS'))
+    phasecentre = get_phase_centre(allmss[0])
     
     groups = []
     tcs = []
@@ -181,20 +181,29 @@ def peel(dd):
     # Blank unwanted part of models
     modeldir = 'peel/'+dd['name']+'/models/'
     
-    for model in glob.glob('self/models/wide*-g*model*'):
-        os.system('cp '+model+' '+modeldir+'/'+os.path.basename(model).replace('wide','peel'))
-        os.system('cp '+model+' '+modeldir+'/'+os.path.basename(model).replace('wide','peel_facet'))
+    for model in glob.glob('self/models/wide*_g*model*'):
+        os.system('cp -r '+model+' '+modeldir+'/'+os.path.basename(model).replace('wide','peel_dd'))
+        os.system('cp -r '+model+' '+modeldir+'/'+os.path.basename(model).replace('wide','peel_facet'))
     
     logging.info('Splitting skymodels...')
-    models = glob.glob(modeldir+'/peel-*')
+    models = glob.glob(modeldir+'/peel_dd*')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                 params={'imgs':models, 'region':dd['reg'], 'inverse':True}, log='split_skymodels.log')
     s.run(check=True)
     
     logging.info('Splitting skymodels (low-resolution)...')
-    models = glob.glob(modeldir+'/peel_facet-*')
+    models = glob.glob(modeldir+'/peel_facet*')
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                 params={'imgs':models, 'region':dd['reg_facet'], 'inverse':True}, log='split_skymodels.log', log_append=True)
+    s.run(check=True)
+
+    # Ugly solution to make images of the minimal size just to find out how many pixels to use
+    logging.info('Making image cuts...')
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_cutimg.py', \
+                params={'img':glob.glob(modeldir+'/peel_dd_g*.model.ms')[0], 'region':dd['reg'], 'out':modeldir+'/dd.cut'}, log='cut_skymodels.log')
+    s.run(check=True)
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_cutimg.py', \
+                params={'img':glob.glob(modeldir+'/peel_facet_g*.model.ms')[0], 'region':dd['reg_facet'], 'out':modeldir+'/facet.cut'}, log='cut_skymodels.log', log_append=True)
     s.run(check=True)
     
     # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
@@ -202,20 +211,20 @@ def peel(dd):
     for g in groups:
         # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
         tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel-g'+g+'.model'
+        model = os.getcwd()+'/'+modeldir+'/peel_dd_g'+g+'.model.ms'
         os.makedirs(tmpdir)
         concat = tmpdir+'/concat.MS'
         check_rm(concat+'*')
         pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), concat, concatTime=False)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model}, wkd=tmpdir, log='init-g'+g+'-ft.log')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='init-g'+g+'-ft.log')
     s.run(check=True)
     
     logging.info('Ft DD calibrator (lr) model...')
     for g in groups:
         tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel-lr-g'+g+'.model'
+        model = os.getcwd()+'/'+modeldir+'/peel_dd_lr_g'+g+'.model.ms'
         concat = tmpdir+'/concat.MS'
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'incr':True}, wkd=tmpdir, log='init-g'+g+'-ft.log', log_append=True)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='init-g'+g+'-ft.log', log_append=True)
     s.run(check=True)
     
     # cleanup the tmp dirs
@@ -237,30 +246,18 @@ def peel(dd):
         s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
                 shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
     s.run(check=True)
-    logging.info('Shifting+averaging (MODEL_DATA)...')
-    for tc in tcs:
-        mss = glob.glob('group*_TC'+tc+'.MS')
-        msout = 'peel-model_TC'+tc+'.MS'
-        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=MODEL_DATA \
-                shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
-    s.run(check=True)
     
     peelmss = sorted(glob.glob('peel_TC*.MS'))
     
-    # Copy the phase-shifted MODEL_DATA - peel-model_TC*.MS':DATA -> peel_TC*.MS':MODEL_DATA
-    logging.info('Copy MODEL_DATA...')
+    # Add CORRECTED_DATA for cleaning
+    logging.info('Add CORRECTED_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA,CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
     s.run(check=True)
-    for ms in peelmss:
-        msmodel = ms.replace('peel', 'peel-model')
-        logging.debug(msmodel+':DATA -> '+ms+':MODEL_DATA')
-        s.add('taql "update '+ms+', '+msmodel+' as model set MODEL_DATA=model.DATA"', log=msmodel+'_init-taql.log', cmd_type='general')
-    s.run(check=True)
-    check_rm('peel-model_TC*.MS')
-       
+
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
-    model = clean('init', peelmss, dd, groups)
+    model = clean('init', peelmss, dd)
+    #model = clean('initfacet', peelmss, dd, facet=True) # DEBUG
    
     ###################################################################################################################
     # self-cal cycle
@@ -338,7 +335,7 @@ def peel(dd):
             s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
-        # Flag on residuals
+        # Flag on residuals with fullpol con aoflagger
         logging.info('Flagging residuals...')
         for ms in peelmss:
             s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
@@ -353,9 +350,9 @@ def peel(dd):
     
         ######################################################################################################################
         # clean
-        model = clean(c, peelmss, dd, groups)
+        model = clean(c, peelmss, dd)
     
-    #clean('emptyfacet', peelmss, dd, groups, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
+    #clean('emptyfacet', peelmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
 
     # backup instrument tables
     logging.info('Back up instrument tables...')
@@ -370,20 +367,20 @@ def peel(dd):
     for g in groups:
         # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
         tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel_facet-g'+g+'.model'
+        model = os.getcwd()+'/'+modeldir+'/peel_facet_g'+g+'.model.ms'
         os.makedirs(tmpdir)
         concat = tmpdir+'/concat.MS'
         check_rm(concat+'*')
         pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), concat, concatTime=False)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':1024}, wkd=tmpdir, log='facet-g'+g+'-ft.log')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='facet-g'+g+'-ft.log')
     s.run(check=True)
-    
+
     logging.info('Ft facet model (lr)...')
     for g in groups:
         tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel_facet-lr-g'+g+'.model'
+        model = os.getcwd()+'/'+modeldir+'/peel_facet_lr_g'+g+'.model.ms'
         concat = tmpdir+'/concat.MS'
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':1024, 'incr':True}, wkd=tmpdir, log='facet-g'+g+'-ft.log', log_append=True)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='facet-g'+g+'-ft.log', log_append=True)
     s.run(check=True)
     
     # cleanup the tmp dirs
@@ -393,12 +390,10 @@ def peel(dd):
     logging.info('Add facet model...')
     for ms in allmss:
         s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_facet-taql.log', cmd_type='general')
-        #s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-init_add.parset '+skymodel, \
-        #    log=ms+'_facet-add.log', cmd_type='BBS')
     s.run(check=True)
     
     # Concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> facet_TC*.MS:DATA (not corrected, field subtracted but facet, avg, phase shifted)
-    logging.info('Shifting+averaging facet...')
+    logging.info('Shifting+averaging (CORRECTED_DATA)...')
     for tc in tcs:
         mss = glob.glob('group*_TC'+tc+'.MS')
         msout = 'facet_TC'+tc+'.MS'
@@ -413,7 +408,7 @@ def peel(dd):
     for ms in facetmss:
         s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
-    clean('precalfacet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
+    clean('precalfacet', facetmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
     
     # Correct amp+ph - facet_TC*.MS:DATA -> facet_TC*.MS:CORRECTED_DATA (selfcal phase+amp corrected)
     # Copy instrument table in facet dataset
@@ -429,12 +424,11 @@ def peel(dd):
     s.run(check=True)
     
     # Cleaning facet
-    facetmodel = clean('facet', facetmss, dd, groups, avgfreq=2, avgtime=5, facet=True)
+    facetmodel = clean('facet', facetmss, dd, avgfreq=2, avgtime=5, facet=True)
 
     # Blank pixels outside facet, new foccussed sources are cleaned (so they don't interfere) but we don't want to subtract them
-    for m in glob.glob(facetmodel+'*'):
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-                params={'imgs':m, 'region':dd['reg_facet'], 'inverse':True}, log='final_casablank.log', log_append=True)
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
+            params={'imgs':glob.glob(facetmodel+'*'), 'region':dd['reg_facet'], 'inverse':True}, log='final_casablank.log')
     s.run(check=True)
 
     ############################################################################################################################
@@ -456,48 +450,19 @@ def peel(dd):
 
     allmssshifted = sorted(glob.glob('group*_TC*-shift.MS'))
 
-#    # add columns that will be used lated in concat mode
-#    for ms in allmssshifted:
-#        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA,MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
-#    s.run(check=True)
+    # add columns that will be used to do ft() in concat mode
+    for ms in allmssshifted:
+        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python')
+    s.run(check=True)
     
-#    ######################################################################
-#    # Add old facet - group*_TC*-shift.MS:MODEL_DATA (high+low resolution model)
-#    logging.info('Ft old facet model...')
-#    for g in groups:
-#        # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
-#        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-#        model = os.getcwd()+'/'+modeldir+'/peel_facet-g'+g+'.model'
-#        os.makedirs(tmpdir)
-#        concat = tmpdir+'/concat.MS'
-#        check_rm(concat+'*')
-#        pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*-shift.MS')), concat, concatTime=False)
-#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log')
-#    s.run(check=True)
-#    
-#    logging.info('Ft facet model (lr)...')
-#    for g in groups:
-#        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-#        model = os.getcwd()+'/'+modeldir+'/peel_facet-lr-g'+g+'.model'
-#        concat = tmpdir+'/concat.MS'
-#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='final_facet-g'+g+'-ft.log', log_append=True)
-#    s.run(check=True)
-#    
-#    # cleanup the tmp dirs
-#    check_rm(modeldir+'/tmp*')
-#
-#    # ADD group*_TC*-shift.MS:DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + facet from model, cirular, beam correcred)
-#    logging.info('Add facet model...')
-#    for ms in allmssshifted:
-#        s.add('taql "update '+ms+' set CORRECTED_DATA = DATA + MODEL_DATA"', log=ms+'_final-taql1.log', cmd_type='general')
-#    s.run(check=True)
-   
     #################################################################
     # here the new best facet model is subtracted after corruption with DD solution
     # ft model - group*_TC*-shift.MS:MODEL_DATA (best available model)
     logging.info('FT new facet model...')
-    for ms in allmssshifted:
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':facetmodel, 'wproj':512}, log=ms+'_final_ft.log')
+    for g in groups:
+        check_rm('concat.MS*')
+        pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*-shift.MS')), 'concat.MS', concatTime=False)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat.MS', 'model':facetmodel, 'wproj':512}, log='final_ft-g'+g+'.log')
         s.run(check=True) # no parallel (problem multiple accesses to model file)
  
     # SUB corrupted facet model group*_TC*-shift.MS:DATA - MODEL_DATA -> group*_TC*-shift.MS:SUBTRACTED_DATA (empty data + facet from model)
@@ -518,7 +483,7 @@ def peel(dd):
 
     for ms in sorted(glob.glob('group*_TC*-shiftback.MS')):
         msorig = ms.replace('-shiftback.MS','.MS')
-        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=msmodel+'_final-taql.log', cmd_type='general')
+        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=ms+'_final-taql.log', cmd_type='general')
     s.run(check=True)
 
     check_rm('group*_TC*-shift*.MS') # otherwise next wildcard selects them

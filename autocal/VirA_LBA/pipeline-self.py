@@ -133,6 +133,7 @@ for c in xrange(cycles):
 
     #############################################################################################
     # create widefield model
+<<<<<<< HEAD
 #    if c%3 == 0 and c != cycles-1:
 #
 #        logging.info('Entering wide field section:')
@@ -197,6 +198,71 @@ for c in xrange(cycles):
 #            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-subcorpt.parset', \
 #                  log=ms+'_subcorpt-c'+str(c)+'.log', cmd_type='BBS')
 #        s.run(check=True)
+=======
+    if c%3 == 0 and c != cycles-1:
+
+        logging.info('Entering wide field section:')
+
+        # apply NDPPP solutions on complete dataset - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
+        # must be done before the rescaling or not all the flux is subtracted
+        logging.info('Restoring WEIGHT_SPECTRUM...')
+        s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-flag-restweights-c'+str(c)+'.log', cmd_type='general')
+        s.run(check=True)
+        logging.info('Make widefield model - Correct...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-selfcor.parset msin='+ms+' msin.datacolumn=CIRC_DATA cor.parmdb='+ms+'/instrument', \
+                    log=ms+'_flag-selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        # uvsub, MODEL_DATA is still Virgo
+        logging.info('Make widefield model - UV-Subtracting Virgo A...')
+        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub-c'+str(c)+'.log', cmd_type='general') # uvsub
+        s.run(check=False)
+
+        # clean, mask, clean
+        logging.info('Make widefield model - Widefield imaging...')
+        imagename = 'img/clean-wide-c'+str(c)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+                    params={'msfile':'concat.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(c)+'.log')
+        s.run(check=True)
+        logging.info('Make widefield model - Make mask...')
+        make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirA_LBA/m87-blank.crtf'}, log='blank-c'+str(c)+'.log')
+        s.run(check=True)
+        logging.info('Make widefield model - Widefield imaging2...')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+                    params={'msfile':'concat.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(c)+'.log')
+        s.run(check=True)
+        widemodel = imagename.replace('wide','wide-masked')+'.model'
+
+        ###############################################################################################################################
+        # ft widefield model
+        logging.info('Make widefield model - ft() widefield model...')
+        for j, msg in enumerate(np.array_split(mss,10)):
+            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':widemodel, 'wproj':512}, log='flag-ft-virgo-c'+str(c)+'-g'+str(j)+'.log')
+            s.run(check=True) # not parallel!
+
+        # subtract widefield model - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA=CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
+        logging.info('Make widefield model - Subtract widefield model...')
+        s.run('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub2-c'+str(c)+'.log', cmd_type='general') # uvsub
+        s.run(check=False)
+
+        ########################################################################################################################
+        # Flagging on CORRECTED_DATA
+        logging.info('Make widefield model - Flagging residuals...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
+                    log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        ########################################################################################################################
+        # subtract widefield model SB.MS:CIRC_DATA -> SB.MS:CIRC_DATA_SUB (uncal data with subtracted the widefield model)
+        # if last cycle skip (useless), but if one but last cycle, do on all SBs
+        for ms in mss:
+            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-subcorpt.parset', \
+                  log=ms+'_subcorpt-c'+str(c)+'.log', cmd_type='BBS')
+        s.run(check=True)
+>>>>>>> afa8f9d92c9a1125e9ef122e09ad759329f0cc62
 
     #######################################################################################
     # Solution rescaling
