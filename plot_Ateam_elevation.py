@@ -15,11 +15,9 @@ import numpy
 targets = [ {'name' : 'CasA', 'ra' : 6.123487680622104,  'dec' : 1.0265153995604648},
             {'name' : 'CygA', 'ra' : 5.233686575770755,  'dec' : 0.7109409582180791},
             {'name' : 'TauA', 'ra' : 1.4596748493730913, 'dec' : 0.38422502335921294},
-            {'name' : 'HerA', 'ra' : 4.4119087330382163, 'dec' : 0.087135562905816893},
             {'name' : 'VirA', 'ra' : 3.276086511413598,  'dec' : 0.21626589533567378},
             {'name' : 'SUN'},
             {'name' : 'JUPITER'}]
-
 
 if len(sys.argv) == 2:
    msname = sys.argv[1]
@@ -44,7 +42,7 @@ y = qa.quantity( pos[ant_no,1], 'm' )
 z = qa.quantity( pos[ant_no,2], 'm' )
 position =  me.position( 'wgs84', x, y, z )
 me.doframe( position )
-print position
+#print position
 ant_table.close()
 
 
@@ -53,8 +51,11 @@ field_table = pt.table(msname + '/FIELD')
 field_no = 0
 direction = field_table.getcol('PHASE_DIR')
 ra = direction[ ant_no, field_no, 0 ]
+if ra<0: ra += 2*numpy.pi
 dec = direction[ ant_no, field_no, 1 ]
 targets.insert(0, {'name' : 'Pointing', 'ra' : ra, 'dec' : dec})
+print "Target ra/dec (deg):", targets[0]['ra']*180/numpy.pi, targets[0]['dec']*180/numpy.pi
+print targets
 field_table.close()
 
 
@@ -71,8 +72,6 @@ ra_qa  = qa.quantity( targets[0]['ra'], 'rad' )
 dec_qa = qa.quantity( targets[0]['dec'], 'rad' )
 pointing =  me.direction('j2000', ra_qa, dec_qa)
 
-separations = []
-
 for target in targets:
    
    t = qa.quantity(time[0], 's')
@@ -83,10 +82,10 @@ for target in targets:
       ra_qa  = qa.quantity( target['ra'], 'rad' )
       dec_qa = qa.quantity( target['dec'], 'rad' )
       direction =  me.direction('j2000', ra_qa, dec_qa)
+      print ra_qa, dec_qa
    else :
       direction =  me.direction(target['name'])
       
-   separations.append(me.separation(pointing, direction))
    # Loop through all time stamps and calculate the elevation of the pointing
    el = []
    for t in time:
@@ -98,13 +97,13 @@ for target in targets:
       el.append(elevation['value']/pi*180)
    el = numpy.array(el)
 
-   plot(time1, el)
+   plot(time1, el, label=target['name']+' ('+str(me.separation(pointing, direction))+')')
    
 title('Pointing Elevation')
 title('Elevation')
 ylabel('Elevation (deg)');
-#ylim(0,90)
 xlabel('Time (h)');
 #savefig('elevation.eps')
-legend( [ target['name'] + '(' + separation.to_string() + ')' for target, separation in zip(targets, separations) ])
+l = legend(loc=5)
+l.get_frame().set_alpha(0.5)
 show()
