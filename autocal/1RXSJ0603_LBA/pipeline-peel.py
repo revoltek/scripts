@@ -20,7 +20,7 @@ ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'fac
          {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': True, 'facet_extended': True, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
-niter = 3
+niter = 2
 
 ##########################################################################################
 
@@ -252,7 +252,7 @@ def peel(dd):
     # Add CORRECTED_DATA for cleaning
     logging.info('Add CORRECTED_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
     s.run(check=True)
 
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
@@ -406,7 +406,7 @@ def peel(dd):
 
     # DEBUG
     for ms in facetmss:
-        s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
+        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
     clean('precalfacet', facetmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
     
@@ -452,7 +452,7 @@ def peel(dd):
 
     # add columns that will be used to do ft() in concat mode
     for ms in allmssshifted:
-        s.add('addcol2ms.py -i '+ms+' -o MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python')
+        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python')
     s.run(check=True)
     
     #################################################################
