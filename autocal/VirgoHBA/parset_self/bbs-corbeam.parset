@@ -1,0 +1,12 @@
+Strategy.InputColumn = DATA
+Strategy.ChunkSize   = 50
+Strategy.UseSolver   = F
+Strategy.Steps       = [correct]
+
+Step.correct.Operation = CORRECT
+Step.correct.Model.Sources = [3C295]
+Step.correct.Model.DirectionalGain.Enable = T
+Step.correct.Model.Beam.Enable = T
+Step.correct.Model.Beam.UseChannelFreq     = T
+Step.correct.Model.Rotation.Enable = F
+Step.correct.Output.Column = CALCOR_DATA
