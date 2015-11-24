@@ -277,8 +277,17 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
         logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 5arcsec -weight briggs 0.0 -niter 20000 -update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
+                -scale 5arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
                 log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+        s.run(check=True)
+
+        # Convert model to ms and ft() it
+        logging.info('Ft() model...')
+        model = imagename+'-masked-model.fits'
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
+                    params={'imgs':model, 'del_fits':False}, log='casa_fits2ms-c'+str(c)+'.log')
+        s.run(check=True)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat_ms_orig, 'model':model.replace('.fits','.ms'), 'wproj':512}, log='ft-c'+str(c)+'.log')
         s.run(check=True)
        
         ####################################################################
@@ -306,10 +315,19 @@ for group in sorted(glob.glob('group*'))[::-1]:
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
         logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' \
-                -scale 15arcsec -weight briggs 0.0 -niter 10000 -update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
+                -scale 15arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 2500 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms_orig, \
                 log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
+        # Convert model to ms and ft() it
+        logging.info('Ft() model...')
+        model = imagename+'-masked-model.fits'
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
+                    params={'imgs':model, 'del_fits':False}, log='casa_fits2ms-lr-c'+str(c)+'.log')
+        s.run(check=True)
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat_ms_orig, 'model':model.replace('.fits','.ms'), 'wproj':512}, log='ft-lr-c'+str(c)+'.log')
+        s.run(check=True)
+ 
         ###############################################################################################################
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
         logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
@@ -345,6 +363,8 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
                     params={'imgs':['self/models/wide_g'+g+'.model.fits', 'self/models/wide_g'+g+'.model.fits'], 'del_fits':True}, log='casa_fits2ms.log')
+    s.run(check=True)
+
     # Copy images
     [ os.system('mv img/wide-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
     [ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
