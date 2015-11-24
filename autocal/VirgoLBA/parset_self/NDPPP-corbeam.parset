@@ -1,0 +1,13 @@
+msin =
+msin.datacolumn = DATA
+msout = .
+msout.datacolumn = CALCOR_DATA
+
+steps = [corrg, corrbeam]
+
+corrg.type = applycal
+corrg.parmdb =
+corrg.correction = gain
+
+corrbeam.type = applybeam
+corrbeam.invert = True

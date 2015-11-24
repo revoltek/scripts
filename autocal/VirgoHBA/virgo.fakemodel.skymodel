@@ -1,0 +1,5 @@
+# (Name, Type, Patch, Ra, Dec, I, Q, U, V, ReferenceFrequency='60e6',  SpectralIndex='[0.0]', MajorAxis, MinorAxis, Orientation) = format
+
+# 3C295 with virgoA coordinates
+, , 3C295, 12:30:49.399999, +12.23.28.00000
+3C295_p, POINT, 3C295, 12:30:49.399999, +12.23.28.00000, 0, , , , 150.e6, [0.]
