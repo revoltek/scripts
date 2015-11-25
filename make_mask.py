@@ -17,7 +17,7 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     img = bdsm.process_image(image_name, mean_map='zero', rms_box=rmsbox, \
         thresh_pix=int(threshpix), thresh_isl=int(threshisl), atrous_do=atrous_do, atrous_jmax=3, \
         adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
-        stop_at=stop_at, blank_limit=1e-5)
+        stop_at=stop_at, blank_limit=1e-5, quiet=True)
 
     # WRITE THE MASK FITS
     if mask_name == None: mask_name = image_name+'.newmask'
