@@ -64,6 +64,7 @@ def losoto(c, mss, g, parset):
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
+if not os.path.exists('self/solutions'): os.makedirs('self/log')
 
 for group in sorted(glob.glob('group*'))[::-1]:
 
@@ -79,13 +80,14 @@ for group in sorted(glob.glob('group*'))[::-1]:
     check_rm(group+'/*log *log *bak *last *pickle')
     check_rm(group+'/plots* plots')
     check_rm(group+'/*h5 *h5 globaldb')
-    check_rm('*last')
     check_rm('img')
     os.makedirs('img')
     check_rm('self/images/g'+g)
     os.makedirs('self/images/g'+g)
     check_rm('self/solutions/g'+g)
     os.makedirs('self/solutions/g'+g)
+    check_rm('self/log/g'+g)
+    os.makedirs('self/log/g'+g)
 
     #################################################################################################
     # Create columns
@@ -362,7 +364,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
     os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide_lr_g'+g+'.model.fits')
 
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
-                    params={'imgs':['self/models/wide_g'+g+'.model.fits', 'self/models/wide_g'+g+'.model.fits'], 'del_fits':True}, log='casa_fits2ms.log')
+                    params={'imgs':['self/models/wide_g'+g+'.model.fits', 'self/models/wide_lr_g'+g+'.model.fits'], 'del_fits':True}, log='casa_fits2ms.log')
     s.run(check=True)
 
     # Copy images
@@ -373,7 +375,10 @@ for group in sorted(glob.glob('group*'))[::-1]:
     [ os.system('mv img/wide-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
     [ os.system('mv img/wide-lr-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
     os.system('mv img/empty-image.fits self/images/g'+g)
-    os.system('mv *log '+group)
+    os.system('mv *log self/log/g'+g)
+    check_rm('group'+g+'/*RR*')
+    check_rm('group'+g+'/*LL*')
+    check_rm('group'+g+'/concat*')
 
 # TODO: add final imaging with all SBs
 
