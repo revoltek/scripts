@@ -218,7 +218,7 @@ def get_phase_centre(ms):
     Get the phase centre of the first source (is it a problem?) of an MS
     """
     import pyrap.tables as pt
-    field_table = pt.table(ms + '/FIELD')
+    field_table = pt.table(ms + '/FIELD', ack=False)
     field_no = 0
     ant_no = 0
     direction = field_table.getcol('PHASE_DIR')
