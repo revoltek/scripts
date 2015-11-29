@@ -43,9 +43,16 @@ for ms in mss:
     s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_avg.log')
 s.run(check=False)
 
+############################################
+# TODO: If only clock is tarnsferred we need to oreoare a parmdb
+logging.info('Calibrating with skymodel: '+skymodel)
+for ms in mss:
+    s.add('calibrate-stand-alone -f --parmd-db instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+s.run(check=True)
+
 ##############################################
 # Initial calibrator
-# only solve on SMOOTHED_DATA 
+# Solve cal_SB.MS:SMOOTHED_DATA (only solve)
 logging.info('Calibrating with skymodel: '+skymodel)
 for ms in mss:
     s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-cal_field.parset '+skymodel, log=ms+'_cal.log', cmd_type='BBS')
@@ -54,23 +61,30 @@ s.run(check=True)
 ##############################################
 # Clock/TEC check and flagging
 check_rm('globaldb')
-os.system('mkdir globaldb')
+os.system('mkdir globaldb-in')
+os.system('mkdir globaldb-out')
 
 logging.info('Running LoSoTo...')
 for i, ms in enumerate(mss):
     num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+
+    logging.debug('Copy instrument of '+ms+' into globaldb-in/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument globaldb-in/instrument-'+str(num))
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-in/')
+
+    # TODO: If we export clock create a new parmdb
+    logging.debug('Copy instrument_fake of '+ms+' into globaldb-out/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument_fake globaldb-out/instrument-'+str(num))
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-out/')
 
 check_rm('plots')
 os.makedirs('plots')
 check_rm('cal.h5')
-s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
+s.add('H5parm_importer.py -v cal.h5 globaldb-in', log='losoto.log', cmd_type='python')
 s.run(check=False)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=False)
-s.add('H5parm_exporter.py -v cal.h5 globaldb', log='losoto.log', log_append=True, cmd_type='python')
+s.add('H5parm_exporter.py -v cal.h5 globaldb-out', log='losoto.log', log_append=True, cmd_type='python')
 s.run(check=True)
 
 logging.info("Done.")
