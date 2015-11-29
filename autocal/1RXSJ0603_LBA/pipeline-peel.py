@@ -24,7 +24,7 @@ niter = 2
 
 ##########################################################################################
 
-import sys, os, glob, re
+import sys, os, glob, re, time
 import pyrap.tables as pt
 import numpy as np
 from lib_pipeline import *
@@ -41,18 +41,19 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     # averaging before cleaning *.MS:CORRECTED_DATA -> *-avg.MS:DATA
     logging.info('Averaging before cleaning...')
     nchan = find_nchan(mss[0])
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS')
-        check_rm(msout)
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
-                msout='+msout+' avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log=ms+'_avgclean-c'+str(c)+'.log', cmd_type='NDPPP')
+   # for ms in mss:
+   #     msout = ms.replace('.MS','-avg.MS')
+   #     check_rm(msout)
+    check_rm('concat-avg.MS*')
+    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin="['+','.join(mss)+']" msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
+                msout=concat-avg.MS avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log='cleanavg-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
-    mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
+   # mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
 
     # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA
-    check_rm('concat-avg.MS*')
-    logging.info('Concatenating TCs...')
-    pt.msutil.msconcat(mssavg, 'concat-avg.MS', concatTime=False)
+   # check_rm('concat-avg.MS*')
+   # logging.info('Concatenating TCs...')
+   # pt.msutil.msconcat(mssavg, 'concat-avg.MS', concatTime=False)
 
     # set image name
     imagename = 'peel/'+dd['name']+'/images/peel-'+str(c)
