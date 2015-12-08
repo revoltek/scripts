@@ -15,12 +15,13 @@
 #coord = [90.833333,42.233333] # toorhbrush
 #coord = [91.733333,41.680000] # strong pts
 # TODO: extract coords from ms or models
-ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
-         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False}]
-#         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
+#ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
+#         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False}]
+ddset = [\
+          {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
-niter = 2
+niter = 10
 
 ##########################################################################################
 
@@ -61,10 +62,10 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     # set imsize and niter
     if facet:
         imsize = size_from_facet('peel/'+dd['name']+'/models/facet.cut', dd['coord'], 3)
-        niter = 5000
+        niter = 50000 # TODO: check x10
     else:
         imsize = size_from_facet('peel/'+dd['name']+'/models/dd.cut', dd['coord'], 3)
-        niter = 2000
+        niter = 20000 # TODO: check x10
 
     # get wproj scaled with pixels
     wproj = 1

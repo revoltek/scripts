@@ -1,15 +1,15 @@
 #!/usr/bin/python
 # initial calibration of the calibrator, sol flag
 
-#skymodel = '/home/fdg/model/3C196-allfield.skymodel' # tooth LBA
-#parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
-skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo LBA
-parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_cal' # virgo LBA
-#skymodel = '/home/fdg/model/3C295-allfield.skymodel' # virgo HBA
+skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
+parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
+#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
+#parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_cal' # virgo LBA
+#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo HBA
 #parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_cal' # virgo HBA
-#skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # perseus LBA
+#skymodel = '/home/fdg/scripts/scripts/model/3C196-allfield.skymodel' # perseus LBA
 #parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_cal' # perseus LBA
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # mode-test LBA
+#skymodel = '/home/fdg/scripts/scripts/model/3C295-allfield.skymodel' # mode-test LBA
 #parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_cal' # mode-test LBA
 
 only_clock = True
@@ -48,12 +48,12 @@ s.run(check=False)
 ############################################
 # TODO: If only clock is tarnsferred we need to oreoare a parmdb
 if only_clock:
-    logging.info('Calibrating with skymodel: '+skymodel)
+    logging.info('Creating fake parmdb...')
     for ms in mss:
-        s.add('calibrate-stand-alone -f --parmd-db instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+        s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
-##############################################
+###############################################
 # Initial calibrator
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
 logging.info('Calibrating with skymodel: '+skymodel)
@@ -63,7 +63,7 @@ s.run(check=True)
 
 ##############################################
 # Clock/TEC check and flagging
-check_rm('globaldb')
+check_rm('globaldb*')
 os.system('mkdir globaldb')
 if only_clock: os.system('mkdir globaldb-clockonly')
 

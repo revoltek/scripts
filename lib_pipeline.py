@@ -193,8 +193,8 @@ def size_from_facet(img, c_coord, pixsize):
     max_dist = max(max(cen_x, max_x - cen_x), max(cen_y, max_y - cen_y))
     max_dist = max_dist * abs(c.get_increment()[2][0])*180/np.pi*3600 / pixsize
     if max_dist > 6400: return 6400
-    # multiply distance *2 (so to have the image size) and add 30% to be conservative
-    max_dist = (max_dist*2)*1.3
+    # multiply distance *2 (so to have the image size) and add 100% to be conservative
+    max_dist = (max_dist*2)*2
     goodvalues = np.array([6400,6144,5600,5400,5184,5000,4800,4608,4320,4096,3840,3600,3200,3072,2880,2560,2304,2048, 1600, 1536, 1200, 1024, 800, 512, 256, 128])
     shape = min(goodvalues[np.where(goodvalues>=max_dist)])
     del img
