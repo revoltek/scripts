@@ -50,7 +50,7 @@ s.run(check=False)
 if only_clock:
     logging.info('Calibrating with skymodel: '+skymodel)
     for ms in mss:
-        s.add('calibrate-stand-alone -f --parmd-db instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+        s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
     s.run(check=True)
 
 ##############################################
@@ -63,7 +63,7 @@ s.run(check=True)
 
 ##############################################
 # Clock/TEC check and flagging
-check_rm('globaldb')
+check_rm('globaldb*')
 os.system('mkdir globaldb')
 if only_clock: os.system('mkdir globaldb-clockonly')
 
