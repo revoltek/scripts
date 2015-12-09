@@ -1,9 +1,8 @@
 #!/usr/bin/python
 # demix of a set of SBs from a given dir, output is on local dir
 
-parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_demix/'
-#origmss_dir = '/data/scratch/fdg/virgoLBAis/tgts-bkp/'
-origmss_dir = '/data/scratch/fdg/virgoLBAis/demix-test/orig/'
+parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_demix/'
+origmss_dir = '/data/scratch/fdg/VirgoLBAis/tgts-bkp/'
 
 ###################################################
 
@@ -13,7 +12,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
-s = Scheduler(dry=False)
+s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))
 
 #################################################

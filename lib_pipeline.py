@@ -234,7 +234,7 @@ class Scheduler():
         for the process to finish before returning
         max_threads: max number of parallel processes
         dry: don't schedule job
-        max_processors: max number of processors in a node
+        max_processors: max number of processors in a node (ignored if qsub=False)
         """
         self.cluster = get_cluster()
         # if qsub/max_thread/max_processors not set, guess from the cluster
