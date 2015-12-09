@@ -16,7 +16,7 @@ def casa_fits2ms(imgs = [], del_fits = False):
         else: imagename = img+'.ms'
 
         default('importfits')
-        importfits(fitsimage=img, imagename=imagename)
+        importfits(fitsimage=img, imagename=imagename, overwrite=True)
 
         if del_fits: os.system('rm '+img)
 

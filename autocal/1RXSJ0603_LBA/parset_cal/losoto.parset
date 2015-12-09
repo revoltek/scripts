@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC]
+LoSoTo.Steps = [clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC, reset]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -12,6 +12,9 @@ LoSoTo.Ncpu = 10
 #LoSoTo.Steps.reweight.WeightVal = 0.
 #LoSoTo.Steps.reweight.ant = [RS310LBA, RS409LBA] # bad antennas
 #LoSoTo.Steps.reweight.FlagBad = False
+
+LoSoTo.Steps.reset.Operation = RESET
+LoSoTo.Steps.reset.Soltab = [sol000/phase000]
 
 LoSoTo.Steps.clip.Operation = CLIP
 LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]
