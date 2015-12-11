@@ -228,7 +228,7 @@ def get_phase_centre(ms):
 
 
 class Scheduler():
-    def __init__(self, qsub = None, max_threads = None, max_processors = None, dry = False):
+    def __init__(self, qsub = None, max_threads = None, max_processors = None, log_dir = 'logs', dry = False):
         """
         qsub: if true call a shell script which call qsub and then wait 
         for the process to finish before returning
@@ -271,6 +271,11 @@ class Scheduler():
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
 
+        if not os.path.isdir(log_dir):
+            logging.info('Creating log dir '+log_dir+'.')
+            os.mkdirs(log_dir)
+        self.log_dir = log_dir
+
     def add(self, cmd='', log='', log_append = False, cmd_type='', processors = None):
         """
         Add cmd to the scheduler list
@@ -280,6 +285,7 @@ class Scheduler():
         cmd_type: can be a list of known command types as "BBS", "NDPPP"...
         processors: number of processors to use, can be "max" to automatically use max number of processors per node
         """
+        if log != '': log = self.log_dir+'/'+log
         if log != '' and not log_append: cmd += ' > '+log+' 2>&1'
         if log != '' and log_append: cmd += ' >> '+log+' 2>&1'
 
@@ -314,7 +320,7 @@ class Scheduler():
         if processors == None: processors=self.max_processors # default use entire node
 
         # since CASA can run in another dir, be sure log and pickle are in the pipeline working dir
-        if log != '': log = os.getcwd()+'/'+log
+        if log != '': log = os.getcwd()+'/'+self.log_dir+'/'+log
         pfile = os.getcwd()+'/casaparams_'+str(random.randint(0,1e9))+'.pickle'
         pickle.dump( params, open( pfile, "wb" ) )
 

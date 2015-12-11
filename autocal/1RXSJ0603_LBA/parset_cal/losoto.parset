@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC, reset]
+LoSoTo.Steps = [clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC, reset, smoothCLOCK, plotCLOCK2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -105,17 +105,29 @@ LoSoTo.Steps.ct.CombinePol = True
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
 LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
-LoSoTo.Steps.plotCLOCK.pol = [XX]
 LoSoTo.Steps.plotCLOCK.Axes = [time]
 LoSoTo.Steps.plotCLOCK.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotCLOCK.Prefix = plots/clock_
-LoSoTo.Steps.plotCLOCK.MinMax = [-1e-7,1e-7]
+LoSoTo.Steps.plotCLOCK.MinMax = [-2e-7,2e-7]
 LoSoTo.Steps.plotCLOCK.PlotFlag = False
 
 LoSoTo.Steps.plotTEC.Operation = PLOT
-LoSoTo.Steps.plotTEC.pol = [XX]
 LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = [time]
 LoSoTo.Steps.plotTEC.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotTEC.Prefix = plots/tec_
-LoSoTo.Steps.plotTEC.MinMax = [-0.5,0.5]
+LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]
+
+LoSoTo.Steps.smoothCLOCK.Operation = SMOOTH # running median on an arbitrary number of axis
+LoSoTo.Steps.plotTEC.Soltab = [sol000/clock000]
+LoSoTo.Steps.smoothCLOCK.FWHM = [10]
+LoSoTo.Steps.smoothCLOCK.Axes = [time]
+LoSoTo.Steps.smoothCLOCK.Mode = median # or mean or median (these two values set all the solutions to the mean/median)
+
+LoSoTo.Steps.plotCLOCK2.Operation = PLOT
+LoSoTo.Steps.plotCLOCK2.Soltab = [sol000/clock000]
+LoSoTo.Steps.plotCLOCK2.Axes = [time]
+LoSoTo.Steps.plotCLOCK2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
+LoSoTo.Steps.plotCLOCK2.Prefix = plots/clock-smooth_
+LoSoTo.Steps.plotCLOCK2.MinMax = [-2e-7,2e-7]
+LoSoTo.Steps.plotCLOCK2.PlotFlag = False

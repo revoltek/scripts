@@ -19,15 +19,14 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
+check_rm('logs')
 s = Scheduler(dry=False)
 
 ################################################
 # Clear
 logging.info('Cleaning...')
-check_rm('*log')
-check_rm('*group*')
-os.makedirs('log')
 
+check_rm('*group*')
 mss = sorted(glob.glob('*MS'))
 
 ##############################################
@@ -71,14 +70,14 @@ for i, msg in enumerate(np.array_split(mss, ngroups)):
 
     # prepare concatenated time chunks (TC) - SB.MS:CALCOR_DATA_CIRC -> group#.MS:DATA (cal corr data, beam corrected, circular)
     s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
-                log=groupname+'/NDPPP_concat.log', cmd_type='NDPPP')
+                log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Flagging on concatenated dataset
 logging.info('Flagging...')
 for groupname in groupnames:
     s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+groupname+'/'+groupname+'.MS', \
-                log=groupname+'/NDPPP_flag.log', cmd_type='NDPPP')
+                log=groupname+'_NDPPP_flag.log', cmd_type='NDPPP')
 s.run(check=True)
 
 for groupname in groupnames:

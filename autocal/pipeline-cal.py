@@ -22,13 +22,9 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()
+check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('*MS'))
-
-#################################################
-# Clean
-logging.info('Cleaning...')
-check_rm('*log')
 
 ##############################################
 # Initial processing (2/2013->2/2014)

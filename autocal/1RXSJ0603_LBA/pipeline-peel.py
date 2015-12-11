@@ -33,6 +33,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
+check_rm('logs')
 s = Scheduler(dry=False)
 
 def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
@@ -151,7 +152,7 @@ def peel(dd):
     check_rm('facet*MS')
     check_rm('*shift.MS') 
     check_rm('concat*') 
-    check_rm('*log *last *pickle')
+    check_rm('*last *pickle')
     check_rm('plot')
     
     logging.info('Creating dirs...')
@@ -162,7 +163,6 @@ def peel(dd):
     os.makedirs('peel/'+dd['name']+'/instruments')
     os.makedirs('peel/'+dd['name']+'/plots')
     os.makedirs('peel/'+dd['name']+'/h5')
-    os.makedirs('peel/'+dd['name']+'/log')
     
     logging.info('Indexing...')
     allmss = sorted(glob.glob('group*_TC*.MS'))
@@ -329,26 +329,6 @@ def peel(dd):
         s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
-        ############################################################################################################
-        # Sub data
-        logging.info('Subtracting model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        for ms in peelmss:
-            s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql-c'+str(c)+'.log', cmd_type='general')
-        s.run(check=True)
-    
-        # Flag on residuals with fullpol con aoflagger
-        logging.info('Flagging residuals...')
-        for ms in peelmss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
-                log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-    
-        # Reecreate CORRECTED_DATA
-        logging.info('Recreating CORRECTED_DATA (CORRECTED_DATA = CORRECTED_DATA + MODEL_DATA)...')
-        for ms in peelmss:
-            s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA + MODEL_DATA"', log=ms+'_taql-c'+str(c)+'.log', cmd_type='general', log_append=True)
-        s.run(check=True)
-    
         ######################################################################################################################
         # clean
         model = clean(c, peelmss, dd)
@@ -499,7 +479,8 @@ def peel(dd):
             log='wsclean-empty.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
-    os.system('mv *log peel/'+dd['name']+'/log')
+    # backup logs
+    os.system('mv logs peel/'+dd['name']+'/')
 # end peeling function
 
 for dd in ddset: peel(dd)
