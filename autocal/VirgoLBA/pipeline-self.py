@@ -28,17 +28,18 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
+check_rm('logs')
 s = Scheduler(dry=False)
 
 #################################################
 # Clear
 logging.info('Cleaning...')
-check_rm('*log *last *pickle')
+check_rm('*last *pickle')
 check_rm('*h5 globaldb')
 check_rm('concat*')
+check_rm('plots*')
 check_rm('img')
 os.makedirs('img')
-check_rm('plots*')
 
 # all MS
 mss = sorted(glob.glob('*.MS'))
@@ -61,7 +62,7 @@ for ms in mss:
 
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
-# TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account?
+# TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account? - problem: if we transfer only clock is not ok
 logging.info('Correcting target MSs...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corbeam.parset msin='+ms+' corrg.parmdb='+ms+'/instrument', \
@@ -152,38 +153,47 @@ for c in xrange(cycles):
 
         ###########################################################################################################################
         # avg 15s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
-        logging.info('Make widefield model - Average...')
-        check_rm('concat-avg.MS*')
-        s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.freqstep=1 avg.timestep=3', \
-                log='widefield_concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
+#        logging.info('Make widefield model - Average...')
+#        check_rm('concat-avg.MS*')
+#        s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.freqstep=1 avg.timestep=3', \
+#                log='widefield_concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
+#        s.run(check=True)
 
         # clean, mask, clean
         logging.info('Make widefield model - Widefield imaging...')
         imagename = 'img/clean-wide-c'+str(c)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
-                    params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(c)+'.log')
+#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
+#                    params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(c)+'.log')
+        s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 10arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels '+' '.join(mss), \
+                log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         logging.info('Make widefield model - Make mask...')
-        make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
+        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirgoLBA/m87-blank.crtf'}, log='blank-c'+str(c)+'.log')
         s.run(check=True)
         logging.info('Make widefield model - Widefield imaging2...')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
-                    params={'msfile':'concat-avg.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(c)+'.log')
+#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
+#                    params={'msfile':'concat-avg.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(c)+'.log')
+        s.add('wsclean -reorder -name ' + imagename.replace('wide','wide-masked') + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 10arcsec -weight briggs 0.0 -niter 5000 -update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -casamask '+imagename+'.newmask '+' '.join(mss), \
+                log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-        widemodel = imagename.replace('wide','wide-masked')+'.model'
+#        widemodel = imagename.replace('wide','wide-masked')+'.model'
 
         ###############################################################################################################################
-        # ft widefield model
-        logging.info('Make widefield model - ft() widefield model...')
-        for j, msg in enumerate(np.array_split(mss,10)):
-            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':widemodel, 'wproj':512}, log='flag-ft-virgo-c'+str(c)+'-g'+str(j)+'.log')
-            s.run(check=True) # not parallel!
+        # ft widefield model with wsclean
+#        logging.info('Make widefield model - ft() widefield model...')
+#        for ms in mss:
+#            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':widemodel, 'wproj':512}, log='flag-ft-virgo-c'+str(c)+'-g'+str(j)+'.log')
+#            s.run(check=True) # not parallel!
+#            s.add('wsclean -reorder -predict ' + imagename.replace('wide','wide-masked') + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -scale 10arcsec '+ms, \
+#                    log=ms+'_ft-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#        s.run(check=True)
 
         # subtract widefield model - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA=CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
         logging.info('Make widefield model - Subtract widefield model...')
-        s.run('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub2-c'+str(c)+'.log', cmd_type='general') # uvsub
+        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub2-c'+str(c)+'.log', cmd_type='general') # uvsub
         s.run(check=False)
 
         ########################################################################################################################

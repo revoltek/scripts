@@ -273,7 +273,7 @@ class Scheduler():
 
         if not os.path.isdir(log_dir):
             logging.info('Creating log dir '+log_dir+'.')
-            os.mkdirs(log_dir)
+            os.makedirs(log_dir)
         self.log_dir = log_dir
 
     def add(self, cmd='', log='', log_append = False, cmd_type='', processors = None):
