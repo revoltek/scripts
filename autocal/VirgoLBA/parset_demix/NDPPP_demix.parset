@@ -1,12 +1,12 @@
 msin = 
 msin.datacolumn = DATA
-#msin.baseline = [CR]S*&
+msin.baseline = [CR]S*&
 msout =
 
 steps = [demixer] 
 
 demixer.type = demixer 
-demixer.baseline = [CR]S*&
+#demixer.baseline = [CR]S*&
 demixer.demixfreqstep = 16
 demixer.demixtimestep = 10
 #demixer.elevationcutoff = 0.0deg # not-working

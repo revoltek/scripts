@@ -218,7 +218,7 @@ def get_phase_centre(ms):
     Get the phase centre of the first source (is it a problem?) of an MS
     """
     import pyrap.tables as pt
-    field_table = pt.table(ms + '/FIELD')
+    field_table = pt.table(ms + '/FIELD', ack=False)
     field_no = 0
     ant_no = 0
     direction = field_table.getcol('PHASE_DIR')
@@ -234,7 +234,7 @@ class Scheduler():
         for the process to finish before returning
         max_threads: max number of parallel processes
         dry: don't schedule job
-        max_processors: max number of processors in a node
+        max_processors: max number of processors in a node (ignored if qsub=False)
         """
         self.cluster = get_cluster()
         # if qsub/max_thread/max_processors not set, guess from the cluster

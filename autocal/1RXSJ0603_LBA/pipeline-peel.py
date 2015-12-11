@@ -15,20 +15,18 @@
 #coord = [90.833333,42.233333] # toorhbrush
 #coord = [91.733333,41.680000] # strong pts
 # TODO: extract coords from ms or models
-#ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
-#         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False}]
-ddset = [\
-          {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
+ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
+         {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
+         {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
 skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
 niter = 10
 
 ##########################################################################################
 
-import sys, os, glob, re
+import sys, os, glob, re, time
 import pyrap.tables as pt
 import numpy as np
-import lsmtool
 from lib_pipeline import *
 from make_mask import make_mask
 
@@ -48,9 +46,16 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
         msout = ms.replace('.MS','-avg.MS')
         check_rm(msout)
         s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msin.nchan='+str(nchan-nchan%4)+' msin.datacolumn=CORRECTED_DATA \
-                msout='+msout+' avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log=ms+'_avgclean-c'+str(c)+'.log', cmd_type='NDPPP')
+                msout='+msout+' avg.freqstep='+str(avgfreq)+' avg.timestep='+str(avgtime), log=ms+'_cleanavg-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
     mssavg = [ms.replace('.MS','-avg.MS') for ms in mss]
+
+    # TEST
+    os.system('ls -d *MS')
+    while True:
+        if all([os.path.exists(ms) for ms in mssavg]): break
+        time.sleep(5)
+    os.system('ls -d *MS')
 
     # Concatenating (in time) before imaging *-avg.MS:DATA -> concat.MS:DATA
     check_rm('concat-avg.MS*')

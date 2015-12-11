@@ -61,7 +61,7 @@ for ms in mss:
 
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
-# TODO: convert to NDPPP - problem: does not handle DD solution
+# TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account?
 logging.info('Correcting target MSs...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corbeam.parset msin='+ms+' corrg.parmdb='+ms+'/instrument', \
@@ -84,9 +84,9 @@ s.run(check=True)
 # Initialize columns - SB.MS:CIRC_DATA_SUB = CIRC_DATA
 logging.info('Make new columns...')
 for ms in mss:
-    s.add('addcol2ms.py -i '+ms+' -o CORRECTED_DATA,CIRC_DATA_SUB', log=ms+'-init_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CORRECTED_DATA,CIRC_DATA_SUB', log=ms+'-init_addcol.log', cmd_type='python')
 s.run(check=True)
-logging.info('Reset CIRC_DATA_SUB...')
+logging.info('Set CIRC_DATA_SUB == CIRC_DATA...')
 for ms in mss:
     s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'_init-taql.log', cmd_type='general')
 s.run(check=True)
@@ -142,7 +142,7 @@ for c in xrange(cycles):
         logging.info('Make widefield model - Correct...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-selfcor.parset msin='+ms+' msin.datacolumn=CIRC_DATA cor.parmdb='+ms+'/instrument', \
-                    log=ms+'_flag-selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
+                    log=ms+'_widefield-selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         # uvsub, MODEL_DATA is still Virgo
@@ -150,19 +150,27 @@ for c in xrange(cycles):
         s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub-c'+str(c)+'.log', cmd_type='general') # uvsub
         s.run(check=False)
 
+        ###########################################################################################################################
+        # avg 15s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
+        logging.info('Make widefield model - Average...')
+        check_rm('concat-avg.MS*')
+        s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.freqstep=1 avg.timestep=3', \
+                log='widefield_concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
         # clean, mask, clean
         logging.info('Make widefield model - Widefield imaging...')
         imagename = 'img/clean-wide-c'+str(c)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
-                    params={'msfile':'concat.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(c)+'.log')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
+                    params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(c)+'.log')
         s.run(check=True)
         logging.info('Make widefield model - Make mask...')
         make_mask(image_name = imagename+'.image.tt0', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirgoLBA/m87-blank.crtf'}, log='blank-c'+str(c)+'.log')
         s.run(check=True)
         logging.info('Make widefield model - Widefield imaging2...')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
-                    params={'msfile':'concat.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(c)+'.log')
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
+                    params={'msfile':'concat-avg.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(c)+'.log')
         s.run(check=True)
         widemodel = imagename.replace('wide','wide-masked')+'.model'
 
@@ -230,7 +238,7 @@ for c in xrange(cycles):
     s.run(check=True)
 
     ###########################################################################################################################
-    # avg 1chanSB/20s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
+    # avg 1chanSB/30s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
     logging.info('Average...')
     check_rm('concat-avg.MS*')
     s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS', \
@@ -239,14 +247,14 @@ for c in xrange(cycles):
 
     # clean (make a new model of virgo)
     logging.info('Clean (cycle: '+str(c)+')...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
             params={'msfile':'concat-avg.MS', 'imagename':'img/clean-c'+str(c)}, log='clean-c'+str(c)+'.log')
     s.run(check=True)
 
 #########################################################################################################
 # low-res image
 logging.info('Make low-resolution image...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
         params={'msfile':'concat-avg.MS', 'imagename':'img/clean-lr', 'imtype':'lr'}, log='final_clean-lr.log')
 s.run(check=True)
 
@@ -260,7 +268,7 @@ s.add('taql "update concat-avg.MS set DATA = DATA - MODEL_DATA"') # uvsub
 s.run(check=False)
 
 logging.info('Low-res wide field image...')
-s.add_casa('/home/fdg/scripts/autocal/casa_comm/virgoLBA/casa_clean.py', \
+s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
         params={'msfile':'concat-avg.MS', 'imagename':'img/clean-wide', 'imtype':'wide'}, log='final_clean-wide.log')
 s.run(check=True)
 
