@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# initial calibration of the calibrator, sol flag
+# initial calibration of the calibrator, sol flag + effects separation
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
@@ -11,8 +11,6 @@ parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
 #parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_cal' # perseus LBA
 #skymodel = '/home/fdg/scripts/scripts/model/3C295-allfield.skymodel' # mode-test LBA
 #parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_cal' # mode-test LBA
-
-only_clock = True
 
 ###################################################
 
@@ -42,12 +40,11 @@ for ms in mss:
 s.run(check=False)
 
 ############################################
-# TODO: If only clock is tarnsferred we need to oreoare a parmdb
-if only_clock:
-    logging.info('Creating fake parmdb...')
-    for ms in mss:
-        s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
-    s.run(check=True)
+# If only clock is tarnsferred we need to prepare a parmdb
+logging.info('Creating fake parmdb...')
+for ms in mss:
+    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+s.run(check=True)
 
 ###############################################
 # Initial calibrator
@@ -71,11 +68,10 @@ for i, ms in enumerate(mss):
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     
-    # TODO: If we export clock create a new parmdb
-    if only_clock:
-        logging.debug('Copy instrument_fake of '+ms+' into globaldb-clockonly/instrument-'+str(num))
-        os.system('cp -r '+ms+'/instrument_fake globaldb-clockonly/instrument-'+str(num))
-        if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clockonly/')
+    # We export clock, need to create a new parmdb
+    logging.debug('Copy instrument_fake of '+ms+' into globaldb-clockonly/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument_fake globaldb-clockonly/instrument-'+str(num))
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clockonly/')
 
 check_rm('plots')
 os.makedirs('plots')
@@ -84,10 +80,7 @@ s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='pytho
 s.run(check=False)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=False)
-if only_clock:
-    s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
-else:
-    s.add('H5parm_exporter.py -v cal.h5 globaldb', log='losoto.log', log_append=True, cmd_type='python')
+s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
 s.run(check=True)
 
 logging.info("Done.")

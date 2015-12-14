@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA2, flagA, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC, reset, smoothCLOCK, plotCLOCK2]
+LoSoTo.Steps = [clip, flagA, flagA2, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC, smoothCLOCK, plotCLOCK2, duplicate, residuals, plotPs, plotPs2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -12,9 +12,6 @@ LoSoTo.Ncpu = 10
 #LoSoTo.Steps.reweight.WeightVal = 0.
 #LoSoTo.Steps.reweight.ant = [RS310LBA, RS409LBA] # bad antennas
 #LoSoTo.Steps.reweight.FlagBad = False
-
-LoSoTo.Steps.reset.Operation = RESET
-LoSoTo.Steps.reset.Soltab = [sol000/phase000]
 
 LoSoTo.Steps.clip.Operation = CLIP
 LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]
@@ -107,7 +104,7 @@ LoSoTo.Steps.plotCLOCK.Operation = PLOT
 LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
 LoSoTo.Steps.plotCLOCK.Axes = [time]
 LoSoTo.Steps.plotCLOCK.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotCLOCK.Prefix = plots/clock_
+LoSoTo.Steps.plotCLOCK.Prefix = plots/clock
 LoSoTo.Steps.plotCLOCK.MinMax = [-2e-7,2e-7]
 LoSoTo.Steps.plotCLOCK.PlotFlag = False
 
@@ -115,19 +112,48 @@ LoSoTo.Steps.plotTEC.Operation = PLOT
 LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = [time]
 LoSoTo.Steps.plotTEC.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotTEC.Prefix = plots/tec_
+LoSoTo.Steps.plotTEC.Prefix = plots/tec
 LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]
 
 LoSoTo.Steps.smoothCLOCK.Operation = SMOOTH # running median on an arbitrary number of axis
-LoSoTo.Steps.plotTEC.Soltab = [sol000/clock000]
-LoSoTo.Steps.smoothCLOCK.FWHM = [10]
+LoSoTo.Steps.smoothCLOCK.Soltab = [sol000/clock000]
+LoSoTo.Steps.smoothCLOCK.FWHM = [100]
 LoSoTo.Steps.smoothCLOCK.Axes = [time]
-LoSoTo.Steps.smoothCLOCK.Mode = median # or mean or median (these two values set all the solutions to the mean/median)
+LoSoTo.Steps.smoothCLOCK.Mode = runningmedian # or mean or median (these two values set all the solutions to the mean/median)
 
 LoSoTo.Steps.plotCLOCK2.Operation = PLOT
 LoSoTo.Steps.plotCLOCK2.Soltab = [sol000/clock000]
 LoSoTo.Steps.plotCLOCK2.Axes = [time]
 LoSoTo.Steps.plotCLOCK2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotCLOCK2.Prefix = plots/clock-smooth_
+LoSoTo.Steps.plotCLOCK2.Prefix = plots/clock-smooth
 LoSoTo.Steps.plotCLOCK2.MinMax = [-2e-7,2e-7]
 LoSoTo.Steps.plotCLOCK2.PlotFlag = False
+
+LoSoTo.Steps.duplicate.Operation = DUPLICATE
+LoSoTo.Steps.duplicate.InTable = sol000/phase000 # complete solset/solt
+LoSoTo.Steps.duplicate.OutTable = sol000/phase_bkp000 # complete solset/soltab or ''
+
+LoSoTo.Steps.residuals.Operation = RESIDUALS
+LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
+LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
+
+# plot phases time/freq
+LoSoTo.Steps.plotPs.Operation = PLOT
+LoSoTo.Steps.plotPs.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPs.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375]
+LoSoTo.Steps.plotPs.Axes = time
+LoSoTo.Steps.plotPs.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
+LoSoTo.Steps.plotPs.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
+LoSoTo.Steps.plotPs.PlotFlag = True
+LoSoTo.Steps.plotPs.Prefix = plots/phs_
+LoSoTo.Steps.plotPs.Reference = 'CS001LBA' # antenna name for referencing phases
+LoSoTo.Steps.plotPs.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
+
+LoSoTo.Steps.plotPs2.Operation = PLOT
+LoSoTo.Steps.plotPs2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPs2.Axes = [time,freq]
+LoSoTo.Steps.plotPs2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
+LoSoTo.Steps.plotPs2.PlotFlag = True
+LoSoTo.Steps.plotPs2.Prefix = plots/phs2_
+LoSoTo.Steps.plotPs2.Reference = 'CS001LBA' # antenna name for referencing phases
+LoSoTo.Steps.plotPs2.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
