@@ -53,16 +53,17 @@ s.run(check=False)
 
 ################################################
 # Copy cal solution
-logging.info('Copy solutions...')
-for ms in mss:
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
-    check_rm(ms+'/instrument')
-    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+#logging.info('Copy solutions...')
+#for ms in mss:
+#    num = re.findall(r'\d+', ms)[-1]
+#    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
+#    check_rm(ms+'/instrument')
+#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
 # TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account? - problem: if we transfer only clock is not ok
+# NOTE: only beam correction, no transfer of solutions
 logging.info('Correcting target MSs...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corbeam.parset msin='+ms+' corrg.parmdb='+ms+'/instrument', \
@@ -164,19 +165,19 @@ for c in xrange(cycles):
         imagename = 'img/clean-wide-c'+str(c)
 #        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
 #                    params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imtype':'wide'}, log='clean-wide1-c'+str(c)+'.log')
-        s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 10arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels '+' '.join(mss), \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 4096 4096 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 10arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -channelsout 20 '+' '.join(mss), \
                 log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         logging.info('Make widefield model - Make mask...')
-        make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
+        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/VirgoLBA/m87-blank.crtf'}, log='blank-c'+str(c)+'.log')
         s.run(check=True)
         logging.info('Make widefield model - Widefield imaging2...')
 #        s.add_casa('/home/fdg/scripts/autocal/casa_comm/VirgoLBA/casa_clean.py', \
 #                    params={'msfile':'concat-avg.MS', 'imagename':imagename.replace('wide','wide-masked'), 'mask':imagename+'.newmask', 'imtype':'widemasked'}, log='clean-wide2-c'+str(c)+'.log')
-        s.add('wsclean -reorder -name ' + imagename.replace('wide','wide-masked') + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 10arcsec -weight briggs 0.0 -niter 5000 -update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -casamask '+imagename+'.newmask '+' '.join(mss), \
+        s.add('wsclean -reorder -name ' + imagename.replace('wide','wide-masked') + ' -size 4096 4096 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 10arcsec -weight briggs 0.0 -niter 5000 -update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -channelsout 20 -casamask '+imagename+'.newmask '+' '.join(mss), \
                 log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 #        widemodel = imagename.replace('wide','wide-masked')+'.model'

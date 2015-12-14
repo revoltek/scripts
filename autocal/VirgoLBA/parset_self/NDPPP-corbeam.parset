@@ -3,7 +3,8 @@ msin.datacolumn = DATA
 msout = .
 msout.datacolumn = CALCOR_DATA
 
-steps = [corrg, corrbeam]
+#steps = [corrg, corrbeam]
+steps = [corrbeam]
 
 corrg.type = applycal
 corrg.parmdb =
