@@ -237,9 +237,10 @@ class Scheduler():
         max_processors: max number of processors in a node (ignored if qsub=False)
         """
         self.cluster = get_cluster()
+        self.qsub = qsub
         # if qsub/max_thread/max_processors not set, guess from the cluster
         # if they are set, double check number are reasonable
-        if qsub == None:
+        if self.qsub == None:
             if self.cluster == 'Hamburg': self.qsub = True
             elif self.cluster == 'Leiden': self.qsub = True
             else: self.qsub = False
@@ -247,7 +248,7 @@ class Scheduler():
             if (self.qsub == False and (self.cluster == 'Hamburg' or self.cluster == 'Leiden')) or \
                (self.qsub == True and self.cluster == 'CEP3'):
                 logging.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
-                sys.exit(1)
+                #sys.exit(1)
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 64
