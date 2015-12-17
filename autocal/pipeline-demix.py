@@ -6,9 +6,8 @@ origmss_dir = '/data/scratch/fdg/VirgoLBAis/tgts-bkp/'
 
 ###################################################
 
-import sys, os, glob, re
+import sys, os, glob
 import numpy as np
-import pyrap.tables as pt
 from lib_pipeline import *
 
 set_logger()

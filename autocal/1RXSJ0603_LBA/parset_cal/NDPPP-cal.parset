@@ -1,0 +1,17 @@
+msin =
+msin.datacolumn = SMOOTHED_DATA
+msin.baseline = [CR]S*&
+msin.startchan =
+msin.nchan=1
+msout = .
+
+steps = [cal]
+
+cal.type = gaincal
+cal.parmdb = 
+cal.caltype = diagonal
+cal.maxiter = 100
+cal.sourcedb =
+cal.usebeammodel = True
+cal.invert = False
+cal.beammode = array_factor

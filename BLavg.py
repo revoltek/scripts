@@ -42,6 +42,7 @@ def addcol(ms, incol, outcol):
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
+opt.add_option('-b', '--bscalefactor', help='Gives an indication on how the smoothing varies with BL-lenght [default: 0.5]', type='float', default=0.5)
 opt.add_option('-i', '--incol', help='Column name to smooth [default: DATA]', type='string', default='DATA')
 opt.add_option('-o', '--outcol', help='Output column [default: SMOOTHED_DATA]', type="string", default='SMOOTHED_DATA')
 opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, this action permanently modify the MS! [default: False]', action="store_true", default=False)
@@ -110,7 +111,7 @@ for ant in itertools.product(set(ant1), set(ant2)):
     uvw = all_uvw[sel,:]
     uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
     dist = np.mean(uvw_dist) / 1.e3
-    stddev = options.ionfactor * np.sqrt((25.e3 / dist)) * (freq / 60.e6) # in sec
+    stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
     stddev = stddev/timepersample # in samples
     logging.debug("For BL %i - %i (dist = %.1f km): sigma=%.2f samples." % (ant[0], ant[1], dist, stddev))
 

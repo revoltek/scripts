@@ -97,7 +97,7 @@ LoSoTo.Steps.plotP2.MinMax = [-3.14,3.14] # min max value for the independent va
 # clock/tec
 LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
-LoSoTo.Steps.ct.freq.minmax = [30e6,1e9]
+LoSoTo.Steps.ct.freq.minmax = [20e6,1e9]
 LoSoTo.Steps.ct.CombinePol = True
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT

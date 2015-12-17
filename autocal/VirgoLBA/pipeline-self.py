@@ -66,7 +66,7 @@ s.run(check=False)
 # NOTE: only beam correction, no transfer of solutions
 logging.info('Correcting target MSs...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corbeam.parset msin='+ms+' corrg.parmdb='+ms+'/instrument', \
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, \
               log=ms+'_init_corbeam.log', cmd_type='NDPPP')
 #    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-corbeam.parset '+fakeskymodel, \
 #          log=ms+'-init_corbeam.log', cmd_type='BBS')
@@ -76,7 +76,7 @@ s.run(check=True)
 # Transform to circular pol - SB.MS:CALCOR_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+    s.add('mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 ###########################################################################################
