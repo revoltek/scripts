@@ -108,7 +108,7 @@ for c in xrange(cycles):
     if c == 0:
         # After all columns are created
         logging.info('Concat...')
-        pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
+#        pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
         # Smaller concat for ft
         for i, msg in enumerate(np.array_split(mss,10)):
             pt.msutil.msconcat(msg, 'concat-'+str(i)+'.MS', concatTime=False)
@@ -135,7 +135,7 @@ for c in xrange(cycles):
 
     #############################################################################################
     # create widefield model
-    if c%3 == 0 and c != cycles-1:
+    if c%3 == 0 and c != cycles-1 and False: # TODO skip
 
         logging.info('Entering wide field section:')
 
@@ -214,7 +214,7 @@ for c in xrange(cycles):
         s.run(check=True)
 
     #######################################################################################
-    # Solution rescaling
+    # Solution plotting
     logging.info('Running LoSoTo to normalize solutions...')
     os.makedirs('plots')
     check_rm('globaldb')
