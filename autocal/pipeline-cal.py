@@ -1,7 +1,8 @@
 #!/usr/bin/python
-# initial calibration of the calibrator, sol flag + effects separation
+# initial calibration of the calibrator in circular, sol flag + effects separation
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
+sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
 #parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_cal' # virgo LBA
@@ -24,55 +25,75 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('*MS'))
 
+check_rm('globaldb*')
+os.system('mkdir globaldb')
+os.system('mkdir globaldb-clockonly')
+
 ##############################################
 # Initial processing (2/2013->2/2014)
-logging.warning('Fix beam table')
+logging.warning('Fix beam table...')
 for ms in mss:
     s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 s.run(check=False)
 
 ##############################################
-# Avg data DATA -> SMOOTHED_DATA (BL-based smoothing)
-# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
-logging.info('BL-averaging')
+# Beam correction DATA -> CORRECTED_DATA
+logging.info('Beam correction...')
 for ms in mss:
-    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_avg.log')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+##############################################
+# Convert to circular CORRECTED_DATA -> CIRC_DATA
+logging.info('Converting to circular...')
+for ms in mss:
+    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
+
+##############################################
+# Avg data CIRC_DATA -> SMOOTHED_DATA (BL-based smoothing)
+# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
+logging.info('BL-averaging...')
+for ms in mss:
+    s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log')
 s.run(check=False)
 
 ############################################
-# If only clock is tarnsferred we need to prepare a parmdb
-logging.info('Creating fake parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
-s.run(check=True)
+# Prepare output parmdb
+#logging.info('Creating fake parmdb...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+#s.run(check=True)
 
 ###############################################
 # Initial calibrator
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-logging.info('Calibrating with skymodel: '+skymodel)
-for ms in mss:
-    s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-cal.parset '+skymodel, log=ms+'_cal.log', cmd_type='BBS')
-s.run(check=True)
+logging.info('Calibrating with skymodel: '+sourcedb+'...')
+nchan = find_nchan(mss[0])
+logging.debug('Iterating on '+str(nchan)+' channels.')
+for chan in xrange(nchan):
+    for ms in mss:
+        check_rm(ms+'/instrument-'+str(chan))
+        s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' msin.startchan='+str(chan)+' cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
+    s.run(check=True)
 
-##############################################
-# Clock/TEC check and flagging
-check_rm('globaldb*')
-os.system('mkdir globaldb')
-if only_clock: os.system('mkdir globaldb-clockonly')
-
-logging.info('Running LoSoTo...')
 for i, ms in enumerate(mss):
-    num = re.findall(r'\d+', ms)[-1]
-
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clockonly/')
+
+    num = re.findall(r'\d+', ms)[-1]
+    for chan in xrange(nchan):
+        logging.debug('Copy instrument-'+str(chan)+' of '+ms+' into globaldb/instrument-'+str(num)+'-'+str(chan))
+        os.system('cp -r '+ms+'/instrument-'+str(chan)+' globaldb/instrument-'+str(num)+'-'+str(chan))
     
     # We export clock, need to create a new parmdb
     logging.debug('Copy instrument_fake of '+ms+' into globaldb-clockonly/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument_fake globaldb-clockonly/instrument-'+str(num))
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clockonly/')
 
+
+##############################################
+# Clock/TEC check and flagging
+logging.info('Running LoSoTo...')
 check_rm('plots')
 os.makedirs('plots')
 check_rm('cal.h5')
@@ -80,7 +101,7 @@ s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='pytho
 s.run(check=False)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=False)
-s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
-s.run(check=True)
+#s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
+#s.run(check=True)
 
 logging.info("Done.")

@@ -1,12 +1,28 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA, flagA2, flagextend, merge, plotA, plotA2, plotP, plotP2, ct, plotCLOCK, plotTEC, smoothCLOCK, plotCLOCK2, duplicate, residuals, plotPs, plotPs2]
+#LoSoTo.Steps = [clip, flagA, flagA2, flagextend, merge, plotA, plotP, plotA2, plotP2, ct, plotCLOCK, plotTEC, smoothCLOCK, plotCLOCK2, duplicate, residuals, plotP2 plotPs2]
+LoSoTo.Steps = [plotTest, plotA, plotP, plotA2, plotP2, ct, plotCLOCK, plotTEC, smoothCLOCK, plotCLOCK2, duplicate, residuals, plotPs, plotPs2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
-LoSoTo.dir = [3C196]
-LoSoTo.Ncpu = 10
+LoSoTo.dir = []
+LoSoTo.Ncpu = 6
+
+# plot phase
+LoSoTo.Steps.plotTest.Operation = PLOT
+LoSoTo.Steps.plotTest.Soltab = [sol000/phase000]
+#LoSoTo.Steps.plotP.time = []
+LoSoTo.Steps.plotTest.ant = [CS021LBA]
+LoSoTo.Steps.plotTest.time = [4868876355.7701530] # 6h
+#LoSoTo.Steps.plotTest.time = [4869216663.4209251] # 10h
+LoSoTo.Steps.plotTest.Axes = freq
+LoSoTo.Steps.plotTest.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
+LoSoTo.Steps.plotTest.PlotFlag = True
+LoSoTo.Steps.plotTest.Prefix = plots/phtest_
+LoSoTo.Steps.plotTest.Reference = 'CS001LBA' # antenna name for referencing phases
+LoSoTo.Steps.plotTest.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotTest.freq.minmax = [60e6,200e6] # min max value for the independent variable (0 means automatic
 
 #LoSoTo.Steps.reweight.Operation = REWEIGHT
 #LoSoTo.Steps.reweight.WeightVal = 0.
@@ -57,13 +73,14 @@ LoSoTo.Steps.merge.MergeFromSoltab = sol000/amplitude000
 # plot amp time/freq
 LoSoTo.Steps.plotA.Operation = PLOT
 LoSoTo.Steps.plotA.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375]
+#LoSoTo.Steps.plotA.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375] # all MS
+LoSoTo.Steps.plotA.freq = [23704528.80859375, 31468200.68359375, 40306091.30859375, 50364685.05859375, 60179138.18359375, 69456481.93359375] # channels
 LoSoTo.Steps.plotA.Axes = time
 LoSoTo.Steps.plotA.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotA.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
 LoSoTo.Steps.plotA.PlotFlag = True
 LoSoTo.Steps.plotA.Prefix = plots/amp_
-LoSoTo.Steps.plotA.MinMax = [1e-4,5e-3] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotA.MinMax = [1e-4,3e-3] # min max value for the independent variable (0 means automatic)
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
@@ -71,12 +88,13 @@ LoSoTo.Steps.plotA2.Axes = [time,freq]
 LoSoTo.Steps.plotA2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotA2.PlotFlag = True
 LoSoTo.Steps.plotA2.Prefix = plots/amp2_
-LoSoTo.Steps.plotA2.MinMax = [0,0] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3] # min max value for the independent variable (0 means automatic)
 
 # plot phases time/freq
 LoSoTo.Steps.plotP.Operation = PLOT
 LoSoTo.Steps.plotP.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotP.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375]
+#LoSoTo.Steps.plotP.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375] # all MS
+LoSoTo.Steps.plotP.freq = [23704528.80859375, 31468200.68359375, 40306091.30859375, 50364685.05859375, 60179138.18359375, 69456481.93359375] # channels
 LoSoTo.Steps.plotP.Axes = time
 LoSoTo.Steps.plotP.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotP.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
@@ -140,7 +158,8 @@ LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
 # plot phases time/freq
 LoSoTo.Steps.plotPs.Operation = PLOT
 LoSoTo.Steps.plotPs.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPs.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375]
+#LoSoTo.Steps.plotPs.freq = [23435974.12109375, 30076599.12109375, 40037536.62109375, 50193786.62109375, 60154724.12109375] # all MS
+LoSoTo.Steps.plotPs.freq = [23704528.80859375, 31468200.68359375, 40306091.30859375, 50364685.05859375, 60179138.18359375, 69456481.93359375] # channels
 LoSoTo.Steps.plotPs.Axes = time
 LoSoTo.Steps.plotPs.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotPs.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
