@@ -17,8 +17,8 @@ df = open(download_file,'r')
 
 logging.info('Downloading...')
 for i, line in enumerate(df):
-    s.add('wget -nv '+line[:-1]+' -O - | tar -x', log=str(i)+'.log', cmd_type='general')
-    print 'wget -nv '+line[:-1]+' -O - | tar -x'
-#s.run(check=True)
+    s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
+#    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
+s.run(check=True)
 
 logging.info("Done.")

@@ -11,7 +11,7 @@ import numpy as np
 from lib_pipeline import *
 
 set_logger()
-check_rm('logs')
+#check_rm('logs')
 s = Scheduler(dry=False, max_threads = 5) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))
 
