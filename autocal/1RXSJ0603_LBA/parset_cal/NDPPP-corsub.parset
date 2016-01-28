@@ -1,0 +1,24 @@
+msin =
+msin.datacolumn = CIRC_DATA
+msin.baseline = [CR]S*&
+msout = .
+msout.datacolumn = CORRECTED_DATA
+
+#steps = [sub, cor]
+steps = [cor]
+
+sub.type = predict
+sub.sourcedb = 
+sub.sources = 3C196
+sub.operation = subtract
+sub.applycal.parmdb = 
+sub.applycal.correction = gain
+sub.usebeammodel = True
+sub.usechannelfreq = False
+#sub.invert = False # automatically set in predict-mode
+sub.beammode = array_factor
+
+cor.type = correct
+cor.parmdb = 
+cor.correction = gain
+

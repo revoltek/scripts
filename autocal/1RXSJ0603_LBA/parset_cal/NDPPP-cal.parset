@@ -1,10 +1,8 @@
 msin =
 msin.datacolumn = SMOOTHED_DATA
 msin.baseline = [CR]S*&
-msin.startchan =
-msin.nchan = 1
 msout = .
-msout.datacolumn = SMOOTHED_CORRECTED_DATA
+msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, cal]
 
@@ -12,9 +10,11 @@ filter.blrange = [400, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
+#cal.caltype = fulljones
 cal.caltype = diagonal
 cal.maxiter = 100
 cal.sourcedb =
+cal.sources = 3C196
 cal.usebeammodel = True
 cal.usechannelfreq = False
 #cal.invert = False # automatically set in predict-mode

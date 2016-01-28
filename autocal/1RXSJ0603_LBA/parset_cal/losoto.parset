@@ -1,13 +1,13 @@
 # losoto parset
-#LoSoTo.Steps = [clip, flagA, flagA2, flagextend, merge, plotA, plotP, plotA2, plotP2, ct, plotCLOCK, plotTEC, smoothCLOCK, plotCLOCK2, duplicate, residuals, plotP2 plotPs2]
-LoSoTo.Steps = [plotTest, plotA, plotP, plotA2, plotP2, ct, plotCLOCK, plotTEC, smoothCLOCK, plotCLOCK2, duplicate, residuals, plotPs, plotPs2]
+#LoSoTo.Steps = [clip, flagA, flagA2, flagextend, merge, plotA, plotP, plotA2, plotP2, ct, faraday, plotCLOCK, plotTEC, plotFR, duplicate, residuals, plotPs, plotPs2]
+LoSoTo.Steps = [plotA, plotP]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
-LoSoTo.Ncpu = 6
+LoSoTo.Ncpu = 3
 
 # plot phase
 LoSoTo.Steps.plotTest.Operation = PLOT
@@ -115,8 +115,13 @@ LoSoTo.Steps.plotP2.MinMax = [-3.14,3.14] # min max value for the independent va
 # clock/tec
 LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
-LoSoTo.Steps.ct.freq.minmax = [20e6,1e9]
 LoSoTo.Steps.ct.CombinePol = True
+
+LoSoTo.Steps.faraday.Operation = FARADAY
+LoSoTo.Steps.faraday.Soltab = [sol000/phase000]
+
+#LoSoTo.Steps.ct2.Operation = CLOCKTEC2
+#LoSoTo.Steps.ct2.Soltab = [sol000/phase000]
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
 LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
@@ -133,19 +138,12 @@ LoSoTo.Steps.plotTEC.TableAxis = ant # the axis to plot on a page - e.g. ant to 
 LoSoTo.Steps.plotTEC.Prefix = plots/tec
 LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]
 
-LoSoTo.Steps.smoothCLOCK.Operation = SMOOTH # running median on an arbitrary number of axis
-LoSoTo.Steps.smoothCLOCK.Soltab = [sol000/clock000]
-LoSoTo.Steps.smoothCLOCK.FWHM = [100]
-LoSoTo.Steps.smoothCLOCK.Axes = [time]
-LoSoTo.Steps.smoothCLOCK.Mode = runningmedian # or mean or median (these two values set all the solutions to the mean/median)
-
-LoSoTo.Steps.plotCLOCK2.Operation = PLOT
-LoSoTo.Steps.plotCLOCK2.Soltab = [sol000/clock000]
-LoSoTo.Steps.plotCLOCK2.Axes = [time]
-LoSoTo.Steps.plotCLOCK2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotCLOCK2.Prefix = plots/clock-smooth
-LoSoTo.Steps.plotCLOCK2.MinMax = [-2e-7,2e-7]
-LoSoTo.Steps.plotCLOCK2.PlotFlag = False
+LoSoTo.Steps.plotFR.Operation = PLOT
+LoSoTo.Steps.plotFR.Soltab = [sol000/rotationmeasure000]
+LoSoTo.Steps.plotFR.Axes = [time]
+LoSoTo.Steps.plotFR.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
+LoSoTo.Steps.plotFR.Prefix = plots/fr
+#LoSoTo.Steps.plotFR.MinMax = []
 
 LoSoTo.Steps.duplicate.Operation = DUPLICATE
 LoSoTo.Steps.duplicate.InTable = sol000/phase000 # complete solset/solt
@@ -153,7 +151,7 @@ LoSoTo.Steps.duplicate.OutTable = sol000/phase_bkp000 # complete solset/soltab o
 
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
-LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
+LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/rotationmeasure000]
 
 # plot phases time/freq
 LoSoTo.Steps.plotPs.Operation = PLOT
