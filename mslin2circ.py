@@ -119,10 +119,13 @@ def updatehistory(outms):
 
 opt = optparse.OptionParser()
 opt.add_option('-i','--inms',help='Input MS (format: ms:COLUMN, default column: DATA)',default='')
-opt.add_option('-o','--outms',help='Output MS (format: ms:COLUMN, default ms: InputMS, default column: DATA)')
+opt.add_option('-o','--outms',help='Output MS (format: ms:COLUMN, default ms: InputMS, default column: DATA)',default='')
 opt.add_option('-r','--reverse',action="store_true",default=False,help='Convert from circular to linear')
 opt.add_option('-s','--skipmetadata',action="store_true",default=False,help='Skip setting the metadata correctly')
 options, arguments = opt.parse_args()
+
+if options.outms == '':
+    options.outms = options.inms.split(':')[0]
 
 if len( options.inms.split(':') ) == 2:
     incolumn = options.inms.split(':')[1]

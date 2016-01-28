@@ -6,7 +6,7 @@ LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
-LoSoTo.dir = [3C295]
+LoSoTo.dir = []
 LoSoTo.Ncpu = 20
 
 LoSoTo.Steps.reweight.Operation = REWEIGHT
@@ -64,7 +64,7 @@ LoSoTo.Steps.plotA.TableAxis = ant # the axis to plot on a page - e.g. ant to ge
 LoSoTo.Steps.plotA.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
 LoSoTo.Steps.plotA.PlotFlag = True
 LoSoTo.Steps.plotA.Prefix = plots/amp_
-LoSoTo.Steps.plotA.MinMax = [1e-4,5e-3] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotA.MinMax = [1e-4,3e-3] # min max value for the independent variable (0 means automatic)
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
@@ -72,7 +72,7 @@ LoSoTo.Steps.plotA2.Axes = [time,freq]
 LoSoTo.Steps.plotA2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
 LoSoTo.Steps.plotA2.PlotFlag = True
 LoSoTo.Steps.plotA2.Prefix = plots/amp2_
-LoSoTo.Steps.plotA2.MinMax = [0,0] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3] # min max value for the independent variable (0 means automatic)
 
 # plot phases time/freq
 LoSoTo.Steps.plotP.Operation = PLOT
@@ -98,22 +98,20 @@ LoSoTo.Steps.plotP2.MinMax = [-3.14,3.14] # min max value for the independent va
 # clock/tec
 LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
-LoSoTo.Steps.ct.freq.minmax = [30e6,1e9]
+LoSoTo.Steps.ct.freq.minmax = [20e6,1e9]
 LoSoTo.Steps.ct.CombinePol = True
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
 LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
-LoSoTo.Steps.plotCLOCK.pol = [XX]
 LoSoTo.Steps.plotCLOCK.Axes = [time]
 LoSoTo.Steps.plotCLOCK.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotCLOCK.Prefix = plots/clock_
-LoSoTo.Steps.plotCLOCK.MinMax = [-1e-7,1e-7]
+LoSoTo.Steps.plotCLOCK.Prefix = plots/clock
+LoSoTo.Steps.plotCLOCK.MinMax = [-2e-7,2e-7]
 LoSoTo.Steps.plotCLOCK.PlotFlag = False
 
 LoSoTo.Steps.plotTEC.Operation = PLOT
-LoSoTo.Steps.plotTEC.pol = [XX]
 LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = [time]
 LoSoTo.Steps.plotTEC.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotTEC.Prefix = plots/tec_
-LoSoTo.Steps.plotTEC.MinMax = [-0.5,0.5]
+LoSoTo.Steps.plotTEC.Prefix = plots/tec
+LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]

@@ -1,17 +1,14 @@
 #!/usr/bin/python
 # initial calibration of the calibrator in circular, sol flag + effects separation
 
-skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
-sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_cal' # virgo LBA
+#skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
+#sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
+#parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
+skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
+sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # virgo LBA
+parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_cal' # virgo LBA
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo HBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_cal' # virgo HBA
-#skymodel = '/home/fdg/scripts/scripts/model/3C196-allfield.skymodel' # perseus LBA
-#parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_cal' # perseus LBA
-#skymodel = '/home/fdg/scripts/scripts/model/3C295-allfield.skymodel' # mode-test LBA
-#parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_cal' # mode-test LBA
+#parset_dir = '/home/fdg/scripts/autocal/VirgoHBA/parset_cal' # virgo HBA
 
 ###################################################
 

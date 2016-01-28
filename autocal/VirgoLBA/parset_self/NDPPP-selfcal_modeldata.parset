@@ -3,6 +3,7 @@ msin=
 msin.datacolumn=CIRC_DATA_SUB
 msin.modelcolumn=MODEL_DATA
 msin.baseline = [CR]S*&
+msin.blrange = [200, 1e30]
 msout = 
 msout.datacolumn=CORRECTED_DATA
 
