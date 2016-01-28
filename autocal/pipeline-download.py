@@ -20,8 +20,9 @@ downloaded = glob.glob('*MS')
 for i, line in enumerate(df):
     ms = re.findall(r'L[0-9]*_SB[0-9]*_uv\.dppp\.MS', line)[0]
     if ms in downloaded: continue
-#    s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
-    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
+    s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
+#    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
+    logging.debug('Queue download of: '+ms)
 s.run(check=True)
 
 logging.info("Done.")

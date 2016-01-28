@@ -1,8 +1,9 @@
 #!/usr/bin/python
-# demix of a set of SBs from a given dir, output is on local dir
+# demix of a set of SBs from a given dir, output is in the local dir
 
-parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_demix/'
-origmss_dir = '/data/scratch/fdg/VirgoLBAis/tgts-bkp/'
+#parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_demix/'
+parset_dir = '/home/fdg/scripts/autocal/CygLBA/parset_demix/'
+origmss_dir = '/data/scratch/fdg/CygnusLBAis/tgts1-full/'
 
 ###################################################
 
@@ -11,7 +12,7 @@ import numpy as np
 from lib_pipeline import *
 
 set_logger()
-#check_rm('logs')
+check_rm('logs')
 s = Scheduler(dry=False, max_threads = 5) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))
 

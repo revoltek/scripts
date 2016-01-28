@@ -29,7 +29,7 @@ from make_mask import make_mask
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False)
+s = Scheduler(dry=False, max_threads=20)
 
 #################################################
 # Clear
@@ -46,10 +46,10 @@ mss = sorted(glob.glob('*.MS'))
 
 ###############################################
 # Initial processing
-logging.info('Fix beam table...')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.info('Fix beam table...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ################################################
 # Copy cal solution
