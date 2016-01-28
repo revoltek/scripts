@@ -1,0 +1,18 @@
+msin =
+msin.datacolumn = CIRC_DATA
+msin.baseline = [CR]S*&
+msin.startchan =
+msin.nchan = 1
+msout = .
+msout.datacolumn = CORRECTED_DATA
+
+steps = [cor, sub]
+
+cor.type = correct
+cor.parmdb = 
+cor.correction = gain
+
+sub.type = predict
+sub.sourcedb = 
+sub.sources = 3C196
+sub.operation = subtract

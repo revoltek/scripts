@@ -1,17 +1,10 @@
 #!/usr/bin/python
 # initial calibration of the calibrator in circular, sol flag + effects separation
+# also correct for beam(centre) + all phase/amp effects and subtract the calibrator
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
 parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_LBA/parset_cal' # virgo LBA
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo HBA
-#parset_dir = '/home/fdg/scripts/autocal/VirA_HBA/parset_cal' # virgo HBA
-#skymodel = '/home/fdg/scripts/scripts/model/3C196-allfield.skymodel' # perseus LBA
-#parset_dir = '/home/fdg/scripts/autocal/PerA_LBA/parset_cal' # perseus LBA
-#skymodel = '/home/fdg/scripts/scripts/model/3C295-allfield.skymodel' # mode-test LBA
-#parset_dir = '/home/fdg/scripts/autocal/LBAmode/parset_cal' # mode-test LBA
 
 ###################################################
 
@@ -27,7 +20,6 @@ mss = sorted(glob.glob('*MS'))
 
 check_rm('globaldb*')
 os.system('mkdir globaldb')
-os.system('mkdir globaldb-clockonly')
 
 nchan = find_nchan(mss[0])
 logging.debug('Channel in the MS: '+str(nchan)+'.')
@@ -47,10 +39,23 @@ for ms in mss:
 s.run(check=True)
 
 ##############################################
+# Split channels
+logging.info('Splitting channels...')
+for chan in xrange(nchan):
+    logging.debug('Channel: '+str(chan))
+    for ms in mss:
+        msout = ms.replace('.MS','-chan'+str(chan)+'.MS')
+        check_rm(msout)
+        s.add('NDPPP '+parset_dir+'/NDPPP-split.parset msin='+ms+' msin.startchan='+str(chan)+' msout='+msout, log=ms+'-'+str(chan)+'_split.log', cmd_type='NDPPP')
+    s.run(check=True)
+    
+mss = sorted(glob.glob('*-chan*.MS'))
+
+##############################################
 # Convert to circular CORRECTED_DATA -> CIRC_DATA
 logging.info('Converting to circular...')
 for ms in mss:
-    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+    s.add('mslin2circ.py -i '+ms+':DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 ##############################################
@@ -61,37 +66,44 @@ for ms in mss:
     s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
-############################################
-# Prepare output parmdb
-logging.info('Creating fake parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
-s.run(check=True)
+##############################################
+# Avg data SMOOTHED_DATA -> CORRECTED_DATA
+#logging.info('BBS cal+cor...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-cal_field.parset '+skymodel, log=ms+'_calcor.log', cmd_type='BBS')
+#s.run(check=True)
+#sys.exit(1)
 
 ###############################################
 # Initial calibrator
-# Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-logging.debug('Iterating on '+str(nchan)+' channels.')
-for chan in xrange(nchan):
-    logging.debug('Channel: '+str(chan))
-    for ms in mss:
-        check_rm(ms+'/instrument-'+str(chan))
-        s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' msin.startchan='+str(chan)+' cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
-    s.run(check=True)
+# Solve cal_SB.MS:SMOOTHED_DATA
+logging.info('Calibrating with skymodel: '+sourcedb+'...')
+for ms in mss:
+    check_rm(ms+'/instrument')
+    s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb, log=ms+'_cal.log', cmd_type='NDPPP')
+s.run(check=True)
+
+##################################################
+# Correct/subtract
+# CIRC_DATA -> CORRECTED_DATA
+logging.info('Correct and subtract...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-corsub.parset msin='+ms+' cor.parmdb='+ms+'/instrument sub.applycal.parmdb='+ms+'/instrument sub.sourcedb='+sourcedb, log=ms+'_corsub.log', cmd_type='NDPPP')
+s.run(check=True)
 
 for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clockonly/')
 
-    num = re.findall(r'\d+', ms)[-1]
-    for chan in xrange(nchan):
-        logging.debug('Copy instrument-'+str(chan)+' of '+ms+' into globaldb/instrument-'+str(num)+'-'+str(chan))
-        os.system('cp -r '+ms+'/instrument-'+str(chan)+' globaldb/instrument-'+str(num)+'-'+str(chan))
-    
-    # We export clock, need to create a new parmdb
-    logging.debug('Copy instrument_fake of '+ms+' into globaldb-clockonly/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument_fake globaldb-clockonly/instrument-'+str(num))
+    num = re.findall(r'\d+', ms)[-2]
+    chan = re.findall(r'\d+', ms)[-1]
+    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num)+'-'+str(chan))
+    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num)+'-'+str(chan))
 
+####################################################
+# Create a concatenated dataset
+logging.info('Concatenate....')
+s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset', log='concat.log', cmd_type='NDPPP')
+s.run(check=True)
 
 ##############################################
 # Clock/TEC check and flagging
@@ -102,8 +114,6 @@ check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
 s.run(check=True)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
 s.run(check=True)
 
 logging.info("Done.")
