@@ -54,15 +54,15 @@ LoSoTo.Steps.smoothA.Axes = [time]
 LoSoTo.Steps.smoothA.Mode = median
 
 # plot amplitude smooth
-LoSoTo.Steps.plotAs1.Operation = PLOT
-LoSoTo.Steps.plotAs1.Soltab = [sol000/amplitudeSmooth000]
-LoSoTo.Steps.plotAs1.freq.minmax = [0,100e6,40]
-LoSoTo.Steps.plotAs1.Axes = time
-LoSoTo.Steps.plotAs1.TableAxis = ant
-LoSoTo.Steps.plotAs1.ColorAxis = pol
-LoSoTo.Steps.plotAs1.PlotFlag = True
-LoSoTo.Steps.plotAs1.Prefix = plots/ampSmooth_
-LoSoTo.Steps.plotAs1.MinMax = [1e-4,3e-3]
+LoSoTo.Steps.plotAs2.Operation = PLOT
+LoSoTo.Steps.plotAs2.Soltab = [sol000/amplitudeSmooth000]
+LoSoTo.Steps.plotAs2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotAs2.Axes = freq
+LoSoTo.Steps.plotAs2.TableAxis = ant
+LoSoTo.Steps.plotAs2.ColorAxis = pol
+LoSoTo.Steps.plotAs2.PlotFlag = True
+LoSoTo.Steps.plotAs2.Prefix = plots/ampSmooth_
+LoSoTo.Steps.plotAs2.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotAs3.Operation = PLOT
 LoSoTo.Steps.plotAs3.Soltab = [sol000/amplitudeSmooth000]
