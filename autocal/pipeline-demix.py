@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # demix of a set of SBs from a given dir, output is in the local dir
 
-#parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_demix/'
-parset_dir = '/home/fdg/scripts/autocal/CygLBA/parset_demix/'
-origmss_dir = '/data/scratch/fdg/CygnusLBAis/tgts1-full/'
+parset_dir = '/home/fdg/scripts/autocal/parset_demix/'
+#parset_dir = '/home/fdg/scripts/autocal/CygLBA/parset_demix/'
+origmss_dir = '../'
 
 ###################################################
 
@@ -13,7 +13,7 @@ from lib_pipeline import *
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False, max_threads = 5) # set here max number of threads here
+s = Scheduler(dry=False, max_threads = 10) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))
 
 ##############################################
@@ -28,7 +28,7 @@ mss = sorted(glob.glob(origmss_dir+'/*MS'))
 logging.info('Demixing...')
 for ms in mss:
     if os.path.exists(os.path.basename(ms)): continue
-    s.add('NDPPP '+parset_dir+'/NDPPP_demix.parset msin='+ms+' msout='+os.path.basename(ms)+' demixer.instrumentmodel='+os.path.basename(ms)+'/instrument_demix', log=os.path.basename(ms)+'_demix.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP_demix.parset msin='+ms+' msout='+os.path.basename(ms)+' demixer.instrumentmodel='+os.path.basename(ms)+'/instrument_demix', log=os.path.basename(ms)+'_demix.log', cmd_type='NDPPP', processors=6)
 s.run(check=True)
 
 logging.info("Done.")

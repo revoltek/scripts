@@ -15,6 +15,6 @@ demixer.targetsource = VirA
 demixer.subtractsources = [CasA,CygA] 
 demixer.ntimechunk = 0
 demixer.skymodel =/home/fdg/scripts/model/demix_all.skydb
-demixer.freqstep = 4
+demixer.freqstep = 16
 demixer.timestep = 1
 demixer.instrumentmodel =

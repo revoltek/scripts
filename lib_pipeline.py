@@ -290,7 +290,7 @@ class Scheduler():
         if log != '' and not log_append: cmd += ' > '+log+' 2>&1'
         if log != '' and log_append: cmd += ' >> '+log+' 2>&1'
 
-        if processors != None and processors.lower() == 'max': processors = self.max_processors
+        if processors != None and processors == 'max': processors = self.max_processors
 
         if self.qsub:
             # if number of processors not specified, try to find automatically

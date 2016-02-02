@@ -66,14 +66,6 @@ for ms in mss:
     s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
-##############################################
-# Avg data SMOOTHED_DATA -> CORRECTED_DATA
-#logging.info('BBS cal+cor...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-cal_field.parset '+skymodel, log=ms+'_calcor.log', cmd_type='BBS')
-#s.run(check=True)
-#sys.exit(1)
-
 ###############################################
 # Initial calibrator
 # Solve cal_SB.MS:SMOOTHED_DATA
