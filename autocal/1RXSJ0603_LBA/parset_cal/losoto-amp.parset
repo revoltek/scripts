@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, duplicateA, smoothA, plotAs2, plotAs3, residualA, plotAr1, plotAr2, plotAr3, plotAm]
+LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, duplicateA, smoothA, plotAs2, plotAs3, residualA, plotAr1, plotAr2, plotAr3] #, plotAm]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []

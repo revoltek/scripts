@@ -1,12 +1,12 @@
 #!/usr/bin/python
 # initial calibration of the calibrator in circular, sol flag + effects separation
 
-#skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
-#sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
-#parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
-skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
-sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # virgo LBA
-parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_cal' # virgo LBA
+skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
+sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
+parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
+#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
+#sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # virgo LBA
+#parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_cal' # virgo LBA
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo HBA
 #parset_dir = '/home/fdg/scripts/autocal/VirgoHBA/parset_cal' # virgo HBA
 
@@ -98,11 +98,11 @@ os.makedirs('plots')
 check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
 s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto-ph.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
 s.run(check=True)
