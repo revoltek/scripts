@@ -1,7 +1,7 @@
 msin =
 msin.datacolumn = DATA
 msout = .
-msout.datacolumn = CALCOR_DATA
+msout.datacolumn = CORRECTED_DATA
 
 #steps = [corrg, corrbeam]
 steps = [corrbeam]
@@ -12,3 +12,4 @@ corrg.correction = gain
 
 corrbeam.type = applybeam
 corrbeam.invert = True
+corrbeam.usechannelfreq = False

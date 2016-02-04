@@ -8,14 +8,14 @@
 
 # initial self-cal model
 model = '/home/fdg/scripts/autocal/VirgoLBA/150328_LBA-VirgoA.model'
-# globaldb produced by pipeline-init
-globaldb = '../cals/globaldb'
 # fake skymodel with pointing direction
 fakeskymodel = '/home/fdg/scripts/autocal/VirgoLBA/virgo.fakemodel.skymodel'
 # number of selfcal cycles
 cycles = 10
 # parset directory
 parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_self/'
+# globaldb produced by pipeline-init
+#globaldb = '../cals/globaldb'
 
 ##############################################################
 
@@ -29,7 +29,7 @@ from make_mask import make_mask
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False, max_threads=20)
+s = Scheduler(dry=False)
 
 #################################################
 # Clear
@@ -61,22 +61,19 @@ mss = sorted(glob.glob('*.MS'))
 #    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
 #########################################################################################
-# apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, linear)
+# apply solutions and beam correction - SB.MS:DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam applied, linear)
 # TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account? - problem: if we transfer only clock is not ok
 # NOTE: only beam correction, no transfer of solutions
 logging.info('Correcting target MSs...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, \
-              log=ms+'_init_corbeam.log', cmd_type='NDPPP')
-#    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs-corbeam.parset '+fakeskymodel, \
-#          log=ms+'-init_corbeam.log', cmd_type='BBS')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_init_corbeam.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #########################################################################################
-# Transform to circular pol - SB.MS:CALCOR_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
+# Transform to circular pol - SB.MS:CORRECTED_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 ###########################################################################################
@@ -86,7 +83,7 @@ s.run(check=True)
 # Initialize columns - SB.MS:CIRC_DATA_SUB = CIRC_DATA
 logging.info('Make new columns...')
 for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CORRECTED_DATA,CIRC_DATA_SUB', log=ms+'-init_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CIRC_DATA_SUB', log=ms+'-init_addcol.log', cmd_type='python')
 s.run(check=True)
 logging.info('Set CIRC_DATA_SUB == CIRC_DATA...')
 for ms in mss:

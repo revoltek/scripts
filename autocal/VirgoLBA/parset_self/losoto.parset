@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [clip,reweight,plotA,plotA2,plotP,plotP2]
+LoSoTo.Steps = [clip,plotAi1,plotAi2,plotAi3,plotPi1,plotPi2,plotPi3]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -13,55 +13,68 @@ LoSoTo.Ncpu = 10
 #LoSoTo.Steps.norm.NormAxes = [time,ant,pol,freq]
 #LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
 
-LoSoTo.Steps.reweight.Operation = REWEIGHT
-LoSoTo.Steps.reweight.WeightVal = 0.
-LoSoTo.Steps.reweight.ant = [CS013LBA] # bad ant
-LoSoTo.Steps.reweight.FlagBad = False
-
 #clip
 LoSoTo.Steps.clip.Operation = CLIP
 LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.clip.ClipLevel = 5 # factor above/below median at which to clip
 LoSoTo.Steps.clip.Axes = [time] # axis along which to calculate the median
 
-# plot amp time/freq
-LoSoTo.Steps.plotA.Operation = PLOT
-LoSoTo.Steps.plotA.Soltab = [sol000/amplitude000]
-# LoSoTo.Steps.plotA.freq = [22264099.12109375, 30076599.12109375, 41795349.12109375, 51560974.12109375, 61326599.12109375, 69139099.12109375] # whole MS
-LoSoTo.Steps.plotA.freq = [22776794.43359375,30003356.93359375,41526794.43359375,52122497.55859375,60227966.30859375,69456481.93359375] # chanbychan
-LoSoTo.Steps.plotA.Axes = time
-LoSoTo.Steps.plotA.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotA.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
-LoSoTo.Steps.plotA.PlotFlag = True
-LoSoTo.Steps.plotA.Prefix = plots/amp_
-LoSoTo.Steps.plotA.MinMax = [1e-4,3e-3] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotAi1.Operation = PLOT
+LoSoTo.Steps.plotAi1.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotAi1.Axes = time
+LoSoTo.Steps.plotAi1.TableAxis = ant
+LoSoTo.Steps.plotAi1.ColorAxis = pol
+LoSoTo.Steps.plotAi1.PlotFlag = True
+LoSoTo.Steps.plotAi1.Prefix = plots/amp_
+LoSoTo.Steps.plotAi1.MinMax = [1e-4,3e-3]
 
-LoSoTo.Steps.plotA2.Operation = PLOT
-LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA2.Axes = [time,freq]
-LoSoTo.Steps.plotA2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotA2.PlotFlag = True
-LoSoTo.Steps.plotA2.Prefix = plots/amp2_
-LoSoTo.Steps.plotA2.MinMax = [0,0] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotAi2.Operation = PLOT
+LoSoTo.Steps.plotAi2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotAi2.Axes = freq
+LoSoTo.Steps.plotAi2.TableAxis = ant
+LoSoTo.Steps.plotAi2.ColorAxis = pol
+LoSoTo.Steps.plotAi2.PlotFlag = True
+LoSoTo.Steps.plotAi2.Prefix = plots/amp_
+LoSoTo.Steps.plotAi2.MinMax = [1e-4,3e-3]
 
-# plot phases time/freq
-LoSoTo.Steps.plotP.Operation = PLOT
-LoSoTo.Steps.plotP.Soltab = [sol000/phase000]
-#LoSoTo.Steps.plotP.freq = [22264099.12109375, 30076599.12109375, 41795349.12109375, 51560974.12109375, 61326599.12109375, 69139099.12109375] # whole MS
-LoSoTo.Steps.plotP.freq = [22776794.43359375,30003356.93359375,41526794.43359375,52122497.55859375,60227966.30859375,69456481.93359375] # chanbychan
-LoSoTo.Steps.plotP.Axes = time
-LoSoTo.Steps.plotP.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotP.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
-LoSoTo.Steps.plotP.PlotFlag = True
-LoSoTo.Steps.plotP.Prefix = plots/ph_
-LoSoTo.Steps.plotP.Reference = 'CS001LBA' # antenna name for referencing phases
-LoSoTo.Steps.plotP.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
+LoSoTo.Steps.plotAi3.Operation = PLOT
+LoSoTo.Steps.plotAi3.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi3.Axes = [time,freq]
+LoSoTo.Steps.plotAi3.TableAxis = ant
+LoSoTo.Steps.plotAi3.PlotFlag = True
+LoSoTo.Steps.plotAi3.Prefix = plots/amp_
+LoSoTo.Steps.plotAi3.MinMax = [1e-4,3e-3]
 
-LoSoTo.Steps.plotP2.Operation = PLOT
-LoSoTo.Steps.plotP2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotP2.Axes = [time,freq]
-LoSoTo.Steps.plotP2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotP2.PlotFlag = True
-LoSoTo.Steps.plotP2.Prefix = plots/ph2_
-LoSoTo.Steps.plotP2.Reference = 'CS001LBA' # antenna name for referencing phases
-LoSoTo.Steps.plotP2.MinMax = [-3.14,3.14] # min max value for the independent variable (0 means automatic)
+# plot initials
+LoSoTo.Steps.plotPi1.Operation = PLOT
+LoSoTo.Steps.plotPi1.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPi1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotPi1.Axes = time
+LoSoTo.Steps.plotPi1.TableAxis = ant
+LoSoTo.Steps.plotPi1.ColorAxis = pol
+LoSoTo.Steps.plotPi1.PlotFlag = True
+LoSoTo.Steps.plotPi1.Prefix = plots/ph_
+LoSoTo.Steps.plotPi1.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi1.MinMax = [-3.14,3.14]
+
+LoSoTo.Steps.plotPi2.Operation = PLOT
+LoSoTo.Steps.plotPi2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPi2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotPi2.Axes = freq
+LoSoTo.Steps.plotPi2.TableAxis = ant
+LoSoTo.Steps.plotPi2.ColorAxis = pol
+LoSoTo.Steps.plotPi2.PlotFlag = True
+LoSoTo.Steps.plotPi2.Prefix = plots/ph_
+LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
+
+LoSoTo.Steps.plotPi3.Operation = PLOT
+LoSoTo.Steps.plotPi3.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPi3.Axes = [time,freq]
+LoSoTo.Steps.plotPi3.TableAxis = ant
+LoSoTo.Steps.plotPi3.PlotFlag = True
+LoSoTo.Steps.plotPi3.Prefix = plots/ph_
+LoSoTo.Steps.plotPi3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi3.MinMax = [-3.14,3.14]

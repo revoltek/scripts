@@ -3,11 +3,12 @@ msin=
 msin.datacolumn=CIRC_DATA_SUB
 msin.modelcolumn=MODEL_DATA
 msin.baseline = [CR]S*&
-msin.blrange = [200, 1e30]
 msout = 
 msout.datacolumn=CORRECTED_DATA
 
-steps = [cal, count]
+steps = [filter, cal, count]
+
+filter.blrange = [200, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
