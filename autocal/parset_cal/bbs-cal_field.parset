@@ -1,0 +1,34 @@
+Strategy.InputColumn = CIRC_DATA
+Strategy.ChunkSize   = 50
+Strategy.UseSolver   = F
+Strategy.Steps       = [solve, subtract, correct]
+#Strategy.Steps       = [solve, subtract, solve2, subtract2, add, solve3, subtract3, add2, solve4, correct]
+
+Step.solve.Model.Sources                = [3C196]
+Step.solve.Model.Cache.Enable           = T
+Step.solve.Model.Gain.Enable            = T
+Step.solve.Operation                    = SOLVE
+Step.solve.Solve.Parms                  = ["Gain:0:0:*","Gain:1:1:*"]
+Step.solve.Solve.CellSize.Freq          = 1
+Step.solve.Solve.CellSize.Time          = 1 
+Step.solve.Solve.CellChunkSize          = 50
+Step.solve.Solve.PropagateSolutions     = T
+Step.solve.Solve.Options.MaxIter        = 100
+Step.solve.Solve.Options.LMFactor       = 1.0
+Step.solve.Solve.Options.BalancedEqs    = F
+Step.solve.Solve.Options.UseSVD         = T
+Step.solve.Model.Beam.Enable            = F
+Step.solve.Solve.UVRange		        = [125]
+
+Step.subtract.Model.Sources                = [3C196]
+Step.subtract.Model.Gain.Enable            = T
+Step.subtract.Operation                    = SUBTRACT
+Step.subtract.Model.Beam.Enable            = F
+Step.subtract.Output.WriteCovariance       = False 
+
+Step.correct.Model.Sources                 = [3C196]    
+Step.correct.Model.Gain.Enable             = T 
+Step.correct.Operation                     = CORRECT
+Step.correct.Output.Column                 = CORRECTED_DATA
+Step.correct.Model.Beam.Enable             = F 
+Step.correct.Output.WriteCovariance        = False 

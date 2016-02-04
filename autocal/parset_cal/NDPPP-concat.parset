@@ -1,0 +1,7 @@
+msin = *chan*.MS
+msin.datacolumn = CORRECTED_DATA
+msin.baseline = [CR]S*&
+msout = concat.MS
+msout.writefullresflag = False
+
+steps = []
