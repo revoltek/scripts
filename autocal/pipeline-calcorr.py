@@ -2,9 +2,11 @@
 # initial calibration of the calibrator in circular, sol flag + effects separation
 # also correct for beam(centre) + all phase/amp effects and subtract the calibrator
 
-skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
-sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
+#skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
+#sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
+skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # tooth LBA
+sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # tooth LBA
+parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 ###################################################
 
@@ -26,10 +28,10 @@ logging.debug('Channel in the MS: '+str(nchan)+'.')
 
 ##############################################
 # Initial processing (2/2013->2/2014)
-logging.warning('Fix beam table...')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.warning('Fix beam table...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ##############################################
 # Beam correction DATA -> CORRECTED_DATA
@@ -52,7 +54,7 @@ for chan in xrange(nchan):
 mss = sorted(glob.glob('*-chan*.MS'))
 
 ##############################################
-# Convert to circular CORRECTED_DATA -> CIRC_DATA
+# Convert to circular DATA -> CIRC_DATA
 logging.info('Converting to circular...')
 for ms in mss:
     s.add('mslin2circ.py -i '+ms+':DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
@@ -92,8 +94,7 @@ for i, ms in enumerate(mss):
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num)+'-'+str(chan))
 
 ####################################################
-# Create a concatenated dataset
-logging.info('Concatenate....')
+
 s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset', log='concat.log', cmd_type='NDPPP')
 s.run(check=True)
 
@@ -105,11 +106,11 @@ os.makedirs('plots')
 check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
 s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
+#s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto-ph.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 
 logging.info("Done.")
