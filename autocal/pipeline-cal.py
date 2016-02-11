@@ -3,12 +3,11 @@
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_cal' # tooth LBA
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # virgo LBA
-#parset_dir = '/home/fdg/scripts/autocal/VirgoLBA/parset_cal' # virgo LBA
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo HBA
-#parset_dir = '/home/fdg/scripts/autocal/VirgoHBA/parset_cal' # virgo HBA
+
+parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 ###################################################
 
@@ -31,10 +30,10 @@ logging.debug('Channel in the MS: '+str(nchan)+'.')
 
 ##############################################
 # Initial processing (2/2013->2/2014)
-logging.warning('Fix beam table...')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.warning('Fix beam table...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ##############################################
 # Beam correction DATA -> CORRECTED_DATA
