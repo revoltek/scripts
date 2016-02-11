@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-download_file = 'cyg1.txt'
+download_file = 'casA.txt'
 
 ###################################################
 
