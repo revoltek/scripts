@@ -27,17 +27,15 @@ LoSoTo.Steps.plotAi1.TableAxis = ant
 LoSoTo.Steps.plotAi1.ColorAxis = pol
 LoSoTo.Steps.plotAi1.PlotFlag = True
 LoSoTo.Steps.plotAi1.Prefix = plots/amp_
-LoSoTo.Steps.plotAi1.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotAi2.Operation = PLOT
 LoSoTo.Steps.plotAi2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotAi2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotAi2.time.minmax = [0,1e20,1000]
 LoSoTo.Steps.plotAi2.Axes = freq
 LoSoTo.Steps.plotAi2.TableAxis = ant
 LoSoTo.Steps.plotAi2.ColorAxis = pol
 LoSoTo.Steps.plotAi2.PlotFlag = True
 LoSoTo.Steps.plotAi2.Prefix = plots/amp_
-LoSoTo.Steps.plotAi2.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotAi3.Operation = PLOT
 LoSoTo.Steps.plotAi3.Soltab = [sol000/amplitude000]
@@ -45,7 +43,6 @@ LoSoTo.Steps.plotAi3.Axes = [time,freq]
 LoSoTo.Steps.plotAi3.TableAxis = ant
 LoSoTo.Steps.plotAi3.PlotFlag = True
 LoSoTo.Steps.plotAi3.Prefix = plots/amp_
-LoSoTo.Steps.plotAi3.MinMax = [1e-4,3e-3]
 
 # plot initials
 LoSoTo.Steps.plotPi1.Operation = PLOT
@@ -61,7 +58,7 @@ LoSoTo.Steps.plotPi1.MinMax = [-3.14,3.14]
 
 LoSoTo.Steps.plotPi2.Operation = PLOT
 LoSoTo.Steps.plotPi2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPi2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotPi2.time.minmax = [0,1e20,1000]
 LoSoTo.Steps.plotPi2.Axes = freq
 LoSoTo.Steps.plotPi2.TableAxis = ant
 LoSoTo.Steps.plotPi2.ColorAxis = pol

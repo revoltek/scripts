@@ -2,8 +2,7 @@
 # demix of a set of SBs from a given dir, output is in the local dir
 
 parset_dir = '/home/fdg/scripts/autocal/parset_demix/'
-#parset_dir = '/home/fdg/scripts/autocal/CygLBA/parset_demix/'
-origmss_dir = './full/'
+origmss_dir = '../tgts1-full'
 
 ###################################################
 

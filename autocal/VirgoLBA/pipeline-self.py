@@ -60,13 +60,21 @@ mss = sorted(glob.glob('*.MS'))
 #    check_rm(ms+'/instrument')
 #    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
+logging.info('Averaging in time...')
+for ms in mss:
+    msout = ms.replace('.MS','-avg.MS')
+    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=5', log=ms+'-init_avg.log', cmd_type='NDPPP')
+s.run(check=True)
+
+mss = sorted(glob.glob('*-avg.MS'))
+
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam applied, linear)
 # TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account? - problem: if we transfer only clock is not ok
 # NOTE: only beam correction, no transfer of solutions
 logging.info('Correcting target MSs...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_init_corbeam.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'-init_corbeam.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #########################################################################################
@@ -87,7 +95,7 @@ for ms in mss:
 s.run(check=True)
 logging.info('Set CIRC_DATA_SUB == CIRC_DATA...')
 for ms in mss:
-    s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+    s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'-init_taql.log', cmd_type='general')
 s.run(check=True)
 
 # self-cal cycle
@@ -249,7 +257,7 @@ for c in xrange(cycles):
     # avg 1chanSB/30s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
     logging.info('Average...')
     check_rm('concat-avg.MS*')
-    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS', \
+    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.timestep=6', \
             log='concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
