@@ -14,15 +14,15 @@ def casa_clean(msfile='', imagename='', imtype='normal', mask=''):
 
     if imtype == 'normal': 
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='/home/fdg/scripts/autocal/VirgoLBA/m87.crtf',imsize=[512],cell=['4arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='/home/fdg/scripts/autocal/VirgoLBA/m87.crtf',imsize=[1024],cell=['3arcsec'],weighting="briggs",robust=0,cyclefactor=8,cyclespeedup=-1,nterms=3)
 
         default('clean')
         scales=[0, 5, 10, 20]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=250,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='/home/fdg/scripts/autocal/VirgoLBA/m87.crtf',imsize=[512],cell=['4arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=250,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='/home/fdg/scripts/autocal/VirgoLBA/m87.crtf',imsize=[1024],cell=['3arcsec'],weighting="briggs",robust=0,cyclefactor=8,cyclespeedup=-1,nterms=3)
 
         default('clean')
         scales=[0, 5, 10, 20, 40, 80, 160, 320]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=15000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='/home/fdg/scripts/autocal/VirgoLBA/m87.crtf',imsize=[512],cell=['4arcsec'],weighting="briggs",robust=-0.5,cyclefactor=5,cyclespeedup=-1,nterms=3)
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=15000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='/home/fdg/scripts/autocal/VirgoLBA/m87.crtf',imsize=[1024],cell=['3arcsec'],weighting="briggs",robust=0,cyclefactor=5,cyclespeedup=-1,nterms=3)
 
     elif imtype == 'dirty':
         default('clean')
