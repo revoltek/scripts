@@ -9,7 +9,7 @@ steps = [sub, cor]
 
 sub.type = predict
 sub.sourcedb = 
-sub.sources = 3C295
+sub.sources = 
 sub.operation = subtract
 sub.applycal.parmdb = 
 sub.applycal.correction = gain
