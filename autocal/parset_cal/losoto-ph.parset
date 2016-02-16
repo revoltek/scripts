@@ -53,7 +53,7 @@ LoSoTo.Steps.ct.CombinePol = True
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
 LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
 LoSoTo.Steps.plotCLOCK.Axes = [time]
-LoSoTo.Steps.plotCLOCK.TableAxis = ant
+LoSoTo.Steps.plotCLOCK.ColorAxis = ant
 LoSoTo.Steps.plotCLOCK.Prefix = plots/clock
 LoSoTo.Steps.plotCLOCK.MinMax = [-2e-7,2e-7]
 LoSoTo.Steps.plotCLOCK.PlotFlag = False
@@ -61,9 +61,16 @@ LoSoTo.Steps.plotCLOCK.PlotFlag = False
 LoSoTo.Steps.plotTEC.Operation = PLOT
 LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = [time]
-LoSoTo.Steps.plotTEC.TableAxis = ant
+LoSoTo.Steps.plotTEC.ColorAxis = ant
 LoSoTo.Steps.plotTEC.Prefix = plots/tec
 LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]
+
+LoSoTo.Steps.plotTEC.Operation = PLOT
+LoSoTo.Steps.plotTEC.Soltab = [sol000/tec3rd000]
+LoSoTo.Steps.plotTEC.Axes = [time]
+LoSoTo.Steps.plotTEC.ColorAxis = ant
+LoSoTo.Steps.plotTEC.Prefix = plots/tec3rd
+#LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]
 
 # faraday rotation extraction
 LoSoTo.Steps.faraday.Operation = FARADAY
@@ -78,7 +85,7 @@ LoSoTo.Steps.plotFR.Prefix = plots/fr
 # calculate residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
-LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/rotationmeasure000]
+LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/rotationmeasure000,sol000/tec3rd000]
 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT

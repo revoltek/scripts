@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # initial calibration of the calibrator in circular, sol flag + effects separation
 
-skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
-sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo LBA
-#sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # virgo LBA
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # virgo HBA
+skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
+sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+patch = '3C196'
+#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
+#sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
+#patch = '3C295'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
@@ -28,41 +29,41 @@ os.system('mkdir globaldb-clockonly')
 nchan = find_nchan(mss[0])
 logging.debug('Channel in the MS: '+str(nchan)+'.')
 
-##############################################
-# Initial processing (2/2013->2/2014)
-#logging.warning('Fix beam table...')
+###############################################
+## Initial processing (2/2013->2/2014)
+##logging.warning('Fix beam table...')
+##for ms in mss:
+##    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+##s.run(check=False)
+#
+###############################################
+## Beam correction DATA -> CORRECTED_DATA
+#logging.info('Beam correction...')
 #for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-
-##############################################
-# Beam correction DATA -> CORRECTED_DATA
-logging.info('Beam correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-s.run(check=True)
-
-##############################################
-# Convert to circular CORRECTED_DATA -> CIRC_DATA
-logging.info('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
-
-##############################################
-# Avg data CIRC_DATA -> SMOOTHED_DATA (BL-based smoothing)
-# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
-logging.info('BL-averaging...')
-for ms in mss:
-    s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-s.run(check=True)
-
-############################################
-# Prepare output parmdb
-logging.info('Creating fake parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
-s.run(check=True)
+#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+#s.run(check=True)
+#
+###############################################
+## Convert to circular CORRECTED_DATA -> CIRC_DATA
+#logging.info('Converting to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
+#
+###############################################
+## Avg data CIRC_DATA -> SMOOTHED_DATA (BL-based smoothing)
+## NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
+#logging.info('BL-averaging...')
+#for ms in mss:
+#    s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+#s.run(check=True)
+#
+#############################################
+## Prepare output parmdb
+#logging.info('Creating fake parmdb...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+#s.run(check=True)
 
 ###############################################
 # Initial calibrator
@@ -72,7 +73,7 @@ for chan in xrange(nchan):
     logging.debug('Channel: '+str(chan))
     for ms in mss:
         check_rm(ms+'/instrument-'+str(chan))
-        s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' msin.startchan='+str(chan)+' cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' msin.startchan='+str(chan)+' cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
     s.run(check=True)
 
 for i, ms in enumerate(mss):
@@ -95,7 +96,7 @@ logging.info('Running LoSoTo...')
 check_rm('plots')
 os.makedirs('plots')
 check_rm('cal.h5')
-s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
+s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python', processors='max')
 s.run(check=True)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
@@ -103,7 +104,7 @@ s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log',
 s.run(check=True)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto-ph.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python')
+s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 
 logging.info("Done.")

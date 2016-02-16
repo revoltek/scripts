@@ -2,10 +2,13 @@
 # initial calibration of the calibrator in circular, sol flag + effects separation
 # also correct for beam(centre) + all phase/amp effects and subtract the calibrator
 
-#skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel' # tooth LBA
-#sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb' # tooth LBA
-skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel' # tooth LBA
-sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb' # tooth LBA
+skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
+sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+patch = '3C196'
+#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
+#sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
+#patch = '3C295'
+
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 ###################################################
@@ -74,7 +77,7 @@ s.run(check=True)
 logging.info('Calibrating with skymodel: '+sourcedb+'...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb, log=ms+'_cal.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_cal.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ##################################################
@@ -82,7 +85,7 @@ s.run(check=True)
 # CIRC_DATA -> CORRECTED_DATA
 logging.info('Correct and subtract...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corsub.parset msin='+ms+' cor.parmdb='+ms+'/instrument sub.applycal.parmdb='+ms+'/instrument sub.sourcedb='+sourcedb, log=ms+'_corsub.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-corsub.parset msin='+ms+' cor.parmdb='+ms+'/instrument sub.applycal.parmdb='+ms+'/instrument sub.sourcedb='+sourcedb+' sub.sources='+patch, log=ms+'_corsub.log', cmd_type='NDPPP')
 s.run(check=True)
 
 for i, ms in enumerate(mss):
@@ -104,10 +107,10 @@ logging.info('Running LoSoTo...')
 check_rm('plots')
 os.makedirs('plots')
 check_rm('cal.h5')
-s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python')
+s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python', processors='max')
 s.run(check=True)
-#s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
+s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto-ph.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
