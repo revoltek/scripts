@@ -72,7 +72,7 @@ solall = np.zeros( (Ntime,Nant), dtype=np.float64)
 for t, ts in enumerate(tms.iter('TIME')):
     logging.info('Working on time: '+str(t))
     time = ts.getcell('TIME',0) # shape: ant, chan, pol
-    data = ts.getcol('SMOOTHED_DATA')[:,0,:] # shape: ant, chan, pol
+    data = ts.getcol('DATA')[:,0,:] # shape: ant, chan, pol
     data_m = ts.getcol('MODEL_DATA')[:,0,:]
     ants1 = ts.getcol('ANTENNA1')
     ants2 = ts.getcol('ANTENNA2')
@@ -102,19 +102,21 @@ for t, ts in enumerate(tms.iter('TIME')):
         
         #logging.info('Working on antenna: '+str(antS))
 
+        # double closure
         # ant_reference - ant_closure + ant_closure - ant_solve
         ph_ref = getPh(data_ph, antIdx, antRef)
         ph_sol = getPh(data_ph, antIdx, antS)
         sols = norm( ph_ref - ph_sol )
         sols[antRef] = norm( [ph_ref[antS]] )[0] # BL with refant
         sols[antS] = 0 # autocorrelation
-
         # calculate weights
         we_ref = getWe(data_we, antIdx, antRef)
         we_sol = getWe(data_we, antIdx, antS)
         sols_w = (we_ref + we_sol ) /2.
         sols_w[antRef] = we_ref[antS] # BL with refant
         sols_w[antS] = 0 # autocorrelation
+
+        # triple closure
 
         # find the mean
         solall[t,s] = angMean(sols, sols_w)
@@ -131,7 +133,7 @@ for t, ts in enumerate(tms.iter('TIME')):
             logging.debug('Plotting %d_%02i.png' % (time, antS))
             plt.savefig('%d_%02i.png' % (time, antS), bbox_inches='tight')
 
-    #if t == 100: break
+    if t == 500: break
 
 if plotall:
     time = sorted(set(tms.getcol('TIME'))) # shape: ant, chan, pol
@@ -139,8 +141,8 @@ if plotall:
         fig.clf()
         ax = fig.add_subplot(111)
         ax.set_title("Antenna "+ant)
-        #ax.plot( time[0:101], solall[0:101,a], 'ro')
-        ax.plot( time, solall[:,a], 'ro')
+        ax.plot( time[0:501], solall[0:501,a], 'ro')
+        #ax.plot( time, solall[:,a], 'ro')
         ax.set_ylim(ymin=-np.pi, ymax=np.pi)
         logging.debug('Plotting '+ant+'.png')
         plt.savefig(ant+'.png', bbox_inches='tight')

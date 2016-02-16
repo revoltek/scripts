@@ -60,7 +60,7 @@ mss = sorted(glob.glob('*.MS'))
 #    check_rm(ms+'/instrument')
 #    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
-logging.info('Averaging in time...')
+logging.info('Averaging in time/freq...')
 for ms in mss:
     msout = ms.replace('.MS','-avg.MS')
     s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=5', log=ms+'-init_avg.log', cmd_type='NDPPP')
