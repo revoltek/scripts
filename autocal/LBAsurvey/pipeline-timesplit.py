@@ -5,11 +5,11 @@
 # Output:
 # set of group*_TC*.MS file with DATA = calibrator corrected data, beam corrupted
 
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit'
-ngroups = 12 # number of groups (totalSB/SBperFREQgroup) ~ 20 SB/group
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
+ngroups = 1 # number of groups (totalSB/SBperFREQgroup) ~ 20 SB/group
 initc = 12 # initial tc num (useful for multiple observation of same target) - tooth10==12
-fakeskymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.fakemodel.skymodel'
-globaldb = 'globaldb-blavg'
+fakeskymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.fakemodel.skymodel'
+globaldb = 'globaldb'
 
 ##################################################################################################
 
@@ -37,24 +37,29 @@ for ms in mss:
 s.run(check=False)
 
 ##################################################
-# Copy cal solution
+# Beam correction DATA -> CORRECTED_DATA (beam corrected)
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+###################################################################################################
+# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
+logging.info('Convert to circular...')
+for ms in mss:
+    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
+
 for ms in mss:
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument')
     logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
     os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
-# Apply cal sol - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam corrected, linear)
+# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, circ)
 logging.info('Apply solutions...')
 for ms in mss:
-    s.add('calibrate-stand-alone --replace-sourcedb '+ms+' '+parset_dir+'/bbs_correct.parset '+fakeskymodel, log=ms+'_cor.log', cmd_type='BBS')
-s.run(check=True)
-
-###################################################################################################
-# To circular - SB.MS:CALCOR_DATA -> SB.MS:CALCOR_DATA_CIRC (calibrator corrected data, beam corrected, circular)
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CALCOR_DATA -o '+ms+':CALCOR_DATA_CIRC', log=ms+'_circ2lin.log', cmd_type='python')
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ###################################################################################################
@@ -68,7 +73,7 @@ for i, msg in enumerate(np.array_split(mss, ngroups)):
     check_rm(groupname)
     os.system('mkdir '+groupname)
 
-    # prepare concatenated time chunks (TC) - SB.MS:CALCOR_DATA_CIRC -> group#.MS:DATA (cal corr data, beam corrected, circular)
+    # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
     s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
                 log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
 s.run(check=True)

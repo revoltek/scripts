@@ -1,5 +1,5 @@
 msin = 
-msin.datacolumn = CALCOR_DATA_CIRC
+msin.datacolumn = CORRECTED_DATA
 msout = 
 msout.datacolumn = DATA
 

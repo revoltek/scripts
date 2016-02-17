@@ -22,8 +22,8 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('*MS'))
 
-check_rm('globaldb*')
-os.system('mkdir globaldb')
+#check_rm('globaldb*')
+#os.system('mkdir globaldb')
 os.system('mkdir globaldb-clockonly')
 
 nchan = find_nchan(mss[0])
@@ -58,32 +58,32 @@ logging.debug('Channel in the MS: '+str(nchan)+'.')
 #    s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 #s.run(check=True)
 #
-#############################################
-## Prepare output parmdb
-#logging.info('Creating fake parmdb...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
-#s.run(check=True)
+############################################
+# Prepare output parmdb
+logging.info('Creating fake parmdb...')
+for ms in mss:
+    s.add('calibrate-stand-alone -f --parmdb-name instrument_fake '+ms+' '+parset_dir+'/bbs-fakeparmdb.parset '+skymodel, log=ms+'_fakeparmdb.log', cmd_type='BBS')
+s.run(check=True)
 
 ###############################################
 # Initial calibrator
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-logging.debug('Iterating on '+str(nchan)+' channels.')
-for chan in xrange(nchan):
-    logging.debug('Channel: '+str(chan))
-    for ms in mss:
-        check_rm(ms+'/instrument-'+str(chan))
-        s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' msin.startchan='+str(chan)+' cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
-    s.run(check=True)
+#logging.debug('Iterating on '+str(nchan)+' channels.')
+#for chan in xrange(nchan):
+#    logging.debug('Channel: '+str(chan))
+#    for ms in mss:
+#        check_rm(ms+'/instrument-'+str(chan))
+#        s.add('NDPPP '+parset_dir+'/NDPPP-cal.parset msin='+ms+' msin.startchan='+str(chan)+' cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
+#    s.run(check=True)
 
 for i, ms in enumerate(mss):
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clockonly/')
 
     num = re.findall(r'\d+', ms)[-1]
-    for chan in xrange(nchan):
-        logging.debug('Copy instrument-'+str(chan)+' of '+ms+' into globaldb/instrument-'+str(num)+'-'+str(chan))
-        os.system('cp -r '+ms+'/instrument-'+str(chan)+' globaldb/instrument-'+str(num)+'-'+str(chan))
+#    for chan in xrange(nchan):
+#        logging.debug('Copy instrument-'+str(chan)+' of '+ms+' into globaldb/instrument-'+str(num)+'-'+str(chan))
+#        os.system('cp -r '+ms+'/instrument-'+str(chan)+' globaldb/instrument-'+str(num)+'-'+str(chan))
     
     # We export clock, need to create a new parmdb
     logging.debug('Copy instrument_fake of '+ms+' into globaldb-clockonly/instrument-'+str(num))
@@ -93,17 +93,17 @@ for i, ms in enumerate(mss):
 ##############################################
 # Clock/TEC check and flagging
 logging.info('Running LoSoTo...')
-check_rm('plots')
-os.makedirs('plots')
-check_rm('cal.h5')
-s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal.h5 '+parset_dir+'/losoto-ph.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
+#check_rm('plots')
+#os.makedirs('plots')
+#check_rm('cal.h5')
+#s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('losoto -v cal.h5 '+parset_dir+'/losoto-ph.parset', log='losoto-ph.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
 s.add('H5parm_exporter.py -v cal.h5 globaldb-clockonly', log='losoto.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 
