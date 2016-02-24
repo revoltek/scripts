@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA, flagA2, flagA3, flagextend, merge]
+LoSoTo.Steps = [plotA1, plotA2, plotA3, flag, flagextend, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -10,44 +10,48 @@ LoSoTo.Ncpu = 10
 
 #LoSoTo.Steps.reweight.Operation = REWEIGHT
 #LoSoTo.Steps.reweight.WeightVal = 0.
-#LoSoTo.Steps.reweight.ant = [RS310LBA, RS409LBA] # bad antennas
+#LoSoTo.Steps.reweight.ant = [RS310LBA, RS409LBA]
 #LoSoTo.Steps.reweight.FlagBad = False
 
-# initial clip outliers
-LoSoTo.Steps.clip.Operation = CLIP
-LoSoTo.Steps.clip.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.clip.ClipLevel = 5 # factor above/below median at which to clip
-LoSoTo.Steps.clip.Axes = [time] # axis along which to calculate the median
+# plot initials
+LoSoTo.Steps.plotA1.Operation = PLOT
+LoSoTo.Steps.plotA1.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotA1.Axes = time
+LoSoTo.Steps.plotA1.TableAxis = ant
+LoSoTo.Steps.plotA1.ColorAxis = pol
+LoSoTo.Steps.plotA1.PlotFlag = True
+LoSoTo.Steps.plotA1.Prefix = plots/ampPF_
+#LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
 
-# flag on time
-LoSoTo.Steps.flagA.Operation = FLAG
-LoSoTo.Steps.flagA.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flagA.Axes = time # axis to flag (e.g. 'time')
-LoSoTo.Steps.flagA.MaxCycles = 3 # number of flagging cycles
-LoSoTo.Steps.flagA.MaxRms = 5 # rms to clip outliers
-LoSoTo.Steps.flagA.Order = 1  # order of the function fitted during trend removal (amp: 1, ph: 2)
-LoSoTo.Steps.flagA.Replce = False # replace bad values with the interpolated ones, instead of flagging them
-LoSoTo.Steps.flagA.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
+LoSoTo.Steps.plotA2.Operation = PLOT
+LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotA2.Axes = freq
+LoSoTo.Steps.plotA2.TableAxis = ant
+LoSoTo.Steps.plotA2.ColorAxis = pol
+LoSoTo.Steps.plotA2.PlotFlag = True
+LoSoTo.Steps.plotA2.Prefix = plots/ampPF_
+#LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3]
 
-# flag on frequency
-LoSoTo.Steps.flagA2.Operation = FLAG
-LoSoTo.Steps.flagA2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flagA2.Axes = freq # axis to flag (e.g. 'time')
-LoSoTo.Steps.flagA2.MaxCycles = 3 # number of flagging cycles
-LoSoTo.Steps.flagA2.MaxRms = 6 # rms to clip outliers
-LoSoTo.Steps.flagA2.Order = 4  # order of the function fitted during trend removal (amp: 1, ph: 2)
-LoSoTo.Steps.flagA2.Replce = False # replace bad values with the interpolated ones, instead of flagging them
-LoSoTo.Steps.flagA2.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
+LoSoTo.Steps.plotA3.Operation = PLOT
+LoSoTo.Steps.plotA3.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA3.Axes = [time,freq]
+LoSoTo.Steps.plotA3.TableAxis = ant
+LoSoTo.Steps.plotA3.PlotFlag = True
+LoSoTo.Steps.plotA3.Prefix = plots/ampPF_
+#LoSoTo.Steps.plotA3.MinMax = [1e-4,3e-3]
 
-# flag on both
-LoSoTo.Steps.flagA3.Operation = FLAG
-LoSoTo.Steps.flagA3.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flagA3.Axes = [freq,time] # axis to flag (e.g. 'time')
-LoSoTo.Steps.flagA3.MaxCycles = 3 # number of flagging cycles
-LoSoTo.Steps.flagA3.MaxRms = 5 # rms to clip outliers
-LoSoTo.Steps.flagA3.Order = [4,0]  # order of the function fitted during trend removal (amp: 1, ph: 2)
-LoSoTo.Steps.flagA3.Replce = False # replace bad values with the interpolated ones, instead of flagging them
-LoSoTo.Steps.flagA3.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
+# flag
+LoSoTo.Steps.flag.Operation = FLAG
+LoSoTo.Steps.flag.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flag.Axes = [freq,time]
+LoSoTo.Steps.flag.MaxCycles = 2
+LoSoTo.Steps.flag.MaxRms = 5
+LoSoTo.Steps.flag.Order = [50,100] 
+LoSoTo.Steps.flag.Replce = False
+LoSoTo.Steps.flag.PreFlagZeros = False
+LoSoTo.Steps.flag.Smooth = True
 
 # extend on very bad time/freq
 LoSoTo.Steps.flagextend.Operation = FLAGEXTEND
