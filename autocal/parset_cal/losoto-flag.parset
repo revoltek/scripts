@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [clip, flagA, flagA2, flagextend, merge]
+LoSoTo.Steps = [clip, flagA, flagA2, flagA3, flagextend, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -22,30 +22,32 @@ LoSoTo.Steps.clip.Axes = [time] # axis along which to calculate the median
 # flag on time
 LoSoTo.Steps.flagA.Operation = FLAG
 LoSoTo.Steps.flagA.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flagA.Axis = time # axis to flag (e.g. 'time')
+LoSoTo.Steps.flagA.Axes = time # axis to flag (e.g. 'time')
 LoSoTo.Steps.flagA.MaxCycles = 3 # number of flagging cycles
 LoSoTo.Steps.flagA.MaxRms = 5 # rms to clip outliers
-LoSoTo.Steps.flagA.MaxRmsNoise = 5 # rms to clip outliers
-LoSoTo.Steps.flagA.Window = 500 # window to remove trends (in timestamps)
 LoSoTo.Steps.flagA.Order = 1  # order of the function fitted during trend removal (amp: 1, ph: 2)
-LoSoTo.Steps.flagA.MaxGap = 300 # maximum gaps allowed before fitting 2 trends (in timestamps)
-LoSoTo.Steps.flagA.Reaplce = False # replace bad values with the interpolated ones, instead of flagging them
+LoSoTo.Steps.flagA.Replce = False # replace bad values with the interpolated ones, instead of flagging them
 LoSoTo.Steps.flagA.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
-#LoSoTo.Steps.flagA.freq = [30076599.12109375,40037536.62109375,50193786.62109375,60154724.12109375]
 
 # flag on frequency
 LoSoTo.Steps.flagA2.Operation = FLAG
 LoSoTo.Steps.flagA2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flagA2.Axis = freq # axis to flag (e.g. 'time')
+LoSoTo.Steps.flagA2.Axes = freq # axis to flag (e.g. 'time')
 LoSoTo.Steps.flagA2.MaxCycles = 3 # number of flagging cycles
 LoSoTo.Steps.flagA2.MaxRms = 6 # rms to clip outliers
-LoSoTo.Steps.flagA2.MaxRmsNoise = 6 # rms to clip outliers
-LoSoTo.Steps.flagA2.Window = 3e6 # window to remove trends (in timestamps)
-LoSoTo.Steps.flagA2.Order = 1  # order of the function fitted during trend removal (amp: 1, ph: 2)
-LoSoTo.Steps.flagA2.MaxGap = 1.5e6 # maximum gaps allowed before fitting 2 trends (in timestamps)
-LoSoTo.Steps.flagA2.Reaplce = False # replace bad values with the interpolated ones, instead of flagging them
+LoSoTo.Steps.flagA2.Order = 4  # order of the function fitted during trend removal (amp: 1, ph: 2)
+LoSoTo.Steps.flagA2.Replce = False # replace bad values with the interpolated ones, instead of flagging them
 LoSoTo.Steps.flagA2.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
-#LoSoTo.Steps.flagA2.time = [4873803088.3722754,4873829660.2580481,4873804545.3948412,4873829169.5769091]
+
+# flag on both
+LoSoTo.Steps.flagA3.Operation = FLAG
+LoSoTo.Steps.flagA3.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flagA3.Axes = [freq,time] # axis to flag (e.g. 'time')
+LoSoTo.Steps.flagA3.MaxCycles = 3 # number of flagging cycles
+LoSoTo.Steps.flagA3.MaxRms = 5 # rms to clip outliers
+LoSoTo.Steps.flagA3.Order = [4,0]  # order of the function fitted during trend removal (amp: 1, ph: 2)
+LoSoTo.Steps.flagA3.Replce = False # replace bad values with the interpolated ones, instead of flagging them
+LoSoTo.Steps.flagA3.PreFlagZeros = False # flag zeros/ones (bad solutions in BBS). They should be flagged at import time
 
 # extend on very bad time/freq
 LoSoTo.Steps.flagextend.Operation = FLAGEXTEND
