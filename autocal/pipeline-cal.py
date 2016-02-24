@@ -47,6 +47,7 @@ if nchan > 4:
         msout = ms.replace('.MS','-avg.MS')
         s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
+    nchan = nchan / 4
     mss = sorted(glob.glob('*-avg.MS'))
 
 ###############################################
@@ -111,6 +112,7 @@ os.makedirs('plots')
 check_rm('cal.h5')
 s.add('H5parm_importer.py -v cal.h5 globaldb', log='losoto.log', cmd_type='python', processors='max')
 s.run(check=True)
+os.system('cp -r cal.h5 cal.h5-bkp')
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto-flag.parset', log='losoto-flag.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 s.add('losoto -v cal.h5 '+parset_dir+'/losoto-amp.parset', log='losoto-amp.log', log_append=True, cmd_type='python', processors='max')
