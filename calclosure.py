@@ -8,8 +8,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 ms = '3C295_SB193.MS' 
 antRef = 0
-plot = False
-plotall = True
+plotph = False
+plotamp = True
+plotall = False
 mode = 'triple'
 
 def getPh(phase, antIdx, ant):
@@ -22,12 +23,26 @@ def getPh(phase, antIdx, ant):
     phase[antIdx[1] == ant] *= -1 # correct back the values
     return p
 
+def getAmp(amp, antIdx, ant, ant2 = None):
+    """
+    Get the amps relative to an antenna towards all the other antennas "Lambda_12"
+    if ant2 != None: then return only that BL
+    """
+    if ant2 == None:
+        return amp[(antIdx[0] == ant) | (antIdx[1] == ant)]
+    else:
+        return amp[((antIdx[0] == ant) & (antIdx[1] == ant2)) | ((antIdx[0] == ant2) & (antIdx[1] == ant))]
 
-def getWe(weight, antIdx, ant):
+
+def getWe(weight, antIdx, ant, ant2 = None):
     """
     Get the weight relative to an antenna
+    if ant2 != None: then return only that BL
     """
-    return weight[(antIdx[0] == ant) | (antIdx[1] == ant)]
+    if ant2 == None:
+        return weight[(antIdx[0] == ant) | (antIdx[1] == ant)]
+    else:
+        return amp[((antIdx[0] == ant) & (antIdx[1] == ant2)) | ((antIdx[0] == ant2) & (antIdx[1] == ant))]
 
 
 def norm(phase):
@@ -69,7 +84,7 @@ tms = pt.table(ms, readonly=True, ack=False)
 Ntime = len(set(tms.getcol('TIME')))
 
 # array with solutions
-solall = np.zeros( (Ntime,Nant), dtype=np.float64)
+solall = {'amp':np.zeros( (Ntime,Nant), dtype=np.float64), 'phase':np.zeros( (Ntime,Nant), dtype=np.float64)}
 solall_t = np.zeros( (Ntime,Nant), dtype=np.float64)
 
 for t, ts in enumerate(tms.iter('TIME')):
@@ -106,6 +121,7 @@ for t, ts in enumerate(tms.iter('TIME')):
         
         #logging.info('Working on antenna: '+str(antSol))
 
+        # PHASES
         if mode == 'double':
             # double closure
             ph_ref = getPh(data_ph, antIdx, antRef)
@@ -117,7 +133,7 @@ for t, ts in enumerate(tms.iter('TIME')):
             we_ref = getWe(data_we, antIdx, antRef)
             we_sol = getWe(data_we, antIdx, antSol)
             sols_w = (we_ref + we_sol ) /2.
-            solall[t,s] = angMean(sols, sols_w)
+            solall['phase'][t,s] = angMean(sols, sols_w)
 
             # if antSol = ant1: p_rs + p_ss = p_rs (single, remove)
             sols[antSol] = 0
@@ -144,14 +160,9 @@ for t, ts in enumerate(tms.iter('TIME')):
                 we_tri = getWe(data_we, antIdx, antRef)
                 sols_w.append( (we_ref[at] + we_sol + we_tri ) /3. )
 
-        #print sols, sols_w
-        #sys.exit(1)
+        solall['phase'][t,s] = angMean( np.array(sols).flatten(), np.array(sols_w).flatten() )
 
-        solall[t,s] = angMean( np.array(sols).flatten(), np.array(sols_w).flatten() )
-
-        #logging.debug("Mean: "+str(solall[t,s]))
-
-        if plot: 
+        if plotph: 
             fig.clf()
             figgrid, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
             if mode == 'double':
@@ -160,11 +171,42 @@ for t, ts in enumerate(tms.iter('TIME')):
             elif mode == 'triple':
                 ax.plot(xrange(len(sols)), sols, 'yo')
             ax.set_title("Antenna "+antNames[antSol])
-            ax.plot([0,36],[solall[t,s],solall[t,s]], 'k-')
+            ax.plot([0,36],[solall['phase'][t,s],solall['phase'][t,s]], 'k-')
             ax.set_ylim(ymin=-np.pi, ymax=np.pi)
             ax.set_xlim(xmin=-1, xmax=36)
-            logging.debug('Plotting %d_%02i.png' % (time, antSol))
-            plt.savefig('%d_%02i.png' % (time, antSol), bbox_inches='tight')
+            logging.debug('Plotting ph_%d_%02i.png' % (time, antSol))
+            plt.savefig('ph_%d_%02i.png' % (time, antSol), bbox_inches='tight')
+ 
+        # AMPLITUDES
+        # a1S*aS3/a13 = e1 eS eS e2 / e1 e2 = e2**2
+        amp_sol = getAmp(data_amp, antIdx, antSol)
+        we_sol = getWe(data_we, antIdx, antSol)
+        sols = []
+        sols_w = []
+        for ant1 in ants:
+            # all problematic cases call autocorrelations -> all flagged 
+            amp_1 = getAmp(data_amp, antIdx, ant1)
+            we_1 = getWe(data_we, antIdx, ant1)
+            amp_1S = getAmp(data_amp, antIdx, ant1, ant2=antSol)
+            we_1S = getWe(data_we, antIdx, ant1, ant2=antSol)
+            sols.append( np.sqrt(amp_1S * amp_sol / amp_1) )
+            sols_w.append( (we_1S + we_sol + we_1) /3.)
+
+        solall['amp'][t,s] = np.avg( np.array(sols).flatten(), np.array(sols_w).flatten() )
+        #print sols, sols_w
+        #sys.exit(1)
+
+        #logging.debug("Mean: "+str(solall['phase'][t,s]))
+
+        if plotamp: 
+           fig.clf()
+            figgrid, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
+            ax.plot(xrange(len(sols)), sols, 'ko')
+            ax.set_title("Antenna "+antNames[antSol])
+            ax.plot([0,36],[solall['amp'][t,s],solall['amp'][t,s]], 'k-')
+            ax.set_xlim(xmin=-1, xmax=36)
+            logging.debug('Plotting amp_%d_%02i.png' % (time, antSol))
+            plt.savefig('amp_%d_%02i.png' % (time, antSol), bbox_inches='tight')
          
     if t == 500: break
 
@@ -175,8 +217,8 @@ if plotall:
         figgrid, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
         #ax = fig.add_subplot(111)
         ax.set_title("Antenna "+ant)
-        ax.plot( solall[0:501,a], 'ro', markersize=3)
-        #ax.plot( time, solall[:,a], 'ro')
+        ax.plot( solall['phase'][0:501,a], 'ro', markersize=3)
+        #ax.plot( time, solall['phase'][:,a], 'ro')
         ax.set_ylim(ymin=-np.pi, ymax=np.pi)
         ax.set_xlim(xmin=0, xmax=550)
         logging.debug('Plotting '+ant+'.png')
