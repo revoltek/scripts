@@ -90,6 +90,7 @@ for t, ts in enumerate(tms.iter('TIME')):
 
     # single pol
     data_ph = norm( np.angle(data_m[:,0]) - np.angle(data[:,0]) )
+    data_amp = np.abs(data_m[:,0])
     data_we = weight[:,0]
     data_we[flags[:,0] == True] = 0 # weight flagged data 0
     
