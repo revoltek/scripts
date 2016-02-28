@@ -45,7 +45,7 @@ def setupiofiles(inms, outms, incolumn, outcolumn):
   return outms
 
 def mslin2circ(incol, outcol, outms, skipmetadata):
-  tc = pt.table(outms,readonly=False)
+  tc = pt.table(outms, readonly=False, ack=False)
   dataXY = tc.getcol(incol)
   I=numpy.complex(0.0,1.0)
   dataRL = 0.5* numpy.transpose(numpy.array([
@@ -67,16 +67,16 @@ def mslin2circ(incol, outcol, outms, skipmetadata):
 
   #Change metadata information to be circular feeds
   if not skipmetadata:
-    feed = pt.table(tc.getkeyword('FEED'),readonly=False)
+    feed = pt.table(tc.getkeyword('FEED'),readonly=False,ack=False)
     for tpart in feed.iter('ANTENNA_ID'):
         tpart.putcell('POLARIZATION_TYPE',0,['R','L'])
 
-    polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False)
+    polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False,ack=False)
     polariz.putcell('CORR_TYPE',0,[5,6,7,8])
   tc.close()
 
 def mscirc2lin(incol, outcol, outms, skipmetadata):
-  tc = pt.table(outms,readonly=False)
+  tc = pt.table(outms,readonly=False, ack=False)
   dataRL = tc.getcol(incol)
   I=numpy.complex(0.0,1.0)
   dataXY = 0.5* numpy.transpose(numpy.array([
@@ -98,11 +98,11 @@ def mscirc2lin(incol, outcol, outms, skipmetadata):
 
   if not skipmetadata:
     #Change metadata information to be circular feeds
-    feed = pt.table(tc.getkeyword('FEED'),readonly=False)
+    feed = pt.table(tc.getkeyword('FEED'),readonly=False, ack=False)
     for tpart in feed.iter('ANTENNA_ID'):
         tpart.putcell('POLARIZATION_TYPE',0,['X','Y'])
 
-    polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False)
+    polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False, ack=False)
     polariz.putcell('CORR_TYPE',0,[9,10,11,12])
   tc.close()
 
