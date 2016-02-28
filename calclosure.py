@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.DEBUG)
 ms = '3C295_SB193.MS' 
 antRef = 0
 plotph = False
-plotamp = True
-plotall = False
+plotamp = False
+plotall = True
 mode = 'triple'
 
 def getPh(phase, antIdx, ant):
@@ -42,7 +42,7 @@ def getWe(weight, antIdx, ant, ant2 = None):
     if ant2 == None:
         return weight[(antIdx[0] == ant) | (antIdx[1] == ant)]
     else:
-        return amp[((antIdx[0] == ant) & (antIdx[1] == ant2)) | ((antIdx[0] == ant2) & (antIdx[1] == ant))]
+        return weight[((antIdx[0] == ant) & (antIdx[1] == ant2)) | ((antIdx[0] == ant2) & (antIdx[1] == ant))]
 
 
 def norm(phase):
@@ -63,7 +63,7 @@ def angMean(angs, weight):
     return np.angle( np.sum( weight * np.exp(1j*np.array(angs)) ))# / ( len(angs) * sum(weight) ) )
 
 
-if plot or plotall:
+if plotph or plotamp or plotall:
     import matplotlib as mpl
     mpl.rc('font',size =8 )
     mpl.rc('figure.subplot',left=0.05, bottom=0.05, right=0.95, top=0.95,wspace=0.22, hspace=0.22 )
@@ -96,75 +96,75 @@ for t, ts in enumerate(tms.iter('TIME')):
     ants2 = ts.getcol('ANTENNA2')
     ants = np.array(list(set(ants1)))
     antIdx = np.array([ants1,ants2])
-    flags = ts.getcol('FLAG')[:,0,:]
     weight = ts.getcol('WEIGHT_SPECTRUM')[:,0,:]
+    flags = ts.getcol('FLAG')[:,0,:]
+    weight[flags == True] = 0 # weight flagged data 0
+    data[ weight == 0 ] = 1. # remove nans
 
     # scalar
     #data_amp = np.absolute(data[:,0])+np.absolute(data[:,3])
     #data_ph = norm( np.angle(data[:,0])+np.angle(data[:,3]) )
     #data_ph_m = norm( np.angle(data_m[:,0])+np.angle(data_m[:,3]) )
-    #flags = np.logical_or(flags[:,0],flags[:,3])
-    #weight = ( weight[:,0] + weight[:,3] )/2.
+    #weight = ( weight[:,0] + weight[:,3] )/2. # note that flags are not propagated in pol
 
     # single pol
     data_ph = norm( np.angle(data_m[:,0]) - np.angle(data[:,0]) )
-    data_amp = np.abs(data_m[:,0])
+    data_amp = np.abs( data_m[:,0] ) / np.abs ( data[:,0]  )
     data_we = weight[:,0]
-    data_we[flags[:,0] == True] = 0 # weight flagged data 0
     
     # TODO: if ref ant is flagged?
 
     # cycle on antenna to solve for
     for s, antSol in enumerate(ants):
 
-        if antSol == antRef: continue # always gives 0
-        
         #logging.info('Working on antenna: '+str(antSol))
 
-        # PHASES
-        if mode == 'double':
-            # double closure
-            ph_ref = getPh(data_ph, antIdx, antRef)
-            ph_sol = getPh(data_ph, antIdx, antSol)
-            # (ph_ref - ph_1) - (ph_sol - ph_1)
-            sols = norm( ph_ref - ph_sol )
+        if antSol != antRef: # leave 0 in the solutions
 
-            # calculate weights
-            we_ref = getWe(data_we, antIdx, antRef)
-            we_sol = getWe(data_we, antIdx, antSol)
-            sols_w = (we_ref + we_sol ) /2.
-            solall['phase'][t,s] = angMean(sols, sols_w)
-
-            # if antSol = ant1: p_rs + p_ss = p_rs (single, remove)
-            sols[antSol] = 0
-            sols_w[antSol] = 0
-            # if antRef = ant1: p_rr + p_rs = p_rs (single, keep)
-            sols_w[antRef] = we_ref[antSol] # autocorr gives 0 weight, no /2
-
-        elif mode == 'triple':
-            ph_ref = getPh(data_ph, antIdx, antRef)
-            ph_sol = getPh(data_ph, antIdx, antSol)
-            we_ref = getWe(data_we, antIdx, antRef)
-            we_sol = getWe(data_we, antIdx, antSol)
-            # triple closure
-            sols = []
-            sols_w = []
-            for at, ant2 in enumerate(ants):
-                if ant2 == antRef: continue # p_r1 + p_1r + p_rs = p_rs (single)
-                if ant2 == antSol: continue # p_r1 + p_1s + p_ss = p_r1 + p_1s (double with 1)
-                # if ant1 == ant2: fall back in double -> p_r1 + p_11 + p_1s = p_r1 + p_1s (double with 1==2, keep)
-                
-                # (ph_ref - ph_2) + (ph_2 - ph_1) - (ph_sol - ph_1)
-                ph_tri = getPh(data_ph, antIdx, ant2)
-                sols.append( norm( ph_ref[at] + ph_tri - ph_sol ) )
-                we_tri = getWe(data_we, antIdx, antRef)
-                sols_w.append( (we_ref[at] + we_sol + we_tri ) /3. )
-
-        solall['phase'][t,s] = angMean( np.array(sols).flatten(), np.array(sols_w).flatten() )
+            # PHASES
+            if mode == 'double':
+                # double closure
+                ph_ref = getPh(data_ph, antIdx, antRef)
+                ph_sol = getPh(data_ph, antIdx, antSol)
+                # (ph_ref - ph_1) - (ph_sol - ph_1)
+                sols = norm( ph_ref - ph_sol )
+    
+                # calculate weights
+                we_ref = getWe(data_we, antIdx, antRef)
+                we_sol = getWe(data_we, antIdx, antSol)
+                sols_w = (we_ref + we_sol ) /2.
+                solall['phase'][t,s] = angMean(sols, sols_w)
+    
+                # if antSol = ant1: p_rs + p_ss = p_rs (single, remove)
+                sols[antSol] = 0
+                sols_w[antSol] = 0
+                # if antRef = ant1: p_rr + p_rs = p_rs (single, keep)
+                sols_w[antRef] = we_ref[antSol] # autocorr gives 0 weight, no /2
+    
+            elif mode == 'triple':
+                ph_ref = getPh(data_ph, antIdx, antRef)
+                ph_sol = getPh(data_ph, antIdx, antSol)
+                we_ref = getWe(data_we, antIdx, antRef)
+                we_sol = getWe(data_we, antIdx, antSol)
+                # triple closure
+                sols = []
+                sols_w = []
+                for at, ant2 in enumerate(ants):
+                    if ant2 == antRef: continue # p_r1 + p_1r + p_rs = p_rs (single)
+                    if ant2 == antSol: continue # p_r1 + p_1s + p_ss = p_r1 + p_1s (double with 1)
+                    # if ant1 == ant2: fall back in double -> p_r1 + p_11 + p_1s = p_r1 + p_1s (double with 1==2, keep)
+                    
+                    # (ph_ref - ph_2) + (ph_2 - ph_1) - (ph_sol - ph_1)
+                    ph_tri = getPh(data_ph, antIdx, ant2)
+                    sols.append( norm( ph_ref[at] + ph_tri - ph_sol ) )
+                    we_tri = getWe(data_we, antIdx, antRef)
+                    sols_w.append( (we_ref[at] + we_sol + we_tri ) /3. )
+    
+            solall['phase'][t,s] = angMean( np.array(sols).flatten(), np.array(sols_w).flatten() )
 
         if plotph: 
             fig.clf()
-            figgrid, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
+            fig, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
             if mode == 'double':
                 ax.plot(ants[(sols_w != 0)], sols[(sols_w != 0)], 'bo')
                 ax.plot(ants[(sols_w == 0)], sols[(sols_w == 0)], 'ro')
@@ -184,27 +184,29 @@ for t, ts in enumerate(tms.iter('TIME')):
         sols = []
         sols_w = []
         for ant1 in ants:
-            # all problematic cases call autocorrelations -> all flagged 
+            if ant1 == antSol: continue # skip if 1==S
             amp_1 = getAmp(data_amp, antIdx, ant1)
             we_1 = getWe(data_we, antIdx, ant1)
             amp_1S = getAmp(data_amp, antIdx, ant1, ant2=antSol)
             we_1S = getWe(data_we, antIdx, ant1, ant2=antSol)
-            sols.append( np.sqrt(amp_1S * amp_sol / amp_1) )
+            sols.append(1./np.sqrt(amp_1S * amp_sol / amp_1))
             sols_w.append( (we_1S + we_sol + we_1) /3.)
 
-        solall['amp'][t,s] = np.avg( np.array(sols).flatten(), np.array(sols_w).flatten() )
-        #print sols, sols_w
-        #sys.exit(1)
+            # if any antenna of the closure relation is flagged or an autocorrelation, set the weight to 0
+            sols_w[-1][ we_1 == 0 ] = 0
+            sols_w[-1][ we_sol == 0 ] = 0
+            if we_1S == 0: sols_w[-1] = np.zeros_like(sols_w[-1])
 
+        solall['amp'][t,s] = np.average( np.array(sols).flatten(), weights=np.array(sols_w).flatten() )
         #logging.debug("Mean: "+str(solall['phase'][t,s]))
 
         if plotamp: 
-           fig.clf()
-            figgrid, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
-            ax.plot(xrange(len(sols)), sols, 'ko')
+            fig.clf()
+            fig, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
+            for a in xrange(len(sols)):
+                ax.plot(xrange(len(sols[a][(sols_w[a] != 0)])), sols[a][(sols_w[a] != 0)], 'bo')
             ax.set_title("Antenna "+antNames[antSol])
             ax.plot([0,36],[solall['amp'][t,s],solall['amp'][t,s]], 'k-')
-            ax.set_xlim(xmin=-1, xmax=36)
             logging.debug('Plotting amp_%d_%02i.png' % (time, antSol))
             plt.savefig('amp_%d_%02i.png' % (time, antSol), bbox_inches='tight')
          
@@ -214,12 +216,11 @@ if plotall:
     time = sorted(set(tms.getcol('TIME'))) # shape: ant, chan, pol
     for a, ant in enumerate(antNames):
         fig.clf()
-        figgrid, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
-        #ax = fig.add_subplot(111)
+        fig, ax = plt.subplots(1, 1, figsize=(13,10), sharex=True, sharey=True)
         ax.set_title("Antenna "+ant)
-        ax.plot( solall['phase'][0:501,a], 'ro', markersize=3)
-        #ax.plot( time, solall['phase'][:,a], 'ro')
-        ax.set_ylim(ymin=-np.pi, ymax=np.pi)
+        ax.plot( solall['amp'][0:501,a], 'k-', markersize=3 )
+        #ax.plot( solall['phase'][0:501,a], 'ko', markersize=3 )
+        #ax.set_ylim(ymin=-np.pi, ymax=np.pi)
         ax.set_xlim(xmin=0, xmax=550)
         logging.debug('Plotting '+ant+'.png')
         plt.savefig(ant+'.png', bbox_inches='tight')
