@@ -12,8 +12,8 @@
 # last high/low resolution images + masks + empty images (CORRECTED_DATA) are copied in the "self/images" dir
 # h5parm solutions and plots are copied in the "self/solutions" dir
 
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/'
-skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel'
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150.skymodel'
 niter = 2
 
 #######################################################################################
@@ -190,7 +190,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         s.run(check=True)
         make_mask(image_name = imagename+'-image.fits', mask_name = imagename+'.newmask')
         s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-                   params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/1RXSJ0603_LBA/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
+                   params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
         s.run(check=True)
         logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
         s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \

@@ -18,8 +18,8 @@
 ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
          {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
          {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
-skymodel = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
-parset_dir = '/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_peel'
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
 niter = 10
 
 ##########################################################################################
@@ -95,7 +95,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     if dd['extended']: multiscale = [0,3,9,18]
     else: multiscale = []
     logging.info('Cleaning (cycle: '+str(c)+')...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/LBAsurvey/casa_clean_peel.py', \
             params={'msfile':'concat-avg.MS', 'imagename':imagename, 'imsize':imsize, 'niter':niter, 'multiscale':multiscale, 'wproj':wproj}, log='casaclean1-c'+str(c)+'.log')
     s.run(check=True)
 
@@ -113,7 +113,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
         s.run(check=True)
 
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/1RXSJ0603_LBA/casa_clean_peel.py', \
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/LBAsurvey/casa_clean_peel.py', \
             params={'msfile':'concat-avg.MS', 'imagename':imagename+'-masked', 'imsize':imsize, 'niter':int(niter/2.), 'multiscale':multiscale, 'wproj':wproj, 'mask':imagename+'.newmask'}, log='casaclean2-c'+str(c)+'.log')
     s.run(check=True)
 
