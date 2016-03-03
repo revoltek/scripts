@@ -7,7 +7,7 @@
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
 ngroups = 1 # number of groups (totalSB/SBperFREQgroup) ~ 20 SB/group
-initc = 12 # initial tc num (useful for multiple observation of same target) - tooth10==12
+initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 fakeskymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.fakemodel.skymodel'
 globaldb = 'globaldb'
 
@@ -22,45 +22,46 @@ set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
 
-################################################
-# Clear
+#################################################
+## Clear
 logging.info('Cleaning...')
 
 check_rm('*group*')
 mss = sorted(glob.glob('*MS'))
 
-##############################################
-# Initial processing
-logging.info('Fix beam table')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
-
-##################################################
-# Beam correction DATA -> CORRECTED_DATA (beam corrected)
-logging.info('Beam correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-s.run(check=True)
-
-###################################################################################################
-# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
-
-for ms in mss:
-    num = re.findall(r'\d+', ms)[-1]
-    check_rm(ms+'/instrument')
-    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-
-# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, circ)
-logging.info('Apply solutions...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
-s.run(check=True)
+###############################################
+## Initial processing
+#logging.info('Fix beam table')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
+#
+###################################################
+## Beam correction DATA -> CORRECTED_DATA (beam corrected)
+#logging.info('Beam correction...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+#s.run(check=True)
+#
+####################################################################################################
+## To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
+## TODO: move in the selfcal script
+#logging.info('Convert to circular...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
+#
+#for ms in mss:
+#    num = re.findall(r'\d+', ms)[-1]
+#    check_rm(ms+'/instrument')
+#    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+#
+## Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, circ)
+#logging.info('Apply solutions...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 ###################################################################################################
 # split each MS in timechunks of 1 h and create groups
@@ -72,6 +73,14 @@ for i, msg in enumerate(np.array_split(mss, ngroups)):
     groupnames.append(groupname)
     check_rm(groupname)
     os.system('mkdir '+groupname)
+
+    # add missing SB with a fake name not to leave frequency holes
+    num_init = int(re.findall(r'\d+', msg[0])[-1])
+    num_fin = int(re.findall(r'\d+', msg[-1])[-1])
+    ms_name_init = msg[0]
+    msg = []
+    for j in range(num_init, num_fin+1):
+        msg.append(ms_name_init.replace('SB%03i' % num_init, 'SB%03i' % j))
 
     # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
     s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \

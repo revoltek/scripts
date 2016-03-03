@@ -81,7 +81,7 @@ LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = [time]
 LoSoTo.Steps.plotTEC.ColorAxis = ant
 LoSoTo.Steps.plotTEC.Prefix = plots/tec
-LoSoTo.Steps.plotTEC.MinMax = [-0.6,0.6]
+LoSoTo.Steps.plotTEC.MinMax = [-1,1]
 LoSoTo.Steps.plotTEC.PlotFlag = False
 
 LoSoTo.Steps.plotTEC3.Operation = PLOT
@@ -89,7 +89,7 @@ LoSoTo.Steps.plotTEC3.Soltab = [sol000/tec3rd000]
 LoSoTo.Steps.plotTEC3.Axes = [time]
 LoSoTo.Steps.plotTEC3.ColorAxis = ant
 LoSoTo.Steps.plotTEC3.Prefix = plots/tec3rd
-LoSoTo.Steps.plotTEC3.MinMax = [-150,150]
+LoSoTo.Steps.plotTEC3.MinMax = [-300,300]
 LoSoTo.Steps.plotTEC3.PlotFlag = False
 
 # calculate residuals

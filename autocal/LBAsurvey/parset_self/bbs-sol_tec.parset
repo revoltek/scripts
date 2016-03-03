@@ -1,5 +1,5 @@
 Strategy.InputColumn = SMOOTHED_DATA
-Strategy.ChunkSize = 50
+Strategy.ChunkSize = 5
 Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
@@ -12,7 +12,7 @@ Step.solve.Model.Beam.Mode = ARRAY_FACTOR
 Step.solve.Solve.Parms = ["TEC:*"]
 Step.solve.Solve.CellSize.Freq = 0
 Step.solve.Solve.CellSize.Time = 1
-Step.solve.Solve.CellChunkSize = 50
+Step.solve.Solve.CellChunkSize = 5
 Step.solve.Solve.PropagateSolutions = T
 Step.solve.Solve.Options.MaxIter = 300
 Step.solve.Solve.Options.LMFactor       = 1.0

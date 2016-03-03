@@ -273,7 +273,7 @@ class Scheduler():
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
 
         if not os.path.isdir(log_dir):
-            logging.info('Creating log dir '+log_dir+'.')
+            logging.info('Creating log dir "'+log_dir+'".')
             os.makedirs(log_dir)
         self.log_dir = log_dir
 

@@ -13,7 +13,8 @@
 # h5parm solutions and plots are copied in the "self/solutions" dir
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150.skymodel'
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150_field.skymodel'
+sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150_field.skydb'
 niter = 2
 
 #######################################################################################
@@ -29,7 +30,7 @@ set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
 
-def losoto(c, mss, g, parset):
+def losoto(c, mss, g, parset, instrument='instrument'):
     """
     c = cycle
     mss = list of mss
@@ -43,8 +44,10 @@ def losoto(c, mss, g, parset):
     os.makedirs('globaldb')
 
     for num, ms in enumerate(mss):
-        os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
         if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+        for instTab in glob.glob(ms+'/'+instrument):
+            os.system('cp -r '+instTab+' globaldb/'+instTab.split('/')[-1]+'-'+str(num))
+
     h5parm = 'global-c'+str(c)+'.h5'
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
@@ -54,9 +57,10 @@ def losoto(c, mss, g, parset):
     s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
     s.run(check=True)
 
-    for num, ms in enumerate(mss):
-        check_rm(ms+'/instrument')
-        os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+#    for num, ms in enumerate(mss):
+#        check_rm(ms+'/instrument')
+#        for instTab in glob.glob('globaldb/sol000_instrument*'+str(num)):
+#            os.system('mv '+instTab+' '+ms+'/'+instTab.replace('sol000_',''))
     os.system('mv plots self/solutions/g'+g+'/plots-c'+str(c))
     os.system('mv '+h5parm+' self/solutions/g'+g)
 
@@ -71,7 +75,15 @@ for group in sorted(glob.glob('group*'))[::-1]:
     mss = sorted(glob.glob(group+'/group*_TC*[0-9].MS'))
     concat_ms = group+'/concat.MS'
     g = str(re.findall(r'\d+', mss[0])[0])
+    nchan = find_nchan(mss[0])
+    os.makedirs('logs/'+group)
     logging.info('Working on group: '+g+'...')
+
+    # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
+    sourcedb_basename = sourcedb.split('/')[-1]
+    for ms in mss:
+        check_rm(ms+'/'+sourcedb_basename)
+        os.system('cp -r '+sourcedb+' '+ms)
     
     ################################################################################################
     # Clear
@@ -89,10 +101,10 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
     #################################################################################################
     # Create columns
-    logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
-    for ms in mss:
-        s.add('addcol2ms.py -m '+ms+' cc MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
-    s.run(check=True)
+    #logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA, MODEL_DATA and CORRECTED_DATA...')
+    #for ms in mss:
+    #    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CORRECTED_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+    #s.run(check=True)
 
     ####################################################################################################
     # Self-cal cycle
@@ -101,78 +113,106 @@ for group in sorted(glob.glob('group*'))[::-1]:
 
         #################################################################################################
         # Smooth
-        logging.info('BL-based smoothing...')
+        #logging.info('BL-based smoothing...')
+        #for ms in mss:
+        #    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        #s.run(check=True)
+
+        #if c == 0:
+        #    # on first cycle concat (need to be done after smoothing)
+        #    logging.info('Concatenating TCs...')
+        #    check_rm(concat_ms+'*')
+        #    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+
+        # solve+correct TEC - group*_TC.MS:SMOOTH_DATA -> group*_TC.MS:CORRECTED_DATA
+        logging.info('Calibrating TEC...')
         for ms in mss:
-            s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+            #s.add('calibrate-stand-alone -f --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
+            s.add('calibrate-stand-alone --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
+                      log=ms+'_solcor_tec-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
-        if c == 0:
-
-            # on first cycle concat (need to be done after smoothing)
-            logging.info('Concatenating TCs...')
-            check_rm(concat_ms+'*')
-            pt.msutil.msconcat(mss, concat_ms, concatTime=False)
-
-            # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA (beam: ARRAY_FACTOR)
-            logging.info('Calibrating phase...')
+        # calibrate slow (3 min) diag ph for FR
+        chanblock = 16 # number of channel to solve at the same time
+        logging.debug('Calibrating FR - iterating on '+str(nchan/chanblock)+' channel blocks.')
+        # find how many channels per block to put together. If nchan%chanblock != 0, add one to initial runs
+        chansets = [chanblock for ch in xrange(nchan/16)]
+        for i in range(nchan%chanblock): chansets[i] = chanblock + 1
+        logging.debug('Chansets: '+str(chansets))
+        startchan = 0
+        for i, chan in enumerate(chansets):
+            logging.debug('Channel/16: '+str(i))
             for ms in mss:
-                s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
-                      log=ms+'_soltec-c'+str(c)+'.log', cmd_type='BBS')
+                check_rm(ms+'/instrument-ph'+str(i))
+                s.add('NDPPP '+parset_dir+'/NDPPP-sol_ph.parset msin='+ms+' msin.startchan='+str(startchan)+' msin.nchan='+str(chan)+' cal.solint=36 cal.parmdb='+ms+'/instrument-ph'+str(i)+' cal.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'chan'+str(i)+'_solph-c'+str(c)+'.log', cmd_type='NDPPP')
             s.run(check=True)
+            startchan += chan
+        # TODO: add correct
+        # TODO: TAQL to copy CORRECTED_DATA_TMP[chans] back
+        losoto(c, mss, g, parset_dir+'/losoto-fr.parset', 'instrument-ph*')
+        sys.exit(1)
+ 
+        # solve+correct AMP - group*_TC.MS:CORRECTED_DATA -> group*_TC.MS:CORRECTED_DATA
+        # TODO: update to scalar amplitude
+        logging.info('Calibrating fast amp...')
+        for ms in mss:
+           check_rm(ms+'/instrument-amp')
+           s.add('NDPPP '+parset_dir+'/NDPPP-sol_amp.parset msin='+ms+' cal.parmdb='+ms+'/instrument-amp cal.sourcedb='+ms+'/'+sourcedb_basename,\
+                log=ms+'_solamp-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
-            # plots
-            losoto(c, mss, g, parset_dir+'/losoto-plot.parset')
-            # correct phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
-            logging.info('Correcting phase...')
-            for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-                log=ms+'_cortec-c'+str(c)+'.log', cmd_type='BBS')
-            s.run(check=True)
+        # plots
+        losoto(c, mss, g, parset_dir+'/losoto-delph.parset')
 
-        else:
+        for ms in mss:
+           s.add('NDPPP '+parset_dir+'/NDPPP-cor_amp.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp',\
+                log=ms+'_coramp-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
-            # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
-            logging.info('Calibrating phase...')
-            for ms in mss:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-sol_tec-preamp.parset '+skymodel, \
-                      log=ms+'_solpreamp-c'+str(c)+'.log', cmd_type='BBS')
-            s.run(check=True)
+        sys.exit(1)
 
-            # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
-            logging.info('Correcting phase...')
-            for ms in mss:
-                s.add('calibrate-stand-alone --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-cor_tec-preamp.parset '+skymodel, \
-                log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
-            s.run(check=True)
+        # calibrate phase-only (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
+        logging.info('Calibrating phase...')
+        for ms in mss:
+            s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-sol_tec-preamp.parset '+skymodel, \
+                  log=ms+'_solpreamp-c'+str(c)+'.log', cmd_type='BBS')
+        s.run(check=True)
 
-            # Smooth
-            logging.info('Smoothing...')
-            for ms in mss:
-                s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
-            s.run(check=True)
+        # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
+        logging.info('Correcting phase...')
+        for ms in mss:
+            s.add('calibrate-stand-alone --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-cor_tec-preamp.parset '+skymodel, \
+            log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
+        s.run(check=True)
 
-            # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
-            logging.info('Calibrating amplitude...')
-            for ms in mss:
-                s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
-                      log=ms+'_solamp-c'+str(c)+'.log', cmd_type='BBS')
-            s.run(check=True)
+        # Smooth
+        logging.info('Smoothing...')
+        for ms in mss:
+            s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
 
-            # merge parmdbs
-            logging.info('Merging instrument tables...')
-            for ms in mss:
-                merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
+        # calibrate amplitude (only solve) - group*_TC.MS:SMOOTHED_DATA @ MODEL_DATA
+        logging.info('Calibrating amplitude...')
+        for ms in mss:
+            s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
+                  log=ms+'_solamp-c'+str(c)+'.log', cmd_type='BBS')
+        s.run(check=True)
+
+        # merge parmdbs
+        logging.info('Merging instrument tables...')
+        for ms in mss:
+            merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
+
+        ########################################################
+        # LoSoTo Amp rescaling
+        losoto(c, mss, g, parset_dir+'/losoto.parset')
     
-            ########################################################
-            # LoSoTo Amp rescaling
-            losoto(c, mss, g, parset_dir+'/losoto.parset')
-        
-            # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
-            logging.info('Correcting...')
-            for ms in mss:
-                s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
-                      log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
-            s.run(check=True)
+        # correct - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase+amp corrected, beam corrected)
+        logging.info('Correcting...')
+        for ms in mss:
+            s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
+                  log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
+        s.run(check=True)
         
         logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
         s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
@@ -184,7 +224,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
         # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
         logging.info('Cleaning (cycle: '+str(c)+')...')
         imagename = 'img/wide-'+str(c)
-        s.add('wsclean_1.8 -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 5arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 8000 -mgain 0.85 '+concat_ms, \
                 log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
@@ -193,7 +233,7 @@ for group in sorted(glob.glob('group*'))[::-1]:
                    params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
         s.run(check=True)
         logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
-        s.add('wsclean_1.8 -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
+        s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
                 -scale 5arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 8000 -mgain 0.85 -casamask '+imagename+'.newmask '+concat_ms, \
                 log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
