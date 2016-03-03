@@ -63,7 +63,7 @@ mss = sorted(glob.glob('*.MS'))
 logging.info('Averaging in time/freq...')
 for ms in mss:
     msout = ms.replace('.MS','-avg.MS')
-    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=3', log=ms+'-init_avg.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep=4 avg.timestep=2', log=ms+'-init_avg.log', cmd_type='NDPPP')
 s.run(check=True)
 
 mss = sorted(glob.glob('*-avg.MS'))
