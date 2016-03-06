@@ -1,7 +1,0 @@
-Strategy.InputColumn = SMOOTH_DATA
-Strategy.ChunkSize = 50
-Strategy.Steps = [correct]
-
-Step.correct.Operation = CORRECT
-Step.correct.Model.TEC.Enable = T
-Step.correct.Output.Column = CORRECTED_DATA
