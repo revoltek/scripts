@@ -1,7 +1,7 @@
-msin=S110S119.ms
+msin=
 msin.datacolumn = DATA
 msout=.
 
 steps=[aoflagger]
-aoflagger.strategy=/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_timesplit/LBAdefault.rfis
+aoflagger.strategy=/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit/LBAdefault.rfis
 aoflagger.memoryperc=6

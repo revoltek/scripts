@@ -5,5 +5,5 @@ msout = '.'
 
 steps = [aoflagger, count]
 
-aoflagger.strategy=/home/fdg/scripts/autocal/1RXSJ0603_LBA/parset_self/LBAfullpol.rfis
+aoflagger.strategy=/home/fdg/scripts/autocal/LBAsurvey/parset_self/LBAfullpol.rfis
 aoflagger.memoryperc=6
