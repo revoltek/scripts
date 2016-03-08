@@ -1,0 +1,10 @@
+msin = 
+msin.datacolumn =
+msout = 
+msout.datacolumn = 
+msout.writefullresflag = False
+
+steps = [shift, count]
+
+shift.type = phaseshifter
+shift.phasecenter = 

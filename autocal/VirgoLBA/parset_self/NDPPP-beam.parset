@@ -1,0 +1,15 @@
+msin =
+msin.datacolumn = DATA
+msout = .
+msout.datacolumn = CORRECTED_DATA
+
+#steps = [corrg, corrbeam]
+steps = [corrbeam]
+
+corrg.type = applycal
+corrg.parmdb =
+corrg.correction = gain
+
+corrbeam.type = applybeam
+corrbeam.invert = True
+corrbeam.usechannelfreq = False

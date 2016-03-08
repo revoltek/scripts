@@ -1,0 +1,236 @@
+#!/usr/bin/env python
+# apply solution from the calibrator and then run selfcal
+# 1 selfcal
+# 2 subtract field
+# 3 flag
+
+# initial self-cal model
+model = '../normal_clean-group0-iter3.model'
+# globaldb produced by pipeline-init
+globaldb = '../cals/globaldb'
+# fake skymodel with pointing direction
+fakeskymodel = '/home/fdg/scripts/autocal/VirA_LBA/virgo.fakemodel.skymodel'
+
+##############################################################
+
+import sys, os, glob, re
+from lofar import bdsm
+import numpy as np
+import lsmtool
+import pyrap.tables as pt
+from pipeline_lib import *
+
+#################################################
+# Clear
+logging.info('Cleaning...')
+os.system('rm -r img *log concat*MS')
+os.system('mkdir img')
+
+# all MS
+mss = glob.glob('*.MS')
+
+set_logger()
+
+#################################################
+# Copy cal solution
+for ms in sorted(mss):
+    num = re.findall(r'\d+', ms)[-1]
+    if os.path.exists(ms+'/instrument'):
+        os.system('rm -r '+ms+'/instrument')
+    print 'cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument'
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+
+#########################################################################################
+# [PARALLEL] Correct beam - SB.MS:DATA -> SB.MS:DATA_BC (data, beam applied, linear)
+#logging.info('Apply beam...')
+#cmds = []
+#for ms in mss:
+#    append('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parsets_self/bbs-beamcorr.parset /home/fdg/scripts/autocal/VirA_LBA/virgo.fakemodel.skymodel > '+ms+'-beamcorr.log 2>&1')
+#thread_cmd(cmds)
+#logging.warning('Bad runs:')
+#os.system('grep -L "successfully" *-beamcorr.log')
+   
+#########################################################################################
+# [PARALLEL] apply solutions and beam correction - SB.MS:DATA -> SB.MS:CALCOR_DATA (calibrator corrected data, beam applied, circular)
+logging.info('Correcting target MSs...')
+cmds=[]
+for ms in mss:
+    cmds.append('calibrate-stand-alone --replace-sourcedb '+ms+' /home/fdg/scripts/autocal/VirA_LBA/parsets_self/bbs-corbeam.parset '+fakeskymodel+' > '+ms+'-corbeam.log 2>&1')
+#thread_cmd(cmds)
+logging.warning('Bad runs:')
+os.system('grep -L "successfully" *-corbeam.log')
+
+#########################################################################################
+# [PARALLEL] Transform to circular pol - SB.MS:CALCOR_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
+logging.info('Convert to circular...')
+cmds = []
+for ms in mss:
+    cmds.append('/home/fdg/scripts/mslin2circ.py -i '+ms+':CALCOR_DATA -o '+ms+':CIRC_DATA > '+ms+'-circ2lin.log 2>&1')
+#thread_cmd(cmds)
+
+# self-cal cycle
+logging.info('Starting self-cal cycles...')
+for i in xrange(5):
+
+    os.system('rm -r concat*.MS')
+
+    #####################################################################################
+    # ft model (not parallel, problem accessing .model multiple times with casa) - model is unpolarized CIRC == LIN
+    logging.info('Add models...')
+    if i != 0:    
+        model = 'img/normal_clean-iter'+str(i-1)+'.model'
+    for ms in mss:
+        os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_ft.py '+ms+' '+model+' 2 > '+ms+'-ft_'+str(i)+'.log 2>&1')
+
+    #####################################################################################
+    # [PARALLEL] calibrate - SB.MS:CIRC_DATA (no correction)
+    # TODO: calibrated on wide-field subtracted data (now impossible now because field can be subtracted only in LINEAR and calibration to corrupt model is available in CIRCULAR)
+    logging.info('Calibrate...')
+    cmds=[]
+    for ms in mss:
+        cmds.append('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument > '+ms+'-selfcal_'+str(i)+'.log 2>&1')
+    thread_cmd(cmds)
+    logging.warning('Bad runs:')
+    os.system('grep -L "Total NDPPP time" *-selfcal_'+str(i)+'.log')
+
+    #######################################################################################
+    # Solution rescaling
+    logging.info('Running LoSoTo to normalize solutions...')
+    for ms in sorted(mss):
+       h5parm = ms.replace('.MS','.h5')
+       if os.path.exists(h5parm): os.system('rm '+h5parm)
+       os.system('H5parm_importer.py -v '+h5parm+' '+ms)
+       os.system('losoto.py -v '+h5parm+' /home/fdg/scripts/autocal/VirA_LBA/parsets_self/losoto-tgt.parset')
+       os.system('H5parm_exporter.py -v -c '+h5parm+' '+ms)
+       os.system('rm -r '+ms+'/instrument')
+       os.system('mv '+ms+'/sol000_instrument'+' '+ms+'/instrument')
+    
+    ########################################################################################
+    # [PARALLEL] correct - SB.MS:CIRC_DATA -> SB.MS:CIRC_CORRECTED_DATA (selfcal corrected data, beam applied, circular)
+    logging.info('Correct...')
+    cmds=[]
+    for ms in mss:
+        cmds.append('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-selfcor.parset msin='+ms+' cor.parmdb='+ms+'/instrument > '+ms+'-selfcor_'+str(i)+'.log 2>&1')
+    thread_cmd(cmds)
+    logging.warning('Bad runs:')
+    os.system('grep -L "Total NDPPP time" *-selfcor_'+str(i)+'.log')
+
+#######################
+#   QUICK TEST LOOP
+    # avg - SB.MS:CIRC_CORRECTED_DATA -> concat-avg.MS:DATA
+    os.system('rm -r concat-avg.MS')
+    logging.info('Average...')
+    os.system('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS > concat_'+str(i)+'.log 2>&1')
+
+    # clean (make a new model of virgo)
+    logging.info('Clean...')
+    os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_clean.py concat-avg.MS iter'+str(i)+' > clean_'+str(i)+'.log 2>&1')
+
+    continue
+#
+######################
+
+    # [PARALLEL] Transform back to linear pol - SB.MS:CIRC_CORRECTED_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, linear)
+    logging.info('Convert back to linear...')
+    cmds = []
+    for ms in mss:
+        cmds.append('/home/fdg/scripts/mslin2circ.py -r -i '+ms+':CIRC_CORRECTED_DATA -o '+ms+':CORRECTED_DATA > '+ms+'-circ2lin_'+str(i)+'.log 2>&1')
+    thread_cmd(cmds)
+
+    # concat - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, linear)
+    logging.info('Concat...')
+    os.system('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-concat.parset msin="['+','.join(mss)+']" msout=concat.MS > concat_'+str(i)+'.log 2>&1')
+
+##########################
+#    # DEBUG 2 clean (make a new model of virgo)
+#    logging.info('Debug clean 2...')
+#    os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_clean.py concat.MS debug2-iter'+str(i)+' > debug-clean2_'+str(i)+'.log 2>&1')
+#########################
+
+    # TODO: use new AWimager for nterms
+    # create widefield model - concat.MS:DATA -> concat.MS:CORRECTED_DATA (selfcal corrected data, beam applied, linear, virgo subtracted)
+    if i == 0 or i == 4:
+        logging.info('Make widefield model - Subtracting Virgo A...')
+        os.system('awimager ms=concat.MS image=/nonexistant > concat-fake_awimager.log 2>&1') # creates MODEL_DATA and CORRECTED_DATA in the way awimages likes
+        os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_ft.py concat.MS '+model+' 2 > concat-ft.log 2>&1')
+        os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_uvsub.py concat.MS > concat-uvsub.log 2>&1')
+
+        # clean, mask, clean
+        logging.info('Make widefield model - Widefield imaging...')
+        os.system('/home/fdg/scripts/autocal/VirA_LBA/awimager.sh concat.MS widefield-iter'+str(i)+' > concat-awimager1.log 2>&1')
+        os.system('/home/fdg/scripts/autocal/VirA_LBA/make_mask.py -t -m img/widefield-iter'+str(i)+'.mask img/widefield-iter'+str(i)+'.restored.corr > concat-makemask.log 2>&1')
+        os.system('/home/fdg/scripts/autocal/VirA_LBA/awimager.sh concat.MS widefieldM-iter'+str(i)+' img/widefield-iter'+str(i)+'.mask  > concat-awimager2.log 2>&1')
+
+        logging.info('Make widefield model - Creating model...')
+        img = bdsm.process_image('img/widefieldM-iter'+str(i)+'.restored.corr', mean_map='zero', adaptive_rms_box=True, \
+                rms_box_bright=(20, 7), rms_box=(120, 40), atrous_do=False, ini_method='curvature', advanced_opts=True, blank_limit=1e-5)
+        img.export_image(outfile='img/widefieldM-iter'+str(i)+'.BDSMresidual', clobber=True, img_type='gaus_resid')
+        img.export_image(outfile='img/widefieldM-iter'+str(i)+'.BDSMmodel', clobber=True, img_type='gaus_model')
+        img.write_catalog(outfile='widefield.skymodel', catalog_type='gaul', format='bbs', bbs_patches='source', clobber=True)
+
+        logging.info('Make widefield model - Removing possible spurious sources...')
+        # LSM tool remove central part (m87) from source to subtract in case of false detections
+        skymod = lsmtool.load('widefield.skymodel')
+        dist = skymod.getDistance(187.7059304, 12.3911231) # m87 coords
+        skymod.select(dist > 0.16) # keep only sources outside central 1/4 deg
+        skymod.write('widefield.skymodel', clobber=True)
+
+    # beam corrupt - concat.MS:DATA -> concat.MS:DATA_NOBEAM (selfcal corrected data, beam corrupted, linear)
+    logging.info('Corrupt for the beam...')
+    os.system('/home/fdg/scripts/autocal/VirA_LBA/runTAMMOenv.sh NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-beamcorrupt.parset msin=concat.MS > concat-beamcorrupt_'+str(i)+'.log 2>&1')
+
+    # subtract skymodel and correct for beam - concat.MS:DATA_NOBEAM -> concat.MS:CORRECTED_DATA (selfcal corrected data, beam applied, linear, source subtracted)
+    logging.info('Subtracting skymodel and beam correct...')
+    os.system('calibrate-stand-alone --replace-sourcedb concat.MS /home/fdg/scripts/autocal/VirA_LBA/parsets_self/bbs-subfield.parset widefield.skymodel > concat-subeamcorr_'+str(i)+'.log 2>&1')
+
+##################
+#    # DEBUG 3 clean
+#    logging.info('Debug clean 3...')
+#    os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_clean.py concat.MS debug3-iter'+str(i)+' > debug-clean3_'+str(i)+'.log 2>&1')
+##################
+
+    # Flag on the residual
+    if i==0 or i == 4:
+        logging.info('Flagging residuals...')
+        # need to create a new MS because we do a uvsub
+        os.system('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-split.parset msin=concat.MS msout=concat-flag.MS > concat-flagsplit.log 2>&1')
+        os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBAiparsets_self/casa_ft.py concat-flag.MS '+model+' 2 > concat-flagft.log 2>&1')
+        os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_uvsub.py concat-flag.MS > concat-flaguvsub.log 2>&1')
+        os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_flag.py concat-flag.MS > concat-flag.log 2>&1')
+
+        logging.info('Copy flags...')
+        tc = pt.table('concat-flag.MS')
+        flag = tc.getcol('FLAG')
+
+        # copy on the concat.MS
+        logging.debug('Copy flags into concat.MS')
+        tc2 = pt.table('concat.MS', readonly=False)
+        flag2 = tc2.getcol('FLAG')
+        tc2.putcol('FLAG', flag)
+        tc2.close()
+        logging.info('Flagging: '+str(100.*np.count_nonzero(flag2)/flag2.size)+' -> '+str(100.*np.count_nonzero(flag)/flag.size))
+
+        # copy on the SB.MS
+        n_chan_per_sb = len(flag[1])/len(mss)
+        print "Found "+str(n_chan_per_sb)+" channel per SB."
+        for j, ms in enumerate(mss):
+            logging.debug('Copy flags into '+ms)
+            tc2 = pt.table(ms, readonly=False)
+            tc2.putcol('FLAG', flag[:,n_chan_per_sb*j:n_chan_per_sb*j+n_chan_per_sb,:])
+            tc2.close()
+        tc.close()
+        os.system('rm -r concat-flag.MS')
+
+    # avg - concat.MS:CORRECTED_DATA -> concat-avg.MS:DATA
+    logging.info('Average...')
+    os.system('NDPPP /home/fdg/scripts/autocal/VirA_LBA/parsets_self/NDPPP-avg.parset msin=concat.MS msout=concat-avg.MS > concat-avg_'+str(i)+'.log 2>&1')
+
+    # clean (make a new model of virgo)
+    logging.info('Clean...')
+    os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_clean.py concat-avg.MS iter'+str(i)+' > concat-clean'+str(i)+'.log 2>&1')
+
+# low-res image
+logging.info('Make low-resolution image...')
+os.system('casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/parsets_self/casa_clean_lr.py concat-avg.MS lr > concat-lrclean.log 2>&1')
+
+logging.info("Done.")

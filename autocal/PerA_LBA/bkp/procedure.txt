@@ -1,0 +1,38 @@
+# fix beam: done.
+
+# remove leftover from demixing
+NDPPP flag-aftercal.parset
+
+# calibrate calibrator
+calibrate-stand-alone -f 3C295_SB$SB.MS  /home/fdg/scripts/autocal/VirA_LBA/bbs-cal_field.parset /home/fdg/model/3C295-allfield.skymodel
+
+# set phases to 0 and flag
+H5parm_importer.py -v cal.h5 3C295_SB$SB.MS
+losoto.py -v cal.h5 /home/fdg/scripts/autocal/VirA_LBA/losoto-transf.parset
+H5parm_exporter.py -v cal.h5 3C295_SB$SB.MS
+
+# apply cal solutions to virgo
+cp -r VirgoA_SB$SB.MS VirgoA_SB$SB.MS-bkp # before applying parmdb with flags!
+cp -r 3C295_SB$SB.MS/sol000_instrument VirgoA_SB$SB.MS/instrument
+calibrate-stand-alone --replace-sourcedb VirgoA_SB$SB.MS /home/fdg/scripts/autocal/VirA_LBA/bbs-cal_correct.parset /home/fdg/scripts/autocal/VirA_LBA/virgo.fakemodel.skymodel
+NDPPP /home/fdg/scripts/autocal/VirA_LBA/NDPPP-split.parset # split and avg in freq
+mv VirgoA_SB.avg.MS VirgoA_SB$SB.avg.MS
+
+# selfcal each SB/chan from the best model (try removing VLSS model?)
+casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/casa_ft.py VirgoA_SB$SB.avg.MS
+NDPPP /home/fdg/scripts/autocal/VirA_LBA/NDPPP-self_modeldata.parset
+
+# normalize to unity the amplitudes
+
+# combine all the SB averaging channels down to ... (limited by smearing)
+
+# imaging with casa on all the SB nterm=3
+casapy --nogui --log2term --nologger -c /home/fdg/scripts/autocal/VirA_LBA/casa_clean.py 
+
+# loop several times
+
+
+# result: very good model
+# result: map at 30 MHz
+# result: map with all combined
+# result: 4 maps every 12 MHz

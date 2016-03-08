@@ -1,0 +1,29 @@
+msin = 'XXX'
+msin.datacolumn = DATA
+msin.startchan = 0
+msin.nchan = 60
+msin.autoweight = false
+
+msout = 'XXX.ndppp'
+msout.datacolumn = DATA
+
+steps = [preflag1, badant, elev, avg1, count]
+
+preflag1.type = preflagger
+preflag1.corrtype = auto
+
+badant.type = preflagger
+badant.baseline = [[CS103*],[RS208*]]
+
+elev.type = preflagger
+elev.elevation = 0deg..25deg
+
+aoflagger.type = aoflagger
+aoflagger.overlapperc = 0
+aoflagger.overlap = 0
+aoflagger.memoryperc = 50
+
+avg1.type = squash
+avg1.freqstep = 10
+avg1.timestep = 3
+

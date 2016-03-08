@@ -1,0 +1,14 @@
+Strategy.InputColumn = DATA
+Strategy.ChunkSize = 50
+Strategy.Steps = [subtract, correct]
+
+Step.subtract.Operation                    = SUBTRACT
+Step.subtract.Model.Sources                = [@MODEL_DATA]
+Step.subtract.Model.Gain.Enable            = T
+Step.subtract.Model.TEC.Enable             = T
+
+Step.correct.Operation = CORRECT
+Step.correct.Model.Sources = [@MODEL_DATA]
+Step.correct.Model.Gain.Enable = T
+Step.correct.Model.TEC.Enable = T
+Step.correct.Output.Column = CORRECTED_DATA

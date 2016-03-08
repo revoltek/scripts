@@ -1,0 +1,6 @@
+msin = 'XXX'
+msin.starttime = '10:00:0'
+msin.endtime = '11:00:0'
+msout = 'XXX.ndppp'
+
+steps = [count]

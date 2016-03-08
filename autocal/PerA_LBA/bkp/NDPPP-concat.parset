@@ -1,0 +1,6 @@
+msin = 
+msin.datacolumn = DATA
+msout = 
+msout.writefullresflag = False
+
+steps = []

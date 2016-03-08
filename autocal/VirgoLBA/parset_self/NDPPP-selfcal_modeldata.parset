@@ -1,0 +1,17 @@
+msin=
+#msin.datacolumn=SMOOTHED_CIRC_DATA_SUB
+msin.datacolumn=CIRC_DATA_SUB
+msin.modelcolumn=MODEL_DATA
+msin.baseline = [CR]S*&
+msout = 
+msout.datacolumn=CORRECTED_DATA
+
+steps = [filter, cal, count]
+
+filter.blrange = [1000, 1e30]
+
+cal.type = gaincal
+cal.parmdb = 
+cal.caltype = diagonal
+cal.usemodelcolumn = T
+cal.maxiter = 100

@@ -1,0 +1,12 @@
+msin = 'L340250_SB180_uv.dppp.MS'
+msin.datacolumn = DATA
+msout = 'VirAundemix.MS'
+msout.datacolumn = DATA
+
+steps = [demix]
+
+#avg.type = squash
+#avg.freqstep = 16
+#avg.timestep = 2
+
+demix

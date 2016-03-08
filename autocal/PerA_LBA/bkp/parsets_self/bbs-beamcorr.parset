@@ -1,0 +1,9 @@
+Strategy.InputColumn = DATA
+Strategy.ChunkSize = 100
+Strategy.Steps = [correct]
+
+Step.correct.Operation = CORRECT
+Step.correct.Model.Sources = []
+Step.correct.Model.Beam.Enable = T
+Step.correct.Model.Beam.UseChannelFreq = T
+Step.correct.Output.Column = DATA_BC

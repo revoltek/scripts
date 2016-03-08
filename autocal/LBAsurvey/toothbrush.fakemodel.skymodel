@@ -1,0 +1,5 @@
+format = Name, Type, Patch, Ra, Dec, I, Q, U, V, MajorAxis, MinorAxis, Orientation, ReferenceFrequency='1.47797e+08', SpectralIndex='[]'
+
+# 3C196 in the direction of the toothbrush
+, , 3C196, 06:03:20, +42.14.00
+centre, POINT, 3C196, 06:03:20.000, +42.14.00.000, 0, 0, 0, 0, 0.00000e+00, 0.00000e+00, 0.00000e+00, 1.47797e+08, [0.000e+00]

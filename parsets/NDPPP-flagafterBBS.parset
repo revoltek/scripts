@@ -1,0 +1,15 @@
+msin = 'XXX'
+msin.datacolumn = CORRECTED_DATA
+msin.startchan = 0
+msin.nchan = 60
+
+msout = ''
+
+steps = [flag1, count]
+
+#flagtime.type = preflagger
+#flagtime.timeofday = 18:00:00..23:00:00
+
+flag1.type = madflagger
+flag1.threshold = 3
+flag1.timewindow = 251

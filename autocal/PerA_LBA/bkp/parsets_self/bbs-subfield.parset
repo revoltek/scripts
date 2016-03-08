@@ -1,0 +1,21 @@
+Strategy.InputColumn = DATA_NOBEAM
+Strategy.ChunkSize   = 250
+Strategy.UseSolver   = F
+Strategy.Steps       = [subtract, correct]
+
+Step.subtract.Operation = SUBTRACT
+Step.subtract.Model.Sources = []
+Step.subtract.Model.Gain.Enable = F
+Step.subtract.Model.Rotation.Enable = F
+Step.subtract.Model.Beam.Enable = T
+Step.subtract.Model.Beam.UseChannelFreq = T
+
+Step.correct.Operation                     = CORRECT
+Step.correct.Model.Sources                 = []
+Step.correct.Model.Gain.Enable             = F
+Step.correct.Model.Rotation.Enable         = F
+Step.correct.Model.Beam.Enable             = T
+Step.correct.Model.Beam.UseChannelFreq     = T
+Step.correct.Output.WriteCovariance        = False
+Step.correct.Output.Column                 = CORRECTED_DATA
+

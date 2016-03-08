@@ -1,0 +1,11 @@
+msin = 
+msin.datacolumn = CORRECTED_DATA
+msout = 
+msout.datacolumn = DATA
+msout.writefullresflag = False
+
+steps = [avg]
+
+avg.type = averager
+avg.freqstep = 4
+avg.timestep = 5
