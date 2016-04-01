@@ -36,9 +36,10 @@ def addcol(ms, incol, outcol):
         coldmi['NAME'] = outcol
         datatype = ms.col(incol).datatype()
         ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype=datatype, shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
-    # copy columns val
-    logging.info('Set '+outcol+'='+incol)
-    ms.putcol(outcol, ms.getcol(incol))
+    if outcol != incol:
+        # copy columns val
+        logging.info('Set '+outcol+'='+incol)
+        ms.putcol(outcol, ms.getcol(incol))
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
