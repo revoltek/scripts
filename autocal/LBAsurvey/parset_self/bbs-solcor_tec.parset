@@ -1,7 +1,6 @@
 Strategy.InputColumn = SMOOTHED_DATA
 Strategy.ChunkSize = 5
 Strategy.Steps = [solve, correct]
-#Strategy.Steps = [correct]
 
 Step.solve.Operation = SOLVE
 Step.solve.Model.Sources = []
@@ -27,4 +26,5 @@ Step.solve.Solve.UVRange = [100]
 
 Step.correct.Operation = CORRECT
 Step.correct.Model.TEC.Enable = T
+Step.correct.Model.CommonScalarPhase.Enable = T
 Step.correct.Output.Column = CORRECTED_DATA

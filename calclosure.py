@@ -3,6 +3,7 @@
 import os, sys, logging, itertools
 import pyrap.tables as pt
 import numpy as np
+import scipy.optimize
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -12,6 +13,7 @@ plotph = False
 plotamp = False
 plotavg = False
 plotall = True
+plotTEC = True
 mode = 'triple'
 timeavg = 1
 freqavg = 1
@@ -77,9 +79,10 @@ def angRMS(angs, weights):
     return np.sqrt( angMean(diff**2, weights) ) # weighted std dev
 
 
-def findtec(phases, weights, freq):
+def findtec(phases, weights, freq, time, ant):
     """
     Find tec
+    time, ant are just for plotting purposes
     """
     # TODO: add weights
     par1complex = lambda p, freq, phases, weights: ( abs(np.cos(8.44797245e9*p[0]/freq) - np.cos(phases)) +\
@@ -87,8 +90,19 @@ def findtec(phases, weights, freq):
 #    par2complex = lambda p, freq, phases, weights: ( abs(np.cos(2.*8.44797245e9*p[0]/freq + p[1]) - np.cos(phases)) +\
 #                                                     abs(np.sin(2.*8.44797245e9*p[0]/freq + p[1]) - np.sin(phases)) ) * weights
     fitresult, success = scipy.optimize.leastsq(par1complex, [0], args=(freq, phases, weights), maxfev=10000)
+#    fitresult, success = scipy.optimize.basinhopping(par1complex, [0], T=1., minimizer_kwargs={'args':(freq, phases, weights)})
 #    fitresult, success = scipy.optimize.leastsq(par1complex, [0,0], args=(freq, phases, weights), maxfev=10000)
-    print "leastsqr", fitresult
+    logging.debug("leastsqr"+str(fitresult))
+    if plotTEC:
+        fig.clf()
+        ax = fig.add_subplot(110)
+        fitfuncfastplot = lambda p, freq: np.mod(8.44797245e9*p[0]/freq + 1.*np.pi, 2.*np.pi) - np.pi
+        ax.plot(freq, np.mod(phases + np.pi, 2.*np.pi) - np.pi, 'or' )
+        TEC = np.mod((-8.44797245e9*(fitresult[0])/freq)+np.pi, 2*np.pi) - np.pi
+        residual = np.mod(phases-TEC+np.pi,2.*np.pi)-np.pi
+        ax.plot(freq, residual, '.', color='yellow')
+        ax.plot(freq, fitfuncfastplot(fitresult, freq), "r-")
+        plt.savefig(ant+'_T'+str(time)+'.png')
     return fitresult[0]
 
 
@@ -148,7 +162,7 @@ for t, ts in enumerate(tms.iter('TIME')):
     antIdx = np.array([ants1,ants2])
 
     for f, freq in enumerate(chans):
-        #logging.info('Working on freq: '+str(f))
+        logging.info('Working on freq: '+str(f))
 
         # scalar
         #data_amp = np.absolute(data[:,f,0])+np.absolute(data[:,f,3])
@@ -277,7 +291,7 @@ for t, ts in enumerate(tms.iter('TIME')):
             for f in xrange(Nfreq/freqavg):
                 if solvetec:
                     solall['phase'][t/timeavg,f,s] = findtec( solsblock['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten(),\
-                        weights=solsblock_w['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten(), freq=chans )
+                        weights=solsblock_w['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten(), freq=chans, time = t/timeavg, ant = antNames[s])
                 else:
                     solall['phase'][t/timeavg,f,s] = angMean( solsblock['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten(),\
                         weights=solsblock_w['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten() )
@@ -305,7 +319,7 @@ for t, ts in enumerate(tms.iter('TIME')):
                     logging.debug('Plotting Fin_T%d_F%d_%s.png' % (t/timeavg, f, antNames[s]))
                     plt.savefig('Fin_T%d_F%d_%s.png' % (t/timeavg, f, antNames[s]), bbox_inches='tight')
 
-    #if t == 400: break
+    if t == 20: break
     # end time cycle
 
 if plotall:
