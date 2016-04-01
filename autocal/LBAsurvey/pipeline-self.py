@@ -86,15 +86,15 @@ for ms in mss:
 # To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
 #logging.info('Convert to circular...')
 #for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 #s.run(check=True)
 
 #################################################################################################
-# Smooth
+# Smooth CORRECTED_DATA -> SMOOTHED_DATA
 #logging.info('BL-based smoothing...')
 #for ms in mss:
-#    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
 #    #s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
+#    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
 #s.run(check=True)
 
 #################################################################################################
@@ -107,12 +107,13 @@ s.run(check=True)
 
 ##################################################################################################
 # calibrate slow (3 min/16 chan) diag ph for FR
-chanblock = 16 # number of channel to solve at the same time
-logging.debug('Calibrating FR - iterating on '+str(nchan/chanblock)+' channel blocks.')
+chanblock = 4#16 # number of channel to solve at the same time
+assert nchan % chanblock == 0
+logging.debug('Calibrating FR - iterating on '+str(1.*nchan/chanblock)+' channel blocks.')
 # find how many channels per block to put together. If nchan%chanblock != 0, add one to initial runs
-chansets = [chanblock for ch in xrange(nchan/16)]
+chansets = [chanblock for ch in xrange(nchan/chanblock)]
 for i in range(nchan%chanblock): chansets[i] = chanblock + 1
-logging.debug('Chansets: '+str(chansets))
+logging.debug('Chansets: '+str(chansets)+' - total runs: '+str(len(chansets)))
 startchan = 0
 for i, chan in enumerate(chansets):
     logging.debug('Channel/16: '+str(i))

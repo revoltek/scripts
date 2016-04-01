@@ -1,0 +1,15 @@
+msin = test.MS
+msin.datacolumn = DATA
+msin.baseline = [CR]S*&
+msout = .
+msout.datacolumn = MODEL_DATA
+msout.writefullresflag = False
+
+steps = [pre]
+
+pre.type = predict
+pre.sourcedb = test.MS/toothbrush.GMRT150_field.skydb
+pre.usebeammodel = True
+pre.usechannelfreq = True
+pre.beammode = array_factor
+

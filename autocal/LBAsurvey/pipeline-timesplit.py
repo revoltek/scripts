@@ -6,7 +6,7 @@
 # set of group*_TC*.MS file with DATA = calibrator corrected data, beam corrupted
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
-ngroups = 1 # number of groups (totalSB/SBperFREQgroup) ~ 20 SB/group
+ngroups = 4 # number of groups (totalSB/SBperFREQgroup) ~ 20 SB/group
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 fakeskymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.fakemodel.skymodel'
 globaldb = 'globaldb'
@@ -109,7 +109,7 @@ for groupname in groupnames:
     t.close()
 
     check_rm(ms) # remove not-timesplitted file
-
+sys.exit(1)
 # 2: prepare the MS in circular
 
 ####################################################################################################
