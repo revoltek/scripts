@@ -1,0 +1,17 @@
+msin =
+msin.datacolumn = DATA
+msin.baseline = [CR]S*&
+msout = .
+msout.datacolumn = DATA_INIT
+
+steps = [cor, corrbeam]
+
+cor.type = applycal
+cor.parmdb =
+cor.correction = rotationmeasure
+cor.timeslotsperparmupdate = 1
+
+corrbeam.type = applybeam
+corrbeam.invert = True
+# note that this is wrong as we have channels!
+corrbeam.usechannelfreq = True
