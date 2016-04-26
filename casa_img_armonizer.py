@@ -62,6 +62,8 @@ if do_convolve:
     for i, img in enumerate(images):
         print "Convolving (to", bmaxmaj, "arcsec):", img
         imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj), region=region_file)
+        # test
+        #imsmooth(imagename=img, kernel='gauss', beam={"major":"28arcsec","minor":"22arcsec","pa":"22deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj), region=region_file)
         images[i] = img+'-conv'+str(bmaxmaj)
         # forse PA to zero (OK because we have circular beams)
         ia.open(images[i])

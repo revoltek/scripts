@@ -54,13 +54,14 @@ def linear_fit_bootstrap(x, y, yerr=None):
     # http://phe.rockefeller.edu/LogletLab/whitepaper/node17.html
 
     from scipy import optimize
-
     errfunc = lambda B, x, y: f(x, B[0], B[1]) - y
 
     pfit, pcov, infodict, errmsg, success = optimize.leastsq( errfunc, [0, -1], args=(x, y), full_output=1)
 
     residuals = errfunc( pfit, x, y )
     s_res = np.std(residuals)
+    # 2 vals without error, cannot estimate sigmas
+    if len(y) == 2 and yerr is None: return (pfit[0], pfit[1], 0, 0)
 
     ps = []
     # n random data sets are generated and fitted
