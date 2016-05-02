@@ -111,7 +111,7 @@ def linear_fit_odr(x, y, xerr=None, yerr=None):
     if yerr == None: yerr = np.ones(len(y))
     for i,e in enumerate(yerr):
        if e == 0: yerr[i] = 1
-    mydata = odr.Data(x, y, wd=1/xerr, we=1/yerr)
+    mydata = odr.RealData(x, y, sx=xerr, sy=yerr)
     myodr = odr.ODR(mydata, linear, beta0=[-1., 0.])
     myoutput = myodr.run()
     return(myoutput.beta[0],myoutput.beta[1],myoutput.sd_beta[0],myoutput.sd_beta[1])

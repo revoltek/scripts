@@ -30,7 +30,12 @@ par = {'3C48':[ 64.768,-0.387,-0.420,0.181],
        '3C196':[83.084,-0.699,-0.110],
        '3C286':[27.477,-0.158,0.032,-0.180],
        '3C295':[97.763,-0.582,-0.298,0.583,-0.363 ],
-       '3C380':[77.352,-0.767]}
+       '3C380':[77.352,-0.767],
+       'VirA':[1226.,-0.79], # deGasperin 2012
+       'CygA':[10690, -0.67, -0.240, 0.021], # McKean 2016
+       'CasA':[11733, -0.770], # Baars 77
+       'TauA':[1838, -0.299], # Baars 77
+       'Sun':[150e3, 3]} # http://www-old.ias.ac.in/jarch/jaa/9/225-229.pdf
 
 def prod(sou, freq, i=1):
     """
@@ -49,3 +54,9 @@ print "3C196: ",flux('3C196', freq)
 print "3C286: ",flux('3C286', freq)
 print "3C295: ",flux('3C295', freq)
 print "3C380: ",flux('3C380', freq)
+print "Virgo A: ",flux('VirA', freq)
+print "Cygnus A: ",flux('CygA', freq)
+print "Cassiopeia A: ~",flux('CasA', freq)
+print "Taurus A: ~",flux('TauA', freq)
+print "Sun (avg): ~",flux('Sun', freq)
+if freq < 39.5: print "At this freq Jupiter might be ~1e6 Jy."
