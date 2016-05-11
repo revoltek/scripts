@@ -12,7 +12,7 @@ from lib_pipeline import *
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False, max_threads = 10) # set here max number of threads here
+s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))
 
 ##############################################
