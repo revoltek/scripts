@@ -10,7 +10,6 @@ filter.blrange = [1000, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
-#cal.caltype = fulljones
 cal.caltype = diagonal
 cal.maxiter = 100
 cal.sourcedb =
@@ -19,3 +18,4 @@ cal.usebeammodel = True
 cal.usechannelfreq = False
 #cal.invert = False # automatically set in predict-mode
 cal.beammode = array_factor
+cal.nchan = 1
