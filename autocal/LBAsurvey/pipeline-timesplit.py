@@ -30,30 +30,42 @@ check_rm('*group*')
 mss = sorted(glob.glob('*MS'))
 
 ###############################################
-## Initial processing
-#logging.info('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-#
+# Initial processing
+logging.info('Fix beam table')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
+
 ###################################################
-## Beam correction DATA -> CORRECTED_DATA (beam corrected)
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-#for ms in mss:
-#    num = re.findall(r'\d+', ms)[-1]
-#    check_rm(ms+'/instrument')
-#    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#
-## Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
-#logging.info('Apply solutions...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
-#s.run(check=True)
+# Beam correction DATA -> CORRECTED_DATA (beam corrected)
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+
+##########################################################################################
+# Copy instrument tables
+for ms in mss:
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument')
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+
+# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
+logging.info('Apply solutions...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+s.run(check=True)
+
+####################################################################################################
+# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
+logging.info('Convert to circular...')
+for ms in mss:
+    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
+
+
 
 ###################################################################################################
 # split each MS in timechunks of 1 h and create groups
@@ -94,7 +106,7 @@ for groupname in groupnames:
     hours = (endtime-starttime)/3600.
     logging.debug(ms+' has length of '+str(hours)+' h.')
 
-    # split this ms into many TCs (2*#hours)
+    # split this ms into many TCs (2*#hours, i.e. chunks of 30 min)
     # to re-concat:
     #   t = table(['T0','T1',...])
     #   t.sort('TIME').copy('output.MS', deep = True)
@@ -110,15 +122,8 @@ for groupname in groupnames:
 
     check_rm(ms) # remove not-timesplitted file
 sys.exit(1)
-# 2: prepare the MS in circular
 
-####################################################################################################
-## To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
-## TODO: move in the selfcal script
-#logging.info('Convert to circular...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+# 2: prepare the MS in circular
 
 
 ###################################################################################################

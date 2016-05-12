@@ -18,3 +18,4 @@ cal.usemodelcolumn = T
 cal.maxiter = 100
 #cal.applybeamtomodelcolumn = T
 #cal.usechannelfreq = F
+cal.nchan=1

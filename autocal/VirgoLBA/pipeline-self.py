@@ -43,13 +43,14 @@ os.makedirs('img')
 
 # all MS
 mss = sorted(glob.glob('*.MS'))
+nchan = find_nchan(mss[0])
 
 ###############################################
 # Initial processing
-#logging.info('Fix beam table...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+logging.info('Fix beam table...')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 ################################################
 # Copy cal solution
@@ -60,13 +61,20 @@ mss = sorted(glob.glob('*.MS'))
 #    check_rm(ms+'/instrument')
 #    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
-#logging.info('Averaging in time/freq...')
-#for ms in mss:
-#    msout = ms.replace('.MS','-avg.MS')
-#    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep=4 avg.timestep=2', log=ms+'-init_avg.log', cmd_type='NDPPP')
-#s.run(check=True)
-
-#mss = sorted(glob.glob('*-avg.MS'))
+# If more than 4 channels then average in freq to 4 chans
+# TODO: avg to 5 sec?
+if nchan > 4:
+    if nchan % 4 != 0:
+        logging.error('Channels should be a multiple of 4.')
+        sys.exit(1)
+    avg_factor = nchan / 4
+    logging.info('Average in freq (factor of %i)...' % avg_factor)
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS')
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=1 avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
+    s.run(check=True)
+    nchan = nchan / 4
+    mss = sorted(glob.glob('*-avg.MS'))
 
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam applied, linear)

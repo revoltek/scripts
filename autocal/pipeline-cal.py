@@ -25,7 +25,7 @@ mss = sorted(glob.glob('*MS'))
 nchan = find_nchan(mss[0])
 logging.debug('Channel in the MS: '+str(nchan)+'.')
 
-###############################################
+################################################
 # Initial processing (2/2013->2/2014)
 logging.warning('Fix beam table...')
 for ms in mss:
@@ -86,14 +86,7 @@ s.run(check=True)
 
 ################################################
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-logging.debug('Calibration - iterating on '+str(nchan)+' channels.')
-#for chan in xrange(nchan):
-#    logging.debug('Channel: '+str(chan))
-#    for ms in mss:
-#        check_rm(ms+'/instrument-'+str(chan))
-#        s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' msin.startchan='+str(chan)+' msin.nchan=1 cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'-'+str(chan)+'_sol.log', cmd_type='NDPPP')
-#    s.run(check=True)
-
+logging.debug('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
@@ -121,6 +114,7 @@ s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='pyt
 s.run(check=True)
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
+os.system('cp -r cal1.h5 cal1.h5-flag')
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
@@ -160,14 +154,7 @@ s.run(check=True)
 
 ################################################
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-logging.info('Calibration - iterating on '+str(nchan)+' channels.')
-#for chan in xrange(nchan):
-#    logging.debug('Channel: '+str(chan))
-#    for ms in mss:
-#        check_rm(ms+'/instrument-'+str(chan))
-#        s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' msin.startchan='+str(chan)+' msin.nchan=1 cal.parmdb='+ms+'/instrument-'+str(chan)+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'-'+str(chan)+'_cal.log', cmd_type='NDPPP')
-#    s.run(check=True)
-
+logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
