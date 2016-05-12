@@ -1,11 +1,15 @@
 msin=
-msin.datacolumn=CIRC_DATA_SUB
+msin.datacolumn=DATA
 msin.baseline = [CR]S*&
 msout = 
 msout.datacolumn=CORRECTED_DATA
 
-steps = [cor, count]
+steps = [cor, corrbeam, count]
 
 cor.type = applycal
 cor.parmdb =
 cor.correction = gain
+
+corrbeam.type = applybeam
+corrbeam.invert = True
+corrbeam.usechannelfreq = False
