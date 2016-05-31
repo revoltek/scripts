@@ -235,7 +235,7 @@ for c in xrange(cycles):
     os.makedirs('globaldb')
     for num, ms in enumerate(mss):
         os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD globaldb/')
     h5parm = 'global-c'+str(c)+'.h5'
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', cmd_type='python')

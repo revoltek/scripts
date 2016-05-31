@@ -43,7 +43,6 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
-
 ##########################################################################################
 # Copy instrument tables
 for ms in mss:
@@ -64,8 +63,6 @@ logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
-
-
 
 ###################################################################################################
 # split each MS in timechunks of 1 h and create groups

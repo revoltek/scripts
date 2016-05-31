@@ -209,7 +209,8 @@ def find_nchan(ms):
     t = tb.table(ms+'/SPECTRAL_WINDOW', ack=False)
     nchan = t.getcol('NUM_CHAN')
     t.close()
-    logging.debug('Channels in '+ms+': '+str(nchan)+' (NOTE: all numbers must be equal!) ')
+    assert (nchan[0] == nchan).all() # all spw have same channels?
+    logging.debug('Channel in '+ms+': '+str(nchan[0]))
     return nchan[0]
 
 
