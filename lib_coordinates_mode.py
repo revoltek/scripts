@@ -171,6 +171,32 @@ def dmstodec(decd,decm,decs):
     return decdegs
 # Converts a dms format Dec to decimal degrees  
 
+def getCoord(ra, dec):
+    """ Convert 2 strings to a RA and DEC in degrees.
+	The strings can be in ##:##:## ##:##:## format
+	or in ##d##m##s ##h##m##s format
+	or in ###.### ###.###
+	"""
+    try:
+        ra = float(ra)
+        dec = float(dec)
+    except:
+        import re
+        # split ra and dec using : or [h|d]sm format
+        if ':' in ra and ':' in dec:
+            rah, ram, ras = ra.split(':')
+            ra = hmstora(float(rah), float(ram), float(ras))
+            decd, decm, decs = dec.split(':')
+            dec = dmstodec(float(decd), float(decm), float(decs))
+        else:
+            rah, ram, ras = re.split("h|m|s", ra)[0:3]
+            ra = hmstora(float(rah), float(ram), float(ras))
+            decd, decm, decs = re.split("d|m|s", dec)[0:3]
+            dec = dmstodec(float(decd), float(decm), float(decs))
+        if re.search('-0*$',decd): dec *= -1 # -0 bug fix
+
+    return ra, dec
+
 def angsep(ra1,dec1,ra2,dec2):
     """Find the angular separation of two sources, in arcseconds,
     using the proper spherical trig formula
@@ -184,10 +210,10 @@ def angsep(ra1,dec1,ra2,dec2):
 
     """
 
-    b = (math.pi/2)-math.radians(dec1)
-    c = (math.pi/2)-math.radians(dec2)
+    b = (numpy.pi/2)-numpy.radians(dec1)
+    c = (numpy.pi/2)-numpy.radians(dec2)
 
-    return 3600*math.degrees(math.acos((math.cos(b)*math.cos(c))+(math.sin(b)*math.sin(c)*math.cos(math.radians(ra1-ra2)))))
+    return 3600*numpy.degrees(numpy.arccos((numpy.cos(b)*numpy.cos(c))+(numpy.sin(b)*numpy.sin(c)*numpy.cos(numpy.radians(ra1-ra2)))))
 
 def angsep2(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
@@ -225,7 +251,9 @@ def alphasep(ra1,ra2,dec1,dec2):
 
     """
 
-    return 3600*(ra1-ra2)*math.cos(math.radians((dec1+dec2)/2.0))
+    Dra = abs(ra1-ra2)
+    if Dra > 180: Dra = 360-Dra
+    return 3600*Dra*math.cos(math.radians((dec1+dec2)/2.0))
 
 # Find angular separation in RA of 2 positions, in arcseconds
 
@@ -241,7 +269,7 @@ def deltasep(dec1,dec2):
 
     """
 
-    return 3600*(dec1-dec2)
+    return 3600*abs(dec1-dec2)
 
 # Find angular separation in Dec of 2 positions, in arcseconds
 

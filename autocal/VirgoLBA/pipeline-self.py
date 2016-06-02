@@ -34,7 +34,7 @@ s = Scheduler(dry=False)
 #################################################
 # Clear
 logging.info('Cleaning...')
-check_rm('*last *pickle')
+check_rm('*last *pickle *.log')
 check_rm('*h5 globaldb')
 check_rm('concat*')
 check_rm('plots*')
@@ -43,13 +43,14 @@ os.makedirs('img')
 
 # all MS
 mss = sorted(glob.glob('*.MS'))
+nchan = find_nchan(mss[0])
 
 ###############################################
 # Initial processing
-#logging.info('Fix beam table...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+logging.info('Fix beam table...')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 ################################################
 # Copy cal solution
@@ -60,29 +61,36 @@ mss = sorted(glob.glob('*.MS'))
 #    check_rm(ms+'/instrument')
 #    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
-logging.info('Averaging in time/freq...')
-for ms in mss:
-    msout = ms.replace('.MS','-avg.MS')
-    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep=4 avg.timestep=2', log=ms+'-init_avg.log', cmd_type='NDPPP')
-s.run(check=True)
-
-mss = sorted(glob.glob('*-avg.MS'))
+# If more than 4 channels then average in freq to 4 chans
+# TODO: avg to 5 sec?
+if nchan > 4:
+    if nchan % 4 != 0:
+        logging.error('Channels should be a multiple of 4.')
+        sys.exit(1)
+    avg_factor = nchan / 4
+    logging.info('Average in freq (factor of %i)...' % avg_factor)
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS')
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=1 avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
+    s.run(check=True)
+    nchan = nchan / 4
+    mss = sorted(glob.glob('*-avg.MS'))
 
 #########################################################################################
 # apply solutions and beam correction - SB.MS:DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam applied, linear)
 # TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account? - problem: if we transfer only clock is not ok
 # NOTE: only beam correction, no transfer of solutions
-logging.info('Correcting target MSs...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'-init_corbeam.log', cmd_type='NDPPP')
-s.run(check=True)
+#logging.info('Correcting target MSs...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'-init_corbeam.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 #########################################################################################
 # Transform to circular pol - SB.MS:CORRECTED_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Convert to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 ###########################################################################################
 # TODO: add a run of aoflagger only XY YX on combined MSs
@@ -91,12 +99,13 @@ s.run(check=True)
 # Initialize columns - SB.MS:CIRC_DATA_SUB = CIRC_DATA
 logging.info('Make new columns...')
 for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CIRC_DATA_SUB', log=ms+'-init_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,MODEL_DATA', log=ms+'-init_addcol.log', cmd_type='python')
+    #s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CIRC_DATA_SUB', log=ms+'-init_addcol.log', cmd_type='python')
 s.run(check=True)
-logging.info('Set CIRC_DATA_SUB == CIRC_DATA...')
-for ms in mss:
-    s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'-init_taql.log', cmd_type='general')
-s.run(check=True)
+#logging.info('Set CIRC_DATA_SUB == CIRC_DATA...')
+#for ms in mss:
+#    s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'-init_taql.log', cmd_type='general')
+#s.run(check=True)
 
 # self-cal cycle
 for c in xrange(cycles):
@@ -131,7 +140,7 @@ for c in xrange(cycles):
         s.run(check=True) # not parallel!
 
     #####################################################################################
-    # calibrate - SB.MS:CIRC_DATA_SUB (no correction)
+    # calibrate - SB.MS:DATA (no correction)
     logging.info('Calibrate...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-selfcal_modeldata.parset msin='+ms+' cal.parmdb='+ms+'/instrument', \
@@ -226,7 +235,7 @@ for c in xrange(cycles):
     os.makedirs('globaldb')
     for num, ms in enumerate(mss):
         os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD globaldb/')
     h5parm = 'global-c'+str(c)+'.h5'
 
     s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', cmd_type='python')

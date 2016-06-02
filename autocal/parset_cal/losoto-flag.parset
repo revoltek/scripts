@@ -22,6 +22,8 @@ LoSoTo.Steps.plotA1.TableAxis = ant
 LoSoTo.Steps.plotA1.ColorAxis = pol
 LoSoTo.Steps.plotA1.PlotFlag = True
 LoSoTo.Steps.plotA1.Prefix = plots/ampPF_
+LoSoTo.Steps.plotA1.Columns = 2
+LoSoTo.Steps.plotA1.FigSize = [20,20]
 #LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotA2.Operation = PLOT
@@ -58,7 +60,7 @@ LoSoTo.Steps.flagextend.Operation = FLAGEXTEND
 LoSoTo.Steps.flagextend.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.flagextend.Axes = [freq,time]
 LoSoTo.Steps.flagextend.Percent = 40
-LoSoTo.Steps.flagextend.Size = 7
+LoSoTo.Steps.flagextend.Size = [7,10]
 LoSoTo.Steps.flagextend.Cycles = 3
 
 # copy flags on phases

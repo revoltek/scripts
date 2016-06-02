@@ -24,6 +24,8 @@ LoSoTo.Steps.plotPi1.PlotFlag = True
 LoSoTo.Steps.plotPi1.Prefix = plots/ph_
 LoSoTo.Steps.plotPi1.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPi1.MinMax = [-3.14,3.14]
+LoSoTo.Steps.plotPi1.Columns = 2
+LoSoTo.Steps.plotPi1.FigSize = [20,20]
 
 LoSoTo.Steps.plotPi2.Operation = PLOT
 LoSoTo.Steps.plotPi2.Soltab = [sol000/phase000]
@@ -93,6 +95,8 @@ LoSoTo.Steps.plotPr1.PlotFlag = True
 LoSoTo.Steps.plotPr1.Prefix = plots/phRes_
 LoSoTo.Steps.plotPr1.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPr1.MinMax = [-3.14,3.14]
+LoSoTo.Steps.plotPr1.Columns = 2
+LoSoTo.Steps.plotPr1.FigSize = [20,20]
 
 LoSoTo.Steps.plotPr2.Operation = PLOT
 LoSoTo.Steps.plotPr2.Soltab = [sol000/phase000]

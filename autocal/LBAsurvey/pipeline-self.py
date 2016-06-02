@@ -15,6 +15,7 @@
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150_field.skymodel'
 sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150_field.skydb'
+globaldb = 'globaldb'
 niter = 2
 
 #######################################################################################
@@ -27,7 +28,6 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 set_logger()
-check_rm('*bak *last *pickle')
 check_rm('logs')
 s = Scheduler(dry=False)
 
@@ -65,6 +65,14 @@ def losoto(c, mss, g, parset, instrument='instrument'):
     os.system('mv plots self/solutions/g'+g+'/plots-c'+str(c))
     os.system('mv '+h5parm+' self/solutions/g'+g)
 
+#################################################
+## Clear
+logging.info('Cleaning...')
+
+check_rm('*bak *last *pickle')
+mss = sorted(glob.glob('*MS'))
+nchan = find_nchan(mss[0])
+
 # here images, models, solutions for each group will be saved
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
@@ -72,30 +80,66 @@ if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 check_rm('self/solutions/gall')
 os.makedirs('self/solutions/gall')
 
-mss = sorted(glob.glob('all/all_TC*[0-9].MS'))
-os.makedirs('logs/all')
-nchan = find_nchan(mss[0])
-sourcedb_basename = sourcedb.split('/')[-1]
-
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
+sourcedb_basename = sourcedb.split('/')[-1]
 for ms in mss:
     check_rm(ms+'/'+sourcedb_basename)
     os.system('cp -r '+sourcedb+' '+ms)
 
+# 1. initial processing
+
+###############################################
+# Initial processing
+logging.info('Fixing beam table...')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
+
+###################################################
+# Beam correction DATA -> CORRECTED_DATA (beam corrected)
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+##########################################################################################
+# Copy instrument tables
+for ms in mss:
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument')
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+
+# Apply cal sol (clock, phase offsetts & bandpass) - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
+logging.info('Apply solutions...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-initcor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+s.run(check=True)
+
+##############################################################
+# TODO: create a virtual dataset for flags
+# Flagging on concatenated dataset
+logging.info('Flagging...')
+for groupname in groupnames:
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+groupname+'/'+groupname+'.MS', \
+                log=groupname+'_NDPPP_flag.log', cmd_type='NDPPP')
+s.run(check=True)
+
+# 2. find and remove FR
+
 ####################################################################################################
-# To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
-#logging.info('Convert to circular...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CIRC_DATA (beam corrected, circular)
+logging.info('Convert to circular...')
+for ms in mss:
+    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':CORRECTED_DATA -o '+ms+':CIRC_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 #################################################################################################
-# Smooth CORRECTED_DATA -> SMOOTHED_DATA
-#logging.info('BL-based smoothing...')
-#for ms in mss:
-#    #s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-#    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-#s.run(check=True)
+# Smooth CIRC_DATA -> SMOOTHED_DATA
+logging.info('BL-based smoothing...')
+for ms in mss:
+    s.add('BLavg.py -r -w -i CIRC_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
+s.run(check=True)
 
 #################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA
@@ -104,6 +148,88 @@ for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
               log=ms+'_solcor_tec.log', cmd_type='BBS', processors=2)
 s.run(check=True)
+
+###############################################################################################
+#  Solve SB.MS:CORRECTED_DATA (only solve)
+logging.debug('Calibrating for FR...')
+for ms in mss:
+    check_rm(ms+'/instrument')
+    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument cal.sourcedb='+ms+'/'+sourcedb 'cal.solint=10 cal.nchan=4', log=ms+'_sol-circ.log', cmd_type='NDPPP')
+s.run(check=True)
+
+#################################################################################
+# Preapre fake FR parmdb
+logging.debug('Prepare fake FR parmdb...')
+for ms in mss:
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
+s.run(check=True)
+for ms in mss:
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+s.run(check=True)
+
+################################################
+# Prepare and run losoto
+check_rm('globaldb')
+check_rm('globaldb-fr')
+os.system('mkdir globaldb')
+os.system('mkdir globaldb-fr')
+for i, ms in enumerate(mss):
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
+    num = re.findall(r'\d+', ms)[-1]
+    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
+
+logging.info('Running LoSoTo...')
+check_rm('plots')
+check_rm('cal1.h5')
+s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
+s.run(check=True)
+#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+check_rm('plots-fr')
+os.system('mv plots plots-fr')
+
+for i, ms in enumerate(mss):
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument-fr')
+    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
+    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
+
+######################################################
+# Correct FR
+logging.info('Faraday rotation correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
+s.run(check=True)
+
+# 3: recalibrate without FR
+
+###############################################
+# Beam correction CORRECTED_DATA -> CORRECTED_DATA
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA', log=ms+'_beam2.log', cmd_type='NDPPP')
+s.run(check=True)
+
+#################################################################################################
+# Smooth CORRECTED_DATA -> SMOOTHED_DATA
+logging.info('BL-based smoothing...')
+for ms in mss:
+    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2.log', cmd_type='python', processors='max')
+s.run(check=True)
+
+
+
+
+# TODO: add below to above and rewrite the init to use time-splitted data
+
 
 ##################################################################################################
 # calibrate slow (3 min/16 chan) diag ph for FR

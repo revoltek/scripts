@@ -22,6 +22,8 @@ LoSoTo.Steps.plotAi1.TableAxis = ant
 LoSoTo.Steps.plotAi1.ColorAxis = pol
 LoSoTo.Steps.plotAi1.PlotFlag = True
 LoSoTo.Steps.plotAi1.Prefix = plots/amp_
+LoSoTo.Steps.plotAi1.Columns = 2
+LoSoTo.Steps.plotAi1.FigSize = [20,20]
 #LoSoTo.Steps.plotAi1.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotAi2.Operation = PLOT
@@ -79,6 +81,8 @@ LoSoTo.Steps.plotAr1.TableAxis = ant
 LoSoTo.Steps.plotAr1.ColorAxis = pol
 LoSoTo.Steps.plotAr1.PlotFlag = True
 LoSoTo.Steps.plotAr1.Prefix = plots/ampRes_
+LoSoTo.Steps.plotAr1.Columns = 2
+LoSoTo.Steps.plotAr1.FigSize = [20,20]
 #LoSoTo.Steps.plotAr1.MinMax = [-40e-2,40e-2]
 
 LoSoTo.Steps.plotAr2.Operation = PLOT

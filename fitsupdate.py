@@ -54,7 +54,7 @@ if fix:
             if prihdr[keyword] == 0:
                 prihdr[keyword] = 1.
                 print "Setting "+keyword+" = 1."
-        if re.match('PC00?00?', keyword):
+        if re.match('PC00[0-4]00[0-4]', keyword):
             val = prihdr[keyword]
             del prihdr[keyword]
             num1 = int(re.findall(r'\d+', keyword)[0][2:3])
@@ -62,7 +62,7 @@ if fix:
             newkeyword = 'PC%i_%i' % (num1, num2)
             prihdr[newkeyword] = val
             print "Renaming "+keyword+" -> "+newkeyword
-        if re.match('PC0?\w0?', keyword):
+        if re.match('PC0[0-4]_0[0-4]', keyword):
             val = prihdr[keyword]
             del prihdr[keyword]
             num1 = int(re.findall(r'\d+', keyword)[0])
@@ -70,6 +70,12 @@ if fix:
             newkeyword = 'PC%i_%i' % (num1, num2)
             prihdr[newkeyword] = val
             print "Renaming "+keyword+" -> "+newkeyword
+        if keyword == 'EQUINOX' and prihdr[keyword] == 2000.:
+            print "Update equinox"
+            del prihdr[keyword]
+            prihdr[keyword] = 2000.
+            prihdr['SPECSYS'] = 'LSRK'
+            #prihdr['RADESYS'] = 'FK5'
 
 if ( not setkeyword is None ):
     try: keyword, value = setkeyword.split('=')

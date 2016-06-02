@@ -1,9 +1,7 @@
-msin =
-msin.datacolumn = CORRECTED_DATA
+msin=
+msin.datacolumn = DATA
+msout=.
 
-msout = '.'
-
-steps = [aoflagger, count]
-
-aoflagger.strategy=/home/fdg/scripts/autocal/LBAsurvey/parset_self/LBAfullpol.rfis
+steps=[aoflagger]
+aoflagger.strategy=/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit/LBAdefault.rfis
 aoflagger.memoryperc=6
