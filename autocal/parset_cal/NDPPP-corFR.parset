@@ -9,4 +9,3 @@ steps = [cor]
 cor.type = correct
 cor.parmdb = 
 cor.correction = RotationMeasure
-cor.timeslotsperparmupdate = 1

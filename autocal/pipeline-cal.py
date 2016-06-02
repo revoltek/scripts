@@ -54,6 +54,7 @@ if nchan > 4:
 
 ############################################
 # Prepare output parmdb
+# TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
 for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
