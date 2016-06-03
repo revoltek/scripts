@@ -110,7 +110,7 @@ def ratohms(radegs):
     return sec2hms(raseconds)
 
 def dectodms(decdegs):
-    """Convert Declination in decimal degrees format to hours, minutes,
+    """Convert Declination in decimal degrees format to deg, minutes,
     seconds format.
 
     Keyword arguments:
@@ -209,6 +209,7 @@ def angsep(ra1,dec1,ra2,dec2):
     angsep - Angular separation, in arcsec
 
     """
+    if ra1 == ra2 and dec1 == dec2: return 0
 
     b = (numpy.pi/2)-numpy.radians(dec1)
     c = (numpy.pi/2)-numpy.radians(dec2)
@@ -218,6 +219,8 @@ def angsep(ra1,dec1,ra2,dec2):
 def angsep2(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
     import math
+
+    if ra1deg == ra2deg and dec1deg == dec2deg: return 0
 
     ra1rad=ra1deg*math.pi/180.0
     dec1rad=dec1deg*math.pi/180.0
