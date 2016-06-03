@@ -31,51 +31,52 @@ logging.debug('Channel in the MS: '+str(nchan)+'.')
 #for ms in mss:
 #    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 #s.run(check=False)
-#
-## If more than 4 channels then average in freq to 4 chans
-## TODO: avg to 5 sec?
-#if nchan > 4:
-#    if nchan % 4 != 0:
-#        logging.error('Channels should be a multiple of 4.')
-#        sys.exit(1)
-#    avg_factor = nchan / 4
-#    logging.info('Average in freq (factor of %i)...' % avg_factor)
-#    for ms in mss:
-#        msout = ms.replace('.MS','-avg.MS')
-#        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
-#    s.run(check=True)
-#    nchan = nchan / 4
-#    mss = sorted(glob.glob('*-avg.MS'))
-#
-##############################################
-### Prepare output parmdb
-#logging.info('Creating fake parmdb...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-#s.run(check=True)
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
-#s.run(check=True)
-#for ms in mss:
-#    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
-#s.run(check=True)
-#
-## 1: find the FR and remve it
-#
-################################################
-## Beam correction DATA -> CORRECTED_DATA
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-#################################################
-### Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-#logging.info('Converting to circular...')
-#for ms in mss:
-#    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_lin2circ.log', cmd_type='python')
-#s.run(check=True)
-#
+
+# If more than 4 channels then average in freq to 4 chans
+# TODO: avg to 5 sec?
+if nchan > 4:
+    if nchan % 4 != 0:
+        logging.error('Channels should be a multiple of 4.')
+        sys.exit(1)
+    avg_factor = nchan / 4
+    logging.info('Average in freq (factor of %i)...' % avg_factor)
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS')
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
+    s.run(check=True)
+    nchan = nchan / 4
+    mss = sorted(glob.glob('*-avg.MS'))
+
+############################################
+# Prepare output parmdb
+# TODO: remove as soon as losoto has the proper exporter
+logging.info('Creating fake parmdb...')
+for ms in mss:
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+s.run(check=True)
+for ms in mss:
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
+s.run(check=True)
+for ms in mss:
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+s.run(check=True)
+
+# 1: find the FR and remve it
+
+###############################################
+# Beam correction DATA -> CORRECTED_DATA
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+###############################################
+# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
+logging.info('Converting to circular...')
+for ms in mss:
+    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
+
 ##################################################
 ## Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 ## NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
