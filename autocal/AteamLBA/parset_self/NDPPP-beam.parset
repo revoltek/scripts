@@ -1,0 +1,10 @@
+msin =
+msin.datacolumn = DATA
+msout = .
+msout.datacolumn = DATA_BEAM
+
+steps = [corrbeam]
+
+corrbeam.type = applybeam
+corrbeam.invert = True
+corrbeam.usechannelfreq = False
