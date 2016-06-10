@@ -2,7 +2,7 @@ msin =
 msin.datacolumn = DATA
 msin.baseline = [CR]S*&
 msout = .
-msout.datacolumn = CORRECTED_DATA
+msout.datacolumn = DATA_INIT
 
 steps = [cor]
 

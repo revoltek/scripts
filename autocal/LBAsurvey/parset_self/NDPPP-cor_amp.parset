@@ -1,11 +1,10 @@
 msin =
 msin.datacolumn = CORRECTED_DATA
-msin.baseline = [CR]S*&
-msout = .
+msout = 
 msout.datacolumn = CORRECTED_DATA
 
-steps = [cor]
+steps = [cor, count]
 
 cor.type = applycal
 cor.parmdb =
-cor.correction = gain
+cor.correction = scalaramplitude

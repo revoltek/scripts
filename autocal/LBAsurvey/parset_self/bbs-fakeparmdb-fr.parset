@@ -1,5 +1,5 @@
 Strategy.InputColumn = DATA
-Strategy.ChunkSize = 500
+Strategy.ChunkSize = 300
 Strategy.Steps = [solve]
 
 Step.solve.Operation = SOLVE
@@ -8,7 +8,7 @@ Step.solve.Model.Cache.Enable = T
 Step.solve.Model.FaradayRotation.Enable = T
 Step.solve.Solve.Parms = ["RotationMeasure:*"]
 Step.solve.Solve.CellSize.Freq = 0
-Step.solve.Solve.CellSize.Time = 1
-Step.solve.Solve.CellChunkSize = 500
+Step.solve.Solve.CellSize.Time = 30
+Step.solve.Solve.CellChunkSize = 300
 Step.solve.Solve.PropagateSolutions = F
 Step.solve.Solve.Options.MaxIter = 1

@@ -1,6 +1,0 @@
-msin = 
-msin.datacolumn = CORRECTED_DATA
-msout = 
-msout.writefullresflag = False
-
-steps = []
