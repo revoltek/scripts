@@ -110,7 +110,7 @@ def ratohms(radegs):
     return sec2hms(raseconds)
 
 def dectodms(decdegs):
-    """Convert Declination in decimal degrees format to hours, minutes,
+    """Convert Declination in decimal degrees format to deg, minutes,
     seconds format.
 
     Keyword arguments:
@@ -209,15 +209,18 @@ def angsep(ra1,dec1,ra2,dec2):
     angsep - Angular separation, in arcsec
 
     """
+    if ra1 == ra2 and dec1 == dec2: return 0
 
-    b = (math.pi/2)-math.radians(dec1)
-    c = (math.pi/2)-math.radians(dec2)
+    b = (numpy.pi/2)-numpy.radians(dec1)
+    c = (numpy.pi/2)-numpy.radians(dec2)
 
-    return 3600*math.degrees(math.acos((math.cos(b)*math.cos(c))+(math.sin(b)*math.sin(c)*math.cos(math.radians(ra1-ra2)))))
+    return 3600*numpy.degrees(numpy.arccos((numpy.cos(b)*numpy.cos(c))+(numpy.sin(b)*numpy.sin(c)*numpy.cos(numpy.radians(ra1-ra2)))))
 
 def angsep2(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
     import math
+
+    if ra1deg == ra2deg and dec1deg == dec2deg: return 0
 
     ra1rad=ra1deg*math.pi/180.0
     dec1rad=dec1deg*math.pi/180.0
@@ -251,7 +254,9 @@ def alphasep(ra1,ra2,dec1,dec2):
 
     """
 
-    return 3600*(ra1-ra2)*math.cos(math.radians((dec1+dec2)/2.0))
+    Dra = abs(ra1-ra2)
+    if Dra > 180: Dra = 360-Dra
+    return 3600*Dra*math.cos(math.radians((dec1+dec2)/2.0))
 
 # Find angular separation in RA of 2 positions, in arcseconds
 
@@ -267,7 +272,7 @@ def deltasep(dec1,dec2):
 
     """
 
-    return 3600*(dec1-dec2)
+    return 3600*abs(dec1-dec2)
 
 # Find angular separation in Dec of 2 positions, in arcseconds
 

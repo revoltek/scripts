@@ -42,7 +42,7 @@ for i, line in enumerate(df):
     logging.debug('Queue download of: '+ms)
 s.run(check=True)
 
-# rename files
+# rename files using codename and freq
 if rename:
     logging.info('Renaming...')
     regex = re.compile(r"^L[0-9]*_")

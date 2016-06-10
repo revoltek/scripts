@@ -207,11 +207,20 @@ class radiomap:
 
 class applyregion:
     """ apply a region from pyregion to a radiomap """
-    def __init__(self,rm,region,offsource=None,mask=None,wht=None):
+    def __init__(self,rm,region,offsource=None,mask=None,wht=None,robustrms=3):
+        """
+        provides:
+        rms -- the rms in the aperture
+        robustrms -- the rms for pixels below robustrms * the normal rms (it should cut sources)
+        flux -- the flux of the aperture
+        mean -- the mean in the apertur (if wht then is weighted)
+        error -- error on the flux given the rms in offsource
+        """
         self.rms=[]
         self.flux=[]
         self.error=[]
         self.mean=[]
+        self.robustrms=[]
         self.mean_error=[]
 
         for i,d in enumerate(rm.d):
@@ -227,7 +236,9 @@ class applyregion:
                 data = np.extract(mask_r,d)
 
             self.rms.append(scipy.stats.nanstd(data))
+            self.robustrms.append(scipy.stats.nanstd(data[np.where(data < robustrms * self.rms[-1])]))
             self.flux.append(data[np.logical_not(np.isnan(data))].sum()/rm.area)
+
             if wht:
                 mask=region.get_mask(hdu=wht.f,shape=np.shape(wht.d[0]))
                 pixels=np.sum(mask)
