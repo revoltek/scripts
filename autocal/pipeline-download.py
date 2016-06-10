@@ -2,7 +2,7 @@
 # download from LTA using WGET
 
 download_file = 'html.txt'
-rename = False
+rename = True
 
 ###################################################
 
@@ -28,7 +28,7 @@ def nu2num(nu):
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False, max_threads = 2) # set here max number of threads here
+s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
 
 df = open(download_file,'r')
 

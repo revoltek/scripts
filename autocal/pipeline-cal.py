@@ -33,7 +33,8 @@ logging.debug('Channel in the MS: '+str(nchan)+'.')
 #s.run(check=False)
 
 # If more than 4 channels then average in freq to 4 chans
-# TODO: avg to 5 sec?
+# Remove internationals
+# TODO: avg to 5 sec/2 chan?
 if nchan > 4:
     if nchan % 4 != 0:
         logging.error('Channels should be a multiple of 4.')
