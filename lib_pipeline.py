@@ -214,6 +214,21 @@ def find_nchan(ms):
     return nchan[0]
 
 
+def find_timeint(ms):
+    """
+    Get time interval in seconds
+    """
+    import pyrap.tables as tb
+    t = tb.table(ms, ack=False)
+    Ntimes = len(set(t.getcol('TIME')))
+    t.close()
+    t = tb.table(ms+'/OBSERVATION', ack=False)
+    deltat = (t.getcol('TIME_RANGE')[0][1]-t.getcol('TIME_RANGE')[0][0])/Ntimes
+    t.close()
+    logging.debug('Time interval for '+ms+': '+str(deltat))
+    return deltat
+
+
 def get_phase_centre(ms):
     """
     Get the phase centre of the first source (is it a problem?) of an MS

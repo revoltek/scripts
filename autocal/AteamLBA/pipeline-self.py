@@ -48,6 +48,7 @@ os.makedirs('img')
 # all MS
 mss = sorted(glob.glob('*.MS'))
 nchan = find_nchan(mss[0])
+timeint = find_timeint(mss[0])
 
 ###############################################
 # Initial processing
@@ -73,19 +74,22 @@ s.run(check=False)
 #    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'-init_corbeam.log', cmd_type='NDPPP')
 #s.run(check=True)
 
-# If more than 4 channels then average in freq to 4 chans
-# TODO: avg to 5 sec?
-if nchan > 4:
+# Avg to 4 chan and 4 sec
+if nchan > 4 or timeint < 4:
     if nchan % 4 != 0:
         logging.error('Channels should be a multiple of 4.')
         sys.exit(1)
-    avg_factor = nchan / 4
-    logging.info('Average in freq (factor of %i)...' % avg_factor)
+    avg_factor_f = nchan / 4
+    avg_factor_t = int(np.floor(5/timeint))
+    if avg_factor_t == 0: avg_factor_t = 1
+    logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS')
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=1 avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                log=ms+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
-    nchan = nchan / 4
+    nchan = nchan / avg_factor_f
+    timeint = timeint * avg_factor_t
     mss = sorted(glob.glob('*-avg.MS'))
 
 #########################################################################################
@@ -149,8 +153,11 @@ for c in xrange(cycles):
     #else:
 
     for j, msg in enumerate(np.array_split(mss,10)):
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':model}, log='ft-c'+str(c)+'-g'+str(j)+'.log')
-        s.run(check=True) # not parallel!
+        check_rm(msg+'/'+model+'*')
+        os.system('cp -r '+model+'* '+msg)
+    for j, msg in enumerate(np.array_split(mss,10)):
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':msg+'/'+model}, log='ft-c'+str(c)+'-g'+str(j)+'.log')
+    s.run(check=True) # TODO: try parallel!
 
     #####################################################################################
     # calibrate - SB.MS:DATA_BEAM (no correction)
@@ -262,7 +269,8 @@ for c in xrange(cycles):
     ########################################################################################
     # correct - SB.MS:CIRC_DATA_SUB -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
     logging.info('Restoring WEIGHT_SPECTRUM')
-    s.add('taql "update concat.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+    for j, msg in enumerate(np.array_split(mss,10)):
+        s.add('taql "update concat-c'+str(j)+'.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
     logging.info('Correct...')
@@ -275,7 +283,7 @@ for c in xrange(cycles):
     # avg 1chanSB/30s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
     logging.info('Average...')
     check_rm('concat-avg.MS*')
-    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.timestep=6', \
+    s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.timestep=6 avg.freqstep=4', \
             log='concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
