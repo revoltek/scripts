@@ -57,15 +57,15 @@ if rename:
         newName = regex.sub(code+'_', ms)
         newName = regex2.sub('', newName)
 
-        sou = code.split('_')[1]
-        if not os.path.exists(sou): os.makedirs(sou)
+        cycle_obs, sou = code.split('_')
+        if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
 
         spw = pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False)
         freq = spw.getcell('REF_FREQUENCY',0)
         spw.close()
         newName = regex3.sub('_SB'+str(nu2num(freq/1.e6))+'.MS', newName)
 
-        logging.debug('Rename '+ms+' -> '+sou+'/'+newName)
-        os.system('mv '+ms+' '+sou+'/'+newName)
+        logging.debug('Rename '+ms+' -> '+cycle_obs+'/'+sou+'/'+newName)
+        os.system('mv '+ms+' '+cycle_obs+'/'+sou+'/'+newName)
 
 logging.info("Done.")
