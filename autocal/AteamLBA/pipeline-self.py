@@ -12,14 +12,14 @@ casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-vir
 #casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-cas.py'
 #casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-tau.py'
 
+# data
+datadir = '../tgts-bkp'
+
 # number of selfcal cycles
 cycles = 10
 
 # parset directory
 parset_dir = '/home/fdg/scripts/autocal/AteamLBA/parset_self/'
-
-# globaldb produced by pipeline-init
-#globaldb = '../cals/globaldb'
 
 ##############################################################
 
@@ -34,6 +34,7 @@ from make_mask import make_mask
 set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
+mss = sorted(glob.glob(datadir+'*MS'))
 
 #################################################
 # Clear
@@ -45,52 +46,35 @@ check_rm('plots*')
 check_rm('img')
 os.makedirs('img')
 
-# all MS
-mss = sorted(glob.glob('*.MS'))
+###############################################
+# Avg to 4 chan and 4 sec
+# Remove internationals
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
+if nchan % 4 != 0:
+    logging.error('Channels should be a multiple of 4.')
+    sys.exit(1)
+avg_factor_f = nchan / 4
+if avg_factor_f < 1: avg_factor_f = 1
+avg_factor_t = int(np.floor(5/timeint))
+if avg_factor_t < 1: avg_factor_t = 1
+logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+for ms in mss:
+    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+    if os.path.exists(msout): continue
+    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                log=msout+'_avg.log', cmd_type='NDPPP')
+s.run(check=True)
+nchan = nchan / avg_factor_f
+timeint = timeint * avg_factor_t
+mss = sorted(glob.glob('*-avg.MS'))
 
 ###############################################
-# Initial processing
+# Initial processing (2/2013->2/2014)
 logging.info('Fix beam table...')
 for ms in mss:
     s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 s.run(check=False)
-
-################################################
-# Copy cal solution
-#logging.info('Copy solutions...')
-#for ms in mss:
-#    num = re.findall(r'\d+', ms)[-1]
-#    logging.debug(globaldb+'/sol000_instrument-'+str(num)+' -> '+ms+'/instrument')
-#    check_rm(ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-
-#########################################################################################
-# apply solutions and beam correction - SB.MS:DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam applied, linear)
-# TODO: convert to NDPPP - problem: does not handle DD solution - are losoto flags taken into account? - problem: if we transfer only clock is not ok
-#logging.info('Correcting target MSs...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'-init_corbeam.log', cmd_type='NDPPP')
-#s.run(check=True)
-
-# Avg to 4 chan and 4 sec
-if nchan > 4 or timeint < 4:
-    if nchan % 4 != 0:
-        logging.error('Channels should be a multiple of 4.')
-        sys.exit(1)
-    avg_factor_f = nchan / 4
-    avg_factor_t = int(np.floor(5/timeint))
-    if avg_factor_t == 0: avg_factor_t = 1
-    logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS')
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
-                log=ms+'_avg.log', cmd_type='NDPPP')
-    s.run(check=True)
-    nchan = nchan / avg_factor_f
-    timeint = timeint * avg_factor_t
-    mss = sorted(glob.glob('*-avg.MS'))
 
 #########################################################################################
 # beam correction - SB.MS:DATA -> SB.MS:DATA_BEAM (beam applied, linear)
