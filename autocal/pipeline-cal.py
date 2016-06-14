@@ -21,10 +21,30 @@ from lib_pipeline import *
 set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
-mss = sorted(glob.glob(datadir+'/*MS'))
+mss = sorted(glob.glob(datadir+'*MS'))
 
+###########################################################
+# Avg to 4 chan and 4 sec
+# Remove internationals
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
+if nchan % 4 != 0:
+    logging.error('Channels should be a multiple of 4.')
+    sys.exit(1)
+avg_factor_f = nchan / 4
+if avg_factor_f < 1: avg_factor_f = 1
+avg_factor_t = int(np.floor(5/timeint))
+if avg_factor_t < 1: avg_factor_t = 1
+logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+for ms in mss:
+    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+    if os.path.exists(msout): continue
+    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                log=msout+'_avg.log', cmd_type='NDPPP')
+s.run(check=True)
+nchan = nchan / avg_factor_f
+timeint = timeint * avg_factor_t
+mss = sorted(glob.glob('*-avg.MS'))
 
 ################################################
 ## Initial processing (2/2013->2/2014)
@@ -32,26 +52,6 @@ timeint = find_timeint(mss[0])
 #for ms in mss:
 #    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 #s.run(check=False)
-
-# Avg to 4 chan and 4 sec
-# Remove internationals
-if nchan > 4 or timeint < 4:
-    if nchan % 4 != 0:
-        logging.error('Channels should be a multiple of 4.')
-        sys.exit(1)
-    avg_factor_f = nchan / 4
-    avg_factor_t = int(np.floor(5/timeint))
-    if avg_factor_t == 0: avg_factor_t = 1
-    logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
-                log=msout+'_avg.log', cmd_type='NDPPP')
-    s.run(check=True)
-    nchan = nchan / avg_factor_f
-    timeint = timeint * avg_factor_t
-    mss = sorted(glob.glob('*-avg.MS'))
-
 
 ############################################
 # Prepare output parmdb
