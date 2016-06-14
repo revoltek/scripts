@@ -112,10 +112,6 @@ logging.info('Make new columns...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,MODEL_DATA,SMOOTHED_DATA', log=ms+'-init_addcol.log', cmd_type='python')
 s.run(check=True)
-#logging.info('Set CIRC_DATA_SUB == CIRC_DATA...')
-#for ms in mss:
-#    s.add('taql "update '+ms+' set CIRC_DATA_SUB = CIRC_DATA"', log=ms+'-init_taql.log', cmd_type='general')
-#s.run(check=True)
 
 # self-cal cycle
 for c in xrange(cycles):
@@ -132,7 +128,6 @@ for c in xrange(cycles):
     if c == 0:
         # After all columns are created
         logging.info('Concat...')
-#        pt.msutil.msconcat(mss, 'concat.MS', concatTime=False)
         # Smaller concat for ft
         for i, msg in enumerate(np.array_split(mss,10)):
             pt.msutil.msconcat(msg, 'concat-'+str(i)+'.MS', concatTime=False)
@@ -153,95 +148,93 @@ for c in xrange(cycles):
     #else:
 
     for j, msg in enumerate(np.array_split(mss,10)):
-        check_rm(msg+'/'+model+'*')
-        os.system('cp -r '+model+'* '+msg)
-    for j, msg in enumerate(np.array_split(mss,10)):
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':msg+'/'+model}, log='ft-c'+str(c)+'-g'+str(j)+'.log')
-    s.run(check=True) # TODO: try parallel!
+        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':model}, log='ft-c'+str(c)+'-g'+str(j)+'.log')
+        s.run(check=True) # NOT parallel
 
     #####################################################################################
     # calibrate - SB.MS:DATA_BEAM (no correction)
     logging.info('Calibrate...')
     for ms in mss:
+        check_rm(ms+'/instrument')
         s.add('NDPPP '+parset_dir+'/NDPPP-selfcal_modeldata.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument', \
               log=ms+'_selfcal-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    #############################################################################################
-    # create widefield model
-    if c%3 == 0 and c != cycles-1 and False: # TODO skip
-
-        logging.info('Entering wide field section:')
-
-        # apply NDPPP solutions on complete dataset - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
-        # must be done before the rescaling or not all the flux is subtracted
-        logging.info('Make widefield model - Correct...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-selfcor.parset msin='+ms+' msin.datacolumn=CIRC_DATA cor.parmdb='+ms+'/instrument', \
-                    log=ms+'_widefield-selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-
-        # uvsub, MODEL_DATA is still Ateam
-        logging.info('Make widefield model - UV-Subtracting Ateam...')
-        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub-c'+str(c)+'.log', cmd_type='general') # uvsub
-        s.run(check=False)
-
-        ###########################################################################################################################
-        # avg 15s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
-#        logging.info('Make widefield model - Average...')
-#        check_rm('concat-avg.MS*')
-#        s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.freqstep=1 avg.timestep=3', \
-#                log='widefield_concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
-#        s.run(check=True)
-
-        # clean, mask, clean
-        logging.info('Make widefield model - Widefield imaging...')
-        imagename = 'img/clean-wide-c'+str(c)
-        s.add('wsclean -reorder -name ' + imagename + ' -size 4096 4096 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 10arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -channelsout 20 '+' '.join(mss), \
-                log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
-        logging.info('Make widefield model - Make mask...')
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask')
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/AteamLBA/m87-blank.crtf'}, log='blank-c'+str(c)+'.log')
-        s.run(check=True)
-        logging.info('Make widefield model - Widefield imaging2...')
-        s.add('wsclean -reorder -name ' + imagename.replace('wide','wide-masked') + ' -size 4096 4096 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 10arcsec -weight briggs 0.0 -niter 5000 -update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -channelsout 20 -casamask '+imagename+'.newmask '+' '.join(mss), \
-                log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
-#        widemodel = imagename.replace('wide','wide-masked')+'.model'
-
-        ###############################################################################################################################
-        # ft widefield model with wsclean
-#        logging.info('Make widefield model - ft() widefield model...')
+#    #############################################################################################
+#    # create widefield model
+#    if c%3 == 0 and c != cycles-1:
+#
+#        logging.info('Entering wide field section:')
+#
+#        # apply NDPPP solutions on complete dataset - SB.MS:CIRC_DATA -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
+#        # must be done before the rescaling or not all the flux is subtracted
+#        logging.info('Make widefield model - Correct...')
 #        for ms in mss:
-#            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':widemodel, 'wproj':512}, log='flag-ft-virgo-c'+str(c)+'-g'+str(j)+'.log')
-#            s.run(check=True) # not parallel!
-#            s.add('wsclean -reorder -predict ' + imagename.replace('wide','wide-masked') + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -scale 10arcsec '+ms, \
-#                    log=ms+'_ft-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#            s.add('NDPPP '+parset_dir+'/NDPPP-selfcor.parset msin='+ms+' msin.datacolumn=CIRC_DATA cor.parmdb='+ms+'/instrument', \
+#                    log=ms+'_widefield-selfcor-c'+str(c)+'.log', cmd_type='NDPPP')
 #        s.run(check=True)
-
-        # subtract widefield model - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA=CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
-        logging.info('Make widefield model - Subtract widefield model...')
-        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub2-c'+str(c)+'.log', cmd_type='general') # uvsub
-        s.run(check=False)
-
-        ########################################################################################################################
-        # Flagging on CORRECTED_DATA
-        logging.info('Make widefield model - Flagging residuals...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
-                    log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-
-        ########################################################################################################################
-        # subtract widefield model SB.MS:CIRC_DATA -> SB.MS:CIRC_DATA_SUB (uncal data with subtracted the widefield model)
-        # if last cycle skip (useless), but if one but last cycle, do on all SBs
-        for ms in mss:
-            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-subcorpt.parset', \
-                  log=ms+'_subcorpt-c'+str(c)+'.log', cmd_type='BBS')
-        s.run(check=True)
+#
+#        # uvsub, MODEL_DATA is still Ateam
+#        logging.info('Make widefield model - UV-Subtracting Ateam...')
+#        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub-c'+str(c)+'.log', cmd_type='general') # uvsub
+#        s.run(check=False)
+#
+#        ###########################################################################################################################
+#        # avg 15s - SB.MS:CORRECTED_DATA -> concat.MS:DATA (selfcal corrected data, beam applied, circular)
+##        logging.info('Make widefield model - Average...')
+##        check_rm('concat-avg.MS*')
+##        s.add('NDPPP '+parset_dir+'/NDPPP-concatavg.parset msin="['+','.join(mss)+']" msout=concat-avg.MS avg.freqstep=1 avg.timestep=3', \
+##                log='widefield_concatavg-c'+str(c)+'.log', cmd_type='NDPPP')
+##        s.run(check=True)
+#
+#        # clean, mask, clean
+#        logging.info('Make widefield model - Widefield imaging...')
+#        imagename = 'img/clean-wide-c'+str(c)
+#        s.add('wsclean -reorder -name ' + imagename + ' -size 4096 4096 -mem 90 -j '+str(s.max_processors)+' \
+#                -scale 10arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -channelsout 20 '+' '.join(mss), \
+#                log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#        s.run(check=True)
+#        logging.info('Make widefield model - Make mask...')
+#        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask')
+#        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/AteamLBA/m87-blank.crtf'}, log='blank-c'+str(c)+'.log')
+#        s.run(check=True)
+#        logging.info('Make widefield model - Widefield imaging2...')
+#        s.add('wsclean -reorder -name ' + imagename.replace('wide','wide-masked') + ' -size 4096 4096 -mem 90 -j '+str(s.max_processors)+' \
+#                -scale 10arcsec -weight briggs 0.0 -niter 5000 -update-model-required -maxuv-l 5000 -mgain 0.85 -joinchannels -channelsout 20 -casamask '+imagename+'.newmask '+' '.join(mss), \
+#                log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#        s.run(check=True)
+##        widemodel = imagename.replace('wide','wide-masked')+'.model'
+#
+#        ###############################################################################################################################
+#        # ft widefield model with wsclean
+##        logging.info('Make widefield model - ft() widefield model...')
+##        for ms in mss:
+##            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'concat-'+str(j)+'.MS', 'model':widemodel, 'wproj':512}, log='flag-ft-virgo-c'+str(c)+'-g'+str(j)+'.log')
+##            s.run(check=True) # not parallel!
+##            s.add('wsclean -reorder -predict ' + imagename.replace('wide','wide-masked') + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -scale 10arcsec '+ms, \
+##                    log=ms+'_ft-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+##        s.run(check=True)
+#
+#        # subtract widefield model - concat.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA=CORRECTED_DATA-MODEL_DATA (selfcal corrected data, beam applied, circular, field sources subtracted)
+#        logging.info('Make widefield model - Subtract widefield model...')
+#        s.add('taql "update concat.MS set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql-uvsub2-c'+str(c)+'.log', cmd_type='general') # uvsub
+#        s.run(check=False)
+#
+#        ########################################################################################################################
+#        # Flagging on CORRECTED_DATA
+#        logging.info('Make widefield model - Flagging residuals...')
+#        for ms in mss:
+#            s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
+#                    log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
+#        s.run(check=True)
+#
+#        ########################################################################################################################
+#        # subtract widefield model SB.MS:CIRC_DATA -> SB.MS:CIRC_DATA_SUB (uncal data with subtracted the widefield model)
+#        # if last cycle skip (useless), but if one but last cycle, do on all SBs
+#        for ms in mss:
+#            s.add('calibrate-stand-alone --parmdb-name instrument '+ms+' '+parset_dir+'/bbs-subcorpt.parset', \
+#                  log=ms+'_subcorpt-c'+str(c)+'.log', cmd_type='BBS')
+#        s.run(check=True)
 
     #######################################################################################
     # Solution plotting
@@ -269,8 +262,8 @@ for c in xrange(cycles):
     ########################################################################################
     # correct - SB.MS:CIRC_DATA_SUB -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
     logging.info('Restoring WEIGHT_SPECTRUM')
-    for j, msg in enumerate(np.array_split(mss,10)):
-        s.add('taql "update concat-c'+str(j)+'.MS set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+    for ms in mss:
+        s.add('taql "update '+ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
     logging.info('Correct...')
