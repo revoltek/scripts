@@ -8,8 +8,7 @@ patch = '3C196'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
 
-#datadir = '/lofar5/stsf309/LBAsurvey/c05-o03/3c196'
-datadir = '.'
+datadir = '/lofar5/stsf309/LBAsurvey/c05-o05/3c196'
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 ###################################################
