@@ -34,6 +34,11 @@ df = open(download_file,'r')
 
 logging.info('Downloading...')
 downloaded = glob.glob('*MS')
+# add renamed files
+if os.path.exists('renamed.txt'):
+    with open('renamed.txt','r') as flog:
+        downloadded += [line.rstrip('\n') for line in flog]
+
 for i, line in enumerate(df):
     ms = re.findall(r'L[0-9]*_SB[0-9]*_uv\.dppp\.MS', line)[0]
     if ms in downloaded: continue
@@ -45,6 +50,7 @@ s.run(check=True)
 # rename files using codename and freq
 if rename:
     logging.info('Renaming...')
+    flog = open('renamed.txt', 'a')
     regex = re.compile(r"^L[0-9]*_")
     regex2 = re.compile(r"_uv\.dppp")
     regex3 = re.compile(r"_SB[0-9]*.MS")
@@ -67,5 +73,7 @@ if rename:
 
         logging.debug('Rename '+ms+' -> '+cycle_obs+'/'+sou+'/'+newName)
         os.system('mv '+ms+' '+cycle_obs+'/'+sou+'/'+newName)
+        flog.write(ms+'\n')
+    flog.close()
 
 logging.info("Done.")
