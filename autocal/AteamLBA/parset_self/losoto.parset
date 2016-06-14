@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [norm,reweight,plotAi1,plotAi2,plotAi3,plotPi1,plotPi2,plotPi3]
+LoSoTo.Steps = [reweight,flag,norm,plotAi1,plotAi2,plotAi3,plotPi1,plotPi2,plotPi3]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -19,15 +19,15 @@ LoSoTo.Steps.reweight.WeightVal = 0.
 LoSoTo.Steps.reweight.ant = [CS013LBA]
 
 #flag
-#LoSoTo.Steps.flag.Operation = FLAG
-#LoSoTo.Steps.flag.Soltab = [sol000/amplitude000]
-#LoSoTo.Steps.flag.Axes = [time,freq]
-#LoSoTo.Steps.flag.MaxCycles = 1
-#LoSoTo.Steps.flag.MaxRms = 5
-#LoSoTo.Steps.flag.Order = [25,25]
-#LoSoTo.Steps.flag.Replce = False
-#LoSoTo.Steps.flag.PreFlagZeros = False
-#LoSoTo.Steps.flag.Smooth = True
+LoSoTo.Steps.flag.Operation = FLAG
+LoSoTo.Steps.flag.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flag.Axes = [time,freq]
+LoSoTo.Steps.flag.MaxCycles = 1
+LoSoTo.Steps.flag.MaxRms = 7
+LoSoTo.Steps.flag.Order = [30,20]
+LoSoTo.Steps.flag.Replce = False
+LoSoTo.Steps.flag.PreFlagZeros = False
+LoSoTo.Steps.flag.Smooth = True
 
 # plot initials amp
 LoSoTo.Steps.plotAi1.Operation = PLOT

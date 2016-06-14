@@ -2,7 +2,7 @@
 # download from LTA using WGET
 
 download_file = 'html.txt'
-rename = False
+rename = True
 
 ###################################################
 
@@ -28,12 +28,17 @@ def nu2num(nu):
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False, max_threads = 2) # set here max number of threads here
+s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
 
 df = open(download_file,'r')
 
 logging.info('Downloading...')
 downloaded = glob.glob('*MS')
+# add renamed files
+if os.path.exists('renamed.txt'):
+    with open('renamed.txt','r') as flog:
+        downloadded += [line.rstrip('\n') for line in flog]
+
 for i, line in enumerate(df):
     ms = re.findall(r'L[0-9]*_SB[0-9]*_uv\.dppp\.MS', line)[0]
     if ms in downloaded: continue
@@ -45,6 +50,7 @@ s.run(check=True)
 # rename files using codename and freq
 if rename:
     logging.info('Renaming...')
+    flog = open('renamed.txt', 'a')
     regex = re.compile(r"^L[0-9]*_")
     regex2 = re.compile(r"_uv\.dppp")
     regex3 = re.compile(r"_SB[0-9]*.MS")
@@ -57,15 +63,17 @@ if rename:
         newName = regex.sub(code+'_', ms)
         newName = regex2.sub('', newName)
 
-        sou = code.split('_')[1]
-        if not os.path.exists(sou): os.makedirs(sou)
+        cycle_obs, sou = code.split('_')
+        if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
 
         spw = pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False)
         freq = spw.getcell('REF_FREQUENCY',0)
         spw.close()
         newName = regex3.sub('_SB'+str(nu2num(freq/1.e6))+'.MS', newName)
 
-        logging.debug('Rename '+ms+' -> '+sou+'/'+newName)
-        os.system('mv '+ms+' '+sou+'/'+newName)
+        logging.debug('Rename '+ms+' -> '+cycle_obs+'/'+sou+'/'+newName)
+        os.system('mv '+ms+' '+cycle_obs+'/'+sou+'/'+newName)
+        flog.write(ms+'\n')
+    flog.close()
 
 logging.info("Done.")

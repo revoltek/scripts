@@ -8,6 +8,7 @@ patch = '3C196'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
 
+datadir = '/lofar5/stsf309/LBAsurvey/c05-o05/3c196'
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 ###################################################
@@ -20,10 +21,30 @@ from lib_pipeline import *
 set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
-mss = sorted(glob.glob('*MS'))
+mss = sorted(glob.glob(datadir+'*MS'))
 
+###########################################################
+# Avg to 4 chan and 4 sec
+# Remove internationals
 nchan = find_nchan(mss[0])
-logging.debug('Channel in the MS: '+str(nchan)+'.')
+timeint = find_timeint(mss[0])
+if nchan % 4 != 0:
+    logging.error('Channels should be a multiple of 4.')
+    sys.exit(1)
+avg_factor_f = nchan / 4
+if avg_factor_f < 1: avg_factor_f = 1
+avg_factor_t = int(np.floor(5/timeint))
+if avg_factor_t < 1: avg_factor_t = 1
+logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+for ms in mss:
+    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+    if os.path.exists(msout): continue
+    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                log=msout+'_avg.log', cmd_type='NDPPP')
+s.run(check=True)
+nchan = nchan / avg_factor_f
+timeint = timeint * avg_factor_t
+mss = sorted(glob.glob('*-avg.MS'))
 
 ################################################
 ## Initial processing (2/2013->2/2014)
@@ -31,21 +52,6 @@ logging.debug('Channel in the MS: '+str(nchan)+'.')
 #for ms in mss:
 #    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 #s.run(check=False)
-
-# If more than 4 channels then average in freq to 4 chans
-# TODO: avg to 5 sec?
-if nchan > 4:
-    if nchan % 4 != 0:
-        logging.error('Channels should be a multiple of 4.')
-        sys.exit(1)
-    avg_factor = nchan / 4
-    logging.info('Average in freq (factor of %i)...' % avg_factor)
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS')
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
-    s.run(check=True)
-    nchan = nchan / 4
-    mss = sorted(glob.glob('*-avg.MS'))
 
 ############################################
 # Prepare output parmdb
@@ -77,81 +83,81 @@ for ms in mss:
     s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
-##################################################
-## Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-## NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
-#logging.info('BL-averaging...')
-#for ms in mss:
-#    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#s.run(check=True)
-#
 #################################################
-## Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-#logging.debug('Calibrating...')
-#for ms in mss:
-#    check_rm(ms+'/instrument')
-#    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-#################################################
-## Prepare and run losoto
-#check_rm('globaldb')
-#check_rm('globaldb-fr')
-#os.system('mkdir globaldb')
-#os.system('mkdir globaldb-fr')
-#for i, ms in enumerate(mss):
-#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-#    num = re.findall(r'\d+', ms)[-1]
-#    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-#    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-#    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
-#    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
-#
-#logging.info('Running LoSoTo...')
-#check_rm('plots')
-#check_rm('cal1.h5')
-#s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
-#s.run(check=True)
-#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-#os.system('cp -r cal1.h5 cal1.h5-flag')
-#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-#s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-#check_rm('plots-fr')
-#os.system('mv plots plots-fr')
-#
-#for i, ms in enumerate(mss):
-#    num = re.findall(r'\d+', ms)[-1]
-#    check_rm(ms+'/instrument-fr')
-#    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
-#    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
-#
-#######################################################
-## Correct FR DATA -> CORRECTED_DATA
-#logging.info('Faraday rotation correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-## 2: recalibrate without FR
-#
+# Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
+# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
+logging.info('BL-averaging...')
+for ms in mss:
+    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+s.run(check=True)
+
 ################################################
-## Beam correction CORRECTED_DATA -> CORRECTED_DATA
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA', log=ms+'_beam2.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-#################################################
-## Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-## NOTE: the WEIGHTED_COLUMN is already smoothed but BLavg put it back
-#logging.info('BL-averaging...')
-#for ms in mss:
-#    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#s.run(check=True)
+# Solve cal_SB.MS:SMOOTHED_DATA (only solve)
+logging.info('Calibrating...')
+for ms in mss:
+    check_rm(ms+'/instrument')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
+s.run(check=True)
+
+################################################
+# Prepare and run losoto
+check_rm('globaldb')
+check_rm('globaldb-fr')
+os.system('mkdir globaldb')
+os.system('mkdir globaldb-fr')
+for i, ms in enumerate(mss):
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
+    num = re.findall(r'\d+', ms)[-1]
+    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
+    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
+
+logging.info('Running LoSoTo...')
+check_rm('plots')
+check_rm('cal1.h5')
+s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
+s.run(check=True)
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+os.system('cp -r cal1.h5 cal1.h5-flag')
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+check_rm('plots-fr')
+os.system('mv plots plots-fr')
+
+for i, ms in enumerate(mss):
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument-fr')
+    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
+    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
+
+######################################################
+# Correct FR DATA -> CORRECTED_DATA
+logging.info('Faraday rotation correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
+s.run(check=True)
+
+# 2: recalibrate without FR
+
+###############################################
+# Beam correction CORRECTED_DATA -> CORRECTED_DATA
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA', log=ms+'_beam2.log', cmd_type='NDPPP')
+s.run(check=True)
+
+################################################
+# Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
+# NOTE: the WEIGHTED_COLUMN is already smoothed but BLavg put it back
+logging.info('BL-averaging...')
+for ms in mss:
+    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+s.run(check=True)
 
 ################################################
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)

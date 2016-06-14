@@ -28,6 +28,23 @@ logging.info('Cleaning...')
 check_rm('*group*')
 mss = sorted(glob.glob('*MS'))
 
+##############################################
+# If more than 4 channels then average in freq to 4 chans
+# Remove internationals
+# TODO: avg to 5 sec/2 chan?
+if nchan > 4:
+    if nchan % 4 != 0:
+        logging.error('Channels should be a multiple of 4.')
+        sys.exit(1)
+    avg_factor = nchan / 4
+    logging.info('Average in freq (factor of %i)...' % avg_factor)
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS')
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
+    s.run(check=True)
+    nchan = nchan / 4
+    mss = sorted(glob.glob('*-avg.MS'))
+
 ###############################################
 # Initial processing
 logging.info('Fix beam table')
