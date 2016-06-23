@@ -1,5 +1,9 @@
 #!/usr/bin/python
 # initial calibration of the calibrator in circular, get and corr FR, back to linear, sol flag + effects separation
+import sys, os, glob, re
+import numpy as np
+import pyrap.tables as pt
+from lib_pipeline import *
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
@@ -8,20 +12,15 @@ patch = '3C196'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
 
-datadir = '/lofar5/stsf309/LBAsurvey/c05-o05/3c196'
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
+datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-1]
 
 ###################################################
-
-import sys, os, glob, re
-import numpy as np
-import pyrap.tables as pt
-from lib_pipeline import *
 
 set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
-mss = sorted(glob.glob(datadir+'*MS'))
+mss = sorted(glob.glob(datadir+'/*MS'))
 
 ###########################################################
 # Avg to 4 chan and 4 sec
@@ -31,10 +30,10 @@ timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
     logging.error('Channels should be a multiple of 4.')
     sys.exit(1)
-avg_factor_f = nchan / 4
+avg_factor_f = nchan / 4 # to 4 ch/SB
 if avg_factor_f < 1: avg_factor_f = 1
-avg_factor_t = int(np.floor(5/timeint))
-if avg_factor_t < 1: avg_factor_t = 1
+avg_factor_t = int(np.round(4/timeint))
+if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
 logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
 for ms in mss:
     msout = ms.replace('.MS','-avg.MS').split('/')[-1]
@@ -46,12 +45,12 @@ nchan = nchan / avg_factor_f
 timeint = timeint * avg_factor_t
 mss = sorted(glob.glob('*-avg.MS'))
 
-################################################
-## Initial processing (2/2013->2/2014)
-#logging.warning('Fix beam table...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+###############################################
+# Initial processing (2/2013->2/2014)
+logging.warning('Fix beam table...')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
 ############################################
 # Prepare output parmdb
@@ -198,7 +197,7 @@ s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', l
 s.run(check=True)
 s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('H5parm_exporter.py -v --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 
 logging.info("Done.")

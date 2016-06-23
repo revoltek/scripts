@@ -264,7 +264,7 @@ class Scheduler():
             if (self.qsub == False and (self.cluster == 'Hamburg' or self.cluster == 'Leiden')) or \
                (self.qsub == True and self.cluster == 'CEP3'):
                 logging.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
-                #sys.exit(1)
+                sys.exit(1)
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 64

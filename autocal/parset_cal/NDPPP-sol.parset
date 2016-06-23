@@ -19,3 +19,4 @@ cal.usechannelfreq = False
 #cal.invert = False # automatically set in predict-mode
 cal.beammode = array_factor
 cal.nchan = 1
+cal.ntime = 1
