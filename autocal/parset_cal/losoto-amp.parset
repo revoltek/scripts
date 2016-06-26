@@ -1,12 +1,12 @@
 # losoto parset
-LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, duplicateA, smoothA, plotAs, residualA, plotAr1, plotAr2, plotAr3] #, plotAm]
+LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, duplicateA, smoothA, plotAs, plotAs2, residualA, plotAr1, plotAr2, plotAr3] #, plotAm]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
-LoSoTo.Ncpu = 10
+LoSoTo.Ncpu = 5
 
 # bkp copy
 LoSoTo.Steps.duplicateAbkp.Operation = DUPLICATE
@@ -58,13 +58,20 @@ LoSoTo.Steps.smoothA.Mode = median
 # plot amplitude smooth
 LoSoTo.Steps.plotAs.Operation = PLOT
 LoSoTo.Steps.plotAs.Soltab = [sol000/amplitudeSmooth000]
-LoSoTo.Steps.plotAs.time.minmax = [0,1e20,50000]
-LoSoTo.Steps.plotAs.Axes = freq
+LoSoTo.Steps.plotAs.Axes = [time,freq]
 LoSoTo.Steps.plotAs.TableAxis = ant
-LoSoTo.Steps.plotAs.ColorAxis = pol
 LoSoTo.Steps.plotAs.PlotFlag = True
 LoSoTo.Steps.plotAs.Prefix = plots/ampSmooth_
-#LoSoTo.Steps.plotAs.MinMax = [1e-4,3e-3]
+
+# plot amplitude smooth
+LoSoTo.Steps.plotAs2.Operation = PLOT
+LoSoTo.Steps.plotAs2.Soltab = [sol000/amplitudeSmooth000]
+LoSoTo.Steps.plotAs2.Axes = freq
+LoSoTo.Steps.plotAs2.time.minmax = [0,1e20,50000]
+LoSoTo.Steps.plotAs2.TableAxis = ant
+LoSoTo.Steps.plotAs2.ColorAxis = pol
+LoSoTo.Steps.plotAs2.PlotFlag = True
+LoSoTo.Steps.plotAs2.Prefix = plots/ampSmooth2_
 
 # residual
 LoSoTo.Steps.residualA.Operation = RESIDUALS

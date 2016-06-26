@@ -13,7 +13,8 @@ def pbcorrGMRT(imgname, obsfreq=0, phaseCentre=None):
     print "Frequency is", freq, "MHz"
 
     # from http://gmrt.ncra.tifr.res.in/gmrt_hpage/Users/doc/manual/UsersManual/node27.html
-    parm = {153: [-4.04,76.2,-68.8,22.03],
+    # 150 from TGSS
+    parm = {153: [-2.460,1.076,-0.6853,3.573],
     235: [-3.366,46.159,-29.963,7.529],
     325: [-3.397,47.192,-30.931,7.803],
     610: [-3.486,47.749,-35.203,10.399],

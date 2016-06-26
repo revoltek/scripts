@@ -9,6 +9,9 @@ shopt -s expand_aliases
 proc=$1
 shift
 
+# escaped command
+escapedcmd=`echo $@ | LC_ALL=C sed -e 's/[^a-zA-Z0-9,._+@%/-]/\\\&/g;'`
+
 # ugly workaround to catch qsub errors and resubmit
 until [[ $id =~ ^[0-9]+$ ]]; do
 
@@ -18,20 +21,20 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 # To limit to a node, e.g. para11, use:
 #PBS -l nodes=1:ppn=$proc:para11
 
-    cmd="#!/bin/bash
+    cmd="""#!/bin/bash
 #PBS -M astro@voo.it
 #PBS -m a
 #PBS -N LBApipe
-#PBS -l walltime=9:00:00
+#PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
 #PBS -o /dev/null
 cd \$PBS_O_WORKDIR
+echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - \'${escapedcmd}\'\" >> commands.log
 source /net/para34/data1/oonk/tjd_upd/lofim.sh
 export PATH=\"${PATH}\"
 export PYTHONPATH=\"${PYTHONPATH}\"
-echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - ${@}\" >> commands.log
-${@}"
+${@}"""
 
     # call the command and capture the stdout
     id=`qsub -q lofarq /dev/stdin << EOF | perl -pe 's:^\D+(\d+).*$:$1:'
