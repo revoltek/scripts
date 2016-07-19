@@ -229,6 +229,7 @@ class applyregion:
         mean -- the mean in the apertur
         error -- error on the flux given the rms in offsource
         """
+        self.rm = rm
         self.rms=[]
         self.max=[]
         self.min=[]
@@ -256,6 +257,7 @@ class applyregion:
             self.robustrms.append(scipy.stats.nanstd(data[np.where(data < robustrms * self.rms[-1])]))
             self.flux.append(data[np.logical_not(np.isnan(data))].sum()/rm.area)
             self.mean.append(scipy.stats.nanmean(data))
+            self.mean_error.append(np.sqrt(scipy.stats.nanmean(data)/np.sqrt(np.sum(np.notnan(data)))))
 
             # calc noise
             if offsource is not None:
@@ -267,6 +269,7 @@ def printflux(rms,fgr,bgr=None,fluxerr=None,minrms=0,nsigma=0,label=''):
     region -- region to work on
     bgr -- background region for noise/subtraction (only flux and spidx)
     fluxerr -- percentage of flux error for spidx maps (only spidx)
+    sigma -- cut on sigma on all maps (only spidx)
     """
     for rm in rms:
         if bgr:
@@ -287,14 +290,14 @@ def printflux(rms,fgr,bgr=None,fluxerr=None,minrms=0,nsigma=0,label=''):
             else:
                 print rm.filename,label,'%8.4g %10.6g' % (freq,fg.flux[i])
 
-def printmean(rms,fgr,bgr=None,fluxerr=None,nsigma=0,label=''):
-    for rm in rms:
-        fg_ir=pyregion.open(fgr).as_imagecoord(rm.headers[0])
-        fg=applyregion(rm,fg_ir)
-
-        for i in range(rm.nchans):
-            freq=rm.frq[i]
-            print rm.filename,label,'%8.4g %10.6g' % (freq,fg.mean[i])
+def printmean(fgss,bgs=None,fluxerr=None):
+    # cycle on regions
+    for fgs in fgss:
+        # cycle on rm
+        for fg in fgs:
+            for i in range(fg.rm.nchans):
+                freq = fg.rm.frq[i]
+                print fg.rm.filename,'%8.4g %10.6g +/- %10.6g' % (freq,fg.mean[i],fg.mean_error[i])
 
 def printspidx(rms,fgr,bgr=None,fluxerr=0,nsigma=0,label=''):
     freqs = []
@@ -343,6 +346,7 @@ def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma
     action -- what to do once fluxes are measured: allows a user-defined action
               which must be a drop-in replacement for printflux
     fluxerr -- flux error in % for spidxmap
+    nsigma -- keep only pixels above these sigma level in ALL maps (bgr must be specified)
     """
     action = {'flux':printflux, 'mean':printmean, 'spidx':printspidx}[action]
 
@@ -350,14 +354,36 @@ def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma
     for filename in files:
         rms.append(radiomap(filename,verbose=verbose))
 
-    if individual:
-        for n,reg in enumerate(fg_ir):
-            fg=pyregion.ShapeList([reg])
-            r=action(rms,fg,bgr=bgr,fluxerr=fluxerr,nsigma=nsigma,label=n+1)
-    else:
-        r=action(rms,fgr,bgr=bgr,fluxerr=fluxerr,nsigma=nsigma)
+    # if using the sigma all the images must have the same size
+    if nsigma > 0: assert [rms[i].d == rms[0].d for i in xrange(len(rms))].all()
+    # initial mask
+    mask = (np.zeros_like(rms[0].d) == 0)
 
-    return r
+    bgs = [] #1d list: [ radiomap ]
+    for rm in rms:
+        if bgr:
+            bg_ir=pyregion.open(bgr).as_imagecoord(rm.headers[0])
+            bg=applyregion(rm,bg_ir)
+            bgs.append(bg.rms)
+            # likely brakes with channelled images
+            if nsigma > 0: mask = np.logical_and(mask, np.array(rm.d) > (np.array(bg.rms)*nsigma) )
+        else:
+            bgs.append(None)
+
+    # TODO: invert thys cycles
+    fgs = [] # 2d list: [ radiomap x forground_region]
+    for i, rm in enumerate(rms):
+        fg_ir=pyregion.open(fgr).as_imagecoord(rm.headers[0])
+        if individual:
+            fgs.append([])
+            for fg_ir_split in fg_ir:
+                fg=pyregion.ShapeList([fg_ir_split])
+                fgs[-1].append(applyregion(rm,fg,offsource=bgs[i],mask=mask))
+        else:
+            fgs.append([applyregion(rm,fg_ir,offsource=bgs[i],mask=mask)])
+
+    action(fgs, bgs)
+
         
 if __name__ == "__main__":
     import sys
@@ -366,13 +392,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Measure fluxes from FITS files.')
     parser.add_argument('files', metavar='FILE', nargs='+',
                         help='FITS files to process')
-    parser.add_argument('-f','--foreground', dest='fgr', action='store',default='ds9.reg',help='Foreground region file to use')
-    parser.add_argument('-b','--background', dest='bgr', action='store',default='',help='Background region file to use')
-    parser.add_argument('-i','--individual', dest='indiv', action='store_true',default=False,help='Break composite region file into individual regions')
-    parser.add_argument('-e','--fluxerr', dest='fluxerr', action='store',default=0, type=float, help='Flux error in %% for spidx maps')
+    parser.add_argument('-f','--foreground', dest='fgr', action='store',default='ds9.reg',help='Foreground region file to use.')
+    parser.add_argument('-b','--background', dest='bgr', action='store',default='',help='Background region file to use.')
+    parser.add_argument('-i','--individual', dest='indiv', action='store_true',default=False,help='Break composite region file into individual regions.')
+    parser.add_argument('-e','--fluxerr', dest='fluxerr', action='store',default=0, type=float, help='Flux error in %% for spidx maps only.')
     parser.add_argument('-s','--sigma', dest='nsigma', action='store',default=0, type=float, help='Try to cut all the images above a certain sigma. Only pixel over that sigma in ALL the images are considered. Valid only for spidx.')
-    parser.add_argument('-a','--action', dest='action', action='store',default='flux',help='Action to perform: flux, mean, spidx')
-    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',default=False,help='Be verbose')
+    parser.add_argument('-a','--action', dest='action', action='store',default='flux',help='Action to perform: flux, mean, spidx.')
+    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',default=False,help='Be verbose.')
 
     args = parser.parse_args()
 
