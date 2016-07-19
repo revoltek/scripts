@@ -3,7 +3,7 @@
 
 # Parallelizator
 # USAGE:
-# def flag(funct_param, outQueue=None):
+# def funct(funct_param, outQueue=None):
 #     pass
 #     outQueue.put([funct_output])
 #
