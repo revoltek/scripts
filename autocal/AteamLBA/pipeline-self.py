@@ -1,32 +1,7 @@
 #!/usr/bin/env python
 
-# initial self-cal model
-#model = '/home/fdg/scripts/autocal/AteamLBA/150328_LBA-VirA.model'
-#model = '/home/fdg/scripts/autocal/AteamLBA/HBA-CygA.model'
-model = '/home/fdg/scripts/autocal/AteamLBA/LBA-CasA.model'
-#model = '/home/fdg/scripts/autocal/AteamLBA/VLA4-TauA.skydb'
-
-# clean parset
-#casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-vir.py'
-#casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-viris.py'
-#casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-cyg.py'
-casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-cas.py'
-#casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-tau.py'
-
-# losoto parset
-#losoto_parset = 'losoto-vir.parset'
-#losoto_parset = 'losoto-viris.parset'
-#losoto_parset = 'losoto-cyg.parset'
-losoto_parset = 'losoto-cas.parset'
-#losoto_parset = 'losoto-tau.parset'
-
-# data
-datadir = '../tgts?-bkp'
-#datadir = '../tgts-bkp'
-
 # number of selfcal cycles
 cycles = 10
-
 # parset directory
 parset_dir = '/home/fdg/scripts/autocal/AteamLBA/parset_self/'
 
@@ -43,7 +18,42 @@ from make_mask import make_mask
 set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
-mss = sorted(glob.glob(datadir+'/*MS'))
+
+##############################################
+# Find right conf
+localdir = os.getcwd().split('/')[-2]
+if 'Cas' in localdir:
+    logging.info('Observation: CasA')
+    model = '/home/fdg/scripts/autocal/AteamLBA/160416_LBA-CasA.model'
+    datadir = '../tgts?-bkp'
+    casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-cas.py'
+    losoto_parset = 'losoto-cas.parset'
+
+elif 'Cyg' in localdir:
+    logging.info('Observation: CygA')
+    model = '/home/fdg/scripts/autocal/AteamLBA/HBA-CygA.model'
+    datadir = '../tgts?-bkp'
+    casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-cyg.py'
+    losoto_parset = 'losoto-cyg.parset'
+
+elif 'Tau' in localdir:
+    logging.info('Observation: TauA')
+    model = '/home/fdg/scripts/autocal/AteamLBA/VLA4-TauA.skydb'
+    datadir = '../tgts-bkp'
+    casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-tau.py'
+    losoto_parset = 'losoto-tau.parset'
+
+elif 'Vir' in localdir:
+    model = '/home/fdg/scripts/autocal/AteamLBA/150328_LBA-VirA.model'
+    datadir = '../tgts-bkp'
+    if 'is' in localdir:
+        logging.info('Observation: VirA')
+        casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-viris.py'
+        losoto_parset = 'losoto-viris.parset'
+    else:
+        logging.info('Observation: VirA (old)')
+        casa_clean_parset = '/home/fdg/scripts/autocal/casa_comm/AteamLBA/casa_clean-vir.py'
+        losoto_parset = 'losoto-vir.parset'
 
 #################################################
 # Clear
@@ -58,6 +68,7 @@ os.makedirs('img')
 ###############################################
 # Avg to 4 chan and 2 sec
 # Remove internationals
+mss = sorted(glob.glob(datadir+'/*MS'))
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
@@ -281,7 +292,8 @@ for c in xrange(cycles):
 
     # clean (make a new model of Ateam)
     logging.info('Clean (cycle: '+str(c)+')...')
-    s.add_casa(casa_clean_parset, params={'msfile':[timechunk+'_concat-avg.MS' for timechunk in timechunks], 'imagename':'img/clean-c'+str(c)}, log='clean-c'+str(c)+'.log')
+    uvrange = '0~'+str(7+1.*c)+'klambda'
+    s.add_casa(casa_clean_parset, params={'msfile':[timechunk+'_concat-avg.MS' for timechunk in timechunks], 'imagename':'img/clean-c'+str(c), 'uvrange':uvrange}, log='clean-c'+str(c)+'.log')
     s.run(check=True)
 
 #########################################################################################################

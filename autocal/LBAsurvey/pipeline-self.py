@@ -94,30 +94,31 @@ for ms in mss:
 
 ####################################################################################################
 # To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (circular)
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Convert to circular...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 #################################################################################################
 # Smooth CORRECTED_DATA -> SMOOTHED_DATA (circular, smooth)
-logging.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True)
+#logging.info('BL-based smoothing...')
+#for ms in mss:
+#    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
+#s.run(check=True)
 
 #################################################################################################
-# TODO: change to NDPPP
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
+# TODO: merge with next step?
 logging.info('Calibrating TEC...')
 for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
-#              log=ms+'_solcor_tec.log', cmd_type='BBS', processors=2)
     check_rm(ms+'/instrument-tec')
-    print 'NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec cal.sourcedb='+ms+'/'+sourcedb_basename
-#    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec cal.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_sol-tec.log', cmd_type='NDPPP')
-#s.run(check=True)
-sys.exit(1)
+    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec cal.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_sol-tec.log', cmd_type='NDPPP')
+s.run(check=True)
+# TODO: BBS for correct, move to NDPPP
+for ms in mss:
+    s.add('calibrate-stand-alone --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+              log=ms+'_cor-tec.log', cmd_type='BBS', processors=2)
+s.run(check=True)
 
 ##############################################################################################
 # Solve SB.MS:CORRECTED_DATA (only solve)
@@ -206,12 +207,17 @@ for c in xrange(niter):
         check_rm(concat_ms+'*')
         pt.msutil.msconcat(mss, concat_ms, concatTime=False)
 
-    # TODO: move to NDPPP - possible merge with next step?
+    # TODO: merge with next step?
     # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA
     logging.info('Calibrating TEC...')
     for ms in mss:
-        s.add('calibrate-stand-alone -f --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-solcor_tec.parset '+skymodel, \
-                  log=ms+'_solcor_tec-c'+str(c)+'.log', cmd_type='BBS', processors=2)
+        check_rm(ms+'/instrument-tec')
+        s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec cal.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+    # TODO: BBS for correct, move to NDPPP
+    for ms in mss:
+        s.add('calibrate-stand-alone --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+                  log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='BBS', processors=2)
     s.run(check=True)
 
     # solve AMP - group*_TC.MS:CORRECTED_DATA
