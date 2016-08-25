@@ -13,7 +13,8 @@ patch = '3C196'
 #patch = '3C295'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
-datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+#datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+datadir = '.'
 
 ###################################################
 
@@ -30,20 +31,23 @@ timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
     logging.error('Channels should be a multiple of 4.')
     sys.exit(1)
+
 avg_factor_f = nchan / 4 # to 4 ch/SB
 if avg_factor_f < 1: avg_factor_f = 1
 avg_factor_t = int(np.round(4/timeint))
 if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
-logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
-for ms in mss:
-    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-    if os.path.exists(msout): continue
-    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+
+if avg_factor_f != 1 or avg_factor_t != 1:
+    logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+        if os.path.exists(msout): continue
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
                 log=msout+'_avg.log', cmd_type='NDPPP')
-s.run(check=True)
-nchan = nchan / avg_factor_f
-timeint = timeint * avg_factor_t
-mss = sorted(glob.glob('*-avg.MS'))
+    s.run(check=True)
+    nchan = nchan / avg_factor_f
+    timeint = timeint * avg_factor_t
+    mss = sorted(glob.glob('*-avg.MS'))
 
 ###############################################
 # Initial processing (2/2013->2/2014)

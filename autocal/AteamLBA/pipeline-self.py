@@ -104,7 +104,7 @@ for ms in mss:
 s.run(check=True)
 
 ##########################################################################################
-# Transform to circular pol - SB.MS:CORRECTED_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
+# Transform to circular pol - SB.MS:DATA_BEAM -> SB-circ.MS:DATA_BEAM (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('mslin2circ.py -s -i '+ms+':DATA_BEAM -o '+ms+':DATA_BEAM', log=ms+'-init_lin2circ.log', cmd_type='python')
@@ -292,8 +292,8 @@ for c in xrange(cycles):
 
     # clean (make a new model of Ateam)
     logging.info('Clean (cycle: '+str(c)+')...')
-    uvrange = '0~'+str(7+1.*c)+'klambda'
-    s.add_casa(casa_clean_parset, params={'msfile':[timechunk+'_concat-avg.MS' for timechunk in timechunks], 'imagename':'img/clean-c'+str(c), 'uvrange':uvrange}, log='clean-c'+str(c)+'.log')
+    #uvrange = '0~'+str(7+1.*c)+'klambda'
+    s.add_casa(casa_clean_parset, params={'msfile':[timechunk+'_concat-avg.MS' for timechunk in timechunks], 'imagename':'img/clean-c'+str(c)}, log='clean-c'+str(c)+'.log')
     s.run(check=True)
 
 #########################################################################################################

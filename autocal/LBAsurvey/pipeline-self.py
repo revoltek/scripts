@@ -109,24 +109,24 @@ for ms in mss:
 #################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
 # TODO: merge with next step?
-logging.info('Calibrating TEC...')
-for ms in mss:
-    check_rm(ms+'/instrument-tec')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec cal.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_sol-tec.log', cmd_type='NDPPP')
-s.run(check=True)
-# TODO: BBS for correct, move to NDPPP
-for ms in mss:
-    s.add('calibrate-stand-alone --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-              log=ms+'_cor-tec.log', cmd_type='BBS', processors=2)
-s.run(check=True)
+#logging.info('Calibrating TEC...')
+#for ms in mss:
+#    check_rm(ms+'/instrument-tec')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec cal.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_sol-tec.log', cmd_type='NDPPP')
+#s.run(check=True)
+## TODO: BBS for correct, move to NDPPP
+#for ms in mss:
+#    s.add('calibrate-stand-alone --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
+#              log=ms+'_cor-tec.log', cmd_type='BBS', processors=2)
+#s.run(check=True)
 
 ##############################################################################################
 # Solve SB.MS:CORRECTED_DATA (only solve)
-logging.info('Calibrating for FR...')
-for ms in mss:
-    check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument cal.sourcedb='+ms+'/'+sourcedb_basename+' cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
-s.run(check=True)
+#logging.info('Calibrating for FR...')
+#for ms in mss:
+#    check_rm(ms+'/instrument')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument cal.sourcedb='+ms+'/'+sourcedb_basename+' cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 #################################################################################
 # Preapre fake FR parmdb

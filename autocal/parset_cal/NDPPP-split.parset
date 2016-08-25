@@ -1,7 +1,0 @@
-msin =
-msin.datacolumn = CORRECTED_DATA
-msin.startchan =
-msin.nchan = 1
-msout =
-
-steps = []
