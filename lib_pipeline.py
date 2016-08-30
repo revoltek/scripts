@@ -370,9 +370,10 @@ class Scheduler():
         if log != '':
             self.log_list.append((log,'CASA'))
 
-    def run(self, check=False):
+    def run(self, check=False, max_threads=None):
         """
         If check=True then a check is done on every log in the log_list
+        if max_thread != None, then it overrides the global values, useful for special commands that need a lower number of threads
         """
         def worker(queue):
             for cmd in iter(queue.get, None):
@@ -380,8 +381,9 @@ class Scheduler():
                 elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
+        if max_threads == None: max_threads = self.max_threads
         q = Queue()
-        threads = [Thread(target=worker, args=(q,)) for _ in range(self.max_threads)]
+        threads = [Thread(target=worker, args=(q,)) for _ in range(max_threads)]
     
         for i, t in enumerate(threads): # start workers
             t.daemon = True

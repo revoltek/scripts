@@ -87,9 +87,9 @@ for ms in mss:
 s.run(check=True)
 
 #################################################
-# Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
+# Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 # NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
-logging.info('BL-averaging...')
+logging.info('BL-smooth...')
 for ms in mss:
     s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)

@@ -116,6 +116,9 @@ logging.info('Make new columns...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,MODEL_DATA,SMOOTHED_DATA', log=ms+'-init_addcol.log', cmd_type='python')
 s.run(check=True)
+for ms in mss:
+    s.add('addcol2ms.py -m '+ms+' -c WEIGHT_SPECTRUM_ORIG -i WEIGHT_SPECTRUM', log=ms+'-init_addcol.log', cmd_type='python')
+s.run(check=True)
 
 # self-cal cycle
 for c in xrange(cycles):
@@ -265,10 +268,11 @@ for c in xrange(cycles):
 
     ########################################################################################
     # correct - SB.MS:CIRC_DATA_SUB -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
-    #logging.info('Restoring WEIGHT_SPECTRUM')
-    #for ms in mss:
-    #    s.add('taql "update '+ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
-    #s.run(check=True)
+    # the weights are changed every correct, so they need to be restored
+    logging.info('Restoring WEIGHT_SPECTRUM')
+    for ms in mss:
+        s.add('taql "update '+ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+    s.run(check=True)
 
     logging.info('Correct...')
     for ms in mss:
