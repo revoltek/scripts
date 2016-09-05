@@ -107,7 +107,7 @@ s.run(check=True)
 # Transform to circular pol - SB.MS:DATA_BEAM -> SB-circ.MS:DATA_BEAM (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('mslin2circ.py -s -i '+ms+':DATA_BEAM -o '+ms+':DATA_BEAM', log=ms+'-init_lin2circ.log', cmd_type='python')
+    s.add('mslin2circ.py -s -w -i '+ms+':DATA_BEAM -o '+ms+':DATA_BEAM', log=ms+'-init_lin2circ.log', cmd_type='python')
 s.run(check=True)
 
 #########################################################################################
@@ -117,7 +117,7 @@ for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,MODEL_DATA,SMOOTHED_DATA', log=ms+'-init_addcol.log', cmd_type='python')
 s.run(check=True)
 for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c WEIGHT_SPECTRUM_ORIG -i WEIGHT_SPECTRUM', log=ms+'-init_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c WEIGHT_SPECTRUM_ORIG -i WEIGHT_SPECTRUM', log=ms+'-init_addcol.log', cmd_type='python', log_append=True)
 s.run(check=True)
 
 # self-cal cycle

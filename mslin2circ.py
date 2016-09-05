@@ -127,7 +127,9 @@ def mergeflags(outms):
 
 
 def updatehistory(outms):
-  #Update history to show that this script has modified original data
+  """
+  Update history to show that this script has modified original data
+  """
   tc = pt.table(outms,readonly=False)
   th = pt.table(tc.getkeyword('HISTORY'), readonly=False, ack=False)
   nr=th.nrows()

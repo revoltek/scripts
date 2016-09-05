@@ -78,7 +78,7 @@ mss = sorted(glob.glob('*avg.MS'))
 # [PARALLEL] Transform to circular pol - SB.MS:DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
+    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA -o '+ms+':CIRC_DATA', log=ms+'-init_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 #####################################################################################

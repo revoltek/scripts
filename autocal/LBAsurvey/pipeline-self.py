@@ -84,17 +84,17 @@ concat_ms = 'all/concat.MS'
 os.makedirs('logs/all')
 nchan = find_nchan(mss[0])
 
-#################################################################################################
-# Add model to MODEL_DATA
-logging.info('Add model to MODEL_DATA...')
-# copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-sourcedb_basename = sourcedb.split('/')[-1]
-for ms in mss:
-    check_rm(ms+'/'+sourcedb_basename)
-    os.system('cp -r '+sourcedb+' '+ms)
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-s.run(check=True)
+##################################################################################################
+## Add model to MODEL_DATA
+#logging.info('Add model to MODEL_DATA...')
+## copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
+#sourcedb_basename = sourcedb.split('/')[-1]
+#for ms in mss:
+#    check_rm(ms+'/'+sourcedb_basename)
+#    os.system('cp -r '+sourcedb+' '+ms)
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 # 1. find and remove FR
 
@@ -102,8 +102,8 @@ s.run(check=True)
 # To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True, max_threads=4)
 
 #################################################################################################
 # Smooth CORRECTED_DATA -> SMOOTHED_DATA (circular, smooth)
@@ -118,9 +118,10 @@ s.run(check=True, max_threads=4)
 logging.info('Calibrating TEC...')
 for ms in mss:
     check_rm(ms+'/instrument-tec')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec log='+ms+'_sol-tec.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA cal.parmdb='+ms+'/instrument-tec', log=ms+'_sol-tec.log', cmd_type='NDPPP')
 s.run(check=True)
-## TODO: BBS for correct, move to NDPPP
+
+# TODO: BBS for correct, move to NDPPP
 for ms in mss:
     s.add('calibrate-stand-alone --parmdb-name instrument-tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
               log=ms+'_cor-tec.log', cmd_type='BBS', processors=2)
@@ -180,6 +181,8 @@ for i, ms in enumerate(mss):
     logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
     os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
 
+sys.exit(1)
+
 #####################################################
 # Correct FR SB.MS:DATA->DATA_INIT
 logging.info('Faraday rotation correction...')
@@ -214,6 +217,7 @@ for c in xrange(niter):
         check_rm(concat_ms+'*')
         pt.msutil.msconcat(mss, concat_ms, concatTime=False)
 
+    sys.exit(1)
     # TODO: merge with next step?
     # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA
     logging.info('Calibrating TEC...')

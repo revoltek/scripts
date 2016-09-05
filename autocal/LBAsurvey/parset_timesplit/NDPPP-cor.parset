@@ -3,6 +3,7 @@ msin.datacolumn = CORRECTED_DATA
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
+#steps = [cor1] # fulltrans
 steps = [cor1, cor2]
 
 cor1.type = correct
