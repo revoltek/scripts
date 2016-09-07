@@ -7,4 +7,4 @@ steps = [cor, count]
 
 cor.type = applycal
 cor.parmdb =
-cor.correction = scalaramplitude
+cor.correction = gain

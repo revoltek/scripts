@@ -1,14 +1,15 @@
 msin =
 msin.datacolumn = CORRECTED_DATA
-msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
+#steps = [cor1] # fulltrans
 steps = [cor1, cor2]
 
 cor1.type = correct
 cor1.parmdb = 
 cor1.correction = gain
+cor1.updateweights = True # correct for wrong weights in the bandpass
 
 cor2.type = correct
 cor2.parmdb = 

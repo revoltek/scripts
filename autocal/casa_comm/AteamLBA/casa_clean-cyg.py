@@ -3,7 +3,7 @@
 
 import os, sys, pickle
 
-def casa_clean(msfile='', imagename='', imtype='normal', mask=''):
+def casa_clean(msfile='', imagename='', imtype='normal', mask='/home/fdg/scripts/autocal/AteamLBA/CygA.crtf',uvrange='0~1e9klambda'):
     """
     imtype: 'lr' for low resolution, large version of the image (larger FoV to get possible new extended emission)
             'wide' for wide FoV image
@@ -14,17 +14,12 @@ def casa_clean(msfile='', imagename='', imtype='normal', mask=''):
 
     if imtype == 'normal': 
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='',imsize=[512],cell=['4arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3)
-        os.system('cp -r '+imagename+'.residual.tt0 '+imagename+'-bkp1')
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=10000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask=mask,imsize=[512],cell=['1arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3,uvrange=uvrange)
+#        os.system('cp -r '+imagename+'.residual.tt0 '+imagename+'-bkp1')
 
-        default('clean')
-        scales=[0, 5, 10]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=250,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='',imsize=[512],cell=['4arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3)
-        os.system('cp -r '+imagename+'.residual.tt0 '+imagename+'-bkp2')
-
-        default('clean')
-        scales=[0, 5, 10, 20, 40, 80]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=15000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='',imsize=[512],cell=['4arcsec'],weighting="briggs",robust=-0.5,cyclefactor=5,cyclespeedup=-1,nterms=3)
+#        default('clean')
+#        scales=[0, 5, 10, 20, 40, 80, 160]
+#        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=15000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask=mask,imsize=[512],cell=['1arcsec'],weighting="briggs",robust=-0.5,cyclefactor=5,cyclespeedup=-1,nterms=3,uvrange=uvrange)
 
     elif imtype == 'dirty':
         default('clean')
@@ -32,11 +27,11 @@ def casa_clean(msfile='', imagename='', imtype='normal', mask=''):
 
     elif imtype == 'lr':
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=50,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask='',imsize=[512],cell=['10arcsec'],weighting="briggs",robust=0,cyclefactor=8,cyclespeedup=-1,nterms=3,uvtaper=T,outertaper='60arcsec')
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=50,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask=mask,imsize=[512],cell=['10arcsec'],weighting="briggs",robust=0,cyclefactor=8,cyclespeedup=-1,nterms=3,uvtaper=T,outertaper='60arcsec')
 
         default('clean')
         scales=[0, 5, 10, 20, 40]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=5000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask='',imsize=[512],cell=['10arcsec'],weighting="briggs",robust=0,cyclefactor=5,cyclespeedup=-1,nterms=3,uvtaper=T,outertaper='60arcsec')
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=5000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask=mask,imsize=[512],cell=['10arcsec'],weighting="briggs",robust=0,cyclefactor=5,cyclespeedup=-1,nterms=3,uvtaper=T,outertaper='60arcsec')
 
     elif imtype == 'wide':
         default('clean')

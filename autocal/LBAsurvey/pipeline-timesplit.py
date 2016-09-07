@@ -5,17 +5,19 @@
 # Output:
 # set of group*_TC*.MS file with DATA = calibrator corrected data, beam corrected, flagged
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
-ngroups = 4 # number of groups (totalSB/SBperFREQgroup)
-initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
-globaldb = 'globaldb-clock'
-
-##################################################################################################
-
 import sys, os, glob, re
 import numpy as np
 import pyrap.tables as pt
 from lib_pipeline import *
+
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
+ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
+initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
+#datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
+datadir = '.' # tooth
+globaldb = 'globaldb-clock' #TODO: copy form deined repository
+
+##################################################################################################
 
 set_logger()
 check_rm('logs')
@@ -26,24 +28,30 @@ s = Scheduler(dry=False)
 logging.info('Cleaning...')
 
 check_rm('*group*')
-mss = sorted(glob.glob('*MS'))
+mss = sorted(glob.glob(datadir+'/*MS'))
 
 ##############################################
-# If more than 4 channels then average in freq to 4 chans
+# Avg to 4 chan and 4 sec
 # Remove internationals
-# TODO: avg to 5 sec/2 chan?
-if nchan > 4:
-    if nchan % 4 != 0:
-        logging.error('Channels should be a multiple of 4.')
-        sys.exit(1)
-    avg_factor = nchan / 4
-    logging.info('Average in freq (factor of %i)...' % avg_factor)
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS')
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.freqstep='+str(avg_factor), log=ms+'_avg.log', cmd_type='NDPPP')
-    s.run(check=True)
-    nchan = nchan / 4
-    mss = sorted(glob.glob('*-avg.MS'))
+nchan = find_nchan(mss[0])
+timeint = find_timeint(mss[0])
+#if nchan % 4 != 0:
+#    logging.error('Channels should be a multiple of 4.')
+#    sys.exit(1)
+#avg_factor_f = nchan / 4 # to 4 ch/SB
+#if avg_factor_f < 1: avg_factor_f = 1
+#avg_factor_t = int(np.round(4/timeint))
+#if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
+#logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+#for ms in mss:
+#    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+#    if os.path.exists(msout): continue
+#    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+#                log=msout+'_avg.log', cmd_type='NDPPP')
+#s.run(check=True)
+#nchan = nchan / avg_factor_f
+#timeint = timeint * avg_factor_t
+#mss = sorted(glob.glob('*-avg.MS'))
 
 ###############################################
 # Initial processing
@@ -74,7 +82,7 @@ for ms in mss:
 s.run(check=True)
 
 ###################################################################################################
-# split each MS in timechunks of 1 h and create groups
+# Create groups
 groupnames = []
 logging.info('Concatenating in frequency...')
 for i, msg in enumerate(np.array_split(mss, ngroups)):
@@ -103,6 +111,7 @@ for groupname in groupnames:
                 log=groupname+'_NDPPP_flag.log', cmd_type='NDPPP')
 s.run(check=True)
 
+# Create time-chunks
 for groupname in groupnames:
     ms = groupname+'/'+groupname+'.MS'
     if not os.path.exists(ms): continue

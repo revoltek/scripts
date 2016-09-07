@@ -172,22 +172,7 @@ class radiomap:
                         if type_s is not None and type_s[0:4]=='FREQ':
                             frequency=self.prhd.get('CRVAL%i' % i)
                 self.frq=[frequency]
-                # now if there _are_ extra headers, get rid of them so pyregion WCS can work
-                #for i in range(3,5):
-                #    for k in ['CTYPE','CRVAL','CDELT','CRPIX','CROTA','CUNIT','NAXIS']:
-                #        self.quiet_remove(k+'%i' %i)
-
                 flathdr,flatd=flatten(self.fitsfile)
-
-                # remove extra dimensions
-                #if self.prhd['NAXIS'] == 3:
-                #    self.d=[self.fitsfile[0].data[0,:,:]]
-                #elif self.prhd['NAXIS'] == 4:
-                #    self.d=[self.fitsfile[0].data[0,0,:,:]]
-                #else:
-                #    self.d=[self.fitsfile[0].data]
-                #self.prhd['NAXIS'] = 2
-
                 self.d=[flatd]
                 self.headers=[flathdr]
 
@@ -215,6 +200,9 @@ class radiomap:
             self.prhd.remove(keyname)
 
                 
+#            self.fhead,self.d=flatten(self.fitsfile)
+
+
 class applyregion:
     """ apply a region from pyregion to a radiomap """
     def __init__(self,rm,region,offsource=None,mask=None,robustrms=3):
@@ -259,55 +247,75 @@ class applyregion:
             # calc noise
             if offsource is not None:
                 self.error.append(offsource[i]*np.sqrt(pixels/rm.area))
-            else:
-                self.error.append(0.)
 
-def printflux(fgss,fluxerr=None):
+def printflux(rms,fgr,bgr=None,fluxerr=None,minrms=0,nsigma=0,label=''):
     """
-    fgss -- region to work on, 2d array [ radiomeasure x region ]
+    rms -- list of radio map objects
+    region -- region to work on
+    bgr -- background region for noise/subtraction (only flux and spidx)
     fluxerr -- percentage of flux error for spidx maps (only spidx)
+    sigma -- cut on sigma on all maps (only spidx)
     """
-    # cycle on region
-    for n, fgs in enumerate(fgss):
-        # cycle on rm
-        for fg in fgs:
-            for i in range(fg.rm.nchans):
-                freq = fg.rm.frq[i]
-                print n,fg.rm.filename,'%8.4g %10.6g %10.6g' % (freq,fg.flux[i],fg.error[i])
- 
-def printmean(fgss,fluxerr=None):
-    # cycle on region
-    for n, fgs in enumerate(fgss):
-        # cycle on rm
-        for fg in fgs:
-            for i in range(fg.rm.nchans):
-                freq = fg.rm.frq[i]
-                print n,fg.rm.filename,'%8.4g %10.6g +/- %10.6g' % (freq,fg.mean[i],fg.mean_error[i])
-
-def printspidx(fgss,fluxerr=None):
-
-    # cycle on region
-    for n, fgs in enumerate(fgss):
-        freqs = []
-        fluxes = []
-        errors = []
-
-        # cycle on rm
-        for fg in fgs:
-            for i in range(fg.rm.nchans):
-                freqs += fg.rm.frq
-                fluxes += fg.flux
-                errors += fg.error
-
-        # lin reg
-        if not all(e == 0 for e in errors):
-            yerr = 0.434*np.sqrt(np.array(errors)**2+(np.array(fluxerr)*np.array(fluxes)/100)**2)/np.array(fluxes)
+    for rm in rms:
+        if bgr:
+            bg_ir = pyregion.open(bgr).as_imagecoord(rm.headers[0])
+            bg = applyregion(rm,bg_ir)
+            noise = bg.rms
         else:
-            yerr = None
-        #print freqs, fluxes, yerr
+            noise = None
 
-        (a, b, sa, sb) = linear_fit_bootstrap(x=np.log10(freqs), y=np.log10(fluxes), yerr=yerr)
-        print n, '%8.4g %8.4g' % (a, sa)
+        fg_ir=pyregion.open(fgr).as_imagecoord(rm.headers[0])
+        fg=applyregion(rm,fg_ir,offsource=noise)
+
+        for i in range(rm.nchans):
+            freq=rm.frq[i]
+        
+            if noise is not None:
+                print rm.filename,label,'%8.4g %10.6g %10.6g' % (freq,fg.flux[i],fg.error[i])
+            else:
+                print rm.filename,label,'%8.4g %10.6g' % (freq,fg.flux[i])
+
+def printmean(fgss,bgs=None,fluxerr=None):
+    # cycle on regions
+    for fgs in fgss:
+        # cycle on rm
+        for fg in fgs:
+            for i in range(fg.rm.nchans):
+                freq = fg.rm.frq[i]
+                print fg.rm.filename,'%8.4g %10.6g +/- %10.6g' % (freq,fg.mean[i],fg.mean_error[i])
+
+def printspidx(rms,fgr,bgr=None,fluxerr=0,nsigma=0,label=''):
+    freqs = []
+    fluxes = []
+    errors = []
+    noises = []
+
+    mask = (np.zeros_like(rms[0].d) == 0)
+    for rm in rms:
+        if bgr:
+            bg_ir=pyregion.open(bgr).as_imagecoord(rm.headers[0])
+            bg=applyregion(rm,bg_ir)
+            noises.append(bg.rms)
+            # likely brakes with channelled images
+            if nsigma > 0: mask = np.logical_and(mask, np.array(rm.d) > (np.array(bg.rms)*nsigma) )
+        else:
+            noises.append(None)
+
+    for i, rm in enumerate(rms):
+        fg_ir=pyregion.open(fgr).as_imagecoord(rm.headers[0])
+        fg=applyregion(rm,fg_ir,offsource=noises[i],mask=mask)
+        freqs += rm.frq
+        fluxes += fg.flux
+        if bgr: errors += fg.error
+
+    # lin reg
+    if bgr:
+        yerr = 0.434*np.sqrt(np.array(errors)**2+(np.array(fluxerr)*np.array(fluxes)/100)**2)/np.array(fluxes)
+    else:
+        yerr = None
+
+    (a, b, sa, sb) = linear_fit_bootstrap(x=np.log10(freqs), y=np.log10(fluxes), yerr=yerr)
+    print label,'%8.4g %8.4g' % (a, sa)
 
 
 def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma=0,verbose=False):
@@ -332,7 +340,7 @@ def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma
         rms.append(radiomap(filename,verbose=verbose))
 
     # if using the sigma all the images must have the same size
-    if nsigma > 0: assert all(rms[i].d[0].size == rms[0].d[0].size for i in xrange(len(rms)))
+    if nsigma > 0: assert [rms[i].d == rms[0].d for i in xrange(len(rms))].all()
     # initial mask
     mask = (np.zeros_like(rms[0].d) == 0)
 
@@ -347,6 +355,7 @@ def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma
         else:
             bgs.append(None)
 
+    # TODO: invert thys cycles
     fgs = [] # 2d list: [ radiomap x forground_region]
     for i, rm in enumerate(rms):
         fg_ir=pyregion.open(fgr).as_imagecoord(rm.headers[0])
@@ -358,9 +367,7 @@ def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma
         else:
             fgs.append([applyregion(rm,fg_ir,offsource=bgs[i],mask=mask)])
 
-    # cycle before on regions and than on rm
-    fgs = np.array(fgs).swapaxes(0,1)
-    action(fgs, fluxerr)
+    action(fgs, bgs)
 
         
 if __name__ == "__main__":

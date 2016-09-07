@@ -9,6 +9,9 @@ shopt -s expand_aliases
 proc=$1
 shift
 
+# escaped command
+escapedcmd=`echo $@ | LC_ALL=C sed -e 's/[^a-zA-Z0-9,._+@%/-]/\\\&/g;'`
+
 # ugly workaround to catch qsub errors and resubmit
 until [[ $id =~ ^[0-9]+$ ]]; do
 
@@ -16,18 +19,18 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 #PBS -o output-\$PBS_JOBID
 # instead of /dev/null
 
-    cmd="#!/bin/bash
+    cmd="""#!/bin/bash
 #PBS -N LBApipe
 #PBS -l walltime=48:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
 #PBS -o /dev/null
-echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - ${@}\" >> commands.log
+echo \"\${PBS_JOBID} (proc:${proc}, node: \`/bin/hostname\`) - \'${escapedcmd}\'\" >> commands.log
 source /home/lofar/init-lofar.sh
 source /home/lofar/init-lofar-test.sh
 export PATH=\"${PATH}\"
 export PYTHONPATH=\"${PYTHONPATH}\"
-${@}"
+${@}"""
 
     # call the command and capture the stdout
     id=`qsub /dev/stdin << EOF | perl -pe 's:^\D+(\d+).*$:$1:'

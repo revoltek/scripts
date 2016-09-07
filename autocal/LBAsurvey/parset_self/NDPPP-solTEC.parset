@@ -1,0 +1,24 @@
+msin =
+msin.datacolumn = SMOOTHED_DATA
+msin.baseline = [CR]S*&
+msout = .
+msout.datacolumn = CORRECTED_DATA
+
+steps = [filter, cal]
+
+filter.blrange = [1000, 1e30]
+
+cal.type = gaincal
+cal.parmdb = 
+cal.caltype = tec
+#cal.caltype = tecandphase
+cal.maxiter = 50
+cal.usemodelcolumn = True
+#cal.sourcedb =
+#cal.usebeammodel = True
+#cal.usechannelfreq = True
+#cal.invert = False # automatically set in predict-mode
+#cal.beammode = array_factor
+cal.solint = 1
+cal.nchan = 1
+cal.debuglevel=0

@@ -7,14 +7,13 @@ msout.datacolumn=CORRECTED_DATA
 
 steps = [filter, cal, count]
 
-filter.blrange = [1000, 1e30]
+filter.blrange = [1000, 70000]
 
 cal.type = gaincal
 cal.parmdb = 
 cal.caltype = diagonal
 cal.usemodelcolumn = T
 cal.maxiter = 100
-#cal.applybeamtomodelcolumn = T
-#cal.usechannelfreq = F
-cal.nchan = 0
+cal.nchan = 1
 cal.solint = 1
+cal.propagatesolutions = F
