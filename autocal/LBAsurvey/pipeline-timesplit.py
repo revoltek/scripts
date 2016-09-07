@@ -16,6 +16,7 @@ initc = 0 # initial tc num (useful for multiple observation of same target) - to
 #datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
 datadir = '.' # tooth
 globaldb = 'globaldb-clock' #TODO: copy form deined repository
+#globaldb = 'globaldb-fulltrans' #TODO: copy form deined repository
 
 ##################################################################################################
 

@@ -86,15 +86,15 @@ nchan = find_nchan(mss[0])
 
 ##################################################################################################
 ## Add model to MODEL_DATA
-#logging.info('Add model to MODEL_DATA...')
-## copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-#sourcedb_basename = sourcedb.split('/')[-1]
-#for ms in mss:
-#    check_rm(ms+'/'+sourcedb_basename)
-#    os.system('cp -r '+sourcedb+' '+ms)
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-#s.run(check=True)
+logging.info('Add model to MODEL_DATA...')
+# copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
+sourcedb_basename = sourcedb.split('/')[-1]
+for ms in mss:
+    check_rm(ms+'/'+sourcedb_basename)
+    os.system('cp -r '+sourcedb+' '+ms)
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+s.run(check=True)
 
 # 1. find and remove FR
 
@@ -103,14 +103,14 @@ nchan = find_nchan(mss[0])
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=4)
+s.run(check=True, max_threads=2)
 
-#################################################################################################
+################################################################################################
 # Smooth CORRECTED_DATA -> SMOOTHED_DATA (circular, smooth)
 logging.info('BL-based smoothing...')
 for ms in mss:
     s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True, max_threads=4)
+s.run(check=True, max_threads=2)
 
 #################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)

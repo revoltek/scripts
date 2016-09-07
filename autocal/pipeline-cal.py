@@ -164,14 +164,14 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 #
 #################################################
 ## Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-#logging.info('Calibrating...')
-#for ms in mss:
-#    check_rm(ms+'/instrument')
-#    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
-#s.run(check=True)
-
-#############################################################
-# Prepare and run losoto
+##logging.info('Calibrating...')
+##for ms in mss:
+##    check_rm(ms+'/instrument')
+##    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
+##s.run(check=True)
+#
+##############################################################
+## Prepare and run losoto
 check_rm('globaldb') # remove it as it was used for the fr
 check_rm('globaldb-clock')
 os.system('mkdir globaldb')
@@ -183,12 +183,12 @@ for i, ms in enumerate(mss):
     num = re.findall(r'\d+', ms)[-1]
     logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    
+   
     # We export clock, need to create a new parmdb
     logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
 
-logging.info('Running LoSoTo...')
+#logging.info('Running LoSoTo...')
 check_rm('plots')
 os.makedirs('plots')
 check_rm('cal2.h5')
@@ -201,9 +201,9 @@ s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', l
 s.run(check=True)
 s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-#s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 # TEST copy everything
-s.add('H5parm_exporter.py -v -c --soltab amplitude000,phase000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+#s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 
 logging.info("Done.")
