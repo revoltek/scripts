@@ -45,7 +45,7 @@ def flatten(f,channel=0,freqaxis=0):
         else:
             slice.append(0)
         
-# slice=(0,)*(naxis-2)+(np.s_[:],)*2
+    # slice=(0,)*(naxis-2)+(np.s_[:],)*2
     return header,f[0].data[slice]
 
 class RadioError(Exception):
@@ -122,6 +122,7 @@ class radiomap:
             if naxis<2 or naxis>4:
                 raise RadioError('Too many or too few axes to proceed (%i)' % naxis)
             if naxis>2:
+                self.nchans=1
                 # a cube, what sort?
                 frequency=0
                 self.cube=True
@@ -151,12 +152,11 @@ class radiomap:
             else:
                 self.nchans=1
                     
-
-            # Various possibilities for the frequency. It's possible
             # that a bad (zero) value will be present, so keep
             # checking if one is found.
 
             if not(self.cube) or freqaxis<0:
+
                 # frequency, if present, must be in another keyword
                 frequency=self.prhd.get('RESTFRQ')
                 if frequency is None or frequency==0:
@@ -173,11 +173,24 @@ class radiomap:
                             frequency=self.prhd.get('CRVAL%i' % i)
                 self.frq=[frequency]
                 # now if there _are_ extra headers, get rid of them so pyregion WCS can work
-                for i in range(3,5):
-                    for k in ['CTYPE','CRVAL','CDELT','CRPIX','CROTA','CUNIT']:
-                        self.quiet_remove(k+'%i' %i)
-                self.headers=[self.prhd]
-                self.d=[self.fitsfile[0].data]
+                #for i in range(3,5):
+                #    for k in ['CTYPE','CRVAL','CDELT','CRPIX','CROTA','CUNIT','NAXIS']:
+                #        self.quiet_remove(k+'%i' %i)
+
+                flathdr,flatd=flatten(self.fitsfile)
+
+                # remove extra dimensions
+                #if self.prhd['NAXIS'] == 3:
+                #    self.d=[self.fitsfile[0].data[0,:,:]]
+                #elif self.prhd['NAXIS'] == 4:
+                #    self.d=[self.fitsfile[0].data[0,0,:,:]]
+                #else:
+                #    self.d=[self.fitsfile[0].data]
+                #self.prhd['NAXIS'] = 2
+
+                self.d=[flatd]
+                self.headers=[flathdr]
+
             else:
                 # if this is a cube, frequency/ies should be in freq header
                 basefreq=self.prhd.get('CRVAL%i' % freqaxis)
@@ -202,21 +215,21 @@ class radiomap:
             self.prhd.remove(keyname)
 
                 
-#            self.fhead,self.d=flatten(fitsfile)
-
-
 class applyregion:
     """ apply a region from pyregion to a radiomap """
-    def __init__(self,rm,region,offsource=None,mask=None,wht=None,robustrms=3):
+    def __init__(self,rm,region,offsource=None,mask=None,robustrms=3):
         """
         provides:
         rms -- the rms in the aperture
         robustrms -- the rms for pixels below robustrms * the normal rms (it should cut sources)
         flux -- the flux of the aperture
-        mean -- the mean in the apertur (if wht then is weighted)
+        mean -- the mean in the apertur
         error -- error on the flux given the rms in offsource
         """
+        self.rm = rm
         self.rms=[]
+        self.max=[]
+        self.min=[]
         self.flux=[]
         self.error=[]
         self.mean=[]
@@ -236,95 +249,68 @@ class applyregion:
                 data = np.extract(mask_r,d)
 
             self.rms.append(scipy.stats.nanstd(data))
+            self.max.append(np.max(data[np.logical_not(np.isnan(data))]))
+            self.min.append(np.min(data[np.logical_not(np.isnan(data))]))
             self.robustrms.append(scipy.stats.nanstd(data[np.where(data < robustrms * self.rms[-1])]))
             self.flux.append(data[np.logical_not(np.isnan(data))].sum()/rm.area)
-
-            if wht:
-                mask=region.get_mask(hdu=wht.f,shape=np.shape(wht.d[0]))
-                pixels=np.sum(mask)
-                data_error=np.extract(mask,wht.d)
-                #print data[np.logical_not(np.isnan(data))], data_error[np.logical_not(np.isnan(data))]
-                # https://ned.ipac.caltech.edu/level5/Leo/Stats4_5.html
-                self.mean.append( np.average( data[np.logical_not(np.isnan(data))], weights=1./data_error[np.logical_not(np.isnan(data_error))]**2 ) )
-                self.mean_error.append( np.sqrt(1./np.sum(1./data_error[np.logical_not(np.isnan(data_error))]**2)) )
-            else:
-                self.mean.append(scipy.stats.nanmean(data))
+            self.mean.append(scipy.stats.nanmean(data))
+            self.mean_error.append(np.sqrt(scipy.stats.nanmean(data)/np.sqrt(np.count_nonzero(~np.isnan(data)))))
 
             # calc noise
             if offsource is not None:
                 self.error.append(offsource[i]*np.sqrt(pixels/rm.area))
+            else:
+                self.error.append(0.)
 
-def printflux(rms,region,bgr=None,wht=None,fluxerr=None,minrms=0,nsigma=0,label=''):
+def printflux(fgss,fluxerr=None):
     """
-    rms -- list of radio map objects
-    region -- region to work on
-    bgr -- background region for noise/subtraction (only flux and spidx)
-    wht -- radiomap of the weights in sigma (only mean)
+    fgss -- region to work on, 2d array [ radiomeasure x region ]
     fluxerr -- percentage of flux error for spidx maps (only spidx)
     """
-    for rm in rms:
-        if bgr:
-            bg_ir = pyregion.open(bgr).as_imagecoord(rm.headers[0])
-            bg = applyregion(rm,bg_ir)
-            noise = bg.rms
+    # cycle on region
+    for n, fgs in enumerate(fgss):
+        # cycle on rm
+        for fg in fgs:
+            for i in range(fg.rm.nchans):
+                freq = fg.rm.frq[i]
+                print n,fg.rm.filename,'%8.4g %10.6g %10.6g' % (freq,fg.flux[i],fg.error[i])
+ 
+def printmean(fgss,fluxerr=None):
+    # cycle on region
+    for n, fgs in enumerate(fgss):
+        # cycle on rm
+        for fg in fgs:
+            for i in range(fg.rm.nchans):
+                freq = fg.rm.frq[i]
+                print n,fg.rm.filename,'%8.4g %10.6g +/- %10.6g' % (freq,fg.mean[i],fg.mean_error[i])
+
+def printspidx(fgss,fluxerr=None):
+
+    # cycle on region
+    for n, fgs in enumerate(fgss):
+        freqs = []
+        fluxes = []
+        errors = []
+
+        # cycle on rm
+        for fg in fgs:
+            for i in range(fg.rm.nchans):
+                freqs += fg.rm.frq
+                fluxes += fg.flux
+                errors += fg.error
+
+        # lin reg
+        if not all(e == 0 for e in errors):
+            yerr = 0.434*np.sqrt(np.array(errors)**2+(np.array(fluxerr)*np.array(fluxes)/100)**2)/np.array(fluxes)
         else:
-            noise = None
+            yerr = None
+        #print freqs, fluxes, yerr
 
-        fg=applyregion(rm,region,offsource=noise)
-
-        for i in range(rm.nchans):
-            freq=rm.frq[i]
-        
-            if noise is not None:
-                print rm.filename,label,'%8.4g %10.6g %10.6g' % (freq,fg.flux[i],fg.error[i])
-            else:
-                print rm.filename,label,'%8.4g %10.6g' % (freq,fg.flux[i])
-
-def printmean(rms,region,bgr=None,wht=None,fluxerr=None,nsigma=0,label=''):
-    for rm in rms:
-        fg=applyregion(rm,region,wht=wht)
-
-        for i in range(rm.nchans):
-            freq=rm.frq[i]
-            if wht:
-                print rm.filename,label,'%8.4g %10.6g %10.6g' % (freq,fg.mean[i],fg.mean_error[i])
-            else:
-                print rm.filename,label,'%8.4g %10.6g' % (freq,fg.mean[i])
-
-def printspidx(rms,region,bgr=None,wht=None,fluxerr=0,nsigma=0,label=''):
-    freqs = []
-    fluxes = []
-    errors = []
-    noises = []
-
-    mask = (np.zeros_like(rms[0].d) == 0)
-    for rm in rms:
-        if bgr:
-            bg_ir=pyregion.open(bgr).as_imagecoord(rm.headers[0])
-            bg=applyregion(rm,bg_ir)
-            noises.append(bg.rms)
-            # likely brakes with channelled images
-            if nsigma > 0: mask = np.logical_and(mask, np.array(rm.d) > (np.array(bg.rms)*nsigma) )
-        else:
-            noises.append(None)
-
-    for i, rm in enumerate(rms):
-        fg=applyregion(rm,region,offsource=noises[i],mask=mask)
-        freqs += rm.frq
-        fluxes += fg.flux
-        if bgr: errors += fg.error
-
-    # lin reg
-    if bgr:
-        yerr = 0.434*np.sqrt(np.array(errors)**2+(np.array(fluxerr)*np.array(fluxes)/100)**2)/np.array(fluxes)
-    else:
-        yerr = None
-
-    (a, b, sa, sb) = linear_fit_bootstrap(x=np.log10(freqs), y=np.log10(fluxes), yerr=yerr)
-    print label,'%8.4g %8.4g' % (a, sa)
+        (a, b, sa, sb) = linear_fit_bootstrap(x=np.log10(freqs), y=np.log10(fluxes), yerr=yerr)
+        print n, '%8.4g %8.4g' % (a, sa)
 
 
-def radioflux(files,fgr,bgr=None,individual=False,action='Flux',wht=None,fluxerr=0,nsigma=0,verbose=False):
+def radioflux(files,fgr,bgr=None,individual=False,action='Flux',fluxerr=0,nsigma=0,verbose=False):
     """Determine the flux in a region file for a set of files. This is the
     default action for the code called on the command line, but
     may be useful to other code as well.
@@ -336,28 +322,46 @@ def radioflux(files,fgr,bgr=None,individual=False,action='Flux',wht=None,fluxerr
     individual -- separate region into individual sub-regions
     action -- what to do once fluxes are measured: allows a user-defined action
               which must be a drop-in replacement for printflux
-    wht -- weight file in sigmas
     fluxerr -- flux error in % for spidxmap
+    nsigma -- keep only pixels above these sigma level in ALL maps (bgr must be specified)
     """
     action = {'flux':printflux, 'mean':printmean, 'spidx':printspidx}[action]
-
-    if wht:
-        wht = radiomap(wht,verbose=verbose)
 
     rms = [] # radio maps
     for filename in files:
         rms.append(radiomap(filename,verbose=verbose))
 
-    fg_ir=pyregion.open(fgr).as_imagecoord(rms[0].headers[0])
+    # if using the sigma all the images must have the same size
+    if nsigma > 0: assert all(rms[i].d[0].size == rms[0].d[0].size for i in xrange(len(rms)))
+    # initial mask
+    mask = (np.zeros_like(rms[0].d) == 0)
 
-    if individual:
-        for n,reg in enumerate(fg_ir):
-            fg=pyregion.ShapeList([reg])
-            r=action(rms,fg,bgr=bgr,wht=wht,fluxerr=fluxerr,nsigma=nsigma,label=n+1)
-    else:
-        r=action(rms,fg_ir,bgr=bgr,wht=wht,fluxerr=fluxerr,nsigma=nsigma)
+    bgs = [] #1d list: [ radiomap ]
+    for rm in rms:
+        if bgr:
+            bg_ir=pyregion.open(bgr).as_imagecoord(rm.headers[0])
+            bg=applyregion(rm,bg_ir)
+            bgs.append(bg.rms)
+            # likely brakes with channelled images
+            if nsigma > 0: mask = np.logical_and(mask, np.array(rm.d) > (np.array(bg.rms)*nsigma) )
+        else:
+            bgs.append(None)
 
-    return r
+    fgs = [] # 2d list: [ radiomap x forground_region]
+    for i, rm in enumerate(rms):
+        fg_ir=pyregion.open(fgr).as_imagecoord(rm.headers[0])
+        if individual:
+            fgs.append([])
+            for fg_ir_split in fg_ir:
+                fg=pyregion.ShapeList([fg_ir_split])
+                fgs[-1].append(applyregion(rm,fg,offsource=bgs[i],mask=mask))
+        else:
+            fgs.append([applyregion(rm,fg_ir,offsource=bgs[i],mask=mask)])
+
+    # cycle before on regions and than on rm
+    fgs = np.array(fgs).swapaxes(0,1)
+    action(fgs, fluxerr)
+
         
 if __name__ == "__main__":
     import sys
@@ -366,15 +370,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Measure fluxes from FITS files.')
     parser.add_argument('files', metavar='FILE', nargs='+',
                         help='FITS files to process')
-    parser.add_argument('-f','--foreground', dest='fgr', action='store',default='ds9.reg',help='Foreground region file to use')
-    parser.add_argument('-b','--background', dest='bgr', action='store',default='',help='Background region file to use')
-    parser.add_argument('-i','--individual', dest='indiv', action='store_true',default=False,help='Break composite region file into individual regions')
-    parser.add_argument('-e','--fluxerr', dest='fluxerr', action='store',default=0, type=float, help='Flux error in % for spidx maps')
+    parser.add_argument('-f','--foreground', dest='fgr', action='store',default='ds9.reg',help='Foreground region file to use.')
+    parser.add_argument('-b','--background', dest='bgr', action='store',default='',help='Background region file to use.')
+    parser.add_argument('-i','--individual', dest='indiv', action='store_true',default=False,help='Break composite region file into individual regions.')
+    parser.add_argument('-e','--fluxerr', dest='fluxerr', action='store',default=0, type=float, help='Flux error in %% for spidx maps only.')
     parser.add_argument('-s','--sigma', dest='nsigma', action='store',default=0, type=float, help='Try to cut all the images above a certain sigma. Only pixel over that sigma in ALL the images are considered. Valid only for spidx.')
-    parser.add_argument('-a','--action', dest='action', action='store',default='flux',help='Action to perform: flux, mean, spidx')
-    parser.add_argument('-w','--weights', dest='weights', action='store',default=None,help='If action=mean then weight the mean with the values in this "sigma" map [e.g. fitsfile=spidx.fits, -w spidx-rms.fits gives a flux-weighted spidx]')
-    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',default=False,help='Be verbose')
+    parser.add_argument('-a','--action', dest='action', action='store',default='flux',help='Action to perform: flux, mean, spidx.')
+    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',default=False,help='Be verbose.')
 
     args = parser.parse_args()
 
-    radioflux(args.files,args.fgr,args.bgr,args.indiv,args.action,args.weights,args.fluxerr,args.nsigma,verbose=args.verbose)
+    radioflux(args.files,args.fgr,args.bgr,args.indiv,args.action,args.fluxerr,args.nsigma,verbose=args.verbose)

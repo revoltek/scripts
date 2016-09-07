@@ -26,4 +26,4 @@ logging.basicConfig(level=logging.DEBUG)
 img = sys.argv[1]
 
 i = pyrap.images.image(img)
-i.saveas(img.replace('.fits','.ms'))
+i.saveas(img.replace('.fits','.image').replace('.FITS','.image'))
