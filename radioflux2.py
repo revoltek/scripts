@@ -172,22 +172,7 @@ class radiomap:
                         if type_s is not None and type_s[0:4]=='FREQ':
                             frequency=self.prhd.get('CRVAL%i' % i)
                 self.frq=[frequency]
-                # now if there _are_ extra headers, get rid of them so pyregion WCS can work
-                #for i in range(3,5):
-                #    for k in ['CTYPE','CRVAL','CDELT','CRPIX','CROTA','CUNIT','NAXIS']:
-                #        self.quiet_remove(k+'%i' %i)
-
                 flathdr,flatd=flatten(self.fitsfile)
-
-                # remove extra dimensions
-                #if self.prhd['NAXIS'] == 3:
-                #    self.d=[self.fitsfile[0].data[0,:,:]]
-                #elif self.prhd['NAXIS'] == 4:
-                #    self.d=[self.fitsfile[0].data[0,0,:,:]]
-                #else:
-                #    self.d=[self.fitsfile[0].data]
-                #self.prhd['NAXIS'] = 2
-
                 self.d=[flatd]
                 self.headers=[flathdr]
 
@@ -257,7 +242,7 @@ class applyregion:
             self.robustrms.append(scipy.stats.nanstd(data[np.where(data < robustrms * self.rms[-1])]))
             self.flux.append(data[np.logical_not(np.isnan(data))].sum()/rm.area)
             self.mean.append(scipy.stats.nanmean(data))
-            self.mean_error.append(np.sqrt(scipy.stats.nanmean(data)/np.sqrt(np.sum(np.notnan(data)))))
+            self.mean_error.append(np.sqrt(scipy.stats.nanmean(data)/np.sqrt(np.count_nonzero(~np.isnan(data)))))
 
             # calc noise
             if offsource is not None:
