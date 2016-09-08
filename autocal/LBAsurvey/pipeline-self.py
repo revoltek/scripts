@@ -103,14 +103,14 @@ s.run(check=True)
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=2)
+s.run(check=True, max_threads=1)
 
 ################################################################################################
 # Smooth CORRECTED_DATA -> SMOOTHED_DATA (circular, smooth)
 logging.info('BL-based smoothing...')
 for ms in mss:
     s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True, max_threads=2)
+s.run(check=True, max_threads=1)
 
 #################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)

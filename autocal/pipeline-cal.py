@@ -172,37 +172,37 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 #
 ##############################################################
 ## Prepare and run losoto
-check_rm('globaldb') # remove it as it was used for the fr
-check_rm('globaldb-clock')
-os.system('mkdir globaldb')
-os.system('mkdir globaldb-clock')
-for i, ms in enumerate(mss):
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
-
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-   
-    # We export clock, need to create a new parmdb
-    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
-
-#logging.info('Running LoSoTo...')
-check_rm('plots')
-os.makedirs('plots')
-check_rm('cal2.h5')
-s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-flag.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-os.system('cp -r cal2.h5 cal2.h5-flag')
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
+#check_rm('globaldb') # remove it as it was used for the fr
+#check_rm('globaldb-clock')
+#os.system('mkdir globaldb')
+#os.system('mkdir globaldb-clock')
+#for i, ms in enumerate(mss):
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
+#
+#    num = re.findall(r'\d+', ms)[-1]
+#    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
+#    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+#   
+#    # We export clock, need to create a new parmdb
+#    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
+#    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
+#
+##logging.info('Running LoSoTo...')
+#check_rm('plots')
+#os.makedirs('plots')
+#check_rm('cal2.h5')
+#s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-flag.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#os.system('cp -r cal2.h5 cal2.h5-flag')
+#s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
 s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-# TEST copy everything
+# TEST copy everything - change losoto-ph.parset
 #s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 

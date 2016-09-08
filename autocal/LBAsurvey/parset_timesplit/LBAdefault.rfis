@@ -102,7 +102,6 @@ rfi detector by André Offringa (offringa@astro.rug.nl).
       <action type="SetFlaggingAction">
         <new-flagging>6</new-flagging>
       </action>
-      <action type="WriteFlagsAction" />
       <action type="PlotAction">
         <plot-kind>0</plot-kind>
         <logarithmic-y-axis>0</logarithmic-y-axis>
