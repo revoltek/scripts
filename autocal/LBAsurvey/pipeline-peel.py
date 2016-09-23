@@ -18,15 +18,16 @@
 ddset = [{'name': 'src1', 'coord':[91.733333,41.680000], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.crtf', 'reg_facet': 'facet1.crtf', 'faint': False},
          {'name': 'src2', 'coord':[91.391897,41.530003], 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.crtf', 'reg_facet': 'facet2.crtf', 'faint': False},
          {'name': 'tooth', 'coord':[90.833333,42.233333], 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.crtf', 'reg_facet': 'facet3.crtf', 'faint': True}]
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150.skymodel' # used only to run bbs, not important the content
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel' # used only to run bbs, not important the content
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
 niter = 10
 
 ##########################################################################################
 
-import sys, os, glob, re, time
-import pyrap.tables as pt
+import sys, os, glob, re
 import numpy as np
+from lofar import bdsm
+import pyrap.tables as pt
 from lib_pipeline import *
 from make_mask import make_mask
 
@@ -170,21 +171,18 @@ def peel(dd):
     os.makedirs('peel/'+dd['name']+'/h5')
     
     logging.info('Indexing...')
-    allmss = sorted(glob.glob('group*_TC*.MS'))
+    allmss = sorted(glob.glob('all/all_TC*.MS'))
     phasecentre = get_phase_centre(allmss[0])
     
-    groups = []
     tcs = []
     for ms in allmss:
-        g = re.findall(r'\d+', ms)[0] # group number
-        tc = re.findall(r'\d+', ms)[1] # time chunk number
-        groups.append(g)
+        tc = re.findall(r'\d+', ms)[0] # time chunk number
         tcs.append(tc)
-    groups = list(set(groups))
     tcs = list(set(tcs))
     
     #################################################################################################
     # Blank unwanted part of models
+    # TODO: move to fits files?
     modeldir = 'peel/'+dd['name']+'/models/'
     
     for model in glob.glob('self/models/wide*_g*model*'):
@@ -214,27 +212,16 @@ def peel(dd):
     
     # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
     logging.info('Ft DD calibrator model...')
-    for g in groups:
-        # tmp directory are created to run CASA inside and prevent CASA bug when multiple istances are run in the same dir
-        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel_dd_g'+g+'.model.ms'
-        os.makedirs(tmpdir)
-        concat = tmpdir+'/concat.MS'
-        check_rm(concat+'*')
-        pt.msutil.msconcat(sorted(glob.glob('group'+g+'_TC*.MS')), concat, concatTime=False)
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512}, wkd=tmpdir, log='init-g'+g+'-ft.log')
+    model = os.getcwd()+'/'+modeldir+'/peel_dd_gall.model.ms'
+    check_rm('all/concat.MS*')
+    pt.msutil.msconcat(sorted(glob.glob('all_TC*.MS')), 'all/concat.MS', concatTime=False)
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'all/concat.MS', 'model':model, 'wproj':512}, wkd=tmpdir, log='init-ft.log')
     s.run(check=True)
     
     logging.info('Ft DD calibrator (lr) model...')
-    for g in groups:
-        tmpdir = os.getcwd()+'/'+modeldir+'/tmp_'+g
-        model = os.getcwd()+'/'+modeldir+'/peel_dd_lr_g'+g+'.model.ms'
-        concat = tmpdir+'/concat.MS'
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat, 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='init-g'+g+'-ft.log', log_append=True)
+    model = os.getcwd()+'/'+modeldir+'/peel_dd_lr_gall.model.ms'
+    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'all/concat.MS', 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='init-ft.log', log_append=True)
     s.run(check=True)
-    
-    # cleanup the tmp dirs
-    check_rm(modeldir+'/tmp*')
     
     ###########################################################################################################
     # ADD model group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
@@ -246,20 +233,19 @@ def peel(dd):
     # concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel_TC*.MS:DATA (empty+DD, avg, phase shifted)
     # concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:MODEL_DATA -> peel-model_TC*.MS:DATA (DD model, avg, phase shifted)
     logging.info('Shifting+averaging (CORRECTED_DATA)...')
-    for tc in tcs:
-        mss = glob.glob('group*_TC'+tc+'.MS')
-        msout = 'peel_TC'+tc+'.MS'
-        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin="['+','.join(mss)+']" msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+    for ms in allmss:
+        msout = ms.replace('all','peel')
+        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA \
                 shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    peelmss = sorted(glob.glob('peel_TC*.MS'))
+    peelmss = sorted(glob.glob('all/peel_TC*.MS'))
     
     # Add CORRECTED_DATA for cleaning
     logging.info('Add CORRECTED_DATA...')
     for ms in peelmss:
         s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
-    s.run(check=True)
+    s.run(check=True, max_threads=1)
 
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
     model = clean('init', peelmss, dd)
@@ -279,8 +265,8 @@ def peel(dd):
         if c == 0:
             # make concat after the smoother to have the WEIGHT_SPECTRUM_ORIG included
             logging.info('Concatenating TCs...')
-            check_rm('concat.MS*')
-            pt.msutil.msconcat(peelmss, 'concat.MS', concatTime=False)
+            check_rm('all/concat.MS*')
+            pt.msutil.msconcat(peelmss, 'all/concat.MS', concatTime=False)
     
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
@@ -288,27 +274,21 @@ def peel(dd):
             s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
             s.run(check=True) # no parallel (problem multiple accesses to model file)
     
-        # calibrate phase-only (solve only) - peel_TC*.MS:DATA
+        # solve/corrected TEC - peel_TC*.MS:DATA -> CORRECTED_DATA
+        # TODO: move to NDPPP
         logging.info('Calibrating phase...')
         for ms in peelmss:
             s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
                     log=ms+'_calpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
-    
-        # calibrate phase-only - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA (selfcal phase corrected, beam corrected)
-        logging.info('Correcting phase...')
+        logging.info('Correcting TEC...')
         for ms in peelmss:
             s.add('calibrate-stand-alone --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
             log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
         s.run(check=True)
 
-        # Smooth
-        logging.info('Smoothing...')
-        for ms in peelmss:
-            s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-preamp-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
-
         # calibrate amplitude (solve only) - peel_TC*.MS:SMOOTH_DATA
+        # TODO: move to NDPPP
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
             s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
@@ -323,7 +303,7 @@ def peel(dd):
         # LoSoTo Amp rescaling
         losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
     
-        # correct phase + amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
+        # correct amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
         logging.info('Correcting phase+amplitude...')
         for ms in peelmss:
             s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \

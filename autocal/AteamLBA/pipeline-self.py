@@ -267,7 +267,7 @@ for c in xrange(cycles):
     os.system('mv plots plots-c'+str(c))
 
     ########################################################################################
-    # correct - SB.MS:CIRC_DATA_SUB -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
+    # correct - SB.MS:DATA_BEAM -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
     # the weights are changed every correct, so they need to be restored
     logging.info('Restoring WEIGHT_SPECTRUM')
     for ms in mss:
