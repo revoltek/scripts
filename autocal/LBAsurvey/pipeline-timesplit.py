@@ -11,7 +11,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
-ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
+ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 #datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
 datadir = '.' # tooth
@@ -54,33 +54,33 @@ timeint = find_timeint(mss[0])
 #timeint = timeint * avg_factor_t
 #mss = sorted(glob.glob('*-avg.MS'))
 
-#################################################
-## Initial processing
-#logging.info('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-#
-#####################################################
-## Beam correction DATA -> CORRECTED_DATA (beam corrected)
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-###########################################################################################
-## Copy instrument tables
-#for ms in mss:
-#    num = re.findall(r'\d+', ms)[-1]
-#    check_rm(ms+'/instrument')
-#    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#
-## Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
-#logging.info('Apply solutions...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
-#s.run(check=True)
+################################################
+# Initial processing
+logging.info('Fix beam table')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
+
+####################################################
+# Beam correction DATA -> CORRECTED_DATA (beam corrected)
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+##########################################################################################
+# Copy instrument tables
+for ms in mss:
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument')
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+
+# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
+logging.info('Apply solutions...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+s.run(check=True)
 
 ###################################################################################################
 # Create groups

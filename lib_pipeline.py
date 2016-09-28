@@ -9,9 +9,12 @@ from scipy.interpolate import interp1d
 import numpy as np
 import lofar.parmdb as parmdb
 
+from lib_pipeline_ms import *
+from lib_pipeline_img import *
+
 def get_cluster():
     """
-        
+    Find in which computing cluster the pipeline is running       
     """
     import socket
     hostname = socket.gethostname()
@@ -65,101 +68,6 @@ def set_logger():
     logger.addHandler(ch)
     return logger
 
-def merge_parmdb(parmdb_p, parmdb_a, parmdb_out, clobber=False):
-    """
-    Merges facet selfcal parmdbs into a parmdb for a single band
-
-    Parameters
-    ----------
-    parmdb_p : str
-        Filename of CommonScalarPhase and TEC parmdb
-    parmdb_a : str
-        Filename of Gain parmdb. The nearset match in frequency to that of the
-        input band will be used
-    parmdb_out : str
-        Filename of output file
-    clobber : bool, optional
-        If True, overwrite existing output file
-
-    """
-    if type(clobber) is str:
-        if clobber.lower() == 'true':
-            clobber = True
-        else:
-            clobber = False
-
-    if os.path.exists(parmdb_out):
-        if clobber:
-            shutil.rmtree(parmdb_out)
-        else:
-            return
-    pdb_out = parmdb.parmdb(parmdb_out, create=True)
-
-    # Copy over the CommonScalar phases and TEC
-    pdb_p = parmdb.parmdb(parmdb_p)
-    for parmname in pdb_p.getNames():
-        parms = pdb_p.getValuesGrid(parmname)
-        pdb_out.addValues(parms)
-
-    # Copy over the Gains
-    pdb_a = parmdb.parmdb(parmdb_a)
-    for parmname in pdb_a.getNames():
-        parms = pdb_a.getValuesGrid(parmname)
-        pdb_out.addValues(parms)
-
-    # Write values
-    pdb_out.flush()
-
-
-def merge_parmdb_dep(parmdb_gain, parmdb_csp, parmdb_empty, parmdb_out, interp_kind='nearest'):
-    """
-    parmdb_gain: slow varying gain solutions
-    parmdb_csp: fast varying common scalar phase + TEC solutions
-    parmdb_empty: empty parmdb with gain and csp/TEC fast varying (time must be as fast as parmdb_csp and freqs as many as parmdb_gain)
-    parmdb_out: copy of empty filled with parmdb_gain and parmdb_csp
-    interp_kind: 'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic' where 'slinear', 'quadratic' and 'cubic' refer to a spline 
-    """
-    
-    pdb_gain = parmdb.parmdb(parmdb_gain)
-    pdb_csp = parmdb.parmdb(parmdb_csp)
-    pdb_empty = parmdb.parmdb(parmdb_empty)
-
-    parms_gain = pdb_gain.getValuesGrid('*')
-    parms_csp = pdb_csp.getValuesGrid('*')
-    parms_empty = pdb_empty.getValuesGrid('*')
-
-    # copy over the common scalar phases and TEC
-    # NOTE: it is wrong to copy TEC+ph in all channels!!!
-    for key in parms_csp.keys():
-        np.testing.assert_array_equal(parms_empty[key]['times'], parms_csp[key]['times'])
-
-        # final parmdb might have more freqs, fill all of them with the same values
-        for f in xrange(len(parms_empty[key]['freqs'])):
-            parms_empty[key]['values'][:,f] = parms_csp[key]['values'][:,0]
-
-    for key in parms_gain.keys():
-        t_gain = parms_gain[key]['times']
-        t_empty = parms_empty[key]['times']
-        np.testing.assert_array_equal(parms_empty[key]['freqs'], parms_gain[key]['freqs'])
-
-        # cycle on all frequencies
-        for f in xrange(len(parms_empty[key]['freqs'])):
-            v_gain = parms_gain[key]['values']
-
-            # if single value do not interpolate (error otherwise)
-            if len(t_gain) == 1: parms_empty[key]['values'][:,f] = v_gain[0,f]
-            else:
-                # interpolate gain values
-                parms_empty[key]['values'][:,f] = interp1d(t_gain, v_gain[:,f], kind=interp_kind, bounds_error=False)(t_empty)
-
-                # put nearest values on the boundaries
-                parms_empty[key]['values'][:,f][ np.where(t_empty<t_gain[0]) ] = v_gain[0,f]
-                parms_empty[key]['values'][:,f][ np.where(t_empty>t_gain[-1]) ] = v_gain[-1,f]
-
-    pdbnew = parmdb.parmdb(parmdb_out, create=True)
-    pdbnew.addValues(parms_empty)
-    pdbnew.flush()
-
 
 def check_rm(regexp):
     """
@@ -199,48 +107,6 @@ def size_from_facet(img, c_coord, pixsize):
     shape = min(goodvalues[np.where(goodvalues>=max_dist)])
     del img
     return shape
-
-
-def find_nchan(ms):
-    """
-    Find number of channel in this ms
-    """
-    import pyrap.tables as tb
-    t = tb.table(ms+'/SPECTRAL_WINDOW', ack=False)
-    nchan = t.getcol('NUM_CHAN')
-    t.close()
-    assert (nchan[0] == nchan).all() # all spw have same channels?
-    logging.debug('Channel in '+ms+': '+str(nchan[0]))
-    return nchan[0]
-
-
-def find_timeint(ms):
-    """
-    Get time interval in seconds
-    """
-    import pyrap.tables as tb
-    t = tb.table(ms, ack=False)
-    Ntimes = len(set(t.getcol('TIME')))
-    t.close()
-    t = tb.table(ms+'/OBSERVATION', ack=False)
-    deltat = (t.getcol('TIME_RANGE')[0][1]-t.getcol('TIME_RANGE')[0][0])/Ntimes
-    t.close()
-    logging.debug('Time interval for '+ms+': '+str(deltat))
-    return deltat
-
-
-def get_phase_centre(ms):
-    """
-    Get the phase centre of the first source (is it a problem?) of an MS
-    """
-    import pyrap.tables as pt
-    field_table = pt.table(ms + '/FIELD', ack=False)
-    field_no = 0
-    ant_no = 0
-    direction = field_table.getcol('PHASE_DIR')
-    ra = direction[ ant_no, field_no, 0 ]
-    dec = direction[ ant_no, field_no, 1 ]
-    return (ra*180/np.pi, dec*180/np.pi)
 
 
 class Scheduler():

@@ -18,7 +18,6 @@ parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel'
 sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skydb'
 niter = 2
-niter = 2
 
 #######################################################################################
 
@@ -119,11 +118,12 @@ s.run(check=True, max_threads=2)
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
 logging.info('Calibrating TEC...')
 for ms in mss:
-    check_rm(ms+'/instrument-tec')
+    check_rm(ms+'/instrument-tecinit')
     s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tecinit', log=ms+'_sol-tecinit.log', cmd_type='NDPPP')
 s.run(check=True)
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA \
+            cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ###############################################################################################
@@ -164,8 +164,8 @@ check_rm('plots')
 check_rm('cal-fr.h5')
 s.add('H5parm_importer.py -v cal-fr.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
 s.run(check=True)
-#s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
+s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-plot.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
 s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 s.add('H5parm_exporter.py -v -t rotationmeasure000 cal-fr.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
@@ -213,39 +213,22 @@ for c in xrange(niter):
         check_rm(concat_ms+'*')
         pt.msutil.msconcat(mss, concat_ms, concatTime=False)
 
-    # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA
-    logging.info('Calibrating TEC...')
+    # solve TEC - group*_TC.MS:SMOOTHED_DATA
+    logging.info('Solving TEC...')
     for ms in mss:
         check_rm(ms+'/instrument-tec')
         s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tec', log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
-    for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
 
-    # solve AMP - group*_TC.MS:CORRECTED_DATA
-    # orig was solint=5
-    logging.info('Calibrating fast amp...')
-    for ms in mss:
-       check_rm(ms+'/instrument-amp')
-       s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-amp cal.solint=60 cal.nchan=0 cal.caltype=scalaramplitude',\
-            log=ms+'_sol-amp-c'+str(c)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
+    # LoSoTo plot
+    # TODO: add flagging
+    losoto(c, mss, 'all', parset_dir+'/losoto-plot.parset', instrument_in='instrument-tec', instrument_out='instrument-tec')
 
-    # merge parmdbs to plot everything
-    logging.info('Merging instrument tables...')
+    # solve TEC - group*_TC.MS:DATA_INIT -> group*_TC.MS:CORRECTED_DATA
+    logging.info('Correcting TEC...')
     for ms in mss:
-        merge_parmdb(ms+'/instrument-tec', ms+'/instrument-amp', ms+'/instrument', clobber=True)
-
-    # LoSoTo Amp rescaling
-    losoto(c, mss, 'all', parset_dir+'/losoto-norm.parset', instrument_in='instrument', instrument_out='instrument')
-
-    # restart from unsmoothed data and apply everything
-    # correct amp - DATA_INIT -> CORRECTED_DATA
-    logging.info('Correcting TEC + fast amp...')
-    for ms in mss:
-       s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument',\
-            log=ms+'_cor-tec+amp-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=DATA_INIT cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
@@ -253,7 +236,7 @@ for c in xrange(niter):
     s.run(check=True)
 
     ###################################################################################################################
-    # concat all TCs in one MS - group*_TC.MS:CORRECTED_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected)
+    # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
 
     # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
     # -use-differential-lofar-beam -baseline-averaging
@@ -270,20 +253,16 @@ for c in xrange(niter):
     s.run(check=True)
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 5arcsec -weight briggs 0.0 -niter 20000 -update-model-required -maxuv-l 8000 -mgain 0.7 \
+            -scale 5arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 8000 -mgain 0.7 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+    # TODO: as soon as wsclean allows it combine the update of the model in the second run
+    s.add('wsclean -predict -name ' + imagename + '-masked -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' \
+            -scale 5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+            log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
 
-    # Convert model to ms and ft() it
-    #logging.info('Ft() model...')
-    #model = imagename+'-masked-model.fits'
-    #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
-    #            params={'imgs':model, 'del_fits':False}, log='casa_fits2ms-c'+str(c)+'.log')
-    #s.run(check=True)
-    #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat_ms, 'model':model.replace('.fits','.ms'), 'wproj':512}, log='ft-c'+str(c)+'.log')
-    #s.run(check=True)
-   
     ####################################################################
     # FAST VERSION (no low-res)
     #continue
@@ -314,23 +293,17 @@ for c in xrange(niter):
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
             log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-
-    # Convert model to ms and ft() it
-    #logging.info('Ft() model...')
-    #model = imagename+'-masked-model.fits'
-    #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
-    #            params={'imgs':model, 'del_fits':False}, log='casa_fits2ms-lr-c'+str(c)+'.log')
-    #s.run(check=True)
-    #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':concat_ms, 'model':model.replace('.fits','.ms'), 'wproj':512}, log='ft-lr-c'+str(c)+'.log')
-    #s.run(check=True)
+    # TODO: as soon as wsclean allows it combine the update of the model in the second run
+    s.add('wsclean -predict -name ' + imagename + '-masked -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' \
+            -scale 15arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+            log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
 
     ###############################################################################################################
     # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
     logging.info('Subtracting low-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
     s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql4-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
-
-    sys.exit(1)
 
     # Flag on residuals
     logging.info('Flagging residuals...')
@@ -350,17 +323,18 @@ s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='t
 s.run(check=True)
 imagename = 'img/empty'
 s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -datacolumn SUBTRACTED_DATA '+concat_ms, \
+        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 -pol I -cleanborder 0 -fit-spectral-pol 2 -datacolumn SUBTRACTED_DATA '+concat_ms, \
         log='wsclean-empty.log', cmd_type='wsclean', processors='max')
 s.run(check=True)
 
 # Copy last *model
 logging.info('Copying models/images...')
-os.system('mv img/wide-'+str(c)+'-masked-model.fits self/models/wide_g'+g+'.model.fits')
-os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide_lr_g'+g+'.model.fits')
+os.system('mv img/wide-'+str(c)+'-masked-model.fits self/models/wide_g'+g+'-MFS-model.fits')
+os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide_lr_g'+g+'-MFS-model.fits')
 
+# TODO: check new model format in wsclean
 s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
-                params={'imgs':['self/models/wide_g'+g+'.model.fits', 'self/models/wide_g'+g+'.model.fits'], 'del_fits':True}, log='casa_fits2ms.log')
+                params={'imgs':['self/models/wide_g'+g+'-MFS-model.fits', 'self/models/wide_g'+g+'-MFS-model.fits'], 'del_fits':True}, log='casa_fits2ms.log')
 s.run(check=True)
 
 # Copy images
@@ -372,7 +346,5 @@ s.run(check=True)
 [ os.system('mv img/wide-lr-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
 os.system('mv img/empty-image.fits self/images/g'+g)
 os.system('mv logs '+group)
-
-# TODO: add final imaging with all SBs
 
 logging.info("Done.")
