@@ -258,9 +258,11 @@ for c in xrange(niter):
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    # TODO: as soon as wsclean allows it combine the update of the model in the second run
+    # resample at high res to avoid FFT problem on long baselines
     for model in glob.glob(imagename+'*model.fits'):
-        s.add('~/opt/src/nnradd/build/nnradd 10000 10000 '+model.replace(imagename,imagename+'-resamp')+' '+model)
+        model_out = model.replace(imagename,imagename+'-resamp')
+        s.add('~/opt/src/nnradd/build/nnradd 10000 10000 '+model_out+' '+model, log='resamp-c'+str(c)+'.log', cmd_type='general')
+    s.run(check=True)
     s.add('wsclean -predict -name ' + imagename + '-resamp -size 10000 10000 -mem 50 -j '+str(s.max_processors)+' \
             -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -284,21 +286,26 @@ for c in xrange(niter):
     # reclean low-resolution
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 15arcsec -weight briggs 0.0 -niter 50000 -no-update-model-required -maxuv-l 2500 -mgain 0.6 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
     logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
-    s.add('wsclean -reorder -name ' + imagename + '-masked -size 4000 4000 -mem 30 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 15arcsec -weight briggs 0.0 -niter 10000 -update-model-required -maxuv-l 2500 -mgain 0.6 \
+    imagename = 'img/wideM-lr-'+str(c)
+    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 15arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 2500 -mgain 0.6 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
             log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    # TODO: as soon as wsclean allows it combine the update of the model in the second run
-    s.add('wsclean -predict -name ' + imagename + '-masked -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' \
-            -scale 15arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+    # resample at high res to avoid FFT problem on long baselines
+    for model in glob.glob(imagename+'*model.fits'):
+        model_out = model.replace(imagename,imagename+'-resamp')
+        s.add('~/opt/src/nnradd/build/nnradd 24000 24000 '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', cmd_type='general')
+    s.run(check=True)
+    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
+            -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
             log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -309,6 +316,7 @@ for c in xrange(niter):
     s.run(check=True)
 
     # Flag on residuals
+    # TODO: add Sarod code
     logging.info('Flagging residuals...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
@@ -325,15 +333,16 @@ logging.info('Empty cleaning...')
 s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql_sub.log', cmd_type='general')
 s.run(check=True)
 imagename = 'img/empty'
-s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 30 -j '+str(s.max_processors)+' \
-        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 -pol I -cleanborder 0 -fit-spectral-pol 2 -datacolumn SUBTRACTED_DATA '+concat_ms, \
+s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' \
+        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 \
+        -pol I -cleanborder 0 -datacolumn SUBTRACTED_DATA '+concat_ms, \
         log='wsclean-empty.log', cmd_type='wsclean', processors='max')
 s.run(check=True)
 
 # Copy last *model
 logging.info('Copying models/images...')
-os.system('mv img/wide-'+str(c)+'-masked-model.fits self/models/wide_g'+g+'-MFS-model.fits')
-os.system('mv img/wide-lr-'+str(c)+'-masked-model.fits self/models/wide_lr_g'+g+'-MFS-model.fits')
+os.system('mv img/wideM-'+str(c)+'*-model.fits self/models/')
+os.system('mv img/wideM-lr-'+str(c)+'*-model.fits self/models/')
 
 # TODO: check new model format in wsclean
 s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_fits2ms.py', \
@@ -345,8 +354,8 @@ s.run(check=True)
 [ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images/g'+g) for c in xrange(niter) ]
 [ os.system('mv img/wide-'+str(c)+'-image.fits self/images/g'+g) for c in xrange(niter) ]
 [ os.system('mv img/wide-lr-'+str(c)+'-image.fits self/images/g'+g) for c in xrange(niter) ]
-[ os.system('mv img/wide-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
-[ os.system('mv img/wide-lr-'+str(c)+'-masked-image.fits self/images/g'+g) for c in xrange(niter) ]
+[ os.system('mv img/wideM-'+str(c)+'-image.fits self/images/g'+g) for c in xrange(niter) ]
+[ os.system('mv img/wideM-lr-'+str(c)+'-image.fits self/images/g'+g) for c in xrange(niter) ]
 os.system('mv img/empty-image.fits self/images/g'+g)
 os.system('mv logs '+group)
 

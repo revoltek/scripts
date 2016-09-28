@@ -179,10 +179,12 @@ def peel(dd):
         tc = re.findall(r'\d+', ms)[0] # time chunk number
         tcs.append(tc)
     tcs = list(set(tcs))
+
+    check_rm('all/concat.MS*')
+    pt.msutil.msconcat(sorted(glob.glob('all_TC*.MS')), 'all/concat.MS', concatTime=False)
     
     #################################################################################################
     # Blank unwanted part of models
-    # TODO: move to fits files?
     modeldir = 'peel/'+dd['name']+'/models/'
     
     for model in glob.glob('self/models/wide-*-model-I-*.fits'):
@@ -199,20 +201,22 @@ def peel(dd):
     for model in models: 
         blank_image(model, dd['reg_facet'], inverse=True)
 
+	#####################################################################################################
     # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
-    # TODO: find a proper way to do predict - why this predict?
     logging.info('Ft DD calibrator model...')
     model = os.getcwd()+'/'+modeldir+'/peel_dd_gall.model.ms'
-    check_rm('all/concat.MS*')
-    pt.msutil.msconcat(sorted(glob.glob('all_TC*.MS')), 'all/concat.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'all/concat.MS', 'model':model, 'wproj':512}, wkd=tmpdir, log='init-ft.log')
+    # resample and coadd at high res to avoid FFT problem on long baselines
+	# TODO: does this coadd work? initial resolution is different...
+    for model in glob.glob(imagename+'*model.fits'):
+        model_out = model.replace(imagename,imagename+'-resamp')
+		model_lr = model.replace(...)
+        s.add('~/opt/src/nnradd/build/nnradd 24000 24000 '+model_out+' '+model+' '+model_lr, log='resampcoadd-'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
-    
-    logging.info('Ft DD calibrator (lr) model...')
-    model = os.getcwd()+'/'+modeldir+'/peel_dd_lr_gall.model.ms'
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'all/concat.MS', 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='init-ft.log', log_append=True)
+    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
+            -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+            log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    
+
     ###########################################################################################################
     # ADD model group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
     logging.info('Add model...')
@@ -261,9 +265,10 @@ def peel(dd):
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
         # TODO: find a proper way to do predict
         logging.info('FT model...')
-        for ms in peelmss:
-            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
-            s.run(check=True) # no parallel (problem multiple accesses to model file)
+	    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
+    	        -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+        	    log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+	    s.run(check=True)
     
         # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA
         logging.info('Solving TEC...')
@@ -278,7 +283,6 @@ def peel(dd):
         s.run(check=True)
 
         # calibrate amplitude (solve only) - peel_TC*.MS:CORRECTED_DATA
-        # TODO: move to NDPPP
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
             check_rm(ms+'/instrument-amp')
@@ -291,10 +295,10 @@ def peel(dd):
         for ms in peelmss:
             merge_parmdb(ms+'/instrument-tec', ms+'/instrument-amp', ms+'/instrument', clobber=True)
     
-        # LoSoTo Amp rescaling
+        # LoSoTo Amp rescaling + plotting
         losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
     
-        # correct amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
+        # correct TEC+amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Correcting phase+amplitude...')
         for ms in peelmss:
             s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
