@@ -1,0 +1,17 @@
+msin =
+msin.datacolumn = SMOOTHED_DATA
+msin.baseline = [CR]S*&
+msout = .
+msout.datacolumn = CORRECTED_DATA
+
+steps = [filter, cal]
+
+filter.blrange = [100, 1e30]
+
+cal.type = gaincal
+cal.parmdb = 
+cal.caltype = diagonal
+cal.maxiter = 100
+cal.usemodelcolumn = True
+cal.solint = 1
+cal.nchan = 0
