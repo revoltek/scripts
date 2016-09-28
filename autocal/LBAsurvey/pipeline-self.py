@@ -252,14 +252,17 @@ for c in xrange(niter):
                params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
     s.run(check=True)
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
-    s.add('wsclean -reorder -name ' + imagename + '-masked -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    imagename = 'img/wideM-'+str(c)
+    s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 5arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 8000 -mgain 0.7 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     # TODO: as soon as wsclean allows it combine the update of the model in the second run
-    s.add('wsclean -predict -name ' + imagename + '-masked -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' \
-            -scale 5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+    for model in glob.glob(imagename+'*model.fits'):
+        s.add('~/opt/src/nnradd/build/nnradd 10000 10000 '+model.replace(imagename,imagename+'-resamp')+' '+model)
+    s.add('wsclean -predict -name ' + imagename + '-resamp -size 10000 10000 -mem 50 -j '+str(s.max_processors)+' \
+            -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
