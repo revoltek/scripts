@@ -313,11 +313,11 @@ class Scheduler():
             if processors == None:
                 processors = 1 # default use single CPU
                 if "calibrate-stand-alone" == cmd[:21]: processors = 1
-                if "NDPPP" == cmd[:5]: processors = 1
+                if "NDPPP" == cmd[:5]: processors = 6
                 if "wsclean" == cmd[:7]: processors = self.max_processors
                 if "awimager" == cmd[:8]: processors = self.max_processors
             if processors > self.max_processors: processors = self.max_processors
-            self.action_list.append(str(processors)+' \''+cmd+'\'')
+            self.action_list.append([str(processors),'\''+cmd+'\''])
         else:
             self.action_list.append(cmd)
 
@@ -376,8 +376,10 @@ class Scheduler():
         """
         def worker(queue):
             for cmd in iter(queue.get, None):
-                if self.qsub and self.cluster == 'Hamburg': cmd = 'qsub_waiter_ham.sh '+cmd+' >> qsub.log'
-                elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd+' >> qsub.log'
+                if self.qsub and self.cluster == 'Hamburg':
+                    cmd = 'salloc --job-name LBApipe --reservation=important_science --time=150:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
+                            ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env '+cmd[1]+' >> qsub.log'
+                elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd[0]+' '+cmd[1]+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
         q = Queue()

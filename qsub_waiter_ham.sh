@@ -21,7 +21,7 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 
     cmd="""#!/bin/bash
 #PBS -N LBApipe
-#PBS -l walltime=48:00:00
+#PBS -l walltime=150:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
 #PBS -o /dev/null
