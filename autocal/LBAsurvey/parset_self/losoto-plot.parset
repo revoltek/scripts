@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [plotTEC, plotCSPTEC]
+LoSoTo.Steps = [plotTEC, plotCSP, plotCSPTEC]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -17,6 +17,15 @@ LoSoTo.Steps.plotCSPTEC.PlotFlag = True
 LoSoTo.Steps.plotCSPTEC.Prefix = plots/csptec_
 LoSoTo.Steps.plotCSPTEC.Reference = 'CS001LBA'
 LoSoTo.Steps.plotCSPTEC.Add = [sol000/tec000]
+
+# plot CSP
+LoSoTo.Steps.plotCSP.Operation = PLOT
+LoSoTo.Steps.plotCSP.Soltab = [sol000/scalarphase000]
+LoSoTo.Steps.plotCSP.Axes = time
+LoSoTo.Steps.plotCSP.TableAxis = ant
+LoSoTo.Steps.plotCSP.PlotFlag = True
+LoSoTo.Steps.plotCSP.Prefix = plots/csp_
+LoSoTo.Steps.plotCSP.Reference = 'CS001LBA'
 
 # plot TEC
 LoSoTo.Steps.plotTEC.Operation = PLOT
