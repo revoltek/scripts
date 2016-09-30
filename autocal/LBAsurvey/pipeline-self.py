@@ -86,7 +86,7 @@ concat_ms = 'all/concat.MS'
 os.makedirs('logs/all')
 nchan = find_nchan(mss[0])
 
-##################################################################################################
+###################################################################################################
 # Add model to MODEL_DATA
 logging.info('Add model to MODEL_DATA...')
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
@@ -126,14 +126,14 @@ for ms in mss:
             cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
 s.run(check=True)
 
-###############################################################################################
+##############################################################################################
 # Solve SB.MS:CORRECTED_DATA (only solve)
-logging.info('Calibrating for FR...')
+logging.info('Calibrating G...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
 s.run(check=True)
-        
+
 ##################################################################################
 # Preapre fake FR parmdb
 logging.info('Prepare fake FR parmdb...')
@@ -143,6 +143,11 @@ s.run(check=True)
 for ms in mss:
     s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
+
+# merge parmdbs
+logging.info('Merging instrument tables...')
+for ms in mss:
+    merge_parmdb(ms+'/instrument-tecinit', ms+'/instrument-ginit', ms+'/instrument', clobber=True)
 
 #################################################
 # Prepare and run losoto
@@ -258,6 +263,9 @@ for c in xrange(niter):
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+    
+    sys.exit(1)
+
     # resample at high res to avoid FFT problem on long baselines
     for model in glob.glob(imagename+'*model.fits'):
         model_out = model.replace(imagename,imagename+'-resamp')
