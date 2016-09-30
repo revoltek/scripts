@@ -14,6 +14,7 @@ patch = '3C196'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+#datadir = '.'
 
 ###################################################
 
@@ -30,20 +31,23 @@ timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
     logging.error('Channels should be a multiple of 4.')
     sys.exit(1)
+
 avg_factor_f = nchan / 4 # to 4 ch/SB
 if avg_factor_f < 1: avg_factor_f = 1
 avg_factor_t = int(np.round(4/timeint))
 if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
-logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
-for ms in mss:
-    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-    if os.path.exists(msout): continue
-    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+
+if avg_factor_f != 1 or avg_factor_t != 1:
+    logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+        if os.path.exists(msout): continue
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
                 log=msout+'_avg.log', cmd_type='NDPPP')
-s.run(check=True)
-nchan = nchan / avg_factor_f
-timeint = timeint * avg_factor_t
-mss = sorted(glob.glob('*-avg.MS'))
+    s.run(check=True)
+    nchan = nchan / avg_factor_f
+    timeint = timeint * avg_factor_t
+    mss = sorted(glob.glob('*-avg.MS'))
 
 ###############################################
 # Initial processing (2/2013->2/2014)
@@ -56,9 +60,9 @@ s.run(check=False)
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-s.run(check=True)
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+#s.run(check=True)
 for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
@@ -79,13 +83,13 @@ s.run(check=True)
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 logging.info('Converting to circular...')
 for ms in mss:
-    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 #################################################
-# Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
+# Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 # NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
-logging.info('BL-averaging...')
+logging.info('BL-smooth...')
 for ms in mss:
     s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
@@ -152,7 +156,6 @@ s.run(check=True)
 
 ################################################
 # Avg data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-# NOTE: the WEIGHTED_COLUMN is already smoothed but BLavg put it back
 logging.info('BL-averaging...')
 for ms in mss:
     s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
@@ -169,20 +172,20 @@ s.run(check=True)
 #############################################################
 # Prepare and run losoto
 check_rm('globaldb') # remove it as it was used for the fr
-check_rm('globaldb-clock')
+#check_rm('globaldb-clock')
 os.system('mkdir globaldb')
-os.system('mkdir globaldb-clock')
+#os.system('mkdir globaldb-clock')
 for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
 
     num = re.findall(r'\d+', ms)[-1]
     logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    
-    # We export clock, need to create a new parmdb
-    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
+   
+#    # We export clock, need to create a new parmdb
+#    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
+#    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
 
 logging.info('Running LoSoTo...')
 check_rm('plots')
@@ -197,7 +200,10 @@ s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', l
 s.run(check=True)
 s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+# copy clock+BP
+#s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+# copy ph+BP
+s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 
 logging.info("Done.")

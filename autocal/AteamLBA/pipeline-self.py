@@ -104,10 +104,10 @@ for ms in mss:
 s.run(check=True)
 
 ##########################################################################################
-# Transform to circular pol - SB.MS:CORRECTED_DATA -> SB-circ.MS:CIRC_DATA (data, beam applied, circular)
+# Transform to circular pol - SB.MS:DATA_BEAM -> SB-circ.MS:DATA_BEAM (data, beam applied, circular)
 logging.info('Convert to circular...')
 for ms in mss:
-    s.add('mslin2circ.py -s -i '+ms+':DATA_BEAM -o '+ms+':DATA_BEAM', log=ms+'-init_lin2circ.log', cmd_type='python')
+    s.add('mslin2circ.py -s -w -i '+ms+':DATA_BEAM -o '+ms+':DATA_BEAM', log=ms+'-init_lin2circ.log', cmd_type='python')
 s.run(check=True)
 
 #########################################################################################
@@ -115,6 +115,9 @@ s.run(check=True)
 logging.info('Make new columns...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,MODEL_DATA,SMOOTHED_DATA', log=ms+'-init_addcol.log', cmd_type='python')
+s.run(check=True)
+for ms in mss:
+    s.add('addcol2ms.py -m '+ms+' -c WEIGHT_SPECTRUM_ORIG -i WEIGHT_SPECTRUM', log=ms+'-init_addcol.log', cmd_type='python', log_append=True)
 s.run(check=True)
 
 # self-cal cycle
@@ -264,11 +267,12 @@ for c in xrange(cycles):
     os.system('mv plots plots-c'+str(c))
 
     ########################################################################################
-    # correct - SB.MS:CIRC_DATA_SUB -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
-    #logging.info('Restoring WEIGHT_SPECTRUM')
-    #for ms in mss:
-    #    s.add('taql "update '+ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
-    #s.run(check=True)
+    # correct - SB.MS:DATA_BEAM -> SB.MS:CORRECTED_DATA (selfcal corrected data, beam applied, circular)
+    # the weights are changed every correct, so they need to be restored
+    logging.info('Restoring WEIGHT_SPECTRUM')
+    for ms in mss:
+        s.add('taql "update '+ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-restweights-c'+str(c)+'.log', cmd_type='general')
+    s.run(check=True)
 
     logging.info('Correct...')
     for ms in mss:
@@ -292,8 +296,8 @@ for c in xrange(cycles):
 
     # clean (make a new model of Ateam)
     logging.info('Clean (cycle: '+str(c)+')...')
-    uvrange = '0~'+str(7+1.*c)+'klambda'
-    s.add_casa(casa_clean_parset, params={'msfile':[timechunk+'_concat-avg.MS' for timechunk in timechunks], 'imagename':'img/clean-c'+str(c), 'uvrange':uvrange}, log='clean-c'+str(c)+'.log')
+    #uvrange = '0~'+str(7+1.*c)+'klambda'
+    s.add_casa(casa_clean_parset, params={'msfile':[timechunk+'_concat-avg.MS' for timechunk in timechunks], 'imagename':'img/clean-c'+str(c)}, log='clean-c'+str(c)+'.log')
     s.run(check=True)
 
 #########################################################################################################

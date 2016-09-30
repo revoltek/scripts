@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#TobiaC 2011
+
 import optparse
 import numpy
 import sys
@@ -24,13 +24,16 @@ def checkfile(inms):
        print "WARNING: Data is not from linearly polarized feed but I'm converting a column from linear."
 
 def setupiofiles(inms, outms, incolumn, outcolumn):
+  """
+  if inms!=outms copy it and then work only on outms
+  """
   if outms == None:
      outms = inms
   if inms != outms :
      t = pt.table(inms)
      t.copy(outms, True, True)
      t.close()
-     print "Finished copying"
+     print "Finished copy."
   # create output column if doesn't exist
   to = pt.table(outms, readonly=False)
   if not outcolumn in to.colnames():
@@ -56,15 +59,6 @@ def mslin2circ(incol, outcol, outms, skipmetadata):
            (1,2,0))
   tc.putcol(outcol,dataRL)
 
-  # Merge flags
-  flagXY = tc.getcol('FLAG')
-  print "Initial flags:", numpy.count_nonzero(flagXY)
-  for time in xrange(flagXY.shape[0]):
-      for chan in xrange(flagXY.shape[1]):
-          flagXY[time][chan] = numpy.count_nonzero(flagXY[time][chan]) > 0
-  print "Final flags:", numpy.count_nonzero(flagXY)
-  tc.putcol('FLAG',flagXY)
-
   #Change metadata information to be circular feeds
   if not skipmetadata:
     feed = pt.table(tc.getkeyword('FEED'),readonly=False,ack=False)
@@ -73,6 +67,7 @@ def mslin2circ(incol, outcol, outms, skipmetadata):
 
     polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False,ack=False)
     polariz.putcell('CORR_TYPE',0,[5,6,7,8])
+
   tc.close()
 
 def mscirc2lin(incol, outcol, outms, skipmetadata):
@@ -87,28 +82,54 @@ def mscirc2lin(incol, outcol, outms, skipmetadata):
            (1,2,0))
   tc.putcol(outcol,dataXY)
 
-  # Merge flags
-  flagXY = tc.getcol('FLAG')
-  print "Initial flags:", numpy.count_nonzero(flagXY)
-  for time in xrange(flagXY.shape[0]):
-      for chan in xrange(flagXY.shape[1]):
-          flagXY[time][chan] = numpy.count_nonzero(flagXY[time][chan]) > 0
-  print "Final flags:", numpy.count_nonzero(flagXY)
-  tc.putcol('FLAG',flagXY)
-
+  #Change metadata information to be circular feeds
   if not skipmetadata:
-    #Change metadata information to be circular feeds
     feed = pt.table(tc.getkeyword('FEED'),readonly=False, ack=False)
     for tpart in feed.iter('ANTENNA_ID'):
         tpart.putcell('POLARIZATION_TYPE',0,['X','Y'])
 
     polariz = pt.table(tc.getkeyword('POLARIZATION'),readonly=False, ack=False)
     polariz.putcell('CORR_TYPE',0,[9,10,11,12])
+
+  tc.close()
+
+
+def mergeweights(outms):
+  """
+  Merge weights (weights become the average across the 4 polarizations)
+  """
+  print "WARNING: updating weights, cannot reverse to original."
+  tc = pt.table(outms,readonly=False, ack=False)
+  weights = tc.getcol('WEIGHT_SPECTRUM')
+  shape = weights.shape
+  # find the mean along the pol axis and then expand the array
+  weights = numpy.repeat(numpy.mean(weights, axis=2), 4, axis=1).reshape(shape)
+  tc.putcol('WEIGHT_SPECTRUM',weights)
+  tc.close()
+
+
+def mergeflags(outms):
+  """
+  Merge flags (if a pol is flagged, flag everything)
+  """
+  tc = pt.table(outms,readonly=False, ack=False)
+  flag = tc.getcol('FLAG')
+  print "Initial flags:", numpy.count_nonzero(flag)
+  shape = flag.shape
+  # find if any data is flagged along the pol axis and then expand the array
+  flag = numpy.repeat( numpy.any(flag, axis=2), 4, axis=1).reshape(shape)
+  #for time in xrange(flag.shape[0]):
+  #    for chan in xrange(flag.shape[1]):
+  #        flag[time][chan] = numpy.count_nonzero(flag[time][chan]) > 0
+  print "Final flags:", numpy.count_nonzero(flag)
+  tc.putcol('FLAG',flag)
   tc.close()
 
 
 def updatehistory(outms):
-  #Update history to show that this script has modified original data
+  """
+  Update history to show that this script has modified original data
+  """
   tc = pt.table(outms,readonly=False)
   th = pt.table(tc.getkeyword('HISTORY'), readonly=False, ack=False)
   nr=th.nrows()
@@ -122,6 +143,7 @@ opt.add_option('-i','--inms',help='Input MS (format: ms:COLUMN, default column: 
 opt.add_option('-o','--outms',help='Output MS (format: ms:COLUMN, default ms: InputMS, default column: DATA)',default='')
 opt.add_option('-r','--reverse',action="store_true",default=False,help='Convert from circular to linear')
 opt.add_option('-s','--skipmetadata',action="store_true",default=False,help='Skip setting the metadata correctly')
+opt.add_option('-w','--weights',action="store_true",default=False,help='Weights are updated to reflect the combined polarization (cannot be undone with -r)')
 options, arguments = opt.parse_args()
 
 if options.outms == '':
@@ -149,4 +171,6 @@ if options.reverse == True:
    mscirc2lin(incolumn, outcolumn, outms, options.skipmetadata)
 else:
    mslin2circ(incolumn, outcolumn, outms, options.skipmetadata)
+if options.weights: mergeweights(outms)
+mergeflags(outms)
 updatehistory(outms)

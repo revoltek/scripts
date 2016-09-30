@@ -14,7 +14,9 @@ parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
 ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-globaldb = 'globaldb-clock' #TODO: copy form deined repository
+globaldb = 'globaldb-clock' #TODO: copy form repository
+#datadir = '.' # tooth
+#globaldb = 'globaldb-fulltrans' #NOTE: edit parset_timesplit/NDPPP-cor.parset
 
 ##################################################################################################
 
@@ -53,14 +55,14 @@ nchan = nchan / avg_factor_f
 timeint = timeint * avg_factor_t
 mss = sorted(glob.glob('*-avg.MS'))
 
-###############################################
+################################################
 # Initial processing
-#logging.info('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+logging.info('Fix beam table')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
 
-###################################################
+####################################################
 # Beam correction DATA -> CORRECTED_DATA (beam corrected)
 logging.info('Beam correction...')
 for ms in mss:
@@ -69,7 +71,6 @@ s.run(check=True)
 
 ##########################################################################################
 # Copy instrument tables
-# TODO: scale weights to compensate bandpass different S/N!!!!!!!!!!!!!!!!!!!!!!!
 for ms in mss:
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument')

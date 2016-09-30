@@ -14,12 +14,12 @@ def casa_clean(msfile='', imagename='', imtype='normal', mask='/home/fdg/scripts
 
     if imtype == 'normal': 
         default('clean')
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=300,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask=mask,imsize=[512],cell=['1arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3,uvrange=uvrange)
-        os.system('cp -r '+imagename+'.residual.tt0 '+imagename+'-bkp1')
+        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=10000,gain=0.05,psfmode="clark",imagermode="csclean",multiscale=[],interactive=False,mask=mask,imsize=[512],cell=['1arcsec'],weighting="briggs",robust=-0.5,cyclefactor=8,cyclespeedup=-1,nterms=3,uvrange=uvrange)
+#        os.system('cp -r '+imagename+'.residual.tt0 '+imagename+'-bkp1')
 
-        default('clean')
-        scales=[0, 5, 10, 20, 40, 80, 160]
-        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=15000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask=mask,imsize=[512],cell=['1arcsec'],weighting="briggs",robust=-0.5,cyclefactor=5,cyclespeedup=-1,nterms=3,uvrange=uvrange)
+#        default('clean')
+#        scales=[0, 5, 10, 20, 40, 80, 160]
+#        clean(vis=msfile,imagename=imagename,mode="mfs",gridmode="widefield",wprojplanes=512,niter=15000,gain=0.1,psfmode="clark",imagermode="csclean",multiscale=scales,interactive=False,mask=mask,imsize=[512],cell=['1arcsec'],weighting="briggs",robust=-0.5,cyclefactor=5,cyclespeedup=-1,nterms=3,uvrange=uvrange)
 
     elif imtype == 'dirty':
         default('clean')
