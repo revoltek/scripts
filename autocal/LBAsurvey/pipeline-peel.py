@@ -179,50 +179,44 @@ def peel(dd):
         tc = re.findall(r'\d+', ms)[0] # time chunk number
         tcs.append(tc)
     tcs = list(set(tcs))
+
+    check_rm('all/concat.MS*')
+    pt.msutil.msconcat(sorted(glob.glob('all_TC*.MS')), 'all/concat.MS', concatTime=False)
     
     #################################################################################################
     # Blank unwanted part of models
-    # TODO: move to fits files?
     modeldir = 'peel/'+dd['name']+'/models/'
     
-    for model in glob.glob('self/models/wide*_g*model*'):
+    for model in glob.glob('self/models/wide-*-model-I-*.fits'):
         os.system('cp -r '+model+' '+modeldir+'/'+os.path.basename(model).replace('wide','peel_dd'))
         os.system('cp -r '+model+' '+modeldir+'/'+os.path.basename(model).replace('wide','peel_facet'))
     
     logging.info('Splitting skymodels...')
     models = glob.glob(modeldir+'/peel_dd*')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-                params={'imgs':models, 'region':dd['reg'], 'inverse':True}, log='split_skymodels.log')
-    s.run(check=True)
-    
-    logging.info('Splitting skymodels (low-resolution)...')
-    models = glob.glob(modeldir+'/peel_facet*')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-                params={'imgs':models, 'region':dd['reg_facet'], 'inverse':True}, log='split_skymodels.log', log_append=True)
-    s.run(check=True)
+    for model in models: 
+        blank_image(model, dd['reg'], inverse=True)
 
-    # Ugly solution to make images of the minimal size just to find out how many pixels to use
-    logging.info('Making image cuts...')
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_cutimg.py', \
-                params={'img':glob.glob(modeldir+'/peel_dd_g*.model.ms')[0], 'region':dd['reg'], 'out':modeldir+'/dd.cut'}, log='cut_skymodels.log')
-    s.run(check=True)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_cutimg.py', \
-                params={'img':glob.glob(modeldir+'/peel_facet_g*.model.ms')[0], 'region':dd['reg_facet'], 'out':modeldir+'/facet.cut'}, log='cut_skymodels.log', log_append=True)
-    s.run(check=True)
-    
+    logging.info('Splitting skymodels (facet)...')
+    models = glob.glob(modeldir+'/peel_facet*')
+    for model in models: 
+        blank_image(model, dd['reg_facet'], inverse=True)
+
+	#####################################################################################################
     # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
     logging.info('Ft DD calibrator model...')
     model = os.getcwd()+'/'+modeldir+'/peel_dd_gall.model.ms'
-    check_rm('all/concat.MS*')
-    pt.msutil.msconcat(sorted(glob.glob('all_TC*.MS')), 'all/concat.MS', concatTime=False)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'all/concat.MS', 'model':model, 'wproj':512}, wkd=tmpdir, log='init-ft.log')
+    # resample and coadd at high res to avoid FFT problem on long baselines
+	# TODO: does this coadd work? initial resolution is different...
+    for model in glob.glob(imagename+'*model.fits'):
+        model_out = model.replace(imagename,imagename+'-resamp')
+		model_lr = model.replace(...)
+        s.add('~/opt/src/nnradd/build/nnradd 24000 24000 '+model_out+' '+model+' '+model_lr, log='resampcoadd-'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
-    
-    logging.info('Ft DD calibrator (lr) model...')
-    model = os.getcwd()+'/'+modeldir+'/peel_dd_lr_gall.model.ms'
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':'all/concat.MS', 'model':model, 'wproj':512, 'incr':True}, wkd=tmpdir, log='init-ft.log', log_append=True)
+    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
+            -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+            log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    
+
     ###########################################################################################################
     # ADD model group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
     logging.info('Add model...')
@@ -241,10 +235,10 @@ def peel(dd):
     
     peelmss = sorted(glob.glob('all/peel_TC*.MS'))
     
-    # Add CORRECTED_DATA for cleaning
-    logging.info('Add CORRECTED_DATA...')
+    # Add MODEL_DATA and CORRECTED_DATA for cleaning
+    logging.info('Add MODEL_DATA and CORRECTED_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
     s.run(check=True, max_threads=1)
 
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
@@ -269,45 +263,46 @@ def peel(dd):
             pt.msutil.msconcat(peelmss, 'all/concat.MS', concatTime=False)
     
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
+        # TODO: find a proper way to do predict
         logging.info('FT model...')
-        for ms in peelmss:
-            s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_ft.py', params={'msfile':ms, 'model':model}, log=ms+'_ft-c'+str(c)+'.log')
-            s.run(check=True) # no parallel (problem multiple accesses to model file)
+	    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
+    	        -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+        	    log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+	    s.run(check=True)
     
-        # solve/corrected TEC - peel_TC*.MS:DATA -> CORRECTED_DATA
-        # TODO: move to NDPPP
-        logging.info('Calibrating phase...')
+        # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA
+        logging.info('Solving TEC...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone -f --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-sol_tec.parset '+skymodel, \
-                    log=ms+'_calpreamp-c'+str(c)+'.log', cmd_type='BBS')
+            check_rm(ms+'/instrument-tec')
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tec', log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         logging.info('Correcting TEC...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone --parmdb-name instrument_tec '+ms+' '+parset_dir+'/bbs-cor_tec.parset '+skymodel, \
-            log=ms+'_corpreamp-c'+str(c)+'.log', cmd_type='BBS')
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        # calibrate amplitude (solve only) - peel_TC*.MS:SMOOTH_DATA
-        # TODO: move to NDPPP
+        # calibrate amplitude (solve only) - peel_TC*.MS:CORRECTED_DATA
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone -f --parmdb-name instrument_amp '+ms+' '+parset_dir+'/bbs-sol_amp.parset '+skymodel, \
-                    log=ms+'_calamp-c'+str(c)+'.log', cmd_type='BBS', processors = 'max')
+            check_rm(ms+'/instrument-amp')
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' cal.parmdb='+ms+'/instrument-amp cal.solint=60', \
+                log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
     
         # merge parmdbs
         logging.info('Merging instrument tables...')
         for ms in peelmss:
-            merge_parmdb(ms+'/instrument_tec', ms+'/instrument_amp', ms+'/instrument', clobber=True)
+            merge_parmdb(ms+'/instrument-tec', ms+'/instrument-amp', ms+'/instrument', clobber=True)
     
-        # LoSoTo Amp rescaling
+        # LoSoTo Amp rescaling + plotting
         losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
     
-        # correct amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA (selfcal TEC+ph+amp corrected)
+        # correct TEC+amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Correcting phase+amplitude...')
         for ms in peelmss:
-            s.add('calibrate-stand-alone '+ms+' '+parset_dir+'/bbs-cor_amptec.parset '+skymodel, \
-                    log=ms+'_coramptec-c'+str(c)+'.log', cmd_type='BBS')
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
+                log=ms+'_cor-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         logging.info('Restoring WEIGHT_SPECTRUM...')

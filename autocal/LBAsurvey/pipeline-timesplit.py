@@ -13,16 +13,17 @@ from lib_pipeline import *
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
 ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
-#datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-datadir = '.' # tooth
-#globaldb = 'globaldb-clock' #TODO: copy form deined repository
-globaldb = 'globaldb-fulltrans' #NOTE: edit parset_timesplit/NDPPP-cor.parset
+datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
+globaldb = 'globaldb-clock' #TODO: copy form repository
+#datadir = '.' # tooth
+#globaldb = 'globaldb-fulltrans' #NOTE: edit parset_timesplit/NDPPP-cor.parset
 
 ##################################################################################################
 
 set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
+assert os.path.isdir(globaldb)
 
 #################################################
 ## Clear
@@ -36,51 +37,51 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 # Remove internationals
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
-#if nchan % 4 != 0:
-#    logging.error('Channels should be a multiple of 4.')
-#    sys.exit(1)
-#avg_factor_f = nchan / 4 # to 4 ch/SB
-#if avg_factor_f < 1: avg_factor_f = 1
-#avg_factor_t = int(np.round(4/timeint))
-#if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
-#logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
-#for ms in mss:
-#    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-#    if os.path.exists(msout): continue
-#    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
-#                log=msout+'_avg.log', cmd_type='NDPPP')
-#s.run(check=True)
-#nchan = nchan / avg_factor_f
-#timeint = timeint * avg_factor_t
-#mss = sorted(glob.glob('*-avg.MS'))
+if nchan % 4 != 0:
+    logging.error('Channels should be a multiple of 4.')
+    sys.exit(1)
+avg_factor_f = nchan / 4 # to 4 ch/SB
+if avg_factor_f < 1: avg_factor_f = 1
+avg_factor_t = int(np.round(4/timeint))
+if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
+logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+for ms in mss:
+    msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+    if os.path.exists(msout): continue
+    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                log=msout+'_avg.log', cmd_type='NDPPP')
+s.run(check=True)
+nchan = nchan / avg_factor_f
+timeint = timeint * avg_factor_t
+mss = sorted(glob.glob('*-avg.MS'))
 
-#################################################
-## Initial processing
-#logging.info('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-#
-#####################################################
-## Beam correction DATA -> CORRECTED_DATA (beam corrected)
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-###########################################################################################
-## Copy instrument tables
-#for ms in mss:
-#    num = re.findall(r'\d+', ms)[-1]
-#    check_rm(ms+'/instrument')
-#    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-#
-## Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
-#logging.info('Apply solutions...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
-#s.run(check=True)
+################################################
+# Initial processing
+logging.info('Fix beam table')
+for ms in mss:
+    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+s.run(check=False)
+
+####################################################
+# Beam correction DATA -> CORRECTED_DATA (beam corrected)
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
+s.run(check=True)
+
+##########################################################################################
+# Copy instrument tables
+for ms in mss:
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument')
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+
+# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
+logging.info('Apply solutions...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+s.run(check=True)
 
 ###################################################################################################
 # Create groups
