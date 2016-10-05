@@ -180,7 +180,9 @@ def peel(dd):
         tcs.append(tc)
     tcs = list(set(tcs))
 
-    check_rm('all/concat.MS*')
+    # preparing concatenated dataset
+    concat_ms = 'all/concat.MS'
+    check_rm(concat_ms+'*')
     pt.msutil.msconcat(sorted(glob.glob('all_TC*.MS')), 'all/concat.MS', concatTime=False)
     
     #################################################################################################
@@ -204,15 +206,7 @@ def peel(dd):
 	#####################################################################################################
     # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
     logging.info('Ft DD calibrator model...')
-    model = os.getcwd()+'/'+modeldir+'/peel_dd_gall.model.ms'
-    # resample and coadd at high res to avoid FFT problem on long baselines
-	# TODO: does this coadd work? initial resolution is different...
-    for model in glob.glob(imagename+'*model.fits'):
-        model_out = model.replace(imagename,imagename+'-resamp')
-		model_lr = model.replace(...)
-        s.add('~/opt/src/nnradd/build/nnradd 24000 24000 '+model_out+' '+model+' '+model_lr, log='resampcoadd-'+str(c)+'.log', cmd_type='general')
-    s.run(check=True)
-    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
+    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
             -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
             log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -242,6 +236,7 @@ def peel(dd):
     s.run(check=True, max_threads=1)
 
     # do a first hi-res clean (CORRECTED_DATA is == DATA now)
+    # TODO: use available model?
     model = clean('init', peelmss, dd)
     #model = clean('initfacet', peelmss, dd, facet=True) # DEBUG
    
@@ -259,14 +254,14 @@ def peel(dd):
         if c == 0:
             # make concat after the smoother to have the WEIGHT_SPECTRUM_ORIG included
             logging.info('Concatenating TCs...')
-            check_rm('all/concat.MS*')
+            concat_ms_peel = 'all/concat_peel.MS'
+            check_rm(concat_ms_peel+'*')
             pt.msutil.msconcat(peelmss, 'all/concat.MS', concatTime=False)
     
         # ft model - peel_TC*.MS:MODEL_DATA (best available model)
-        # TODO: find a proper way to do predict
         logging.info('FT model...')
 	    s.add('wsclean -predict -name ' + imagename + '-resamp -size 24000 24000 -mem 50 -j '+str(s.max_processors)+' \
-    	        -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms, \
+    	        -scale 2.5arcsec -joinchannels -fit-spectral-pol 2 -channelsout 10 '+concat_ms_peel, \
         	    log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
 	    s.run(check=True)
     
