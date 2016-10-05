@@ -86,20 +86,20 @@ concat_ms = 'all/concat.MS'
 os.makedirs('logs/all')
 nchan = find_nchan(mss[0])
 
-###################################################################################################
-# Add model to MODEL_DATA
-logging.info('Add model to MODEL_DATA...')
-# copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-sourcedb_basename = sourcedb.split('/')[-1]
-for ms in mss:
-    check_rm(ms+'/'+sourcedb_basename)
-    os.system('cp -r '+sourcedb+' '+ms)
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-s.run(check=True)
-
-# 1. find and remove FR
-
+####################################################################################################
+## Add model to MODEL_DATA
+#logging.info('Add model to MODEL_DATA...')
+## copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
+#sourcedb_basename = sourcedb.split('/')[-1]
+#for ms in mss:
+#    check_rm(ms+'/'+sourcedb_basename)
+#    os.system('cp -r '+sourcedb+' '+ms)
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+#s.run(check=True)
+#
+## 1. find and remove FR
+#
 ####################################################################################################
 # To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (circular)
 logging.info('Convert to circular...')
@@ -130,7 +130,7 @@ s.run(check=True)
 # Solve SB.MS:CORRECTED_DATA (only solve)
 logging.info('Calibrating G...')
 for ms in mss:
-    check_rm(ms+'/instrument')
+    check_rm(ms+'/instrument-ginit')
     s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
 s.run(check=True)
 
@@ -184,7 +184,7 @@ for i, ms in enumerate(mss):
     logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
     os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
 
-#####################################################
+####################################################
 # Correct FR SB.MS:DATA->DATA_INIT
 logging.info('Faraday rotation correction...')
 for ms in mss:
@@ -229,12 +229,24 @@ for c in xrange(niter):
     # TODO: add flagging
     losoto(c, mss, 'all', parset_dir+'/losoto-plot.parset', instrument_in='instrument-tec', instrument_out='instrument-tec')
 
-    # solve TEC - group*_TC.MS:DATA_INIT -> group*_TC.MS:CORRECTED_DATA
+    # correct TEC - group*_TC.MS:DATA_INIT -> group*_TC.MS:CORRECTED_DATA
     logging.info('Correcting TEC...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=DATA_INIT cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
+
+    ###############################################################################################
+    # Solve SB.MS:CORRECTED_DATA (only solve)
+    # TESTTESTTEST
+    logging.info('Calibrating G...')
+    for ms in mss:
+        check_rm(ms+'/instrument-g')
+        s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=DATA_INIT cal.parmdb='+ms+'/instrument-g cal.solint=30 cal.nchan=4', log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+    losoto(c, mss, 'all', parset_dir+'/losoto-fr.parset', instrument_in='instrument-g', instrument_out='instrument-tec')
+
+    sys.exit(1)
 
     logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
     s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
