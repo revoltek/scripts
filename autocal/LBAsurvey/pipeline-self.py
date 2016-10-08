@@ -13,10 +13,10 @@
 # h5parm solutions and plots are copied in the "self/solutions" dir
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
-#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150_field.skymodel'
-#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.GMRT150_field.skydb'
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel'
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skydb'
+#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel'
+#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skydb'
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # REMOVE BEAM
+sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb' # REMOVE BEAM
 niter = 2
 
 #######################################################################################
@@ -65,7 +65,7 @@ def losoto(c, mss, parset, instrument_in='instrument', instrument_out='instrumen
     os.system('mv '+h5parm+' self/solutions/')
 
 #################################################
-## Clear
+# Clear
 logging.info('Cleaning...')
 
 check_rm('*bak *last *pickle')
@@ -83,116 +83,116 @@ mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 nchan = find_nchan(mss[0])
 concat_ms = 'mss/concat.MS'
 
-###################################################################################################
-# Add model to MODEL_DATA
-logging.info('Add model to MODEL_DATA...')
-# copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-sourcedb_basename = sourcedb.split('/')[-1]
-for ms in mss:
-    check_rm(ms+'/'+sourcedb_basename)
-    os.system('cp -r '+sourcedb+' '+ms)
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-s.run(check=True)
-
-# 1. find and remove FR
-
-###################################################################################################
-# To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (circular)
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=1)
-
-################################################################################################
-# Smooth CORRECTED_DATA -> SMOOTHED_DATA (circular, smooth)
-logging.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True, max_threads=2)
-
+#####################################################################################################
+## Add model to MODEL_DATA
+#logging.info('Add model to MODEL_DATA...')
+## copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
+#sourcedb_basename = sourcedb.split('/')[-1]
+#for ms in mss:
+#    check_rm(ms+'/'+sourcedb_basename)
+#    os.system('cp -r '+sourcedb+' '+ms)
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+#s.run(check=True)
+#
+## 1. find and remove FR
+#
+####################################################################################################
+## To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (circular)
+#logging.info('Convert to circular...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True, max_threads=1)
+#
 #################################################################################################
-# solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
-logging.info('Calibrating TEC...')
-for ms in mss:
-    check_rm(ms+'/instrument-tecinit')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tecinit', log=ms+'_sol-tecinit.log', cmd_type='NDPPP')
-s.run(check=True)
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA \
-            cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
-s.run(check=True)
-
-##############################################################################################
-# Solve G SB.MS:CORRECTED_DATA (only solve)
-logging.info('Calibrating G...')
-for ms in mss:
-    check_rm(ms+'/instrument-ginit')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
-s.run(check=True)
-
-##################################################################################
-# Preapre fake FR parmdb
-logging.info('Prepare fake FR parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
-s.run(check=True)
-for ms in mss:
-    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
-s.run(check=True)
-
-# merge parmdbs
-logging.info('Merging instrument tables...')
-for ms in mss:
-    merge_parmdb(ms+'/instrument-tecinit', ms+'/instrument-ginit', ms+'/instrument', clobber=True)
-
-#################################################
-# Prepare and run losoto
-check_rm('globaldb')
-check_rm('globaldb-fr')
-os.system('mkdir globaldb')
-os.system('mkdir globaldb-fr')
-for i, ms in enumerate(mss):
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
-
-logging.info('Running LoSoTo...')
-check_rm('plots')
-check_rm('cal-fr.h5')
-s.add('H5parm_importer.py -v cal-fr.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-plot.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('H5parm_exporter.py -v -t rotationmeasure000 cal-fr.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-os.system('mv plots self/solutions/plots-fr')
-os.system('mv cal-fr.h5 self/solutions')
-
-for i, ms in enumerate(mss):
-    num = re.findall(r'\d+', ms)[-1]
-    check_rm(ms+'/instrument-fr')
-    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
-    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
-
-####################################################
-# Correct FR SB.MS:DATA->DATA_INIT
-logging.info('Faraday rotation correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-s.run(check=True)
+## Smooth CORRECTED_DATA -> SMOOTHED_DATA (circular, smooth)
+#logging.info('BL-based smoothing...')
+#for ms in mss:
+#    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
+#s.run(check=True, max_threads=2)
+#
+##################################################################################################
+## solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
+#logging.info('Calibrating TEC...')
+#for ms in mss:
+#    check_rm(ms+'/instrument-tecinit')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tecinit', log=ms+'_sol-tecinit.log', cmd_type='NDPPP')
+#s.run(check=True)
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA \
+#            cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
+#s.run(check=True)
+#
+###############################################################################################
+## Solve G SB.MS:CORRECTED_DATA (only solve)
+#logging.info('Calibrating G...')
+#for ms in mss:
+#    check_rm(ms+'/instrument-ginit')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
+#s.run(check=True)
+#
+###################################################################################
+## Preapre fake FR parmdb
+#logging.info('Prepare fake FR parmdb...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
+#s.run(check=True)
+#for ms in mss:
+#    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+#s.run(check=True)
+#
+## merge parmdbs
+#logging.info('Merging instrument tables...')
+#for ms in mss:
+#    merge_parmdb(ms+'/instrument-tecinit', ms+'/instrument-ginit', ms+'/instrument', clobber=True)
+#
+##################################################
+## Prepare and run losoto
+#check_rm('globaldb')
+#check_rm('globaldb-fr')
+#os.system('mkdir globaldb')
+#os.system('mkdir globaldb-fr')
+#for i, ms in enumerate(mss):
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
+#    num = re.findall(r'\d+', ms)[-1]
+#    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
+#    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+#    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
+#    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
+#
+#logging.info('Running LoSoTo...')
+#check_rm('plots')
+#check_rm('cal-fr.h5')
+#s.add('H5parm_importer.py -v cal-fr.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-plot.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#s.add('H5parm_exporter.py -v -t rotationmeasure000 cal-fr.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#os.system('mv plots self/solutions/plots-fr')
+#os.system('mv cal-fr.h5 self/solutions')
+#
+#for i, ms in enumerate(mss):
+#    num = re.findall(r'\d+', ms)[-1]
+#    check_rm(ms+'/instrument-fr')
+#    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
+#    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
+#
+#####################################################
+## Correct FR SB.MS:DATA->DATA_INIT
+#logging.info('Faraday rotation correction...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 ####################################################################################################
 # TESTTESTTEST + at smooth go back to DATA_INIT when removing TEST
 ## To circular - SB.MS:DATA_INIT -> SB.MS:SMOOTHED_DATA (circular)
 logging.info('Convert to circular...')
-for ms in ~mss:
+for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA_INIT -o '+ms+':SMOOTHED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True, max_threads=1)
 
@@ -230,11 +230,11 @@ for c in xrange(niter):
         check_rm(ms+'/instrument-tec')
         s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tec', log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
-#
-#    # LoSoTo plot
-#    # TODO: add flagging
-#    losoto(c, mss, parset_dir+'/losoto-plot.parset', instrument_in='instrument-tec', instrument_out='instrument-tec')
-#
+
+    # LoSoTo plot
+    # TODO: add flagging
+    losoto(c, mss, parset_dir+'/losoto-plot.parset', instrument_in='instrument-tec', instrument_out='instrument-tec')
+
     # correct TEC - group*_TC.MS:DATA_INIT -> group*_TC.MS:CORRECTED_DATA
     logging.info('Correcting TEC...')
     for ms in mss:
@@ -268,7 +268,8 @@ for c in xrange(niter):
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask')
+    maskname = imagename+'.newmask'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname)
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
     s.run(check=True)
@@ -276,14 +277,12 @@ for c in xrange(niter):
     imagename = 'img/wideM-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 5arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 8000 -mgain 0.7 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
+            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
-    sys.exit(1)
-
     logging.info('Predict...')
-    s.add('wsclean -predict -name ' + imagename + '-resamp -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' \
+    s.add('wsclean -predict -name ' + imagename + ' -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' \
             -scale 5arcsec -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -311,15 +310,18 @@ for c in xrange(niter):
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask', threshpix=6) # a bit higher treshold
+    maskname = imagename+'.newmask'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshpix=6) # a bit higher treshold
     logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 20arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 2500 -mgain 0.6 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+imagename+'.newmask '+concat_ms, \
+            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+
     # resample at high res to avoid FFT problem on long baselines
+    logging.info('Predict...')
     for model in glob.glob(imagename+'*model.fits'):
         model_out = model.replace(imagename,imagename+'-resamp')
         s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', cmd_type='general')
@@ -328,6 +330,8 @@ for c in xrange(niter):
             -scale 10arcsec -channelsout 10 '+concat_ms, \
             log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+
+    sys.exit(1)
 
     ###############################################################################################################
     # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
