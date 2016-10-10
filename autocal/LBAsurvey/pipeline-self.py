@@ -83,7 +83,7 @@ mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 nchan = find_nchan(mss[0])
 concat_ms = 'mss/concat.MS'
 
-#####################################################################################################
+####################################################################################################
 ## Add model to MODEL_DATA
 #logging.info('Add model to MODEL_DATA...')
 ## copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
@@ -95,7 +95,7 @@ concat_ms = 'mss/concat.MS'
 #    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
 #s.run(check=True)
 #
-## 1. find and remove FR
+### 1. find and remove FR
 #
 ####################################################################################################
 ## To circular - SB.MS:DATA -> SB.MS:CORRECTED_DATA (circular)
@@ -180,25 +180,17 @@ concat_ms = 'mss/concat.MS'
 #    check_rm(ms+'/instrument-fr')
 #    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
 #    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
-#
-#####################################################
-## Correct FR SB.MS:DATA->DATA_INIT
-#logging.info('Faraday rotation correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-#s.run(check=True)
 
-####################################################################################################
-# TESTTESTTEST + at smooth go back to DATA_INIT when removing TEST
-## To circular - SB.MS:DATA_INIT -> SB.MS:SMOOTHED_DATA (circular)
-logging.info('Convert to circular...')
+####################################################
+# Correct FR SB.MS:DATA->DATA_INIT
+logging.info('Faraday rotation correction...')
 for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA_INIT -o '+ms+':SMOOTHED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=1)
+    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
+s.run(check=True)
 
 # 2: recalibrate without FR
 
-################################################################################################
+###############################################################################################
 # Create columns
 logging.info('Creating MODEL_DATA, MODEL_DATA_HIGHRES, SUBTRACTED_DATA...')
 for ms in mss:
@@ -211,11 +203,10 @@ for c in xrange(niter):
     logging.info('Start selfcal cycle: '+str(c))
 
     #################################################################################################
-    # Smooth
+    # Smooth DATA_INIT -> SMOOTHED_DATA
     logging.info('BL-based smoothing...')
     for ms in mss:
-        s.add('BLavg.py -r -w -i SMOOTHED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
-    #    s.add('BLavg.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.add('BLavg.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
     s.run(check=True, max_threads=2)
 
     if c == 0:
@@ -242,15 +233,15 @@ for c in xrange(niter):
                 log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    ###############################################################################################
-    # Solve SB.MS:CORRECTED_DATA (only solve)
-    # TESTTESTTEST
-    logging.info('Calibrating G...')
-    for ms in mss:
-        check_rm(ms+'/instrument-g')
-        s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-g cal.solint=30 cal.nchan=4', log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
-    losoto(c, mss, parset_dir+'/losoto-fr.parset', instrument_in='instrument-g', instrument_out='instrument-g')
+    ################################################################################################
+    ## Solve SB.MS:CORRECTED_DATA (only solve)
+    ## TESTTESTTEST
+    #logging.info('Calibrating G...')
+    #for ms in mss:
+    #    check_rm(ms+'/instrument-g')
+    #    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-g cal.solint=30 cal.nchan=4', log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
+    #s.run(check=True)
+    #losoto(c, mss, parset_dir+'/losoto-fr.parset', instrument_in='instrument-g', instrument_out='instrument-g')
 
     logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
     s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')

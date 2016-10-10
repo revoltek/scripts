@@ -24,7 +24,7 @@ LoSoTo.Steps.plotA1.PlotFlag = True
 LoSoTo.Steps.plotA1.Prefix = plots/ampPF_
 LoSoTo.Steps.plotA1.Columns = 2
 LoSoTo.Steps.plotA1.FigSize = [20,20]
-#LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
+LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
@@ -34,7 +34,7 @@ LoSoTo.Steps.plotA2.TableAxis = ant
 LoSoTo.Steps.plotA2.ColorAxis = pol
 LoSoTo.Steps.plotA2.PlotFlag = True
 LoSoTo.Steps.plotA2.Prefix = plots/ampPF_
-#LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3]
+LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotA3.Operation = PLOT
 LoSoTo.Steps.plotA3.Soltab = [sol000/amplitude000]
@@ -42,7 +42,7 @@ LoSoTo.Steps.plotA3.Axes = [time,freq]
 LoSoTo.Steps.plotA3.TableAxis = ant
 LoSoTo.Steps.plotA3.PlotFlag = True
 LoSoTo.Steps.plotA3.Prefix = plots/ampPF_
-#LoSoTo.Steps.plotA3.MinMax = [1e-4,3e-3]
+LoSoTo.Steps.plotA3.MinMax = [1e-4,3e-3]
 
 # flag
 LoSoTo.Steps.flag.Operation = FLAG
