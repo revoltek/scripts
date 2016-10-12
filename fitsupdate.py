@@ -21,21 +21,32 @@
 
 import pyfits,sys,optparse,re
 
+def isfloat(x):
+    try:
+        a = float(x)
+    except ValueError:
+        return False
+    else:
+        return True
+
+def isint(x):
+    try:
+        a = float(x)
+        b = int(a)
+    except ValueError:
+        return False
+    else:
+        return a == b
+
 opt = optparse.OptionParser(usage="%prog [-setbeam max,min,pa] [-setkeyword keyword=value] fitsfile", version="%prog 0.1")
 opt.add_option('-b', '--setbeam', help='Set beam minaxis maxaxis and position angle to three comma-separated numbers (arcsec,arcsec,degree) [ex: 123,123,90]')
 opt.add_option('-k', '--setkeyword', help='Set a keyword to a specific value (e.g. --k CRPIX1=10)')
 opt.add_option('-d', '--delkeyword', help='Delete a keyword')
-opt.add_option('-f', '--fix', help='Fix headers', action='store_true', default=False)
 (options, img) = opt.parse_args()
 setbeam = options.setbeam
 setkeyword = options.setkeyword
 delkeyword = options.delkeyword
-fix = options.fix
 sys.stdout.flush()
-
-if len(img) == 0:
-    opt.print_help()
-    sys.exit(0)
 
 try:
     hdulist = pyfits.open(img[0], mode='update')
@@ -43,39 +54,9 @@ except:
     print "ERROR: problems opening file "+img[0]
     sys.exit(1)
 
-if setkeyword is None and setbeam is None and delkeyword is None and not fix:
+if setkeyword is None and setbeam is None and delkeyword is None:
     print hdulist[0].header.__repr__()
     sys.exit(0)
-
-if fix:
-    prihdr = hdulist[0].header
-    for keyword in prihdr[:]:
-        if re.match('CDELT?', keyword):
-            if prihdr[keyword] == 0:
-                prihdr[keyword] = 1.
-                print "Setting "+keyword+" = 1."
-        if re.match('PC00[0-4]00[0-4]', keyword):
-            val = prihdr[keyword]
-            del prihdr[keyword]
-            num1 = int(re.findall(r'\d+', keyword)[0][2:3])
-            num2 = int(re.findall(r'\d+', keyword)[0][5:6])
-            newkeyword = 'PC%i_%i' % (num1, num2)
-            prihdr[newkeyword] = val
-            print "Renaming "+keyword+" -> "+newkeyword
-        if re.match('PC0[0-4]_0[0-4]', keyword):
-            val = prihdr[keyword]
-            del prihdr[keyword]
-            num1 = int(re.findall(r'\d+', keyword)[0])
-            num2 = int(re.findall(r'\d+', keyword)[1])
-            newkeyword = 'PC%i_%i' % (num1, num2)
-            prihdr[newkeyword] = val
-            print "Renaming "+keyword+" -> "+newkeyword
-        if keyword == 'EQUINOX' and prihdr[keyword] == 2000.:
-            print "Update equinox"
-            del prihdr[keyword]
-            prihdr[keyword] = 2000.
-            prihdr['SPECSYS'] = 'LSRK'
-            #prihdr['RADESYS'] = 'FK5'
 
 if ( not setkeyword is None ):
     try: keyword, value = setkeyword.split('=')
@@ -88,17 +69,19 @@ if ( not setkeyword is None ):
         print "Type is found to be: ", type(prihdr[keyword])
         prihdr[keyword] = type(prihdr[keyword])(value)
     else:
-        prihdr[keyword] = str(value)
+        if isint(value) and '.' not in value: # the '.' exclude doubles like 180.0
+            prihdr[keyword] = int(value)
+        elif isfloat(value):
+            prihdr[keyword] = float(value)
+        else:
+            prihdr[keyword] = str(value)
 
 if ( not delkeyword is None ):
     prihdr = hdulist[0].header
     for keyword in prihdr[:]:
         if re.match(delkeyword, keyword):
             print "Deleting",keyword
-            try:
-                del prihdr[keyword]
-            except:
-                pass
+            del prihdr[keyword]
 
 if ( not setbeam is None ):
     try: bmaj,bmin,pa = setbeam.split(',')

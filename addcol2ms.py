@@ -24,15 +24,18 @@ def main(options):
     for col in cols.split(','):
         if col not in t.colnames():
             logging.info('Adding the output column '+col+' to '+ms+'.')
-            coldmi = t.getdminfo('DATA')
+            if incol == '':
+                incol = 'DATA'
+            logging.info('Copy dataformat from '+incol)
+            coldmi = t.getdminfo(incol)
             coldmi['NAME'] = col
-            t.addcols(pt.maketabdesc(pt.makearrcoldesc(col, 0., valuetype='complex', shape=numpy.array(t.getcell('DATA',0)).shape)), coldmi)  
-            if incol != '':
-                logging.warning('Setting '+col+' = '+incol+'.')
-                data = t.getcol(incol)
-                t.putcol(col, data)
+            t.addcols(pt.maketabdesc(pt.makearrcoldesc(col, 0., valuetype=t.col(incol).datatype(), shape=numpy.array(t.getcell(incol,0)).shape)), coldmi)  
+            logging.warning('Setting '+col+' = '+incol+'.')
+            t.putcol(col, t.getcol(incol))
         else:
             logging.warning('Column '+col+' already exists.')
+
+    t.close()
         
 opt = optparse.OptionParser()
 opt.add_option('-m','--ms',help='Input MS [no default].',default='')

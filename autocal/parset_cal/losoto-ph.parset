@@ -1,6 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, residuals, plotPr1, plotPr2, plotPr3, smoothP] # no plotTEC3
-#LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, smoothP]
+LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, smoothP]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -85,7 +84,7 @@ LoSoTo.Steps.plotTEC3.PlotFlag = False
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
 LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
-#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000]
+#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT

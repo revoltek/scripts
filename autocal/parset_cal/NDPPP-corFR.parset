@@ -1,6 +1,5 @@
 msin =
-msin.datacolumn = DATA
-msin.baseline = [CR]S*&
+msin.datacolumn = CORRECTED_DATA
 msout = .
 msout.datacolumn = CORRECTED_DATA
 

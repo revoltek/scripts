@@ -6,16 +6,12 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, cal]
 
-filter.blrange = [1000, 1e30]
+filter.blrange = [100, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
 cal.caltype = diagonal
 cal.maxiter = 100
-cal.sourcedb =
-cal.usebeammodel = True
-cal.usechannelfreq = True
-#cal.invert = False # automatically set in predict-mode
-cal.beammode = array_factor
+cal.usemodelcolumn = True
 cal.solint = 1
 cal.nchan = 1
