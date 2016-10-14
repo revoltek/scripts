@@ -1,0 +1,8 @@
+~sarod/bin/convert_skymodel.py -i toothbrush.HBA150.skymodel -o toothbrush.HBA150.skymodel.sagecal -b
+~sarod/bin/create_clusters.py -s toothbrush.HBA150.skymodel.sagecal -c 10 -o toothbrush.HBA150.skymodel.clusters -i 10
+~sarod/bin/annotate.py -s toothbrush.HBA150.skymodel.sagecal -c toothbrush.HBA150.skymodel.clusters -o toothbrush.HBA150.skymodel.reg
+mpirun -np 14 ~sarod/bin/sagecal-mpi -f mss.txt -A 10 -P 3 -Q 3 -r 10 -s toothbrush.HBA150.skymodel.sagecal -c toothbrush.HBA150.skymodel.clusters -F 0 -I DATA -O CORRECTED_DATA -V -t 120 -n 4 -j 5
+(-J for phase only)
+(-Q polynomial type)
+(-B use beam model to correct input model)
+~sarod/bin/sagecal -a 2 -s toothbrush.HBA150.skymodel.sagecal -c toothbrush.HBA150.skymodel.clusters -F 0 -I CORRECTED_DATA -O MODEL_DATA ^C -t 120 -n 4 -k 8 -d all_TC00-c0.MS -p all_TC00-c0.MS.solutions -z ignore.clusters
