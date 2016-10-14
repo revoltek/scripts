@@ -6,7 +6,7 @@ LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
-LoSoTo.Ncpu = 5
+LoSoTo.Ncpu = 40
 
 # bkp copy
 LoSoTo.Steps.duplicatePbkp.Operation = DUPLICATE
@@ -84,7 +84,7 @@ LoSoTo.Steps.plotTEC3.PlotFlag = False
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
 LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
-#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000]
+#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT

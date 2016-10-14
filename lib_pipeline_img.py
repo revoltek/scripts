@@ -45,7 +45,7 @@ def blank_image(filename, region, inverse=False, blankval=0.):
     data = fits[0].data
     # extract mask
     mask = region.get_mask(hdu, shape=np.shape(data))
-    # set pixel to blankval
+    if inverse: mask = ~mask
     data[mask] = blankval
     # save fits
     fits[0].data = data
