@@ -40,6 +40,8 @@ def pbcorrGMRT(imgname, obsfreq=0, phaseCentre=None):
              (parm[2]/10**10)*d**6 + (parm[3]/10**13)*d**8 
 
     beam = np.fromfunction(beam_creator, ia.shape()[0:2])
+    cs.done()
+    ia.close()
 
     # write new image
     impbcor(imagename=imgname, pbimage=beam, outfile=imgname+'.pbcorr', mode='divide', overwrite=True)
@@ -75,6 +77,8 @@ def pbcorrWSRT(imgname, freq=0, phaseCentre=None):
         return np.cos(c*nu*d*np.pi/180.)**6
 
     beam = np.fromfunction(beam_creator, ia.shape()[0:2])
+    cs.done()
+    ia.close()
 
     # write new image
     impbcor(imagename=imgname, pbimage=beam, outfile=imgname+'.pbcorr', mode='divide', overwrite=True)
@@ -115,6 +119,8 @@ def pbcorrWSRT2(imgname, freq=0, phaseCentre=None):
              (parm[2]/10**10)*d**6 + (parm[3]/10**13)*d**8 + (parm[4]/(10**16))*d**10
 
     beam = np.fromfunction(beam_creator, ia.shape()[0:2])
+    cs.done()
+    ia.close()
 
     # write new image
     impbcor(imagename=imgname, pbimage=beam, outfile=imgname+'.pbcorr', mode='divide', overwrite=True)
