@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, sys
+import os, sys, shutil
 import logging
 import numpy as np
 import lofar.parmdb as parmdb
