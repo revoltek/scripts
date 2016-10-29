@@ -1,9 +1,9 @@
 msin =
-msin.datacolumn = DATA
+msin.datacolumn = CORRECTED_DATA
 msout = .
 msout.datacolumn = DATA_INIT
 
-steps = [cor]
+steps = [cor, count]
 
 cor.type = correct
 cor.parmdb = 
