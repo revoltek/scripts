@@ -113,7 +113,7 @@ def findtec(phases, weights, freq, time, ant):
 if plotph or plotamp or plotavg or plotall:
     import matplotlib as mpl
     mpl.rc('font',size =8 )
-    mpl.rc('figure.subplot',left=0.05, bottom=0.05, right=0.95, top=0.95,wspace=0.22, hspace=0.22 )
+    mpl.rc('figure.subplot',left=0.05, bottom=0.05, right=0.95, top=0.95,wspace=0.22, hspace=0.22)
     mpl.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
