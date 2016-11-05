@@ -120,14 +120,14 @@ for i, ms in enumerate(mss):
 logging.info('Running LoSoTo...')
 check_rm('plots')
 check_rm('cal1.h5')
-s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
+s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
 s.run(check=True)
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 os.system('cp -r cal1.h5 cal1.h5-flag')
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
 check_rm('plots-fr')
 os.system('mv plots plots-fr')
@@ -200,7 +200,7 @@ check_rm('plots')
 os.makedirs('plots')
 check_rm('cal2.h5')
 
-s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors='max')
+s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors=1)
 s.run(check=True)
 
 # TESTTESTTEST
@@ -223,7 +223,7 @@ s.run(check=True)
 #s.run(check=True)
 
 # copy ph+BP
-s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
 
 logging.info("Done.")
