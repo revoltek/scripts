@@ -8,7 +8,8 @@ steps = [pre]
 
 pre.type = predict
 pre.sourcedb = 
-pre.usebeammodel = True
-pre.usechannelfreq = True
-pre.beammode = array_factor
+pre.usebeammodel = False
 
+#pre.usebeammodel = True
+#pre.usechannelfreq = True
+#pre.beammode = array_factor

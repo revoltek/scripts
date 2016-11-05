@@ -6,11 +6,12 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, cal]
 
-filter.blrange = [100, 1e30]
+filter.blrange = [200, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
-cal.caltype = tecandphase
+cal.caltype = tec
+#cal.caltype = tecandphase
 cal.maxiter = 50
 cal.usemodelcolumn = True
 cal.solint = 1
