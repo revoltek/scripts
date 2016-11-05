@@ -324,7 +324,7 @@ for c in xrange(niter):
     logging.info('Predict...')
     for model in glob.glob(imagename+'*model.fits'):
         model_out = model.replace(imagename,imagename+'-resamp')
-        s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', cmd_type='general')
+        s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
     s.run(check=True)
     s.add('wsclean -predict -name ' + imagename + '-resamp -size 8000 8000 -mem 50 -j '+str(s.max_processors)+' \
             -scale 10arcsec -channelsout 10 '+concat_ms, \
@@ -367,16 +367,16 @@ logging.info('Coadd+copy models...')
 for model in glob.glob('img/wideM-c'+str(c)+'*-model.fits'):
     model_lr = model.replace('wideM-c'+str(c),'wideM-lr-c'+str(c)+'-resamp')
     model_out = model.replace('img/wideM-'+str(c),'self/models/coadd')
-    s.add('~/opt/src/nnradd/build/nnradd 5asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
+    s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
 s.run(check=True) 
 
 # Copy images
 [ os.system('mv img/wide-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
 [ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
-[ os.system('mv img/wide-'+str(c)+'-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wide-lr-'+str(c)+'-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wideM-'+str(c)+'-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wideM-lr-'+str(c)+'-image.fits self/images') for c in xrange(niter) ]
+[ os.system('mv img/wide-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+[ os.system('mv img/wide-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+[ os.system('mv img/wideM-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 os.system('mv img/empty-image.fits self/images')
 os.system('mv logs self')
 

@@ -7,7 +7,7 @@
 #
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_sage'
-concat_mss = '/data/scratch/fdg/tooth/tgts6h-selfcal-half/mss'
+concat_mss = '/data/scratch/fdg/tooth/tgts10h-selfcal-half/mss'
 model = '~/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel'
 modelname = 'LBA'
 #model = '~/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel' # add beam (-B 1)
@@ -16,7 +16,7 @@ number_of_sbs = 61 # 61 to use all
 number_of_chan_per_sb = 8 # 8 to use all
 number_of_clusters = 10
 restoreid = 2 # this is the cluster number that will be resotred
-inttime = 20 # default 120
+inttime = 40 # default 120
 
 ###############################################################
 import os, sys, glob, re
@@ -94,7 +94,7 @@ for i, mss in enumerate(all_mss):
 
     # sagecal calibration and empty field in CORRECTED_DATA
     logging.info('Run sagecal -> calibration...')
-    s.add('mpirun -np '+str(number_of_sbs+1)+' ~sarod/bin/sagecal-mpi -n 1 -j 5 -f sagecal.mss -I DATA -O CORRECTED_DATA -s sagecal.model -p solutions-TC'+str(i)+'.txt -F 0 -c sagecal.clusters -A 10 -P 3 -Q 3 -r 10 -t '+str(inttime), log='sagecal_cal-g'+str(i)+'.log', cmd_type='general', processors='max')
+    s.add('mpirun -np '+str(number_of_sbs+1)+' ~sarod/bin/sagecal-mpi -n 1 -j 5 -f sagecal.mss -I DATA -O CORRECTED_DATA -s sagecal.model -p solutions-TC'+str(i)+'.txt -F 0 -c sagecal.clusters -A 10 -P 3 -Q 3 -r 10 -J 1 -t '+str(inttime), log='sagecal_cal-g'+str(i)+'.log', cmd_type='general', processors='max')
     s.run(check=True)
 
     # restored cluster in RESTORED_DATA
@@ -104,7 +104,7 @@ for i, mss in enumerate(all_mss):
             if idc != restoreid: ignore_file.write("%i\n" % idc)
 
     for ms in mss:
-        s.add('~sarod/bin/sagecal -n 4 -a 2 -d '+ms+' -I CORRECTED_DATA -O RESTORED_DATA -s sagecal.model -F 0 -c sagecal.clusters -t '+str(inttime)+' -k '+str(restoreid)+' -p '+ms+'.solutions -z ignore.clusters -J 0', log=ms+'_sagecal-restore.log', cmd_type='general', processors='max')
+        s.add('~sarod/bin/sagecal -n 4 -a 2 -d '+ms+' -I CORRECTED_DATA -O RESTORED_DATA -s sagecal.model -F 0 -c sagecal.clusters -t '+str(inttime)+' -k '+str(restoreid)+' -p '+ms+'.solutions -z ignore.clusters -J 1', log=ms+'_sagecal-restore.log', cmd_type='general', processors='max')
     s.run(check=True)
 
     # TODO: flagging of spikes
