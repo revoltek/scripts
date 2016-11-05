@@ -51,10 +51,10 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     
 ###############################################
 # Initial processing (2/2013->2/2014)
-logging.warning('Fix beam table...')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.warning('Fix beam table...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ############################################
 # Prepare output parmdb
@@ -157,10 +157,10 @@ s.run(check=True)
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 # TESTTESTTEST
-logging.warning('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.warning('Converting to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 ################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
