@@ -14,7 +14,7 @@ parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
 ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-globaldb = 'globaldb-clock' #TODO: copy form repository
+globaldb = '../3c196/globaldb' #TODO: copy form repository
 #datadir = '.' # tooth
 #globaldb = 'globaldb-fulltrans' #NOTE: edit parset_timesplit/NDPPP-cor.parset
 
