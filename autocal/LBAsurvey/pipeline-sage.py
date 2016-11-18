@@ -27,6 +27,8 @@ set_logger()
 check_rm('logs')
 s = Scheduler(dry=False)
 
+img_extname = '_model'+modelname+'_nClusters'+str(number_of_clusters)+'_nSB'+str(number_of_sbs)+'_time'+str(inttime)
+
 ##############################################################
 # Split mss
 # TODO: reduce SB size, freq variation should be mild
@@ -111,7 +113,11 @@ for i, mss in enumerate(all_mss):
 
 check_rm('img')
 os.mkdir('img')
-img_extname = '_model'+modelname+'_nClusters'+str(number_of_clusters)+'_nSB'+str(number_of_sbs)+'_time'+str(inttime)
+
+# imaging orig
+logging.info('Imaging -> original...')
+s.add('wsclean -reorder -name img/orig'+img_extname+' -size 5000 5000 -mem 100 -j 40 -baseline-averaging 2.0 -scale 5arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -mgain 0.7 -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -datacolumn DATA '+' '.join([item for sublist in all_mss for item in sublist]), log='wsclean-orig.log', cmd_type='wsclean', processors='max')
+s.run(check=True)
 
 # imaging restored facet
 logging.info('Imaging -> restored facet...')
@@ -121,9 +127,4 @@ s.run(check=True)
 # imaging empty field
 logging.info('Imaging -> empty field...')
 s.add('wsclean -reorder -name img/empty'+img_extname+' -size 5000 5000 -mem 100 -j 40 -baseline-averaging 2.0 -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -mgain 0.7 -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -datacolumn CORRECTED_DATA '+' '.join([item for sublist in all_mss for item in sublist]), log='wsclean-empty.log', cmd_type='wsclean', processors='max')
-s.run(check=True)
-
-# imaging orig
-logging.info('Imaging -> original...')
-s.add('wsclean -reorder -name img/orig'+img_extname+' -size 5000 5000 -mem 100 -j 40 -baseline-averaging 2.0 -scale 5arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -mgain 0.7 -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -datacolumn DATA '+' '.join([item for sublist in all_mss for item in sublist]), log='wsclean-orig.log', cmd_type='wsclean', processors='max')
 s.run(check=True)
