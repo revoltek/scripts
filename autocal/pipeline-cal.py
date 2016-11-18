@@ -13,14 +13,14 @@ patch = '3C196'
 #patch = '3C295'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
-#datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
-datadir = '.'
+datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+#datadir = '.'
 
 ###################################################
 
 set_logger()
 check_rm('logs')
-s = Scheduler(dry=False, max_threads=40)
+s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
 
 ###########################################################
@@ -51,10 +51,10 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     
 ###############################################
 # Initial processing (2/2013->2/2014)
-logging.warning('Fix beam table...')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.warning('Fix beam table...')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ############################################
 # Prepare output parmdb
@@ -120,14 +120,21 @@ for i, ms in enumerate(mss):
 logging.info('Running LoSoTo...')
 check_rm('plots')
 check_rm('cal1.h5')
-s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors='max')
+s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
 s.run(check=True)
-s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-os.system('cp -r cal1.h5 cal1.h5-flag')
+#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#os.system('cp -r cal1.h5 cal1.h5-flag')
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+# TESTTESTTEST
+s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+sys.exit(1)
+
+s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
 check_rm('plots-fr')
 os.system('mv plots plots-fr')
@@ -200,7 +207,7 @@ check_rm('plots')
 os.makedirs('plots')
 check_rm('cal2.h5')
 
-s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors='max')
+s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors=1)
 s.run(check=True)
 
 # TESTTESTTEST
@@ -223,7 +230,7 @@ s.run(check=True)
 #s.run(check=True)
 
 # copy ph+BP
-s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
 
 logging.info("Done.")
