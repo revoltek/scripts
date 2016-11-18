@@ -4,9 +4,9 @@ LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
-LoSoTo.pol = [XX, YY]
+LoSoTo.pol = []
 LoSoTo.dir = []
-LoSoTo.Ncpu = 40
+LoSoTo.Ncpu = 6
 
 # bkp copy
 LoSoTo.Steps.duplicatePbkp.Operation = DUPLICATE
