@@ -263,7 +263,7 @@ for c in xrange(niter):
     # TEST: go to 5k from 8k and to 10arcsec from 5 arcsec and from 5000 to 2500 in size
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 10arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.7 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -273,16 +273,17 @@ for c in xrange(niter):
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
     s.run(check=True)
+    # TODO: remove re-imaging and just keep CC into mask
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 10arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 5000 -mgain 0.7 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
     logging.info('Predict...')
-    s.add('wsclean -predict -name ' + imagename + ' -size 2500 2500 -mem 50 -j '+str(s.max_processors)+' \
+    s.add('wsclean -predict -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
             -scale 10arcsec -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -305,16 +306,17 @@ for c in xrange(niter):
     # reclean low-resolution
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 20arcsec -weight briggs 0.0 -niter 50000 -no-update-model-required -maxuv-l 2000 -mgain 0.6 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+    # TODO: remove re-imaging and just keep CC into mask
     maskname = imagename+'.newmask'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshpix=6) # a bit higher treshold
     logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-lr-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 50 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 20arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 2000 -mgain 0.6 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -326,7 +328,7 @@ for c in xrange(niter):
         model_out = model.replace(imagename,imagename+'-resamp')
         s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
     s.run(check=True)
-    s.add('wsclean -predict -name ' + imagename + '-resamp -size 8000 8000 -mem 50 -j '+str(s.max_processors)+' \
+    s.add('wsclean -predict -name ' + imagename + '-resamp -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
             -scale 10arcsec -channelsout 10 '+concat_ms, \
             log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -355,7 +357,7 @@ logging.info('Empty cleaning...')
 s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = CORRECTED_DATA"', log='taql_sub.log', cmd_type='general')
 s.run(check=True)
 imagename = 'img/empty'
-s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 50 -j '+str(s.max_processors)+' \
+s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 -j '+str(s.max_processors)+' \
         -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 \
         -pol I -cleanborder 0 -datacolumn SUBTRACTED_DATA '+concat_ms, \
         log='wsclean-empty.log', cmd_type='wsclean', processors='max')
@@ -364,8 +366,9 @@ s.run(check=True)
 # Copy last *model
 logging.info('Coadd+copy models...')
 # resample at high res to avoid FFT problem on long baselines
-for model in glob.glob('img/wideM-c'+str(c)+'*-model.fits'):
-    model_lr = model.replace('wideM-c'+str(c),'wideM-lr-c'+str(c)+'-resamp')
+for model in glob.glob('img/wideM-'+str(c)+'*-model.fits'):
+    if "MFS" in model: continue
+    model_lr = model.replace('wideM-'+str(c),'wideM-lr-'+str(c)+'-resamp')
     model_out = model.replace('img/wideM-'+str(c),'self/models/coadd')
     s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
 s.run(check=True) 

@@ -1,2 +1,0 @@
-#CRTFv0 CASA Region Text Format version 0
-poly [[06:04:49.03351, +041.57.57.6198], [06:07:39.19876, +041.18.24.8478], [06:10:43.25172, +041.34.21.8609], [06:09:54.11003, +042.01.35.0356], [06:07:32.99331, +042.18.47.2540], [06:06:00.78916, +042.11.00.6295]] coord=J2000, corr=[I], linewidth=1, linestyle=-, symsize=1, symthick=1, color=green, font="DejaVu Sans", fontsize=11, fontstyle=normal, usetex=false
