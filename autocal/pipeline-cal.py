@@ -122,11 +122,18 @@ check_rm('plots')
 check_rm('cal1.h5')
 s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
 s.run(check=True)
-s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-os.system('cp -r cal1.h5 cal1.h5-flag')
+#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
+#os.system('cp -r cal1.h5 cal1.h5-flag')
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
+# TESTTESTTEST
+s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+sys.exit(1)
+
 s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
 check_rm('plots-fr')
@@ -157,10 +164,10 @@ s.run(check=True)
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 # TESTTESTTEST
-#logging.warning('Converting to circular...')
-#for ms in mss:
-#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+logging.warning('Converting to circular...')
+for ms in mss:
+    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 ################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
