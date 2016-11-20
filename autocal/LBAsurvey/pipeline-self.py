@@ -200,9 +200,9 @@ s.run(check=True, max_threads=1)
 
 ###############################################################################################
 # Create columns
-logging.info('Creating MODEL_DATA, MODEL_DATA_HIGHRES, SUBTRACTED_DATA...')
+logging.info('Creating MODEL_DATA_HIGHRES, SUBTRACTED_DATA...')
 for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True, max_threads=2)
 
 ####################################################################################################

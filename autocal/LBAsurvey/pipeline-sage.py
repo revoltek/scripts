@@ -96,7 +96,7 @@ for i, mss in enumerate(all_mss):
 
     # sagecal calibration and empty field in CORRECTED_DATA
     logging.info('Run sagecal -> calibration...')
-    s.add('mpirun -np '+str(number_of_sbs+1)+' ~sarod/bin/sagecal-mpi -n 1 -j 5 -f sagecal.mss -I DATA -O CORRECTED_DATA -s sagecal.model -p solutions-TC'+str(i)+'.txt -F 0 -c sagecal.clusters -A 10 -P 3 -Q 3 -r 10 -J 1 -t '+str(inttime), log='sagecal_cal-g'+str(i)+'.log', cmd_type='general', processors='max')
+    s.add('mpirun -np '+str(number_of_sbs+1)+' ~sarod/bin/sagecal-mpi -n 1 -j 5 -f sagecal.mss -I DATA -O CORRECTED_DATA -s sagecal.model -p solutions-TC'+str(i)+'.txt -F 0 -c sagecal.clusters -A 10 -P 3 -Q 3 -r 50 -J 1 -t '+str(inttime), log='sagecal_cal-g'+str(i)+'.log', cmd_type='general', processors='max')
     s.run(check=True)
 
     # restored cluster in RESTORED_DATA
