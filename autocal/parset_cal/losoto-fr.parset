@@ -4,7 +4,7 @@ LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
-LoSoTo.pol = [XX, YY]
+LoSoTo.pol = []
 LoSoTo.dir = []
 LoSoTo.Ncpu = 6
 

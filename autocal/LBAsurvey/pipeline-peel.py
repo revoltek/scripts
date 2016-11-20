@@ -18,7 +18,7 @@ ddset = [{'name': 'src1', 'extended': False, 'facet_extended': False, 'mask':'',
         {'name': 'src2', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.reg', 'reg_facet': 'facet2.reg', 'faint': False, 'coord':[]},
         {'name': 'tooth', 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.reg', 'reg_facet': 'facet3.reg', 'faint': True, 'coord':[]}]
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
-niter = 10
+niter = 5
 
 ##########################################################################################
 
@@ -149,7 +149,7 @@ def peel(dd):
     #########################################################################################
     # Clear
     logging.info('Cleaning...')
-    check_rm('mss_peel') 
+#    check_rm('mss_peel') 
     check_rm('mss_shift')
     check_rm('mss_facet') 
     check_rm('plot')
@@ -159,16 +159,16 @@ def peel(dd):
     os.makedirs('logs/mss_peel')
     os.makedirs('logs/mss_shift')
     os.makedirs('logs/mss_facet')
-    os.makedirs('mss_peel')
+#    os.makedirs('mss_peel')
     os.makedirs('mss_shift')
     os.makedirs('mss_facet')
-    check_rm('peel/'+dd['name'])
-    os.makedirs('peel/'+dd['name'])
-    os.makedirs('peel/'+dd['name']+'/models')
-    os.makedirs('peel/'+dd['name']+'/images')
-    os.makedirs('peel/'+dd['name']+'/instruments')
-    os.makedirs('peel/'+dd['name']+'/plots')
-    os.makedirs('peel/'+dd['name']+'/h5')
+#    check_rm('peel/'+dd['name'])
+#    os.makedirs('peel/'+dd['name'])
+#    os.makedirs('peel/'+dd['name']+'/models')
+#    os.makedirs('peel/'+dd['name']+'/images')
+#    os.makedirs('peel/'+dd['name']+'/instruments')
+#    os.makedirs('peel/'+dd['name']+'/plots')
+#    os.makedirs('peel/'+dd['name']+'/h5')
     
     logging.info('Indexing...')
     allmss = sorted(glob.glob('mss/TC*.MS'))
@@ -181,60 +181,66 @@ def peel(dd):
     tcs = list(set(tcs))
 
     centroid_ra, centroid_dec = get_coord_centroid(glob.glob('self/models/*.fits')[0], 'regions/'+dd['reg'])
-    dd['coord']=[centroid_ra,centroid_dec]
+    dd['coord'] = [centroid_ra, centroid_dec]
 
-    # preparing concatenated dataset
-    concat_ms = 'mss/concat.MS'
-    check_rm(concat_ms+'*')
-    pt.msutil.msconcat(allmss, 'mss/concat.MS', concatTime=False)
-    
-    #################################################################################################
-    # Blank unwanted part of models
+#    # preparing concatenated dataset
+#    concat_ms = 'mss/concat.MS'
+#    check_rm(concat_ms+'*')
+#    pt.msutil.msconcat(allmss, 'mss/concat.MS', concatTime=False)
+#    
+#    #################################################################################################
+#    # Blank unwanted part of models
     modeldir = 'peel/'+dd['name']+'/models/'
-    
-    logging.info('Splitting skymodels...')
-    for model in sorted(glob.glob('self/models/*.fits')):
-        logging.debug(model)
-        outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_dd')
-        blank_image(model, 'regions/'+dd['reg'], outfile, inverse=True)
-        outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_facet')
-        blank_image(model, 'regions/'+dd['reg_facet'], outfile, inverse=True)
-
-    #####################################################################################################
-    # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
-    logging.info('Ft DD calibrator model...')
-    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
-            -scale 10arcsec -channelsout 10 '+concat_ms, \
-            log='wscleanPRE.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
-
-    ###########################################################################################################
-    # ADD model group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
-    logging.info('Add model...')
-    for ms in allmss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
-    s.run(check=True)
-    
-    # concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  group*_TC*.MS:CORRECTED_DATA -> peel_TC*.MS:DATA (empty+DD, avg, phase shifted)
-    logging.info('Shifting+averaging (CORRECTED_DATA)...')
-    for ms in allmss:
-        msout = ms.replace('mss','mss_peel')
-        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA \
-                shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
-    s.run(check=True)
+#    
+#    logging.info('Splitting skymodels...')
+#    for model in sorted(glob.glob('self/models/*.fits')):
+#        logging.debug(model)
+#        outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_dd')
+#        blank_image(model, 'regions/'+dd['reg'], outfile, inverse=True)
+#        outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_facet')
+#        blank_image(model, 'regions/'+dd['reg_facet'], outfile, inverse=True)
+#
+#    #####################################################################################################
+#    # Add DD cal model - group*_TC*.MS:MODEL_DATA (high+low resolution model)
+#    logging.info('Ft DD calibrator model...')
+#    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
+#            -scale 10arcsec -channelsout 10 '+concat_ms, \
+#            log='wscleanPRE.log', cmd_type='wsclean', processors='max')
+#    s.run(check=True)
+#
+#    ###########################################################################################################
+#    # ADD model group*_TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> group*_TC*.MS:CORRECTED_DATA (empty data + DD cal from model, cirular, beam correcred)
+#    logging.info('Add model...')
+#    for ms in allmss:
+#        s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+#    s.run(check=True)
+#    
+#    # concat all groups (freq) + avg (to 1 chan/SB, 5 sec) -  mss/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, avg, phase shifted)
+#    logging.info('Shifting+averaging (CORRECTED_DATA)...')
+#    for ms in allmss:
+#        msout = ms.replace('mss','mss_peel')
+#        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA \
+#                shift.phasecenter=\['+str(dd['coord'][0])+'deg,'+str(dd['coord'][1])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
+#    s.run(check=True)
     
     peelmss = sorted(glob.glob('mss_peel/TC*.MS'))
     
-    # Add MODEL_DATA and CORRECTED_DATA for cleaning
-    logging.info('Add MODEL_DATA and CORRECTED_DATA...')
-    for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA,CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
-    s.run(check=True, max_threads=1)
-
-    # do a first hi-res clean (CORRECTED_DATA is == DATA now)
-    # TODO: use available model? it's a mess with phase centers: needs reprojecting
-    model, imsize, pixscale = clean('init', peelmss, dd)
-    #clean('initfacet', peelmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
+#    # Add MODEL_DATA and CORRECTED_DATA for cleaning
+#    logging.info('Add MODEL_DATA and CORRECTED_DATA...')
+#    for ms in peelmss:
+#        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+#    s.run(check=True, max_threads=1)
+#    for ms in peelmss:
+#        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
+#    s.run(check=True, max_threads=1)
+#
+#    # do a first hi-res clean (CORRECTED_DATA is == DATA now)
+#    # TODO: use available model? it's a mess with phase centers: needs reprojecting
+#    #clean('initfacet', peelmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
+#    model, imsize, pixscale = clean('init', peelmss, dd)
+    model = 'peel/src1/images/peel-init-M'
+    imsize = 512
+    pixscale = 4
    
     ###################################################################################################################
     # self-cal cycle
@@ -275,6 +281,7 @@ def peel(dd):
         s.run(check=True)
 
         # calibrate amplitude (solve only) - peel_TC*.MS:CORRECTED_DATA
+        # TODO: do it only after 3rd cycle?
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
             check_rm(ms+'/instrument-amp')
@@ -289,7 +296,6 @@ def peel(dd):
     
         # LoSoTo Amp rescaling + plotting
         losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
-        sys.exit(1)
     
         # correct TEC+amplitude - peel_TC*.MS:DATA -> peel_TC*.MS:CORRECTED_DATA
         logging.info('Correcting phase+amplitude...')
@@ -313,6 +319,8 @@ def peel(dd):
     for ms in peelmss:
         logging.debug('Creating: peel/'+dd['name']+'/instruments/'+ms.replace('MS','parmdb'))
         os.system('cp -r '+ms+'/instrument peel/'+dd['name']+'/instruments/'+ms.replace('MS','parmdb'))
+
+    sys.exit(1)
     
     # now do the same but for the entire facet to obtain a complete image of the facet and do a final subtraction
     ##############################################################################################################################
