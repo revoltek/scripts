@@ -61,7 +61,7 @@ LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = time
 LoSoTo.Steps.plotTEC.TableAxis = ant
 LoSoTo.Steps.plotTEC.PlotFlag = True
-#LoSoTo.Steps.plotTEC.MinMax = [-0.2,0.2]
+LoSoTo.Steps.plotTEC.MinMax = [-0.1,0.1]
 LoSoTo.Steps.plotTEC.Prefix = plots/tec_
 LoSoTo.Steps.plotTEC.Reference = 'CS001LBA'
 
