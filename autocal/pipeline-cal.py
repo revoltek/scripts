@@ -13,8 +13,8 @@ patch = '3C196'
 #patch = '3C295'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
-datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
-#datadir = '.'
+#datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+datadir = '.'
 
 ###################################################
 
@@ -81,10 +81,10 @@ s.run(check=True)
 
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-logging.info('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Converting to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 #################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
@@ -125,12 +125,12 @@ s.run(check=True)
 #s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 #s.run(check=True)
 #os.system('cp -r cal1.h5 cal1.h5-flag')
-s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
+#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+#s.run(check=True)
 # TESTTESTTEST
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
 sys.exit(1)
 
