@@ -1,5 +1,5 @@
-# losoto parset
-LoSoTo.Steps = [norm, plotA1, plotA2, plotCSP1, plotCSP2, plotP1, plotP2]
+# losoto parset: peel
+LoSoTo.Steps = [norm, plotA1, plotA2, plotTEC]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -16,81 +16,52 @@ LoSoTo.Steps.norm.NormAxes = [time,ant,pol]
 # plot amp
 LoSoTo.Steps.plotA1.Operation = PLOT
 LoSoTo.Steps.plotA1.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA1.freq.minmax = [0,100e6,10]
 LoSoTo.Steps.plotA1.Axes = time
-LoSoTo.Steps.plotA1.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotA1.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
+LoSoTo.Steps.plotA1.TableAxis = ant
+LoSoTo.Steps.plotA1.ColorAxis = pol
 LoSoTo.Steps.plotA1.PlotFlag = True
-LoSoTo.Steps.plotA1.Prefix = plots/amp1_
-LoSoTo.Steps.plotA1.time.minmax = [4868800000,4868900000]
+LoSoTo.Steps.plotA1.Prefix = plots/amp_
+LoSoTo.Steps.plotA1.Columns = 2
+LoSoTo.Steps.plotA1.FigSize = [20,20]
+#LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotA2.Operation = PLOT
 LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA2.Axes = time
-LoSoTo.Steps.plotA2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotA2.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
+LoSoTo.Steps.plotA2.time.minmax = [0,1e20,100]
+LoSoTo.Steps.plotA2.Axes = freq
+LoSoTo.Steps.plotA2.TableAxis = ant
+LoSoTo.Steps.plotA2.ColorAxis = pol
 LoSoTo.Steps.plotA2.PlotFlag = True
-LoSoTo.Steps.plotA2.Prefix = plots/amp2_
-LoSoTo.Steps.plotA2.time.minmax = [4869000000,4869900000]
+LoSoTo.Steps.plotA2.Prefix = plots/amp_
+#LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3]
 
-# plot ph
-LoSoTo.Steps.plotP1.Operation = PLOT
-LoSoTo.Steps.plotP1.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotP1.Axes = time
-LoSoTo.Steps.plotP1.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotP1.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
-LoSoTo.Steps.plotP1.PlotFlag = True
-LoSoTo.Steps.plotP1.Prefix = plots/ph1_
-LoSoTo.Steps.plotP1.Reference = 'CS001LBA'
-LoSoTo.Steps.plotP1.time.minmax = [4868800000,4868900000]
+# plot CSP+TEC
+LoSoTo.Steps.plotCSPTEC.Operation = PLOT
+LoSoTo.Steps.plotCSPTEC.Soltab = [sol000/scalarphase000]
+LoSoTo.Steps.plotCSPTEC.Axes = time
+LoSoTo.Steps.plotCSPTEC.TableAxis = ant
+LoSoTo.Steps.plotCSPTEC.PlotFlag = True
+LoSoTo.Steps.plotCSPTEC.Prefix = plots/csptec_
+LoSoTo.Steps.plotCSPTEC.Reference = 'CS001LBA'
+LoSoTo.Steps.plotCSPTEC.Add = [sol000/tec000]
 
-LoSoTo.Steps.plotP2.Operation = PLOT
-LoSoTo.Steps.plotP2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotP2.Axes = time
-LoSoTo.Steps.plotP2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotP2.ColorAxis = pol # the axis to plot in different colours - e.g. pol to get correlations with different colors
-LoSoTo.Steps.plotP2.PlotFlag = True
-LoSoTo.Steps.plotP2.Prefix = plots/ph2_
-LoSoTo.Steps.plotP2.Reference = 'CS001LBA'
-LoSoTo.Steps.plotP2.time.minmax = [4869000000,4869900000]
+# plot CSP
+LoSoTo.Steps.plotCSP.Operation = PLOT
+LoSoTo.Steps.plotCSP.Soltab = [sol000/scalarphase000]
+LoSoTo.Steps.plotCSP.Axes = time
+LoSoTo.Steps.plotCSP.TableAxis = ant
+LoSoTo.Steps.plotCSP.PlotFlag = True
+LoSoTo.Steps.plotCSP.Prefix = plots/csp_
+LoSoTo.Steps.plotCSP.Reference = 'CS001LBA'
 
-# plot csp
-LoSoTo.Steps.plotCSP1.Operation = PLOT
-LoSoTo.Steps.plotCSP1.Soltab = [sol000/scalarphase000]
-LoSoTo.Steps.plotCSP1.Axes = time
-LoSoTo.Steps.plotCSP1.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotCSP1.PlotFlag = True
-LoSoTo.Steps.plotCSP1.Prefix = plots/cstecph1_
-LoSoTo.Steps.plotCSP1.Reference = 'CS001LBA'
-LoSoTo.Steps.plotCSP1.time.minmax = [4868800000,4868900000]
-LoSoTo.Steps.plotCSP1.Add = [sol000/tec000]
+# plot TEC
+LoSoTo.Steps.plotTEC.Operation = PLOT
+LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
+LoSoTo.Steps.plotTEC.Axes = time
+LoSoTo.Steps.plotTEC.TableAxis = ant
+LoSoTo.Steps.plotTEC.PlotFlag = True
+LoSoTo.Steps.plotTEC.MinMax = [-0.1,0.1]
+LoSoTo.Steps.plotTEC.Prefix = plots/tec_
+LoSoTo.Steps.plotTEC.Reference = 'CS001LBA'
 
-LoSoTo.Steps.plotCSP2.Operation = PLOT
-LoSoTo.Steps.plotCSP2.Soltab = [sol000/scalarphase000]
-LoSoTo.Steps.plotCSP2.Axes = time
-LoSoTo.Steps.plotCSP2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotCSP2.PlotFlag = True
-LoSoTo.Steps.plotCSP2.Prefix = plots/cstecph2_
-LoSoTo.Steps.plotCSP2.Reference = 'CS001LBA'
-LoSoTo.Steps.plotCSP2.time.minmax = [4869000000,4869900000]
-LoSoTo.Steps.plotCSP2.Add = [sol000/tec000]
-
-# plot tec
-LoSoTo.Steps.plotPf1.Operation = PLOT
-LoSoTo.Steps.plotPf1.Soltab = [sol000/tec000]
-LoSoTo.Steps.plotPf1.Axes = time
-LoSoTo.Steps.plotPf1.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotPf1.PlotFlag = True
-LoSoTo.Steps.plotPf1.Prefix = plots/tec1_
-LoSoTo.Steps.plotPf1.Reference = 'CS001LBA'
-LoSoTo.Steps.plotPf1.time.minmax = [4868800000,4868900000]
-LoSoTo.Steps.plotPf1.MinMax = [-0.01,0.01]
-
-LoSoTo.Steps.plotPf2.Operation = PLOT
-LoSoTo.Steps.plotPf2.Soltab = [sol000/tec000]
-LoSoTo.Steps.plotPf2.Axes = time
-LoSoTo.Steps.plotPf2.TableAxis = ant # the axis to plot on a page - e.g. ant to get all antenna's on one file
-LoSoTo.Steps.plotPf2.PlotFlag = True
-LoSoTo.Steps.plotPf2.Prefix = plots/tec2_
-LoSoTo.Steps.plotPf2.Reference = 'CS001LBA'
-LoSoTo.Steps.plotPf2.time.minmax = [4869000000,4869900000]
-LoSoTo.Steps.plotPf2.MinMax = [-0.01,0.01]

@@ -26,12 +26,16 @@ def main(options):
             logging.info('Adding the output column '+col+' to '+ms+'.')
             if incol == '':
                 incol = 'DATA'
-            logging.info('Copy dataformat from '+incol)
+                update = False
+            else:
+                update = True
+
             coldmi = t.getdminfo(incol)
             coldmi['NAME'] = col
             t.addcols(pt.maketabdesc(pt.makearrcoldesc(col, 0., valuetype=t.col(incol).datatype(), shape=numpy.array(t.getcell(incol,0)).shape)), coldmi)  
-            logging.warning('Setting '+col+' = '+incol+'.')
-            t.putcol(col, t.getcol(incol))
+            if update:
+                logging.warning('Setting '+col+' = '+incol+'.')
+                t.putcol(col, t.getcol(incol))
         else:
             logging.warning('Column '+col+' already exists.')
 

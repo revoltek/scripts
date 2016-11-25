@@ -13,11 +13,11 @@ plotph = False
 plotamp = False
 plotavg = False
 plotall = True
-plotTEC = True
-mode = 'triple'
+plotTEC = False
+mode = 'double'
 timeavg = 1
-freqavg = 1
-solvetec = True
+freqavg = 4
+solvetec = False
 
 def getPh(phase, antIdx, ant):
     """
@@ -28,6 +28,7 @@ def getPh(phase, antIdx, ant):
     p = phase[(antIdx[0] == ant) | (antIdx[1] == ant)]
     phase[antIdx[1] == ant] *= -1 # correct back the values
     return p
+
 
 def getAmp(amp, antIdx, ant, ant2 = None):
     """
@@ -52,6 +53,9 @@ def getWe(weight, antIdx, ant, ant2 = None):
 
 
 def norm(phase):
+    """
+    Normalize phases in [-pi, +pi]
+    """
     out = np.fmod(phase, 2. * np.pi)
 
     # Convert to range [-pi, pi]
@@ -109,7 +113,7 @@ def findtec(phases, weights, freq, time, ant):
 if plotph or plotamp or plotavg or plotall:
     import matplotlib as mpl
     mpl.rc('font',size =8 )
-    mpl.rc('figure.subplot',left=0.05, bottom=0.05, right=0.95, top=0.95,wspace=0.22, hspace=0.22 )
+    mpl.rc('figure.subplot',left=0.05, bottom=0.05, right=0.95, top=0.95,wspace=0.22, hspace=0.22)
     mpl.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
@@ -126,6 +130,7 @@ Nant = len(antNames)
 tant.close()
 
 # get freq
+logging.info('Get frequency information')
 tspw = pt.table(ms+'/SPECTRAL_WINDOW', ack=False)
 chans = tspw.getcol('CHAN_FREQ')[0]
 Nfreq = len(chans)
@@ -319,7 +324,7 @@ for t, ts in enumerate(tms.iter('TIME')):
                     logging.debug('Plotting Fin_T%d_F%d_%s.png' % (t/timeavg, f, antNames[s]))
                     plt.savefig('Fin_T%d_F%d_%s.png' % (t/timeavg, f, antNames[s]), bbox_inches='tight')
 
-    if t == 20: break
+    #if t == 20: break
     # end time cycle
 
 if plotall:

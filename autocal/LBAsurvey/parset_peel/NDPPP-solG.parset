@@ -1,12 +1,12 @@
 msin =
-msin.datacolumn = SMOOTHED_DATA
+msin.datacolumn = CORRECTED_DATA
 msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, cal]
 
-filter.blrange = [100, 1e30]
+filter.blrange = [200, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
