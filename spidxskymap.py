@@ -35,17 +35,21 @@ def remove_duplicates(file_cat='spidx_cat.txt'):
             dec = head['CRVAL2']
             centers.add_row([os.path.basename(mask_file), ra, dec])
 
-    print "Removing duplicates..."
+    print "Matching catalogues..."
     sources = Table.read('spidx_cat.txt', format='ascii')
-    #print centers,sources
+    idx, _, _ = match_coordinates_sky(SkyCoord(sources['ra']*u.deg, sources['dec']*u.deg),\
+                                      SkyCoord(centers['ra'], centers['dec']))
+
+    print "Removing duplicates..."
+    idx_duplicates = [] 
     for i, source in enumerate(sources):
-        if i % 10 == 0: print i
-        idx, _, _ = match_coordinates_sky(SkyCoord(source['ra']*u.deg, source['dec']*u.deg),\
-                                    SkyCoord(centers['ra'], centers['dec']))
         # check if closest
-        if source['mask'] != centers[int(idx)]['name']:
-            sources.remove_rows(idx)
+#        print idx[i], source['mask'], centers[int(idx[i])]['name']
+        if source['mask'] != centers[int(idx[i])]['name']:
+            idx_duplicates.append(i)
             print "Removing source ", i
+    print "Removing a total of", len(idx_duplicates), "sources."
+    sources.remove_rows(idx_duplicates)
     sources.write('spidx_cat-nodup.txt', format='ascii')
 
 def clip_gaus(img, rmsimg, nsigma=1):
@@ -180,9 +184,10 @@ for image_nvss in images_nvss:
     # spectral index map
     # TODO: rewrite headers
     image_spidx = wdir+'spidx/'+os.path.basename(image_nvss).replace('NVSS_','spidx_')
-    image_spidx_ul = wdir+'spidx_ul/'+os.path.basename(image_nvss).replace('NVSS_','spidxUL_')
+    image_spidx_u = wdir+'spidx_u/'+os.path.basename(image_nvss).replace('NVSS_','spidxU_')
+    image_spidx_l = wdir+'spidx_l/'+os.path.basename(image_nvss).replace('NVSS_','spidxL_')
     image_spidx_err = wdir+'spidx_err/'+os.path.basename(image_nvss).replace('NVSS_','spidx_').replace('.fits','-err.fits')
-    if not os.path.exists(image_spidx) or not os.path.exists(image_spidx_err) or not os.path.exists(image_spidx_ul):
+    if not os.path.exists(image_spidx) or not os.path.exists(image_spidx_err) or not os.path.exists(image_spidx_u) or not os.path.exists(image_spidx_l):
         print "Makign spidx map..."
         snr_nvss = pyfits.getdata(image_nvss, 0)/pyfits.getdata(image_rms_nvss, 0)
         snr_nvss[snr_nvss<0] = 0
@@ -221,15 +226,15 @@ for image_nvss in images_nvss:
             fits_nvss.writeto(image_spidx, clobber=True)
 
             fits_nvss[0].data[:] = np.nan
-            fits_nvss[0].data[idx_g] = data_spidx_g
             fits_nvss[0].data[idx_u] = data_spidx_u
+            fits_nvss.writeto(image_spidx_u, clobber=True)
+
+            fits_nvss[0].data[:] = np.nan
             fits_nvss[0].data[idx_l] = data_spidx_l
-            fits_nvss.writeto(image_spidx_ul, clobber=True)
+            fits_nvss.writeto(image_spidx_l, clobber=True)
 
             fits_nvss[0].data[:] = np.nan
             fits_nvss[0].data[idx_g] = data_spidx_g_err
-            fits_nvss[0].data[idx_u] = -1
-            fits_nvss[0].data[idx_l] = -2
             fits_nvss.writeto(image_spidx_err, clobber=True)
 
 remove_duplicates()
