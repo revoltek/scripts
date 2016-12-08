@@ -134,8 +134,8 @@ for image_nvss in images_nvss:
                 idx = (blobs == s) # faster than np.where()
                 flux_nvss = np.sum(data_nvss[idx])/area
                 flux_tgss = np.sum(data_tgss[idx])/area
-                flux_pick_nvss = np.max(data_nvss[idx])
-                flux_pick_tgss = np.max(data_tgss[idx])
+                flux_peak_nvss = np.max(data_nvss[idx])
+                flux_peak_tgss = np.max(data_tgss[idx])
                 rms_nvss = np.nanmean(data_rms_nvss[idx]) * np.sqrt( np.sum(idx)/area )
                 rms_tgss = np.nanmean(data_rms_tgss[idx]) * np.sqrt( np.sum(idx)/area )
                 snr_nvss = flux_nvss/rms_nvss
@@ -151,8 +151,8 @@ for image_nvss in images_nvss:
                 if snr_nvss+snr_tgss > 5 and (snr_nvss > 2 and snr_tgss > 2):
                     status = 'g'
                     spidx, spidx_err = twopoint_spidx_bootstrap([147.,1400.], [flux_tgss,flux_nvss], [rms_tgss, rms_nvss], niter=1000)
-                    p2f_ratio_nvss = flux_pick_nvss/flux_nvss
-                    p2f_ratio_tgss = flux_pick_tgss/flux_tgss
+                    p2f_ratio_nvss = flux_peak_nvss/flux_nvss
+                    p2f_ratio_tgss = flux_peak_tgss/flux_tgss
 
                 # upper limit
                 #if flux_nvss<3*rms_nvss and flux_tgss>3*rms_tgss:
@@ -162,7 +162,7 @@ for image_nvss in images_nvss:
                     spidx = np.log10(flux_tgss/flux_nvss)/np.log10(147./1400.)
                     spidx_err = -1
                     p2f_ratio_nvss = -1
-                    p2f_ratio_tgss = flux_pick_tgss/flux_tgss
+                    p2f_ratio_tgss = flux_peak_tgss/flux_tgss
 
                 # lower limit
                 #elif flux_nvss>3*rms_nvss and flux_tgss<3*rms_tgss:
@@ -171,7 +171,7 @@ for image_nvss in images_nvss:
                     flux_tgss = 3*rms_tgss
                     spidx = np.log10(flux_tgss/flux_nvss)/np.log10(147./1400.)
                     spidx_err = -1
-                    p2f_ratio_nvss = flux_pick_nvss/flux_nvss
+                    p2f_ratio_nvss = flux_peak_nvss/flux_nvss
                     p2f_ratio_tgss = -1
 
                 else:
