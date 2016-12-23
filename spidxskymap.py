@@ -2,13 +2,20 @@
 
 import os, sys, glob
 import numpy as np
-import astropy.io.fits as pyfits
-from astropy import wcs
-from lofar import bdsm
 from scipy.ndimage.measurements import label
 from scipy.ndimage.measurements import center_of_mass
-from linearfit import twopoint_spidx_bootstrap
+
+from lofar import bdsm
+
+import astropy.io.fits as pyfits
+from astropy import wcs
 from astropy.table import Table
+from astropy.coordinates import match_coordinates_sky
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+
+from linearfit import twopoint_spidx_bootstrap
+
 
 # options
 wdir = '/home/fdg/data/spidxskymap/'
@@ -92,7 +99,7 @@ for image_nvss in images_nvss:
         c = bdsm.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_nvss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
-        c.export_image(outfile=image_isl_nvss, img_type='isl_mask', clobber=True)
+        c.export_image(outfile=image_isl_nvss, img_type='island_mask', clobber=True)
         # write source catalog
         c.write_catalog(outfile=cat_srl_nvss, catalog_type='srl', format='fits', clobber=True)
         # clip the gaus images and create island masks
@@ -107,7 +114,7 @@ for image_nvss in images_nvss:
         c = bdsm.process_image(image_tgss, frequency=147e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_tgss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_tgss, img_type='gaus_model', clobber=True)
-        c.export_image(outfile=image_isl_tgss, img_type='isl_mask', clobber=True)
+        c.export_image(outfile=image_isl_tgss, img_type='island_mask', clobber=True)
         c.write_catalog(outfile=cat_srl_tgss, catalog_type='srl', format='fits', clobber=True)
         #clip_gaus(image_gaus_tgss, image_rms_tgss)
 
@@ -126,63 +133,81 @@ for image_nvss in images_nvss:
             blobs, number_of_blobs = label(fits_mask[0].data.astype(int))
         print "# of islands found:", number_of_blobs
 
-#        data_nvss =  np.array( pyfits.getdata(image_nvss, 0) )
-#        data_rms_nvss =  np.array( pyfits.getdata(image_rms_nvss, 0) )
-#        data_tgss =  np.array( pyfits.getdata(image_tgss, 0) )
-#        data_rms_tgss =  np.array( pyfits.getdata(image_rms_tgss, 0) )
-#        area = 10.1978092553 # beam area in pixels - with beam: 45"x45" and pixels size: 15"x15"
-
         # opening catalogue as astropy Table
         if not os.path.exists('spidx_cat.fits'):
-            t = Table(names=('ra','dec','S_nvss','S_nvss_err','rms_nvss','S_tgss','S_tgss_err','rms_tgss','spidx','status','mask'),\
-                    dtype=('f4', 'i4', 'S2'))
+            t = Table(names=('ra','dec','S_nvss','S_nvss_err','rms_nvss','S_tgss','S_tgss_err','rms_tgss','spidx','E_spidx','status','mask'),\
+                    dtype=('f4', 'f4', 'f4','f4','f4','f4','f4','f4','f4','f4','S1','S100'))
         else:
-            t = Table.open('spidx_cat.fits')
+            t = Table.read('spidx_cat.fits')
 
 #            with open('spidx_cat.txt', 'a') as cat:
 #                # deg deg Jy Jy Jy Jy - - pixels -
 #                cat.write('#ra dec S_nvss S_nvss_err rms_nvss S_tgss S_tgss_err rms_tgss spidx spidx_err f2p_ratio_nvss f2p_ratio_tgss size status mask\n')
 #                cat.write('#fluxes are in mJy\n')
 
-        t_nvss = Table.open(cat_srl_nvss)
+        t_nvss = Table.read(cat_srl_nvss)
         t_nvss['s2n'] = t_nvss['Total_flux']/t_nvss['E_Total_flux']
-        t_tgss = Table.open(cat_srl_tgss)
+        t_nvss['s2n'].unit = ''
+        t_tgss = Table.read(cat_srl_tgss)
         t_tgss['s2n'] = t_tgss['Total_flux']/t_tgss['E_Total_flux']
+        t_tgss['s2n'].unit = ''
 
         # Cross-match NVSS-TGSS source catalogue
         # match_coordinates_sky() gives an idx of the 2nd catalogue for each source of the 1st catalogue
-        idx_match_tgss, sep, _ = match_coordinates_sky(SkyCoord(t_nvss['RA'], t_nvss['DEC']),\
+        idx_match, sep, _ = match_coordinates_sky(SkyCoord(t_nvss['RA'], t_nvss['DEC']),\
                                           SkyCoord(t_tgss['RA'], t_tgss['DEC']))
-        idx_match_tgss = idx_match_nvss[sep<15*u.arcsec]
-        #idx_match_nvss, sep, _ = match_coordinates_sky(SkyCoord(t_tgss['RA'], t_tgss['DEC']),\
-        #                                  SkyCoord(t_nvss['RA'], t_nvss['DEC']))
-        #idx_match_nvss = idx_match_tgss[sep<15*u.arcsec]
 
-        # Check if S/N > 5
-        t_tgss_matched = t_tgss[idx_match_tgss[sep<=15*u.arcsec]]
-        t_nvss_matched = t_nvss[sep<=15*u.arcsec]
-        # TODO: write out matched sources
+        match_sep = 15 # arcsec
+        idx_matched_nvss = np.arange(0,len(t_nvss))[sep<=match_sep*u.arcsec] # nvss idx with a match
+        idx_matched_tgss = idx_match[sep<=match_sep*u.arcsec] # tgss idx with a match
+        idx_unmatched_nvss = np.arange(0,len(t_nvss))[sep>match_sep*u.arcsec] # nvss idx with NOT a match
+        idx_unmatched_tgss = [ x for x in np.arange(0,len(t_tgss)) if x not in idx_matched_tgss ] # tgss idx with NOT a match
+        t_matched_nvss = t_nvss[idx_matched_nvss]
+        t_matched_tgss = t_tgss[idx_matched_tgss]
+        t_unmatched_nvss = t_nvss[idx_unmatched_nvss]
+        t_unmatched_tgss = t_tgss[idx_unmatched_tgss]
+        assert len(set(idx_matched_tgss)) == len(idx_matched_tgss) # check no sources are cross-matched twice
+        print "Matched sources - NVSS: %i/%i - TGSS %i/%i" % ( len(t_matched_nvss), len(t_nvss), len(t_matched_tgss), len(t_tgss) )
 
         # find blob for each unmatched source
         w = wcs.WCS(pyfits.open(image_nvss)[0].header)
-        t_tgss_unmatched = t_tgss[idx_match_tgss[sep>15*u.arcsec]]
-        t_nvss_unmatched = t_nvss[sep>15*u.arcsec]
-        x_nvss, y_nvss, _, _ = w.all_world2pix([[t_tgss_unmatched['RA'],t_tgss_unmatched['DEC'],0,0]], 0)[0]
-        x_tgss, y_tgss, _, _ = w.all_world2pix([[t_nvss_unmatched['RA'],t_nvss_unmatched['DEC'],0,0]], 0)[0]
+        x_nvss, y_nvss, _, _ = w.all_world2pix(t_matched_nvss['RA'],t_matched_nvss['DEC'],np.zeros(len(t_matched_nvss)),np.zeros(len(t_matched_nvss)), 0, ra_dec_order=True)
+        x_tgss, y_tgss, _, _ = w.all_world2pix(t_matched_tgss['RA'],t_matched_tgss['DEC'],np.zeros(len(t_matched_tgss)),np.zeros(len(t_matched_tgss)), 0, ra_dec_order=True)
+        idx_blob_matched_nvss = blobs[np.zeros(len(t_matched_nvss)).astype(int),np.zeros(len(t_matched_nvss)).astype(int),y_nvss.round().astype(int),x_nvss.round().astype(int)]
+        idx_blob_matched_tgss = blobs[np.zeros(len(t_matched_tgss)).astype(int),np.zeros(len(t_matched_tgss)).astype(int),y_tgss.round().astype(int),x_tgss.round().astype(int)]
+        x_nvss, y_nvss, _, _ = w.all_world2pix(t_unmatched_nvss['RA'],t_unmatched_nvss['DEC'],np.zeros(len(t_unmatched_nvss)),np.zeros(len(t_unmatched_nvss)), 0, ra_dec_order=True)
+        x_tgss, y_tgss, _, _ = w.all_world2pix(t_unmatched_tgss['RA'],t_unmatched_tgss['DEC'],np.zeros(len(t_unmatched_tgss)),np.zeros(len(t_unmatched_tgss)), 0, ra_dec_order=True)
+        idx_blob_unmatched_nvss = blobs[np.zeros(len(t_unmatched_nvss)).astype(int),np.zeros(len(t_unmatched_nvss)).astype(int),y_nvss.round().astype(int),x_nvss.round().astype(int)]
+        idx_blob_unmatched_tgss = blobs[np.zeros(len(t_unmatched_tgss)).astype(int),np.zeros(len(t_unmatched_tgss)).astype(int),y_tgss.round().astype(int),x_tgss.round().astype(int)]
+        assert (idx_blob_matched_nvss != 0).all() and (idx_blob_matched_tgss != 0).all() and (idx_blob_unmatched_nvss != 0).all() and (idx_blob_unmatched_tgss != 0).all() # all sources are into a blob
 
         # For sources with no matches check in which island they are
-        for s in no_match:
+        print len(t_unmatched_tgss)
+        for i, s in enumerate(t_unmatched_tgss):
+            blob = idx_blob_unmatched_tgss[i]
+            n_matched = sum(idx_blob_matched_nvss == blob) # same number for NVSS/TGSS
+            n_unmatched_nvss = sum(idx_blob_unmatched_nvss == blob)
+            n_unmatched_tgss = sum(idx_blob_unmatched_tgss == blob)
+            print n_matched, n_unmatched_nvss, n_unmatched_tgss
             # if alone -> add as upper/lower limit
+            
 
             # if in an island with other unmatched sources
-                # if same freq -> add as separate upper/lower limits
+                # if same freq -> add as separate upper/lower limits+remove unmatch
 
-                # if different freq -> combine
+                # if different freq -> combine+remove unmatch
 
-            # if in an island with matched sources -> combine
+            # if in an island with matched and/or umatched sources -> combine+remove match
 
-            # if in an island with matched and umatched sources -> combine
 
+        sys.exit()
+
+        # TODO: write out matched sources
+        # Check if S/N > 5
+
+        
+        print "Writing catalogue"
+        t.write('spidx-cat.fits')
 
         for s in xrange(1,number_of_blobs+1):
             idx = (blobs == s) # faster than np.where()
@@ -243,8 +268,7 @@ for image_nvss in images_nvss:
                 % (ra, dec, flux_nvss*1e3, flux_err_nvss*1e3, rms_nvss*1e3, flux_tgss*1e3, flux_err_tgss*1e3, rms_tgss*1e3, \
                 spidx, spidx_err, f2p_ratio_nvss, f2p_ratio_tgss, np.sum(idx), status, os.path.basename(image_mask)))
 
-        print "Writing catalogue"
-        t.write('spidx-cat.fits')
+
 
     sys.exit()
 
