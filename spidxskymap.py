@@ -162,52 +162,69 @@ for image_nvss in images_nvss:
         idx_matched_tgss = idx_match[sep<=match_sep*u.arcsec] # tgss idx with a match
         idx_unmatched_nvss = np.arange(0,len(t_nvss))[sep>match_sep*u.arcsec] # nvss idx with NOT a match
         idx_unmatched_tgss = [ x for x in np.arange(0,len(t_tgss)) if x not in idx_matched_tgss ] # tgss idx with NOT a match
-        t_matched_nvss = t_nvss[idx_matched_nvss]
-        t_matched_tgss = t_tgss[idx_matched_tgss]
-        t_unmatched_nvss = t_nvss[idx_unmatched_nvss]
-        t_unmatched_tgss = t_tgss[idx_unmatched_tgss]
         assert len(set(idx_matched_tgss)) == len(idx_matched_tgss) # check no sources are cross-matched twice
-        print "Matched sources - NVSS: %i/%i - TGSS %i/%i" % ( len(t_matched_nvss), len(t_nvss), len(t_matched_tgss), len(t_tgss) )
+        print "Matched sources - NVSS: %i/%i - TGSS %i/%i" % ( len(idx_matched_nvss), len(t_nvss), len(idx_matched_tgss), len(t_tgss) )
 
-        # find blob for each unmatched source
+        # find blob for each source
         w = wcs.WCS(pyfits.open(image_nvss)[0].header)
-        x_nvss, y_nvss, _, _ = w.all_world2pix(t_matched_nvss['RA'],t_matched_nvss['DEC'],np.zeros(len(t_matched_nvss)),np.zeros(len(t_matched_nvss)), 0, ra_dec_order=True)
-        x_tgss, y_tgss, _, _ = w.all_world2pix(t_matched_tgss['RA'],t_matched_tgss['DEC'],np.zeros(len(t_matched_tgss)),np.zeros(len(t_matched_tgss)), 0, ra_dec_order=True)
-        idx_blob_matched_nvss = blobs[np.zeros(len(t_matched_nvss)).astype(int),np.zeros(len(t_matched_nvss)).astype(int),y_nvss.round().astype(int),x_nvss.round().astype(int)]
-        idx_blob_matched_tgss = blobs[np.zeros(len(t_matched_tgss)).astype(int),np.zeros(len(t_matched_tgss)).astype(int),y_tgss.round().astype(int),x_tgss.round().astype(int)]
-        x_nvss, y_nvss, _, _ = w.all_world2pix(t_unmatched_nvss['RA'],t_unmatched_nvss['DEC'],np.zeros(len(t_unmatched_nvss)),np.zeros(len(t_unmatched_nvss)), 0, ra_dec_order=True)
-        x_tgss, y_tgss, _, _ = w.all_world2pix(t_unmatched_tgss['RA'],t_unmatched_tgss['DEC'],np.zeros(len(t_unmatched_tgss)),np.zeros(len(t_unmatched_tgss)), 0, ra_dec_order=True)
-        idx_blob_unmatched_nvss = blobs[np.zeros(len(t_unmatched_nvss)).astype(int),np.zeros(len(t_unmatched_nvss)).astype(int),y_nvss.round().astype(int),x_nvss.round().astype(int)]
-        idx_blob_unmatched_tgss = blobs[np.zeros(len(t_unmatched_tgss)).astype(int),np.zeros(len(t_unmatched_tgss)).astype(int),y_tgss.round().astype(int),x_tgss.round().astype(int)]
-        assert (idx_blob_matched_nvss != 0).all() and (idx_blob_matched_tgss != 0).all() and (idx_blob_unmatched_nvss != 0).all() and (idx_blob_unmatched_tgss != 0).all() # all sources are into a blob
+        x_nvss, y_nvss, _, _ = w.all_world2pix(t_nvss['RA'],t_nvss['DEC'],np.zeros(len(t_nvss)),np.zeros(len(t_nvss)), 0, ra_dec_order=True)
+        x_tgss, y_tgss, _, _ = w.all_world2pix(t_tgss['RA'],t_tgss['DEC'],np.zeros(len(t_tgss)),np.zeros(len(t_tgss)), 0, ra_dec_order=True)
+        val_blob_nvss = blobs[np.zeros(len(t_nvss)).astype(int),np.zeros(len(t_nvss)).astype(int),y_nvss.round().astype(int),x_nvss.round().astype(int)]
+        val_blob_tgss = blobs[np.zeros(len(t_tgss)).astype(int),np.zeros(len(t_tgss)).astype(int),y_tgss.round().astype(int),x_tgss.round().astype(int)]
+        assert (val_blob_nvss != 0).all() and (val_blob_tgss != 0).all() # all sources are into a blob
 
         # For sources with no matches check in which island they are
-        print len(t_unmatched_tgss)
-        for i, s in enumerate(t_unmatched_tgss):
-            blob = idx_blob_unmatched_tgss[i]
-            n_matched = sum(idx_blob_matched_nvss == blob) # same number for NVSS/TGSS
-            n_unmatched_nvss = sum(idx_blob_unmatched_nvss == blob)
-            n_unmatched_tgss = sum(idx_blob_unmatched_tgss == blob)
-            print n_matched, n_unmatched_nvss, n_unmatched_tgss
-            # if alone -> add as upper/lower limit
-            
+        for i, s in enumerate(idx_unmatched_tgss):
+            blob = val_blob_tgss[s]
+            idx_blob_nvss = np.where(val_blob_nvss == blob) # idx of NVSS sources in same blob
+            idx_blob_tgss = np.where(val_blob_tgss == blob) # idx of TGSS sources in same blob
 
-            # if in an island with other unmatched sources
-                # if same freq -> add as separate upper/lower limits+remove unmatch
+            idx_blob_matched_nvss = np.intersect1d(idx_blob_nvss, idx_matched_nvss)
+            idx_blob_matched_tgss = np.intersect1d(idx_blob_tgss, idx_matched_tgss)
+            idx_blob_unmatched_nvss = np.intersect1d(idx_blob_nvss, idx_unmatched_nvss)
+            idx_blob_unmatched_tgss = np.intersect1d(idx_blob_tgss, idx_unmatched_tgss)
+            #print len(idx_blob_matched_nvss), len(idx_blob_unmatched_nvss), len(idx_blob_unmatched_tgss) # DEBUG - check in aladin result of cross-match NVSS/TGSS catalogs
+            classify(idx, idx_blob_matched_tgss, idx_blob_matched_nvss, idx_blob_unmatched_tgss, idx_blob_unmatched_nvss)
 
-                # if different freq -> combine+remove unmatch
+        def classify(idx, idx_matched_blob, idx_unmatched_blob_this, idx_unmatched_blob_that):
+            # if alone -> add as upper/lower limit TODO: can combine with next?
+            if len(idx_blob_unmatched_tgss) == 1 and len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_matched_tgss) == 0:
+                add_line(idx_tgss=idx, srl_type='S')
+            # if in an island with other unmatched sources of same freq -> add as separate upper/lower limits+remove unmatch
+            elif len(idx_blob_unmatched_tgss) > 1 and len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_matched_tgss) == 0:
 
+                # remove
+                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ]
+            # if in an island with other unmatched sources of different freq -> combine+remove unmatch
+            elif len(idx_blob_unmatched_tgss) >= 1 and len(idx_blob_unmatched_nvss) > 0 and len(idx_blob_matched_tgss) == 0:
+                pass
             # if in an island with matched and/or umatched sources -> combine+remove match
+            elif len(idx_blob_unmatched_tgss) >= 1 and len(idx_blob_unmatched_nvss) >= 0 and len(idx_blob_matched_tgss) >= 0:
+                pass
 
 
-        sys.exit()
+        def add_line(t, t_nvss=None, t_tgss=None, idx_nvss=None, idx_tgss=None, srl_type='S'):
+            """
+            Add one or more lines to table t
+            """
+            if idx_nvss != None and idx_tgss != None:
+                # Check if sum S/N > 5
+                pass
 
-        # TODO: write out matched sources
-        # Check if S/N > 5
+            elif idx_nvss != None:
+                # Check if S/N > 5
+                pass
 
+            elif idx_tgss != None:
+                # Check if S/N > 5
+                pass
+
+        add_line(t, t_nvss, t_tgss, idx_matched_nvss, idx_matched_tgss)
         
         print "Writing catalogue"
         t.write('spidx-cat.fits')
+        
+        sys.exit()
 
         for s in xrange(1,number_of_blobs+1):
             idx = (blobs == s) # faster than np.where()
