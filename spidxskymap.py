@@ -135,15 +135,10 @@ for image_nvss in images_nvss:
 
         # opening catalogue as astropy Table
         if not os.path.exists('spidx_cat.fits'):
-            t = Table(names=('ra','dec','S_nvss','S_nvss_err','rms_nvss','S_tgss','S_tgss_err','rms_tgss','spidx','E_spidx','status','mask'),\
-                    dtype=('f4', 'f4', 'f4','f4','f4','f4','f4','f4','f4','f4','S1','S100'))
+            t = Table(names=('Source_id','RA','E_RA','DEC','E_DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','spidx','E_spidx','Rms_NVSS','Rms_TGSS','S_Code','s2n','size','Mask'\
+                      dtype=('i','f','f','f','f','f','f','f','f','f','S1','S100'))
         else:
             t = Table.read('spidx_cat.fits')
-
-#            with open('spidx_cat.txt', 'a') as cat:
-#                # deg deg Jy Jy Jy Jy - - pixels -
-#                cat.write('#ra dec S_nvss S_nvss_err rms_nvss S_tgss S_tgss_err rms_tgss spidx spidx_err f2p_ratio_nvss f2p_ratio_tgss size status mask\n')
-#                cat.write('#fluxes are in mJy\n')
 
         t_nvss = Table.read(cat_srl_nvss)
         t_nvss['s2n'] = t_nvss['Total_flux']/t_nvss['E_Total_flux']
@@ -165,7 +160,7 @@ for image_nvss in images_nvss:
         assert len(set(idx_matched_tgss)) == len(idx_matched_tgss) # check no sources are cross-matched twice
         print "Matched sources - NVSS: %i/%i - TGSS %i/%i" % ( len(idx_matched_nvss), len(t_nvss), len(idx_matched_tgss), len(t_tgss) )
 
-        # find blob for each source
+        # find blob number for each source
         w = wcs.WCS(pyfits.open(image_nvss)[0].header)
         x_nvss, y_nvss, _, _ = w.all_world2pix(t_nvss['RA'],t_nvss['DEC'],np.zeros(len(t_nvss)),np.zeros(len(t_nvss)), 0, ra_dec_order=True)
         x_tgss, y_tgss, _, _ = w.all_world2pix(t_tgss['RA'],t_tgss['DEC'],np.zeros(len(t_tgss)),np.zeros(len(t_tgss)), 0, ra_dec_order=True)
@@ -176,40 +171,55 @@ for image_nvss in images_nvss:
         # For sources with no matches check in which island they are
         for i, s in enumerate(idx_unmatched_tgss):
             blob = val_blob_tgss[s]
-            idx_blob_nvss = np.where(val_blob_nvss == blob) # idx of NVSS sources in same blob
-            idx_blob_tgss = np.where(val_blob_tgss == blob) # idx of TGSS sources in same blob
+            idx_blob_nvss = np.where(val_blob_nvss == blob) # idx of NVSS sources in same blob of this unmatched source
+            idx_blob_tgss = np.where(val_blob_tgss == blob) # idx of TGSS sources in same blob of this unmatched source
 
             idx_blob_matched_nvss = np.intersect1d(idx_blob_nvss, idx_matched_nvss)
             idx_blob_matched_tgss = np.intersect1d(idx_blob_tgss, idx_matched_tgss)
             idx_blob_unmatched_nvss = np.intersect1d(idx_blob_nvss, idx_unmatched_nvss)
             idx_blob_unmatched_tgss = np.intersect1d(idx_blob_tgss, idx_unmatched_tgss)
             #print len(idx_blob_matched_nvss), len(idx_blob_unmatched_nvss), len(idx_blob_unmatched_tgss) # DEBUG - check in aladin result of cross-match NVSS/TGSS catalogs
-            classify(idx, idx_blob_matched_tgss, idx_blob_matched_nvss, idx_blob_unmatched_tgss, idx_blob_unmatched_nvss)
+            classify(idx, idx_blob_matched_tgss, idx_blob_matched_nvss, idx_blob_unmatched_tgss, idx_blob_unmatched_nvss, t_tgss, t_nvss, 'U')
 
-        def classify(idx, idx_matched_blob, idx_unmatched_blob_this, idx_unmatched_blob_that):
-            # if alone -> add as upper/lower limit TODO: can combine with next?
-            if len(idx_blob_unmatched_tgss) == 1 and len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_matched_tgss) == 0:
-                add_line(idx_tgss=idx, srl_type='S')
-            # if in an island with other unmatched sources of same freq -> add as separate upper/lower limits+remove unmatch
-            elif len(idx_blob_unmatched_tgss) > 1 and len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_matched_tgss) == 0:
+        def classify(idx, idx_matched_blob_this, idx_matched_blob_that, idx_unmatched_blob_this, idx_unmatched_blob_that, t_this, t_that, limit):
+            # if in an island with one or more unmatched sources of same freq -> add as upper/lower limit?
+            if len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_matched_tgss) == 0:
+                add_line(t, t_nvss, t_tgss, idx_nvss=None, idx_tgss=idx_blob_unmatched_tgss, srl_type=limit)
+                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ] # remove TGSS
 
-                # remove
-                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ]
             # if in an island with other unmatched sources of different freq -> combine+remove unmatch
-            elif len(idx_blob_unmatched_tgss) >= 1 and len(idx_blob_unmatched_nvss) > 0 and len(idx_blob_matched_tgss) == 0:
-                pass
+            elif len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_unmatched_nvss) > 0 and len(idx_blob_matched_tgss) == 0:
+                add_line(t, t_nvss, t_tgss, idx_nvss=idx_blob_unmatched_nvss, idx_tgss=idx_blob_unmatched_tgss, srl_type='C')
+                [ idx_unmatched_nvss.pop(this_idx) for this_idx in idx_blob_unmatched_nvss if this_idx != idx ] # remove NVSS
+                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ] # remove TGSS
+
             # if in an island with matched and/or umatched sources -> combine+remove match
-            elif len(idx_blob_unmatched_tgss) >= 1 and len(idx_blob_unmatched_nvss) >= 0 and len(idx_blob_matched_tgss) >= 0:
-                pass
+            elif len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_unmatched_nvss) >= 0 and len(idx_blob_matched_tgss) >= 0:
+                add_line(t, t_nvss, t_tgss, idx_nvss=idx_blob_unmatched_nvss+idx_blob_matched_nvss, \
+                        idx_tgss=idx_blob_unmatched_tgss+idx_blob_matched_tgss, srl_type='C')
+                [ idx_unmatched_nvss.pop(this_idx) for this_idx in idx_blob_unmatched_nvss if this_idx != idx ] # remove NVSS
+                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ] # remove TGSS
+                [ idx_matched_nvss.pop(this_idx) for this_idx in idx_blob_matched_nvss if this_idx != idx ] # remove NVSS (match)
+                [ idx_matched_tgss.pop(this_idx) for this_idx in idx_blob_matched_tgss if this_idx != idx ] # remove TGSS (match)
+
+            else:
+                print "Something went wrong..."
+                sys.exit()
 
 
         def add_line(t, t_nvss=None, t_tgss=None, idx_nvss=None, idx_tgss=None, srl_type='S'):
             """
             Add one or more lines to table t
             """
+            idx = len(t)
+            with file.open('idx_isl.txt', 'a') as f:
+                f.write(str(idx)+' - NVSS'+' '.join(idx_nvss)+' - TGSS'+' '.join(idx_tgss))
+
             if idx_nvss != None and idx_tgss != None:
                 # Check if sum S/N > 5
-                pass
+
+                # Source_id RA E_RA DEC E_DEC Total_flux_NVSS E_Total_flux_NVSS Peak_flux_NVSS E_Peak_flux_NVSS Total_flux_TGSS E_Total_flux_TGSS Peak_flux_TGSS E_Peak_flux_TGSS spidx E_spidx Rms_NVSS Rms_TGSS S_Code s2n size Mask
+                t.add_row((idx,))
 
             elif idx_nvss != None:
                 # Check if S/N > 5
