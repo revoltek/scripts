@@ -9,7 +9,7 @@ from lofar import bdsm
 
 import astropy.io.fits as pyfits
 from astropy import wcs
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy.coordinates import match_coordinates_sky
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -82,6 +82,7 @@ def clip_gaus(img, rmsimg, nsigma=1):
 # assume NVSS/TGSS files have same name apart from initial part
 images_nvss = glob.glob(wdir+'NVSS/*fits')
 
+source_id = 0
 for image_nvss in images_nvss:
     image_tgss = image_nvss.replace('NVSS','TGSS')
     if not os.path.exists(image_tgss):
@@ -133,169 +134,150 @@ for image_nvss in images_nvss:
             blobs, number_of_blobs = label(fits_mask[0].data.astype(int))
         print "# of islands found:", number_of_blobs
 
-        # opening catalogue as astropy Table
-        if not os.path.exists('spidx_cat.fits'):
-            t = Table(names=('Source_id','RA','E_RA','DEC','E_DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','spidx','E_spidx','Rms_NVSS','Rms_TGSS','S_Code','s2n','size','Mask'\
+        # Creating new astropy Table
+        t = Table(names=('Source_id','RA','E_RA','DEC','E_DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','spidx','E_spidx','Rms_NVSS','Rms_TGSS','S_Code','Num_match','Num_unmatch','s2n','Mask'\
                       dtype=('i','f','f','f','f','f','f','f','f','f','S1','S100'))
-        else:
-            t = Table.read('spidx_cat.fits')
 
-        t_nvss = Table.read(cat_srl_nvss)
-        t_nvss['s2n'] = t_nvss['Total_flux']/t_nvss['E_Total_flux']
-        t_nvss['s2n'].unit = ''
-        t_tgss = Table.read(cat_srl_tgss)
-        t_tgss['s2n'] = t_tgss['Total_flux']/t_tgss['E_Total_flux']
-        t_tgss['s2n'].unit = ''
+        class t_surv():
+            def __init__(self, cat, name):
+                self.t = Table.read(cat_srl_nvss)
+                self.len = len(self.t)
+                self.name = name
+                self.t['s2n'] = self.t['Total_flux']/self.t['E_Total_flux']
+                self.t['s2n'].unit = ''
+                x, y, _, _ = w.all_world2pix(self.t['RA'],self.t['DEC'],np.zeros(self.len),np.zeros(self.len), 0, ra_dec_order=True)
+                self.x = x.round().astype(int)
+                self.y = y.round().astype(int)
+
+        nvss = t_surv(cat_srl_nvss, 'NVSS')
+        tgss = t_surv(cat_srl_tgss, 'TGSS')
 
         # Cross-match NVSS-TGSS source catalogue
         # match_coordinates_sky() gives an idx of the 2nd catalogue for each source of the 1st catalogue
-        idx_match, sep, _ = match_coordinates_sky(SkyCoord(t_nvss['RA'], t_nvss['DEC']),\
-                                          SkyCoord(t_tgss['RA'], t_tgss['DEC']))
+        idx_match, sep, _ = match_coordinates_sky(SkyCoord(nvss.t['RA'], nvss.t['DEC']),\
+                                          SkyCoord(tgss.t['RA'], tgss.t['DEC']))
 
         match_sep = 15 # arcsec
-        idx_matched_nvss = np.arange(0,len(t_nvss))[sep<=match_sep*u.arcsec] # nvss idx with a match
+        idx_matched_nvss = np.arange(0,nvss.len)[sep<=match_sep*u.arcsec] # nvss idx with a match
         idx_matched_tgss = idx_match[sep<=match_sep*u.arcsec] # tgss idx with a match
-        idx_unmatched_nvss = np.arange(0,len(t_nvss))[sep>match_sep*u.arcsec] # nvss idx with NOT a match
-        idx_unmatched_tgss = [ x for x in np.arange(0,len(t_tgss)) if x not in idx_matched_tgss ] # tgss idx with NOT a match
+        idx_unmatched_nvss = np.arange(0,nvss.len)[sep>match_sep*u.arcsec] # nvss idx with NOT a match
+        idx_unmatched_tgss = [ x for x in np.arange(0,tgss.len) if x not in idx_matched_tgss ] # tgss idx with NOT a match
         assert len(set(idx_matched_tgss)) == len(idx_matched_tgss) # check no sources are cross-matched twice
-        print "Matched sources - NVSS: %i/%i - TGSS %i/%i" % ( len(idx_matched_nvss), len(t_nvss), len(idx_matched_tgss), len(t_tgss) )
+        print "Matched sources - NVSS: %i/%i - TGSS %i/%i" % ( len(idx_matched_nvss), nvss.len, len(idx_matched_tgss), tgss.len )
 
-        # find blob number for each source
         w = wcs.WCS(pyfits.open(image_nvss)[0].header)
-        x_nvss, y_nvss, _, _ = w.all_world2pix(t_nvss['RA'],t_nvss['DEC'],np.zeros(len(t_nvss)),np.zeros(len(t_nvss)), 0, ra_dec_order=True)
-        x_tgss, y_tgss, _, _ = w.all_world2pix(t_tgss['RA'],t_tgss['DEC'],np.zeros(len(t_tgss)),np.zeros(len(t_tgss)), 0, ra_dec_order=True)
-        val_blob_nvss = blobs[np.zeros(len(t_nvss)).astype(int),np.zeros(len(t_nvss)).astype(int),y_nvss.round().astype(int),x_nvss.round().astype(int)]
-        val_blob_tgss = blobs[np.zeros(len(t_tgss)).astype(int),np.zeros(len(t_tgss)).astype(int),y_tgss.round().astype(int),x_tgss.round().astype(int)]
-        assert (val_blob_nvss != 0).all() and (val_blob_tgss != 0).all() # all sources are into a blob
+        x_nvss, y_nvss, _, _ = nvss.get_pix()
+        x_tgss, y_tgss, _, _ = tgss.get_pix()
+        val_blob_nvss = blobs[ np.zeros(nvss.len).astype(int), np.zeros(nvss.len).astype(int), nvss.y, nvss.x ] # blob val for ech source
+        val_blob_tgss = blobs[ np.zeros(tgss.len).astype(int), np.zeros(tgss.len).astype(int), tgss.y, tgss.x ]
+        assert (val_blob_nvss != 0).all() and (val_blob_tgss != 0).all() # all sources are into a blob           
 
-        # For sources with no matches check in which island they are
-        for i, s in enumerate(idx_unmatched_tgss):
-            blob = val_blob_tgss[s]
-            idx_blob_nvss = np.where(val_blob_nvss == blob) # idx of NVSS sources in same blob of this unmatched source
-            idx_blob_tgss = np.where(val_blob_tgss == blob) # idx of TGSS sources in same blob of this unmatched source
+        # For each island figure out what to do
+        for blob in xrange(number_of_blobs):
+            idx_blob_nvss = np.where(val_blob_nvss == blob) # idx of NVSS sources in this blob
+            idx_blob_tgss = np.where(val_blob_tgss == blob) # idx of TGSS sources in this blob
 
             idx_blob_matched_nvss = np.intersect1d(idx_blob_nvss, idx_matched_nvss)
             idx_blob_matched_tgss = np.intersect1d(idx_blob_tgss, idx_matched_tgss)
             idx_blob_unmatched_nvss = np.intersect1d(idx_blob_nvss, idx_unmatched_nvss)
             idx_blob_unmatched_tgss = np.intersect1d(idx_blob_tgss, idx_unmatched_tgss)
+            num_match = len(idx_blob_matched_nvss)+len(idx_blob_matched_tgss)
+            num_unmatch = len(idx_blob_unmatched_nvss)+len(idx_blob_unmatched_tgss)
             #print len(idx_blob_matched_nvss), len(idx_blob_unmatched_nvss), len(idx_blob_unmatched_tgss) # DEBUG - check in aladin result of cross-match NVSS/TGSS catalogs
-            classify(idx, idx_blob_matched_tgss, idx_blob_matched_nvss, idx_blob_unmatched_tgss, idx_blob_unmatched_nvss, t_tgss, t_nvss, 'U')
 
-        def classify(idx, idx_matched_blob_this, idx_matched_blob_that, idx_unmatched_blob_this, idx_unmatched_blob_that, t_this, t_that, limit):
-            # if in an island with one or more unmatched sources of same freq -> add as upper/lower limit?
-            if len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_matched_tgss) == 0:
-                add_line(t, t_nvss, t_tgss, idx_nvss=None, idx_tgss=idx_blob_unmatched_tgss, srl_type=limit)
-                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ] # remove TGSS
+            # add all matched sources (multiple entries)
+            if len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_unmatched_tgss) == 0 and len(idx_blob_matched_nvss) == 1: code = 'S' # single
+            elif len(idx_blob_unmatched_nvss) == 0 and len(idx_blob_unmatched_tgss) == 0 and len(idx_blob_matched_nvss) > 1: code = 'M' # multiple (all matched)
+            else: code = 'C' # multiple (complex -> with unmatched sources in the same island)
+            for i in xrange(len(idx_blob_matched_nvss)):
+                s_nvss = nvss.t[idx_blob_matched_nvss[i]]
+                s_tgss = tgss.t[idx_blob_matched_tgss[i]]
+                s2n = s_nvss['Total_flux']/s_nvss['E_Total_flux'] + s_tgss['Total_flux']/s_tgss['E_Total_flux']
+                if s2n < 5: 
+                    print 'skip Good: s2n==%f' % s2n 
+                    continue
+                ra = np.average([s_nvss['RA'],s_tgss['RA']], weights=[s_nvss['E_RA']**2,s_tgss['E_RA']**2])
+                e_ra = np.sqrt(s_nvss['E_RA']**2+s_tgss['E_RA']**2)
+                dec = np.average([s_nvss['DEC'],s_tgss['DEC']], weights=[s_nvss['E_DEC']**2,s_tgss['E_DEC']**2])
+                e_dec = np.sqrt(s_nvss['E_DEC']**2+s_tgss['E_DEC']**2)
+                spidx, e_spidx = twopoint_spidx_bootstrap([147.,1400.], \
+                        [s_tgss['Total_flux'],s_nvss['Total_flux']], [s_tgss['E_Total_flux'], s_nvss['E_Total_flux']], niter=1000)
 
-            # if in an island with other unmatched sources of different freq -> combine+remove unmatch
-            elif len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_unmatched_nvss) > 0 and len(idx_blob_matched_tgss) == 0:
-                add_line(t, t_nvss, t_tgss, idx_nvss=idx_blob_unmatched_nvss, idx_tgss=idx_blob_unmatched_tgss, srl_type='C')
-                [ idx_unmatched_nvss.pop(this_idx) for this_idx in idx_blob_unmatched_nvss if this_idx != idx ] # remove NVSS
-                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ] # remove TGSS
+                # Source_id RA E_RA DEC E_DEC Total_flux_NVSS E_Total_flux_NVSS Peak_flux_NVSS E_Peak_flux_NVSS Total_flux_TGSS E_Total_flux_TGSS Peak_flux_TGSS E_Peak_flux_TGSS spidx E_spidx Rms_NVSS Rms_TGSS S_Code Num_match Num_unmatch s2n Mask
+                t.add_row((source_id, ra, e_ra, dec, e_dec, \
+                        s_nvss['Total_flux'], s_nvss['E_Total_flux'], s_nvss['Peak_flux'], s_nvss['E_Peak_flux'],\
+                        s_tgss['Total_flux'], s_tgss['E_Total_flux'], s_tgss['Peak_flux'], s_tgss['E_Peak_flux'],\
+                        spidx, e_spidx, s_nvss['rms'], s_tgss['rms'], code, num_match, num_unmatch, s2n, mask))
+                source_id += 1
 
-            # if in an island with matched and/or umatched sources -> combine+remove match
-            elif len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_unmatched_nvss) >= 0 and len(idx_blob_matched_tgss) >= 0:
-                add_line(t, t_nvss, t_tgss, idx_nvss=idx_blob_unmatched_nvss+idx_blob_matched_nvss, \
-                        idx_tgss=idx_blob_unmatched_tgss+idx_blob_matched_tgss, srl_type='C')
-                [ idx_unmatched_nvss.pop(this_idx) for this_idx in idx_blob_unmatched_nvss if this_idx != idx ] # remove NVSS
-                [ idx_unmatched_tgss.pop(this_idx) for this_idx in idx_blob_unmatched_tgss if this_idx != idx ] # remove TGSS
-                [ idx_matched_nvss.pop(this_idx) for this_idx in idx_blob_matched_nvss if this_idx != idx ] # remove NVSS (match)
-                [ idx_matched_tgss.pop(this_idx) for this_idx in idx_blob_matched_tgss if this_idx != idx ] # remove TGSS (match)
+            # if in an island with one or more unmatched NVSS sources -> add each as lower limit (multiple entries)
+            if len(idx_blob_unmatched_nvss) > 0 and len(idx_blob_tgss) == 0:
+                for i in xrange(len(idx_blob_unmatched_nvss)):
+                    s_nvss = nvss.t[idx_blob_unmatched_nvss[i]]
+                    s2n = np.sum(s_nvss['Total_flux']/s_nvss['E_Total_flux'])
+                    if s2n < 5: 
+                        print 'skip L: s2n==%f' % s2n 
+                        continue
+                    rms_tgss =  np.mean(np.array( pyfits.getdata(image_rms_tgss, 0) ) ) # no source, get from map
+                    spidx = np.log10(s_nvss['Total_flux']/(3*rms_tgss))/np.log10(1400./147.)
 
-            else:
-                print "Something went wrong..."
-                sys.exit()
+                    t.add_row((source_id, s_nvss['RA'], s_nvss['E_RA'], s_nvss['DEC'], s_nvss['E_DEC'], \
+                            s_nvss['Total_flux'], s_nvss['E_Total_flux'], s_nvss['Peak_flux'], s_nvss['E_Peak_flux'],\
+                            0, 0, 0, 0,\
+                            spidx, 0, s_nvss['rms'], rms_tgss, 'L', num_match, num_unmatch, s2n, mask))
+                    source_id += 1
+
+            # if in an island with one or more unmatched TGSS sources -> add each as upper limit (multiple entries)
+            elif len(idx_blob_unmatched_tgss) > 0 and len(idx_blob_nvss) == 0:
+                for i in xrange(len(idx_blob_unmatched_nvss)):
+                    s_tgss = tgss.t[idx_blob_unmatched_tgss[i]]
+                    s2n = np.sum(s_tgss['Total_flux']/s_tgss['E_Total_flux'])
+                    if s2n < 5: 
+                        print 'skip U: s2n==%f' % s2n 
+                        continue
+                    rms_nvss =  np.mean(np.array( pyfits.getdata(image_rms_nvss, 0) ) ) # no source, get from map
+                    spidx = np.log10(s_tgss['Total_flux']/(3*rms_nvss))/np.log10(147./1400.)
+
+                    t.add_row((source_id, s_tgss['RA'], s_tgss['E_RA'], s_tgss['DEC'], s_tgss['E_DEC'], \
+                            0, 0, 0, 0,\
+                            s_tgss['Total_flux'], s_tgss['E_Total_flux'], s_tgss['Peak_flux'], s_tgss['E_Peak_flux'],\
+                            spidx, 0, s_tgss['rms'], rms_nvss, 'U', num_match, num_unmatch, s2n, mask))
+                    source_id += 1
+
+            # any other case with unmatched sources -> combine island (1 entry)
+            elif len(idx_blob_unmatched_nvss) > 0 or len(idx_blob_unmatched_tgss) > 0:
+                s_nvss = nvss.t[idx_blob_matched_nvss+idx_blob_unmatched_nvss]
+                s_tgss = tgss.t[idx_blob_matched_tgss+idx_blob_unmatched_tgss]
+                s_stack = vstack([s_nvss, s_tgss])
+                s2n = np.sum(s_nvss['Total_flux'])/np.sqrt(np.sum(s_nvss['E_Total_flux']**2)) + \
+                      np.sum(s_tgss['Total_flux'])/np.sqrt(np.sum(s_tgss['E_Total_flux']**2))
+
+                if s2n < 5: 
+                    print 'skip Good: s2n==%f' % s2n 
+                    continue
+                ra = np.average(s_stack['RA'], weights=s_stack['E_RA']**2)
+                e_ra = np.sqrt(np.sum(s_stack['E_RA']**2))
+                dec = np.average(s_stack['DEC'], weights=s_stack['E_DEC']**2)
+                e_dec = np.sqrt(np.sum(s_stack['E_DEC']**2))
+                spidx, e_spidx = twopoint_spidx_bootstrap([1400.,147.], \
+                        [np.sum(s_nvss['Total_flux']), np.sum(s_tgss['Total_flux'])], \
+                        [np.sqrt(np.sum(s_nvss['E_Total_flux']**2)), np.sqrt(np.sum(s_tgss['E_Total_flux']**2))], niter=1000)
+
+                t.add_row((source_id, ra, e_ra, dec, e_dec, \
+                        np.sum(s_nvss['Total_flux']), np.sqrt(np.sum(s_nvss['E_Total_flux']**2)), np.max(s_nvss['Peak_flux']), s_nvss['E_Peak_flux'][np.argmax(s_nvss['Peak_flux'])],\
+                        np.sum(s_tgss['Total_flux']), np.sqrt(np.sum(s_tgss['E_Total_flux']**2)), np.max(s_tgss['Peak_flux']), s_tgss['E_Peak_flux'][np.argmax(s_tgss['Peak_flux'])],\
+                        spidx, e_spidx, np.mean(s_nvss['rms']), np.mean(s_tgss['rms']), 'I', num_match, num_unmatch, s2n, mask))
+                source_id += 1
 
 
-        def add_line(t, t_nvss=None, t_tgss=None, idx_nvss=None, idx_tgss=None, srl_type='S'):
-            """
-            Add one or more lines to table t
-            """
-            idx = len(t)
-            with file.open('idx_isl.txt', 'a') as f:
-                f.write(str(idx)+' - NVSS'+' '.join(idx_nvss)+' - TGSS'+' '.join(idx_tgss))
-
-            if idx_nvss != None and idx_tgss != None:
-                # Check if sum S/N > 5
-
-                # Source_id RA E_RA DEC E_DEC Total_flux_NVSS E_Total_flux_NVSS Peak_flux_NVSS E_Peak_flux_NVSS Total_flux_TGSS E_Total_flux_TGSS Peak_flux_TGSS E_Peak_flux_TGSS spidx E_spidx Rms_NVSS Rms_TGSS S_Code s2n size Mask
-                t.add_row((idx,))
-
-            elif idx_nvss != None:
-                # Check if S/N > 5
-                pass
-
-            elif idx_tgss != None:
-                # Check if S/N > 5
-                pass
-
-        add_line(t, t_nvss, t_tgss, idx_matched_nvss, idx_matched_tgss)
-        
-        print "Writing catalogue"
-        t.write('spidx-cat.fits')
+        # adding a raw require the entire cat to be rewritten in memory
+        # to speed up a catalogue is generated for each mask and appended to the existing file
+        print "Writing concat catalogue"
+        t_complete = Table.read('spidx-cat.fits')
+        vstack([t_complete, t]).write('spidx-cat.fits')
+        t_complete.close()
         
         sys.exit()
-
-        for s in xrange(1,number_of_blobs+1):
-            idx = (blobs == s) # faster than np.where()
-            flux_nvss = np.sum(data_nvss[idx])/area
-            flux_tgss = np.sum(data_tgss[idx])/area
-            flux_peak_nvss = np.max(data_nvss[idx])
-            flux_peak_tgss = np.max(data_tgss[idx])
-            rms_nvss = np.nanmean(data_rms_nvss[idx])
-            rms_tgss = np.nanmean(data_rms_tgss[idx])
-            flux_err_nvss = rms_nvss * np.sqrt( np.sum(idx)/area )
-            flux_err_tgss = rms_tgss * np.sqrt( np.sum(idx)/area )
-            snr_nvss = flux_nvss/flux_err_nvss
-            if snr_nvss<0: snr_nvss = 0
-            snr_tgss = flux_tgss/flux_err_tgss
-            if snr_tgss<0: snr_tgss = 0
-
-            # get rid of edges or partially covered images
-            if np.isnan(snr_nvss) or np.isnan(snr_tgss): continue
-
-            # good
-            #elif flux_nvss>3*flux_err_nvss and flux_tgss>3*flux_err_tgss: 
-            if snr_nvss+snr_tgss > 5 and (snr_nvss > 2 and snr_tgss > 2):
-                status = 'g'
-                spidx, spidx_err = twopoint_spidx_bootstrap([147.,1400.], [flux_tgss,flux_nvss], [flux_err_tgss, flux_err_nvss], niter=1000)
-                f2p_ratio_nvss = flux_nvss/flux_peak_nvss
-                f2p_ratio_tgss = flux_tgss/flux_peak_tgss
-
-            # upper limit
-            #if flux_nvss<3*flux_err_nvss and flux_tgss>3*flux_err_tgss:
-            elif snr_tgss > 3:
-                status = 'u'
-                flux_nvss = 3*flux_err_nvss
-                spidx = np.log10(flux_tgss/flux_nvss)/np.log10(147./1400.)
-                spidx_err = -1
-                f2p_ratio_nvss = -1
-                f2p_ratio_tgss = flux_tgss/flux_peak_tgss
-
-            # lower limit
-            #elif flux_nvss>3*flux_err_nvss and flux_tgss<3*flux_err_tgss:
-            elif snr_nvss > 3:
-                status = 'l'
-                flux_tgss = 3*flux_err_tgss
-                spidx = np.log10(flux_tgss/flux_nvss)/np.log10(147./1400.)
-                spidx_err = -1
-                f2p_ratio_nvss = flux_nvss/flux_peak_nvss
-                f2p_ratio_tgss = -1
-
-            else:
-                print "!",
-                continue
-
-            # get coords
-            _, _, x, y = center_of_mass(idx)
-            ra, dec, _, _ = w.all_pix2world([[y,x,0,0]], 0)[0]
-
-            #print 'Flux NVSS:', flux_nvss, '+/-',flux_err_nvss,' - TGSS:', flux_tgss, '+/-', flux_err_nvss, '- status='+status
-            t.write('%.4f %.4f %.3f %.3f %.3f %.3f %.3f %.3f %.4f %.4f %.2f %.2f %i %s %s\n' \
-                % (ra, dec, flux_nvss*1e3, flux_err_nvss*1e3, rms_nvss*1e3, flux_tgss*1e3, flux_err_tgss*1e3, rms_tgss*1e3, \
-                spidx, spidx_err, f2p_ratio_nvss, f2p_ratio_tgss, np.sum(idx), status, os.path.basename(image_mask)))
-
-
 
     sys.exit()
 
@@ -308,9 +290,15 @@ for image_nvss in images_nvss:
     image_spidx_err = wdir+'spidx_err/'+os.path.basename(image_nvss).replace('NVSS_','spidx_').replace('.fits','-err.fits')
     if not os.path.exists(image_spidx) or not os.path.exists(image_spidx_err) or not os.path.exists(image_spidx_u) or not os.path.exists(image_spidx_l):
         print "Makign spidx map..."
-        snr_nvss = pyfits.getdata(image_nvss, 0)/pyfits.getdata(image_rms_nvss, 0)
+
+        data_nvss = np.array( pyfits.getdata(image_nvss, 0) )
+        data_rms_nvss =  np.array( pyfits.getdata(image_rms_nvss, 0) )
+        data_tgss = np.array( pyfits.getdata(image_tgss, 0) )
+        data_rms_tgss =  np.array( pyfits.getdata(image_rms_tgss, 0) )
+
+        snr_nvss = data_nvss/data_rms_nvss
         snr_nvss[snr_nvss<0] = 0
-        snr_tgss = pyfits.getdata(image_tgss, 0)/pyfits.getdata(image_rms_tgss, 0)
+        snr_tgss = data_tgss/data_rms_tgss
         snr_tgss[snr_tgss<0] = 0
         mask = pyfits.getdata(image_mask, 0)
         idx_g = (snr_nvss > 3) & (snr_tgss > 3) & (mask == 1)
@@ -320,16 +308,11 @@ for image_nvss in images_nvss:
         print "Number of upper lim: ", idx_u.sum()
         print "Number of lower lim: ", idx_l.sum()
 
-        data_nvss = np.array( pyfits.getdata(image_nvss, 0) )
-        data_rms_nvss =  np.array( pyfits.getdata(image_rms_nvss, 0) )
         data_nvss[idx_u] = 3*data_rms_nvss[idx_u] # set val for upper limits
-
-        data_tgss = np.array( pyfits.getdata(image_tgss, 0) )
-        data_rms_tgss =  np.array( pyfits.getdata(image_rms_tgss, 0) )
         data_tgss[idx_l] = 3*data_rms_nvss[idx_l] # set val for lower limits
 
-        data_spidx_g = np.zeros(shape=data_nvss[idx_g].shape)
-        data_spidx_g_err = np.zeros(shape=data_nvss[idx_g].shape)
+        #data_spidx_g = np.zeros(shape=data_nvss[idx_g].shape)
+        #data_spidx_g_err = np.zeros(shape=data_nvss[idx_g].shape)
 
         data_spidx_g, data_spidx_g_err = twopoint_spidx_bootstrap([147.,1400.], [data_tgss[idx_g],data_nvss[idx_g]], \
                     [data_rms_tgss[idx_g],data_rms_nvss[idx_g]], niter=10000)
