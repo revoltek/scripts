@@ -135,8 +135,8 @@ for image_nvss in images_nvss:
         print "# of islands found:", number_of_blobs
 
         # Creating new astropy Table
-        t = Table(names=('Source_id','RA','E_RA','DEC','E_DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','spidx','E_spidx','Rms_NVSS','Rms_TGSS','S_Code','Num_match','Num_unmatch','s2n','Mask'\
-                      dtype=('i','f','f','f','f','f','f','f','f','f','S1','S100'))
+        t = Table(names=('Source_id','RA','E_RA','DEC','E_DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','spidx','E_spidx','Rms_NVSS','Rms_TGSS','S_Code','Num_match','Num_unmatch','s2n','Mask'),\
+                  dtype=('i4','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','S1','i4','i4','f8','S100'))
 
         class t_surv():
             def __init__(self, cat, name):
