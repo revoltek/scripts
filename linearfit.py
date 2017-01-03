@@ -28,7 +28,40 @@ def f(x, B0, B1):
     return B0*x + B1
 
 
-def linear_fit_bootstrap(x, y, yerr=None):
+def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
+    """
+    Quick bootstrap for spectral index calulcation
+    freq: 2 array
+    flux: 2 or 2xN array
+    flux_err: 2 or 2xN array
+    N is the number of sources
+    """
+    # calculate spidx assuming [iter,source,freq_point] shapes
+    def spidx(freq, flux):
+        return np.log10(flux[:,:,0]/flux[:,:,1])/np.log10(freq[:,:,0]/freq[:,:,1])
+
+    freq = np.array(freq).astype(float)
+    flux = np.array(flux).astype(float)
+    flux_err = np.array(flux_err).astype(float)
+    # if only 1 source, add degenerate axis
+    if flux.shape == (2,): flux = np.expand_dims(flux, axis=1)
+    if flux_err.shape == (2,): flux_err = np.expand_dims(flux_err, axis=1)
+    flux = flux.T
+    freq_err = flux_err.T
+    nsource = flux.shape[0]
+
+    results = np.zeros(shape=(niter,nsource))
+    random_flux = np.resize(flux, (niter, nsource, 2)) + np.resize(flux_err, (niter, nsource, 2)) * np.random.randn(niter, nsource, 2)
+    random_flux[random_flux <= 0] = np.nan # remove nevative, this create a bias
+    freq = np.resize(freq, (niter, nsource, 2))
+    results = spidx(freq, random_flux)
+
+    mean = np.nanmean(results,axis=0)
+    err = np.nanstd(results,axis=0)
+    return mean, err
+
+
+def linear_fit_bootstrap(x, y, yerr=None, niter=10000):
     # An issue arises with scipy.curve_fit when errors in the y data points
     # are given.  Only the relative errors are used as weights, so the fit
     # parameter errors, determined from the covariance do not depended on the
@@ -64,8 +97,9 @@ def linear_fit_bootstrap(x, y, yerr=None):
     residuals = errfunc( pfit, x, y )
     s_res = np.std(residuals)
     ps = []
+    # TODO: remove cycle and use only array shapes
     # n random data sets are generated and fitted
-    for i in range(1000):
+    for i in range(niter):
       if yerr is None:
           randomDelta = np.random.normal(0., s_res, len(y))
           randomdataY = y + randomDelta

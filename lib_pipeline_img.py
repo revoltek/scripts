@@ -72,7 +72,7 @@ def flatten(f, channel=0, freqaxis=0):
     return header,f[0].data[slice]
 
 
-def size_from_reg(filename, region, coord, pixscale, pad=2):
+def size_from_reg(filename, region, coord, pixscale, pad=1.2):
     """
     find the minimum image size to cover a certain region
     pad: multiplicative factor on the final size
@@ -103,8 +103,8 @@ def size_from_reg(filename, region, coord, pixscale, pad=2):
 #    print 'min ra - min dec (sky)', min_ra, min_dec
 #    print 'max ra - max dec (sky)', max_ra, max_dec
 
-    max_ra_size = max([abs(coord[0] - min_ra), abs(coord[0] - max_ra)])*3600 # arcsec
-    max_dec_size = max([abs(coord[1] - min_dec), abs(coord[1] - max_dec)])*3600 # arcsec
+    max_ra_size = 2*max([abs(coord[0] - min_ra), abs(coord[0] - max_ra)])*3600 # arcsec
+    max_dec_size = 2*max([abs(coord[1] - min_dec), abs(coord[1] - max_dec)])*3600 # arcsec
 
     return int(pad*max([max_ra_size, max_dec_size])/pixscale)
 
@@ -192,7 +192,7 @@ def get_coord_centroid(filename, region):
     ra, dec = w.all_pix2world(ra_pix, dec_pix, 0, 0, 0, ra_dec_order=True)
 
     fits.close()
-    return ra, dec
+    return float(ra), float(dec)
 
 
 
