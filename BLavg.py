@@ -112,6 +112,7 @@ for ant in itertools.product(set(ant1), set(ant2)):
     uvw = all_uvw[sel,:]
     uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
     dist = np.mean(uvw_dist) / 1.e3
+    if np.isnan(dist): continue # fix for missing anstennas
     stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
     stddev = stddev/timepersample # in samples
     logging.debug("For BL %i - %i (dist = %.1f km): sigma=%.2f samples." % (ant[0], ant[1], dist, stddev))
