@@ -53,8 +53,8 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 # flag below elev 35 and bad stations, flags will propagate
 logging.info('Flagging...')
 for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=!CS031LBA\;!RS409LBA\;!RS310LBA\;!RS210LBA\;!RS407LBA msin.datacolumn=DATA',log=msout+'_flag.log', cmd_type='NDPPP')
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=!CS031LBA\;!RS409LBA msin.datacolumn=DATA', log=msout+'_flag.log', cmd_type='NDPPP')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA',log=m+'_flag.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', log=ms+'_flag.log', cmd_type='NDPPP')
 s.run(check=True)
     
 ###############################################
