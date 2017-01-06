@@ -18,3 +18,4 @@ cal.solint = 1
 cal.nchan = 1
 cal.debuglevel=0
 cal.minblperant = 10 # bug workaround
+cal.propagatesolutions = False
