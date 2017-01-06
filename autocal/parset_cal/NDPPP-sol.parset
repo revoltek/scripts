@@ -9,7 +9,6 @@ steps = [filter, cal]
 filter.blrange = [3000, 1e30]
 
 cal.type = gaincal
-cal.parmdb = 
 #cal.caltype = fulljones
 cal.caltype = diagonal
 cal.maxiter = 100
