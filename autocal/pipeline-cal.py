@@ -13,6 +13,7 @@ patch = '3C196'
 #patch = '3C295'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
+# for survey also remove bad ant at flag time
 #datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
 datadir = '.'
 
@@ -53,7 +54,7 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 logging.info('Flagging...')
 for ms in mss:
 #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=!CS031LBA\;!RS409LBA\;!RS310LBA\;!RS210LBA\;!RS407LBA msin.datacolumn=DATA',log=msout+'_flag.log', cmd_type='NDPPP')
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=!CS031LBA\;!RS409LBA msin.datacolumn=DATA',log=msout+'_flag.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag.baseline=!CS031LBA\;!RS409LBA msin.datacolumn=DATA', log=msout+'_flag.log', cmd_type='NDPPP')
 s.run(check=True)
     
 ###############################################
@@ -106,7 +107,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ################################################
@@ -188,7 +189,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #############################################################

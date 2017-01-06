@@ -12,21 +12,26 @@
 # last high/low resolution images + masks + empty images (CORRECTED_DATA) are copied in the "self/images" dir
 # h5parm solutions and plots are copied in the "self/solutions" dir
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
-#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel'
-#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skydb'
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # REMOVE BEAM
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb' # REMOVE BEAM
-niter = 2
-
-#######################################################################################
-
 import sys, os, glob, re
 import numpy as np
 from lofar import bdsm
 import pyrap.tables as pt
 from lib_pipeline import *
 from make_mask import make_mask
+
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
+
+# Tooth
+#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+
+# Survey
+skymodel = '/home/stsf309/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+sourcedb = '/home/stsf309/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+
+niter = 2
+
+#######################################################################################
 
 set_logger()
 check_rm('logs')
@@ -92,7 +97,7 @@ for ms in mss:
     check_rm(ms+'/'+sourcedb_basename)
     os.system('cp -r '+sourcedb+' '+ms)
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
 s.run(check=True)
 
 ## 1. find and remove FR
