@@ -19,3 +19,4 @@ cal.usechannelfreq = False
 cal.beammode = array_factor
 cal.nchan = 1
 cal.solint = 1
+cal.propagatesolutions = False
