@@ -1,0 +1,9 @@
+msin = 
+msin.datacolumn = DATA
+msin.baseline = [CR]S*&&
+msout = .
+
+steps = [flag]
+
+flag.type = preflagger
+flag.elevation = 0deg..35deg
