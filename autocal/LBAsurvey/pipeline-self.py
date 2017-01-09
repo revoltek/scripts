@@ -272,7 +272,7 @@ for c in xrange(niter):
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 8000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -285,7 +285,7 @@ for c in xrange(niter):
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 3 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -315,7 +315,7 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-threshold 3 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
+            -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -325,7 +325,7 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-threshold 3 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
+            -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 3000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
