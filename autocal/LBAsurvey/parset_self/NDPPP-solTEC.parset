@@ -16,5 +16,4 @@ cal.maxiter = 50
 cal.usemodelcolumn = True
 cal.solint = 1
 cal.nchan = 1
-cal.debuglevel=0
-cal.propagatesolutions = False
+cal.propagatesolutions = True
