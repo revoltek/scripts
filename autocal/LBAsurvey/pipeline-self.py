@@ -22,12 +22,12 @@ from make_mask import make_mask
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 
 # Tooth
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
 
 # Survey
-#skymodel = '/home/stsf309/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
-#sourcedb = '/home/stsf309/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
 
 niter = 2
 
