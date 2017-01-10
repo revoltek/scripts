@@ -3,7 +3,10 @@ msin.datacolumn = DATA
 msin.baseline = [CR]S*&&
 msout = .
 
-steps = [flag]
+steps = [flag1, flag2]
 
-flag.type = preflagger
-flag.elevation = 0deg..35deg
+flag1.type = preflagger
+flag1.baseline = 
+
+flag2.type = preflagger
+flag2.elevation = 0deg..35deg
