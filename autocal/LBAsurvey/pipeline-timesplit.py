@@ -13,10 +13,10 @@ from lib_pipeline import *
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
 ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
-datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-globaldb = '../3c196/globaldb' #TODO: copy form repository
-#datadir = '.' # tooth
-#globaldb = 'globaldb-fulltrans' #NOTE: edit parset_timesplit/NDPPP-cor.parset
+#datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
+#globaldb = '../3c196/globaldb' #TODO: copy form repository
+datadir = '.' # tooth
+globaldb = 'globaldb' #NOTE: edit parset_timesplit/NDPPP-cor.parset
 
 ##################################################################################################
 
@@ -59,10 +59,10 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 
 ################################################
 # Initial processing
-logging.warning('Fix beam table')
-for ms in mss:
-    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-s.run(check=False)
+#logging.warning('Fix beam table')
+#for ms in mss:
+#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+#s.run(check=False)
 
 ####################################################
 # Beam correction DATA -> CORRECTED_DATA (beam corrected)

@@ -12,21 +12,26 @@
 # last high/low resolution images + masks + empty images (CORRECTED_DATA) are copied in the "self/images" dir
 # h5parm solutions and plots are copied in the "self/solutions" dir
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
-#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skymodel'
-#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.HBA150.skydb'
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # REMOVE BEAM
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb' # REMOVE BEAM
-niter = 2
-
-#######################################################################################
-
 import sys, os, glob, re
 import numpy as np
 from lofar import bdsm
 import pyrap.tables as pt
 from lib_pipeline import *
 from make_mask import make_mask
+
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
+
+# Tooth
+#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+
+# Survey
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+
+niter = 2
+
+#######################################################################################
 
 set_logger()
 check_rm('logs')
@@ -92,7 +97,7 @@ for ms in mss:
     check_rm(ms+'/'+sourcedb_basename)
     os.system('cp -r '+sourcedb+' '+ms)
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
 s.run(check=True)
 
 ## 1. find and remove FR
@@ -106,6 +111,8 @@ s.run(check=True, max_threads=2)
 
 #################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
+# TODO: merge in a single step with new NDPPP
+# TODO: calibrate also fast CSA?
 logging.info('Calibrating TEC...')
 for ms in mss:
     check_rm(ms+'/instrument-tecinit')
@@ -118,10 +125,11 @@ s.run(check=True)
 
 ##############################################################################################
 # Solve G SB.MS:CORRECTED_DATA (only solve)
+# NOTE: test with solint=10 and nchan=8
 logging.info('Calibrating G...')
 for ms in mss:
     check_rm(ms+'/instrument-ginit')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=30 cal.nchan=4', log=ms+'_sol-g.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=10 cal.nchan=8', log=ms+'_sol-g.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ##################################################################################
@@ -156,23 +164,25 @@ for i, ms in enumerate(mss):
 
 logging.info('Running LoSoTo...')
 check_rm('plots')
-check_rm('cal-fr.h5')
-s.add('H5parm_importer.py -v cal-fr.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
+check_rm('global-fr.h5')
+s.add('H5parm_importer.py -v global-fr.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
 s.run(check=True)
-s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-plot.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-plot.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('losoto -v cal-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-s.add('H5parm_exporter.py -v -t rotationmeasure000 cal-fr.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
+s.add('H5parm_exporter.py -v -t rotationmeasure000 global-fr.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
 os.system('mv plots self/solutions/plots-fr')
-os.system('mv cal-fr.h5 self/solutions')
+os.system('mv global-fr.h5 self/solutions')
 
 for i, ms in enumerate(mss):
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument-fr')
     logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
     os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
+
+sys.exit(1)
 
 ###################################################################################################
 # To linear - SB.MS:DATA -> SB.MS:CORRECTED_DATA (linear)
@@ -263,8 +273,8 @@ for c in xrange(niter):
     # TEST: go to 5k from 8k and to 10arcsec from 5 arcsec and from 5000 to 2500 in size
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.7 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 8000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -273,11 +283,11 @@ for c in xrange(niter):
     s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
                params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
     s.run(check=True)
-    # TODO: remove re-imaging and just keep CC into mask
+    # TODO: automasking with wsclean 2.1
     logging.info('Cleaning with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -niter 20000 -no-update-model-required -maxuv-l 5000 -mgain 0.7 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -307,7 +317,7 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -niter 50000 -no-update-model-required -maxuv-l 2000 -mgain 0.6 \
+            -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -317,7 +327,7 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -niter 10000 -no-update-model-required -maxuv-l 2000 -mgain 0.6 \
+            -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 3000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
             log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)

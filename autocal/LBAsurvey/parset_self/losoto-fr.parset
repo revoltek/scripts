@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [reweight, plotPi, faraday, plotFR, residuals, plotPr]
+LoSoTo.Steps = [plotPi, plotAi, faraday, plotFR, residuals, plotPr]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -9,10 +9,10 @@ LoSoTo.dir = []
 LoSoTo.Ncpu = 10
 
 # flag
-LoSoTo.Steps.reweight.Operation = REWEIGHT
-LoSoTo.Steps.reweight.WeightVal = 0.
-LoSoTo.Steps.reweight.ant = [RS409LBA, CS031LBA]
-LoSoTo.Steps.reweight.FlagBad = False
+#LoSoTo.Steps.reweight.Operation = REWEIGHT
+#LoSoTo.Steps.reweight.WeightVal = 0.
+#LoSoTo.Steps.reweight.ant = [RS409LBA, CS031LBA]
+#LoSoTo.Steps.reweight.FlagBad = False
 
 LoSoTo.Steps.plotPi.Operation = PLOT
 LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
@@ -22,6 +22,13 @@ LoSoTo.Steps.plotPi.PlotFlag = True
 LoSoTo.Steps.plotPi.Prefix = plots/ph_
 LoSoTo.Steps.plotPi.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPi.MinMax = [-3.14,3.14]
+
+LoSoTo.Steps.plotAi.Operation = PLOT
+LoSoTo.Steps.plotAi.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi.Axes = [time,freq]
+LoSoTo.Steps.plotAi.TableAxis = ant
+LoSoTo.Steps.plotAi.PlotFlag = True
+LoSoTo.Steps.plotAi.Prefix = plots/amp_
 
 # faraday rotation extraction
 LoSoTo.Steps.faraday.Operation = FARADAY
