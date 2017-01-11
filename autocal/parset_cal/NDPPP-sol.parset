@@ -9,7 +9,6 @@ steps = [filter, cal]
 filter.blrange = [3000, 1e30]
 
 cal.type = gaincal
-cal.parmdb = 
 #cal.caltype = fulljones
 cal.caltype = diagonal
 cal.maxiter = 100
@@ -20,3 +19,4 @@ cal.usechannelfreq = False
 cal.beammode = array_factor
 cal.nchan = 1
 cal.solint = 1
+cal.propagatesolutions = False

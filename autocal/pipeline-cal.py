@@ -13,8 +13,9 @@ patch = '3C196'
 #patch = '3C295'
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
-datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
-#datadir = '.'
+# for survey also remove bad ant at flag time
+#datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+datadir = '.'
 
 ###################################################
 
@@ -42,12 +43,19 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
         if os.path.exists(msout): continue
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.baseline=!CS031LBA\;!RS409LBA\;!RS310LBA\;!RS210LBA\;!RS407LBA msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
                 log=msout+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
     nchan = nchan / avg_factor_f
     timeint = timeint * avg_factor_t
     mss = sorted(glob.glob('*-avg.MS'))
+
+# flag below elev 35 and bad stations, flags will propagate
+logging.info('Flagging...')
+for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA',log=m+'_flag.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', log=ms+'_flag.log', cmd_type='NDPPP')
+s.run(check=True)
     
 ###############################################
 # Initial processing (2/2013->2/2014)
@@ -99,7 +107,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ################################################
@@ -181,7 +189,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.parmdb='+ms+'/instrument cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #############################################################

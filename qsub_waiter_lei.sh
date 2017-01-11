@@ -25,7 +25,7 @@ until [[ $id =~ ^[0-9]+$ ]]; do
 #PBS -M astro@voo.it
 #PBS -m a
 #PBS -N LBApipe
-#PBS -l walltime=48:00:00
+#PBS -l walltime=24:00:00
 #PBS -l nodes=1:ppn=$proc
 #PBS -j oe
 #PBS -o /dev/null

@@ -1,9 +1,0 @@
-#CRTFv0 CASA Region Text Format version 0
-ellipse [[06:06:56.73073, +041.40.53.2037], [94.5813arcsec, 84.7122arcsec], 90.00000000deg] coord=J2000, corr=[I], linewidth=1, linestyle=-, symsize=1, symthick=1, color=magenta, font="DejaVu Sans", fontsize=11, fontstyle=normal, usetex=false
-
-poly [[06:03:49.59251, +042.09.57.8221], [06:03:40.67450, +042.15.46.2029], [06:04:35.10751, +042.20.24.6413], [06:04:18.34304, +042.24.27.7866], [06:03:10.96747, +042.22.24.3072], [06:02:49.13003, +042.16.23.3738], [06:02:58.11526, +042.12.52.0594], [06:03:12.67839, +042.08.18.5429], [06:03:33.36470, +042.08.06.0711]] coord=J2000, corr=[I], linewidth=1, linestyle=-, symsize=1, symthick=1, color=magenta, font="DejaVu Sans", fontsize=11, fontstyle=normal, usetex=false
-
-ellipse [[05:56:51.37047, +041.44.30.5299], [95.8864arcsec, 71.3935arcsec], 90.00000000deg] coord=J2000, corr=[I], linewidth=1, linestyle=-, symsize=1, symthick=1, color=magenta, font="DejaVu Sans", fontsize=11, fontstyle=normal, usetex=false
-
-box [[05:58:03.81368, +042.54.11.5257], [05:55:53.52733, +043.13.28.6812]] coord=J2000, linewidth=1, linestyle=-, symsize=1, symthick=1, color=magenta, font="DejaVu Sans", fontsize=11, fontstyle=normal, usetex=false
-

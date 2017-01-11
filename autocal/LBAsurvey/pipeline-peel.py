@@ -173,12 +173,6 @@ def peel(dd):
     allmss = sorted(glob.glob('mss/TC*.MS'))
     phasecentre = get_phase_centre(allmss[0])
     
-    tcs = []
-    for ms in allmss:
-        tc = re.findall(r'\d+', ms)[0] # time chunk number
-        tcs.append(tc)
-    tcs = list(set(tcs))
-
     centroid_ra, centroid_dec = get_coord_centroid(glob.glob('self/models/*.fits')[0], 'regions/'+dd['reg'])
     dd['coord'] = [centroid_ra, centroid_dec]
     modeldir = 'peel/'+dd['name']+'/models/'
@@ -199,22 +193,22 @@ def peel(dd):
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_facet')
         blank_image(model, 'regions/'+dd['reg_facet'], outfile, inverse=True)
 
-    clean('emptybefore', allmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
-
-    #####################################################################################################
-    # Add DD cal model - mss/TC*.MS:MODEL_DATA (high+low resolution model)
-    logging.info('Ft DD calibrator model...')
-    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
-            -scale 10arcsec -channelsout 10 '+concat_ms, \
-            log='wscleanPRE-dd.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
-
-    ###########################################################################################################
-    # ADD model mss/TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> mss/TC*.MS:CORRECTED_DATA (empty data + DD cal from model)
-    logging.info('Add model...')
-    for ms in allmss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
-    s.run(check=True)
+#    clean('emptybefore', allmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
+#
+#    #####################################################################################################
+#    # Add DD cal model - mss/TC*.MS:MODEL_DATA (high+low resolution model)
+#    logging.info('Ft DD calibrator model...')
+#    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
+#            -scale 10arcsec -channelsout 10 '+concat_ms, \
+#            log='wscleanPRE-dd.log', cmd_type='wsclean', processors='max')
+#    s.run(check=True)
+#
+#    ###########################################################################################################
+#    # ADD model mss/TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> mss/TC*.MS:CORRECTED_DATA (empty data + DD cal from model)
+#    logging.info('Add model...')
+#    for ms in allmss:
+#        s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+#    s.run(check=True)
     
     # avg and ph-shift (to 1 chan/SB, 5 sec) -  mss/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, avg, phase shifted)
     logging.info('Shifting+averaging (CORRECTED_DATA)...')
