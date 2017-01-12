@@ -22,12 +22,12 @@ from make_mask import make_mask
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 
 # Tooth
-#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
-#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
 
 # Survey
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
 
 niter = 2
 
@@ -88,7 +88,7 @@ mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 nchan = find_nchan(mss[0])
 concat_ms = 'mss/concat.MS'
 
-###################################################################################################
+#####################################################################################################
 # Add model to MODEL_DATA
 logging.info('Add model to MODEL_DATA...')
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
@@ -109,7 +109,7 @@ for ms in mss:
     s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
 s.run(check=True, max_threads=2)
 
-#################################################################################################
+##################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
 # TODO: merge in a single step with new NDPPP
 # TODO: calibrate also fast CSA?
@@ -118,12 +118,13 @@ for ms in mss:
     check_rm(ms+'/instrument-tecinit')
     s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tecinit', log=ms+'_sol-tecinit.log', cmd_type='NDPPP')
 s.run(check=True)
+sys.exit()
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA \
             cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
 s.run(check=True)
 
-##############################################################################################
+###############################################################################################
 # Solve G SB.MS:CORRECTED_DATA (only solve)
 # NOTE: test with solint=10 and nchan=8
 logging.info('Calibrating G...')
@@ -132,7 +133,7 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-ginit cal.solint=10 cal.nchan=8', log=ms+'_sol-g.log', cmd_type='NDPPP')
 s.run(check=True)
 
-##################################################################################
+###################################################################################
 # Preapre fake FR parmdb
 logging.info('Prepare fake FR parmdb...')
 for ms in mss:
@@ -181,8 +182,6 @@ for i, ms in enumerate(mss):
     check_rm(ms+'/instrument-fr')
     logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
     os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
-
-sys.exit(1)
 
 ###################################################################################################
 # To linear - SB.MS:DATA -> SB.MS:CORRECTED_DATA (linear)
