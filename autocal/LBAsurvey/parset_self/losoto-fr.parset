@@ -8,12 +8,6 @@ LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
 
-# flag
-#LoSoTo.Steps.reweight.Operation = REWEIGHT
-#LoSoTo.Steps.reweight.WeightVal = 0.
-#LoSoTo.Steps.reweight.ant = [RS409LBA, CS031LBA]
-#LoSoTo.Steps.reweight.FlagBad = False
-
 LoSoTo.Steps.plotPi.Operation = PLOT
 LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPi.Axes = [time,freq]
