@@ -90,15 +90,15 @@ concat_ms = 'mss/concat.MS'
 
 #####################################################################################################
 # Add model to MODEL_DATA
-logging.info('Add model to MODEL_DATA...')
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-#sourcedb_basename = sourcedb.split('/')[-1]
-#for ms in mss:
-#    check_rm(ms+'/'+sourcedb_basename)
-#    os.system('cp -r '+sourcedb+' '+ms)
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
-#s.run(check=True)
+logging.info('Add model to MODEL_DATA...')
+sourcedb_basename = sourcedb.split('/')[-1]
+for ms in mss:
+    check_rm(ms+'/'+sourcedb_basename)
+    os.system('cp -r '+sourcedb+' '+ms)
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
+s.run(check=True)
 
 ## 1. find and remove FR
 
