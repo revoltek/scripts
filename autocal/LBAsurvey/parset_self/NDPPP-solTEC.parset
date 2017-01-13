@@ -1,21 +1,19 @@
 msin =
-#msin.datacolumn = SMOOTHED_DATA
-msin.datacolumn = DATA
+msin.datacolumn = SMOOTHED_DATA
 msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, cal]
 
-filter.blrange = [500, 1e30]
+filter.blrange = [100, 1e30]
 
 cal.type = gaincal
 cal.parmdb = 
-cal.caltype = tec
-#cal.caltype = tecandphase
-cal.maxiter = 50
+#cal.caltype = tec
+cal.caltype = tecandphase
+cal.maxiter = 500
 cal.usemodelcolumn = True
 cal.solint = 1
 cal.nchan = 1
 cal.propagatesolutions = True
-cal.debuglevel = 0

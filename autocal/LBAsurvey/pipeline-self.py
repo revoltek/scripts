@@ -22,12 +22,12 @@ from make_mask import make_mask
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 
 # Tooth
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
 
 # Survey
-#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
-#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
 
 niter = 2
 
@@ -92,13 +92,13 @@ concat_ms = 'mss/concat.MS'
 # Add model to MODEL_DATA
 logging.info('Add model to MODEL_DATA...')
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-sourcedb_basename = sourcedb.split('/')[-1]
-for ms in mss:
-    check_rm(ms+'/'+sourcedb_basename)
-    os.system('cp -r '+sourcedb+' '+ms)
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
-s.run(check=True)
+#sourcedb_basename = sourcedb.split('/')[-1]
+#for ms in mss:
+#    check_rm(ms+'/'+sourcedb_basename)
+#    os.system('cp -r '+sourcedb+' '+ms)
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
+#s.run(check=True)
 
 ## 1. find and remove FR
 
@@ -107,7 +107,7 @@ s.run(check=True)
 logging.info('BL-based smoothing...')
 for ms in mss:
     s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True, max_threads=2)
+s.run(check=True, max_threads=6)
 
 ##################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
@@ -118,7 +118,6 @@ for ms in mss:
     check_rm(ms+'/instrument-tecinit')
     s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tecinit', log=ms+'_sol-tecinit.log', cmd_type='NDPPP')
 s.run(check=True)
-sys.exit()
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA \
             cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
@@ -185,11 +184,10 @@ for i, ms in enumerate(mss):
 
 ###################################################################################################
 # To linear - SB.MS:DATA -> SB.MS:CORRECTED_DATA (linear)
-# TODO: better stay in circular?
 logging.info('Convert to linear...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -r -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=1)
+s.run(check=True)
 
 ####################################################
 # Correct FR SB.MS:CORRECTED_DATA->DATA_INIT
@@ -200,10 +198,11 @@ s.run(check=True)
 
 ###################################################################################################
 # To circular - SB.MS:DATA_INIT -> SB.MS:INIT_DATA (circular)
+# TODO: better stay in circular?
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA_INIT -o '+ms+':DATA_INIT', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=1)
+s.run(check=True)
 
 # 2: recalibrate without FR
 
@@ -214,8 +213,8 @@ for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True, max_threads=2)
 
-####################################################################################################
-## Self-cal cycle
+#####################################################################################################
+# Self-cal cycle
 for c in xrange(niter):
     logging.info('Start selfcal cycle: '+str(c))
 
@@ -224,7 +223,7 @@ for c in xrange(niter):
     logging.info('BL-based smoothing...')
     for ms in mss:
         s.add('BLavg.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
-    s.run(check=True, max_threads=2)
+    s.run(check=True, max_threads=6)
 
     if c == 0:
         # on first cycle concat (need to be done after smoothing)
@@ -272,34 +271,38 @@ for c in xrange(niter):
     # TEST: go to 5k from 8k and to 10arcsec from 5 arcsec and from 5000 to 2500 in size
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
+    # beam corrected: -use-differential-lofar-beam'
     s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 8000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
+            -scale 12arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    maskname = imagename+'.newmask'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname)
-    s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-               params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
-    s.run(check=True)
-    # TODO: automasking with wsclean 2.1
-    logging.info('Cleaning with mask (cycle: '+str(c)+')...')
-    imagename = 'img/wideM-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
-            log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
+
+
+    #maskname = imagename+'.newmask'
+    #make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname)
+    #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
+    #           params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
+    #s.run(check=True)
+    #logging.info('Cleaning with mask (cycle: '+str(c)+')...')
+    #imagename = 'img/wideM-'+str(c)
+    #s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    #        -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
+    #        -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
+    #        log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    #s.run(check=True)
     
     logging.info('Predict...')
-    s.add('wsclean -predict -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
-            -scale 10arcsec -channelsout 10 '+concat_ms, \
+    #s.add('wsclean -predict -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
+    #        -scale 10arcsec -channelsout 10 '+concat_ms, \
+    #        log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     ####################################################################
     # FAST VERSION (no low-res)
-    #continue
+    continue
     ####################################################################
 
     logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
@@ -349,7 +352,6 @@ for c in xrange(niter):
     s.run(check=True)
 
     # Flag on residuals
-    # TODO: add Sarod code
     logging.info('Flagging residuals...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
