@@ -278,7 +278,6 @@ for c in xrange(niter):
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-
     #maskname = imagename+'.newmask'
     #make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname)
     #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \

@@ -9,6 +9,15 @@ LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
 
+# TEST: flag bad ionospheric moments
+LoSoTo.Steps.flag.Operation = FLAG
+LoSoTo.Steps.flag.Soltab = [sol000/scalarphase000]
+LoSoTo.Steps.flag.Axes = time
+LoSoTo.Steps.flag.MaxCycles = 3
+LoSoTo.Steps.flag.MaxRms = 0
+LoSoTo.Steps.flag.FixRmsNoise = 1
+LoSoTo.Steps.flag.WindowNoise = 21
+
 # plot CSP+TEC
 LoSoTo.Steps.plotCSPTEC.Operation = PLOT
 LoSoTo.Steps.plotCSPTEC.Soltab = [sol000/scalarphase000]
