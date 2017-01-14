@@ -11,12 +11,17 @@ import pyrap.tables as pt
 from lib_pipeline import *
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
-ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
-#datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-#globaldb = '../3c196/globaldb' #TODO: copy form repository
-datadir = '.' # tooth
-globaldb = 'globaldb' #NOTE: edit parset_timesplit/NDPPP-cor.parset
+
+# survey
+ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
+datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
+globaldb = '../3c196/globaldb' #TODO: copy form repository
+
+# tooth
+#ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
+#datadir = '.' # tooth
+#globaldb = 'globaldb' #NOTE: edit parset_timesplit/NDPPP-cor.parset
 
 ##################################################################################################
 

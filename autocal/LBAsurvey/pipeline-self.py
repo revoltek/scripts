@@ -266,18 +266,26 @@ for c in xrange(niter):
     ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
 
+    # do beam-corrected+deeper image at last cycle
+    if c == niter-1:
+        logging.info('Cleaning (cycle: '+str(c)+')...')
+        imagename = 'img/wideBeam'
+        # beam corrected: -use-differential-lofar-beam'
+        s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+                -scale 12arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+                -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5  -apply-primary-beam -use-differential-lofar-beam'+concat_ms, \
+                log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+        s.run(check=True)
+
     # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
     # -use-differential-lofar-beam -baseline-averaging
-    # TEST: go to 5k from 8k and to 10arcsec from 5 arcsec and from 5000 to 2500 in size
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
-    # beam corrected: -use-differential-lofar-beam'
     s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-
 
     #maskname = imagename+'.newmask'
     #make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname)
@@ -292,17 +300,15 @@ for c in xrange(niter):
     #        log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     #s.run(check=True)
     
+    # update-model cannot be done in wsclean because of baseline-averaging
     logging.info('Predict...')
-    #s.add('wsclean -predict -name ' + imagename + ' -size 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
-    #        -scale 10arcsec -channelsout 10 '+concat_ms, \
-    #        log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     ####################################################################
     # FAST VERSION (no low-res)
-    continue
+    #continue
     ####################################################################
 
     logging.info('Moving MODEL_DATA to MODEL_DATA_HIGHRES...')
@@ -319,29 +325,28 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
+            -scale 20arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    # TODO: remove re-imaging and just keep CC into mask
-    maskname = imagename+'.newmask'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshpix=6) # a bit higher treshold
-    logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
-    imagename = 'img/wideM-lr-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 3000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
-            log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
 
-    # resample at high res to avoid FFT problem on long baselines
+    #maskname = imagename+'.newmask'
+    #make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshpix=6) # a bit higher treshold
+    #logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
+    #imagename = 'img/wideM-lr-'+str(c)
+    #s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    #        -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 3000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
+    #        -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
+    #        log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    #s.run(check=True)
+
+    # resample at high res to avoid FFT problem on long baselines and predict
     logging.info('Predict...')
     for model in glob.glob(imagename+'*model.fits'):
         model_out = model.replace(imagename,imagename+'-resamp')
         s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
     s.run(check=True)
-    s.add('wsclean -predict -name ' + imagename + '-resamp -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
-            -scale 10arcsec -channelsout 10 '+concat_ms, \
+    s.add('wsclean -predict -name ' + imagename + '-resamp -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
             log='wscleanPRE-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
