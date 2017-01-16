@@ -5,6 +5,8 @@ import numpy as np
 import pyrap.tables as pt
 from lib_pipeline import *
 
+parset_dir = '/home/fdg/scripts/autocal/parset_cal'
+
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
 patch = '3C196'
@@ -12,10 +14,15 @@ patch = '3C196'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
 
-parset_dir = '/home/fdg/scripts/autocal/parset_cal'
-# for survey also remove bad ant at flag time
-#datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
-datadir = '.'
+if 'tooth' in os.getcwd():
+    # tooth
+    datadir = '.'
+    do_fixbeamtable = True
+else:
+    # survey
+    print "IMPORTANT: for survey also remove bad ant at flag time"
+    datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+    do_fixbeamtable = False
 
 ###################################################
 
@@ -59,10 +66,11 @@ s.run(check=True)
     
 ###############################################
 # Initial processing (2/2013->2/2014)
-#logging.warning('Fix beam table...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
+if do_fixbeamtable:
+    logging.warning('Fix beam table...')
+    for ms in mss:
+        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+    s.run(check=False)
 
 ############################################
 # Prepare output parmdb
