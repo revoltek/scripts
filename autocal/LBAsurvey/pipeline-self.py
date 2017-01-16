@@ -21,13 +21,14 @@ from make_mask import make_mask
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 
-# Tooth
-#skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
-#sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
-
-# Survey
-skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
-sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+if 'tooth' in os.getcwd():
+    # Tooth
+    skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+    sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+else:
+    # Survey
+    skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+    sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
 
 niter = 2
 
@@ -107,7 +108,7 @@ s.run(check=True)
 logging.info('BL-based smoothing...')
 for ms in mss:
     s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True, max_threads=6)
+s.run(check=True, max_threads=4)
 
 ##################################################################################################
 # solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
@@ -223,7 +224,7 @@ for c in xrange(niter):
     logging.info('BL-based smoothing...')
     for ms in mss:
         s.add('BLavg.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
-    s.run(check=True, max_threads=6)
+    s.run(check=True, max_threads=4)
 
     if c == 0:
         # on first cycle concat (need to be done after smoothing)
@@ -270,9 +271,9 @@ for c in xrange(niter):
     if c == niter-1:
         logging.info('Cleaning (cycle: '+str(c)+')...')
         imagename = 'img/wideBeam'
-        # beam corrected: -use-differential-lofar-beam'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-                -scale 12arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+        # beam corrected: -use-differential-lofar-beam' - no baseline avg!
+        s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 12arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -mgain 0.8 \
                 -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -apply-primary-beam -use-differential-lofar-beam '+concat_ms, \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
@@ -325,7 +326,7 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+            -scale 20arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
             -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -382,20 +383,21 @@ s.run(check=True)
 # Copy last *model
 logging.info('Coadd+copy models...')
 # resample at high res to avoid FFT problem on long baselines
-for model in glob.glob('img/wideM-'+str(c)+'*-model.fits'):
+for model in glob.glob('img/wide-'+str(c)+'*-model.fits'):
     if "MFS" in model: continue
-    model_lr = model.replace('wideM-'+str(c),'wideM-lr-'+str(c)+'-resamp')
-    model_out = model.replace('img/wideM-'+str(c),'self/models/coadd')
+    model_lr = model.replace('wide-'+str(c),'wide-lr-'+str(c)+'-resamp')
+    model_out = model.replace('img/wide-'+str(c),'self/models/coadd')
     s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
 s.run(check=True) 
 
 # Copy images
-[ os.system('mv img/wide-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
-[ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
+#[ os.system('mv img/wide-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
+#[ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
+os.system('mv img/wideBeam-MFS-image.fits self/images')
 [ os.system('mv img/wide-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 [ os.system('mv img/wide-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wideM-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+#[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+#[ os.system('mv img/wideM-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 os.system('mv img/empty-image.fits self/images')
 os.system('mv logs self')
 
