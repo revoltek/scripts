@@ -17,7 +17,7 @@ if 'tooth' in os.getcwd():
     # tooth
     ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
     datadir = '.' # tooth
-    globaldb = 'globaldb' #NOTE: edit parset_timesplit/NDPPP-cor.parset
+    globaldb = 'globaldb'
     do_fixbeamtable = True
 else:
     # survey
