@@ -20,6 +20,7 @@ from lib_pipeline import *
 from make_mask import make_mask
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
+niter = 2
 
 if 'tooth' in os.getcwd():
     # Tooth
@@ -30,11 +31,9 @@ else:
     skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
 
-niter = 2
-
 #######################################################################################
 
-set_logger()
+set_logger('pipeline-self.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 
@@ -52,6 +51,7 @@ def losoto(c, mss, parset, instrument_in='instrument', instrument_out='instrumen
 
     for num, ms in enumerate(mss):
         if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+        logging.debug('Copy: '+ms+'/'+instrument_in+' -> globaldb/'+instrument_in+'-'+str(num))
         os.system('cp -r '+ms+'/'+instrument_in+' globaldb/'+instrument_in+'-'+str(num))
 
     h5parm = 'global-c'+str(c)+'.h5'
@@ -66,6 +66,7 @@ def losoto(c, mss, parset, instrument_in='instrument', instrument_out='instrumen
 
     for num, ms in enumerate(mss):
         check_rm(ms+'/'+instrument_out)
+        logging.debug('Copy: globaldb/sol000_/'+instrument_in+'-'+str(num)+' -> '+ms+'/'+instrument_out)
         os.system('mv globaldb/sol000_'+instrument_in+'-'+str(num)+' '+ms+'/'+instrument_out)
     os.system('mv plots self/solutions/plots-c'+str(c))
     os.system('mv '+h5parm+' self/solutions/')
@@ -158,9 +159,9 @@ for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
     num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
+    logging.debug('Copy: '+ms+'/instrument -> globaldb/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
+    logging.debug('Copy: '+ms+'/instrument-fr -> globaldb-fr/instrument-'+str(num))
     os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
 
 logging.info('Running LoSoTo...')
