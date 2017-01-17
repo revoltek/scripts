@@ -28,7 +28,7 @@ else:
 
 ##################################################################################################
 
-set_logger()
+set_logger('pipeline-timesplit.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 assert os.path.isdir(globaldb)
@@ -106,7 +106,10 @@ s.run(check=True)
 groupnames = []
 logging.info('Concatenating in frequency...')
 for i, msg in enumerate(np.array_split(mss, ngroups)):
-    groupname = 'group%02i' %i
+    if ngroups == 1:
+        groupname = 'mss'
+    else:
+        groupname = 'mss%02i' %i
     groupnames.append(groupname)
     check_rm(groupname)
     os.system('mkdir '+groupname)
@@ -147,9 +150,9 @@ for groupname in groupnames:
     #   t.sort('TIME').copy('output.MS', deep = True)
     for tc, timerange in enumerate(np.array_split(t.getcol('TIME'), round(hours))):
         tc += initc
-        logging.debug('Splitting timerange '+str(timerange[0])+' - '+str(timerange[-1]))
+        logging.debug('%02i - Splitting timerange %f %f' % (tc, timerange[0], timerange[-1]))
         t1 = t.query('TIME >= ' + str(timerange[0]) + ' && TIME <= ' + str(timerange[-1]), sortlist='TIME,ANTENNA1,ANTENNA2')
-        splitms = ms.replace('.MS','_TC%02i.MS' % tc)
+        splitms = 'TC%02i.MS'
         check_rm(splitms)
         t1.copy(splitms, True)
         t1.close()
