@@ -179,7 +179,6 @@ s.run(check=True)
 
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-# TESTTESTTEST
 logging.warning('Converting to circular...')
 for ms in mss:
     s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')

@@ -1,0 +1,10 @@
+LSMTool.Steps = [group, setpos]
+
+LSMTool.Steps.group.Operation = GROUP
+LSMTool.Steps.group.Algorithm = tessellate
+LSMTool.Steps.group.TargetFlux = 20.0 Jy
+
+LSMTool.Steps.setpos.Operation = SETPATCHPOSITIONS
+LSMTool.Steps.setpos.Method = mid
+
+LSMTool.Steps.setpos.OutFile = grouped.skymodel
