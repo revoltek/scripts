@@ -50,7 +50,6 @@ opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, 
 opt.add_option('-r', '--restore', help='If WEIGHT_SPECTRUM_ORIG exists then restore it before smoothing [default: False]', action="store_true", default=False)
 opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: do backup if -w]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
-ionfactor = options.ionfactor
 
 if msfile == []:
     opt.print_help()
