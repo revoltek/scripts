@@ -201,7 +201,7 @@ s.run(check=True)
 
 ###################################################################################################
 # To circular - SB.MS:DATA_INIT -> SB.MS:INIT_DATA (circular)
-# TODO: better stay in circular?
+# TODO: better stay in linear?
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA_INIT -o '+ms+':DATA_INIT', log=ms+'_circ2lin.log', cmd_type='python')

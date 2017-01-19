@@ -17,7 +17,7 @@ if 'tooth' in os.getcwd():
     # tooth
     ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
     datadir = '.' # tooth
-    globaldb = 'globaldb' #NOTE: edit parset_timesplit/NDPPP-cor.parset
+    globaldb = 'globaldb'
     do_fixbeamtable = True
 else:
     # survey
@@ -152,7 +152,7 @@ for groupname in groupnames:
         tc += initc
         logging.debug('%02i - Splitting timerange %f %f' % (tc, timerange[0], timerange[-1]))
         t1 = t.query('TIME >= ' + str(timerange[0]) + ' && TIME <= ' + str(timerange[-1]), sortlist='TIME,ANTENNA1,ANTENNA2')
-        splitms = 'TC%02i.MS'
+        splitms = groupname+'/TC%02i.MS' % tc
         check_rm(splitms)
         t1.copy(splitms, True)
         t1.close()
