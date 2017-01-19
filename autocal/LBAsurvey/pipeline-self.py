@@ -93,11 +93,12 @@ concat_ms = 'mss/concat.MS'
 #####################################################################################################
 # Add model to MODEL_DATA
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-logging.info('Add model to MODEL_DATA...')
 sourcedb_basename = sourcedb.split('/')[-1]
 for ms in mss:
     check_rm(ms+'/'+sourcedb_basename)
+    logging.debug('Copy: '+sourcedb+' -> '+ms)
     os.system('cp -r '+sourcedb+' '+ms)
+logging.info('Add model to MODEL_DATA...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
 s.run(check=True)
@@ -181,7 +182,7 @@ os.system('mv global-fr.h5 self/solutions')
 for i, ms in enumerate(mss):
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument-fr')
-    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
+    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' -> '+ms+'/instrument-fr')
     os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
 
 ###################################################################################################
