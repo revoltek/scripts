@@ -107,7 +107,7 @@ s.run(check=True)
 # NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
 logging.info('BL-smooth...')
 for ms in mss:
-    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################
@@ -188,7 +188,7 @@ s.run(check=True)
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smoothing...')
 for ms in mss:
-    s.add('BLavg.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################

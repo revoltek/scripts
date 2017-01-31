@@ -66,7 +66,7 @@ def losoto(c, mss, parset, instrument_in='instrument', instrument_out='instrumen
 
     for num, ms in enumerate(mss):
         check_rm(ms+'/'+instrument_out)
-        logging.debug('Copy: globaldb/sol000_/'+instrument_in+'-'+str(num)+' -> '+ms+'/'+instrument_out)
+        logging.debug('Move: globaldb/sol000_'+instrument_in+'-'+str(num)+' -> '+ms+'/'+instrument_out)
         os.system('mv globaldb/sol000_'+instrument_in+'-'+str(num)+' '+ms+'/'+instrument_out)
     os.system('mv plots self/solutions/plots-c'+str(c))
     os.system('mv '+h5parm+' self/solutions/')
@@ -109,7 +109,7 @@ s.run(check=True)
 # Smooth DATA -> SMOOTHED_DATA (circular, smooth)
 logging.info('BL-based smoothing...')
 for ms in mss:
-    s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
+    s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
 s.run(check=True, max_threads=4)
 
 ##################################################################################################
@@ -182,15 +182,15 @@ os.system('mv global-fr.h5 self/solutions')
 for i, ms in enumerate(mss):
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument-fr')
-    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' -> '+ms+'/instrument-fr')
-    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
+    logging.debug('Move: globaldb-fr/sol000_instrument-fr-'+str(num)+' -> '+ms+'/instrument-fr')
+    os.system('mv globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
 
 ###################################################################################################
 # To linear - SB.MS:DATA -> SB.MS:CORRECTED_DATA (linear)
 logging.info('Convert to linear...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -r -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+s.run(check=True, max_threads=4)
 
 ####################################################
 # Correct FR SB.MS:CORRECTED_DATA->DATA_INIT
@@ -205,7 +205,7 @@ s.run(check=True)
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA_INIT -o '+ms+':DATA_INIT', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+s.run(check=True, max_threads=4)
 
 # 2: recalibrate without FR
 
@@ -225,7 +225,7 @@ for c in xrange(niter):
     # Smooth DATA_INIT -> SMOOTHED_DATA
     logging.info('BL-based smoothing...')
     for ms in mss:
-        s.add('BLavg.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.add('BLsmooth.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
     s.run(check=True, max_threads=4)
 
     if c == 0:
@@ -271,22 +271,23 @@ for c in xrange(niter):
 
     # do beam-corrected+deeper image at last cycle
     if c == niter-1:
-        logging.info('Cleaning (cycle: '+str(c)+')...')
+        logging.info('Cleaning beam (cycle: '+str(c)+')...')
         imagename = 'img/wideBeam'
         # beam corrected: -use-differential-lofar-beam' - no baseline avg!
         s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 12arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -mgain 0.8 \
-                -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -apply-primary-beam -use-differential-lofar-beam '+concat_ms, \
+                -scale 12arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+                -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
+        # awimager -UVmax 5000 -stokes I -img_nchan 488 -niter 1 -npix 2500 -weight briggs -cellsize 12arcsec -padding 1. -oversample 5 -PBCut 1e-2 -robust 0 -ms mss/concat.MS
 
     # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
     # -use-differential-lofar-beam -baseline-averaging
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 12arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
+            -scale 12arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+' '.join(mss), \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -328,8 +329,8 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -multiscale -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+concat_ms, \
+            -scale 20arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+' '.join(mss), \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
