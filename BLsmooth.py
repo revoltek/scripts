@@ -87,20 +87,12 @@ elif options.weight and not options.nobackup:
 
 ant1 = ms.getcol('ANTENNA1')
 ant2 = ms.getcol('ANTENNA2')
-all_data = ms.getcol(options.outcol)
-all_weights = ms.getcol('WEIGHT_SPECTRUM')
-all_flags = ms.getcol('FLAG')
+
 all_uvw = ms.getcol('UVW')
-
-all_flags[ np.isnan(all_data) ] = True # flag NaNs
-all_weights = all_weights * ~all_flags # set weight of flagged data to 0
-    
-# Check that all NaNs are flagged
-if np.count_nonzero(np.isnan(all_data[~all_flags])) > 0:
-    logging.error('NaNs in unflagged data!')
-
 # iteration on baseline combination
-for ant in itertools.product(set(ant1), set(ant2)):
+# do for loop twice to remove all_uvw and save memory
+stddevs = np.zeros( len(set(ant1)) * len(set(ant2)) )
+for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
 
     if ant[0] >= ant[1]: continue
     sel1 = np.where(ant1 == ant[0])[0]
@@ -112,9 +104,37 @@ for ant in itertools.product(set(ant1), set(ant2)):
     uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
     dist = np.mean(uvw_dist) / 1.e3
     if np.isnan(dist): continue # fix for missing anstennas
+    
     stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
     stddev = stddev/timepersample # in samples
     logging.debug("For BL %i - %i (dist = %.1f km): sigma=%.2f samples." % (ant[0], ant[1], dist, stddev))
+    stddevs[i] = stddev
+
+del all_uvw
+
+logging.info('Reading data...')
+all_data = ms.getcol(options.outcol)
+all_weights = ms.getcol('WEIGHT_SPECTRUM')
+all_flags = ms.getcol('FLAG')
+
+all_flags[ np.isnan(all_data) ] = True # flag NaNs
+#ms.putcol('FLAG', all_flags) # this saves flags of nans, which is always good
+all_weights[all_flags] = 0 # set weight of flagged data to 0
+del all_flags
+
+# iteration on baseline combination
+logging.info('Smoothing baselines')
+for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
+
+    if ant[0] >= ant[1]: continue
+    if stddevs[i] == 0: continue # fix for missing anstennas
+
+    print '.',
+    sys.stdout.flush()
+
+    sel = (ant1 == ant[0]) & (ant2 == ant[1])
+    #sel2 = np.where(ant2 == ant[1])[0]
+    #sel = sorted(list(frozenset(sel1).intersection(sel2)))
 
     #Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
     #divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
@@ -128,9 +148,9 @@ for ant in itertools.product(set(ant1), set(ant2)):
     data = np.nan_to_num(data*weights)
 
     # smear weighted data and weights
-    dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
-    dataI = gfilter(np.imag(data), stddev, axis=0)#, truncate=4.)
-    weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
+    dataR = gfilter(np.real(data), stddevs[i], axis=0)#, truncate=4.)
+    dataI = gfilter(np.imag(data), stddevs[i], axis=0)#, truncate=4.)
+    weights = gfilter(weights, stddevs[i], axis=0)#, truncate=4.)
 
     # re-create data
     data = (dataR + 1j * dataI)
@@ -143,11 +163,16 @@ for ant in itertools.product(set(ant1), set(ant2)):
 #    print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
 #    print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
 
+print "done."
+
+logging.warning('Writing %s column.' % options.outcol)
 ms.putcol(options.outcol, all_data)
-ms.putcol('FLAG', all_flags) # this saves flags of nans, which is always good
+del all_data
+
 if options.weight:
-    logging.warning('Changing WEIGHT_SPECTRUM column.')
+    logging.warning('Writing WEIGHT_SPECTRUM column.')
     ms.putcol('WEIGHT_SPECTRUM', all_weights)
+    del all_weights
 
 ms.close()
 logging.info("Done.")
