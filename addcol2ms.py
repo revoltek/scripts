@@ -25,17 +25,37 @@ def main(options):
         if col not in t.colnames():
             logging.info('Adding the output column '+col+' to '+ms+'.')
             if incol == '':
-                incol = 'DATA'
-                update = False
-            else:
-                update = True
+                # prepare col metadata
+                cd = t.getcoldesc('DATA')
+                if options.dysco:
+                    cd['dataManagerType'] = 'DyscoStMan'
+                    cd['dataManagerGroup'] = 'DyscoData'
+                    coldmi = {'NAME': col,'SEQNR': 3,'SPEC': {'dataBitCount': 10,'distribution': 'TruncatedGaussian','distributionTruncation': 2.5,'normalization': 'AF','studentTNu': 0.0,'weightBitCount': 12},'TYPE': 'DyscoStMan'}
+                else:
+                    cd['dataManagerType'] = 'StandardStMan'
+                    cd['dataManagerGroup'] = 'SSMVar'
+                    coldmi = {'NAME': col,'SEQNR': 0,'SPEC': {'ActualCacheSize': 2,'BUCKETSIZE': 32768,'IndexLength': 799832,'PERSCACHESIZE': 2},'TYPE': 'StandardStMan'}
 
-            coldmi = t.getdminfo(incol)
-            coldmi['NAME'] = col
-            t.addcols(pt.maketabdesc(pt.makearrcoldesc(col, 0., valuetype=t.col(incol).datatype(), shape=numpy.array(t.getcell(incol,0)).shape)), coldmi)  
-            if update:
-                logging.warning('Setting '+col+' = '+incol+'.')
-                t.putcol(col, t.getcol(incol))
+                cd['comment'] = 'Added by addcol2ms'
+                t.addcols(pt.makecoldesc(col, cd), coldmi)
+
+                # if non dysco is done by default
+                if options.dysco:
+                    logging.warning('Setting '+col+' = 0')
+                    t.taql("update $t set "+col+"=0")
+
+            else:
+                # prepare col metadata
+                coldmi = t.getdminfo(incol)
+                coldmi['NAME'] = col
+                cd = t.getcoldesc(incol)
+
+                cd['comment'] = 'Added by addcol2ms'
+                t.addcols(pt.makecoldesc(col, cd), coldmi)
+
+                logging.warning('Setting '+col+' = '+incol)
+                t.taql("update $t set "+col+"="+incol)
+
         else:
             logging.warning('Column '+col+' already exists.')
 
@@ -45,6 +65,7 @@ opt = optparse.OptionParser()
 opt.add_option('-m','--ms',help='Input MS [no default].',default='')
 opt.add_option('-c','--cols',help='Output column, comma separated if more than one [no default].',default='')
 opt.add_option('-i','--incol',help='Input column to copy in the output column, otherwise it will be set to 0 [default set to 0].',default='')
+opt.add_option('-d','--dysco',help='Enable dysco dataManager for new columns (copied columns always get the same dataManager of the original)',action="store_true",default=False)
 options, arguments = opt.parse_args()
 main(options)
 

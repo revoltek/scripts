@@ -34,12 +34,11 @@ def addcol(ms, incol, outcol):
         logging.info('Adding column: '+outcol)
         coldmi = ms.getdminfo(incol)
         coldmi['NAME'] = outcol
-        datatype = ms.col(incol).datatype()
-        ms.addcols(pt.maketabdesc(pt.makearrcoldesc(outcol, 0., valuetype=datatype, shape=np.array(ms.getcell(incol,0)).shape)), coldmi)
+        ms.addcols(pt.makecoldesc(outcol, ms.getcoldesc(incol)), coldmi)
     if outcol != incol:
         # copy columns val
         logging.info('Set '+outcol+'='+incol)
-        ms.putcol(outcol, ms.getcol(incol))
+        pt.taql("update $ms set "+outcol+"="+incol)
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
@@ -80,7 +79,7 @@ addcol(ms, options.incol, options.outcol)
 
 # retore WEIGHT_SPECTRUM
 if 'WEIGHT_SPECTRUM_ORIG' in ms.colnames() and options.restore:
-    addcol(ms,'WEIGHT_SPECTRUM_ORIG','WEIGHT_SPECTRUM')
+    addcol(ms, 'WEIGHT_SPECTRUM_ORIG', 'WEIGHT_SPECTRUM')
 # backup WEIGHT_SPECTRUM
 elif options.weight and not options.nobackup:
     addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG')
@@ -95,9 +94,7 @@ stddevs = np.zeros( len(set(ant1)) * len(set(ant2)) )
 for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
 
     if ant[0] >= ant[1]: continue
-    sel1 = np.where(ant1 == ant[0])[0]
-    sel2 = np.where(ant2 == ant[1])[0]
-    sel = sorted(list(frozenset(sel1).intersection(sel2)))
+    sel = (ant1 == ant[0]) & (ant2 == ant[1])
 
     # compute the FWHM
     uvw = all_uvw[sel,:]
@@ -118,7 +115,6 @@ all_weights = ms.getcol('WEIGHT_SPECTRUM')
 all_flags = ms.getcol('FLAG')
 
 all_flags[ np.isnan(all_data) ] = True # flag NaNs
-#ms.putcol('FLAG', all_flags) # this saves flags of nans, which is always good
 all_weights[all_flags] = 0 # set weight of flagged data to 0
 del all_flags
 
@@ -129,12 +125,10 @@ for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
     if ant[0] >= ant[1]: continue
     if stddevs[i] == 0: continue # fix for missing anstennas
 
-    print '.',
+    print '.'
     sys.stdout.flush()
 
     sel = (ant1 == ant[0]) & (ant2 == ant[1])
-    #sel2 = np.where(ant2 == ant[1])[0]
-    #sel = sorted(list(frozenset(sel1).intersection(sel2)))
 
     #Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
     #divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
@@ -158,12 +152,13 @@ for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
     all_data[sel,:,:] = data
     all_weights[sel,:,:] = weights
 
-#    print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
-#    print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
-#    print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
-#    print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
+    #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
+    #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
+    #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
+    #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
 
-print "done."
+print "done.\n"
+sys.stdout.flush()
 
 logging.warning('Writing %s column.' % options.outcol)
 ms.putcol(options.outcol, all_data)

@@ -1,0 +1,9 @@
+msin = 
+msin.datacolumn = DATA
+
+msout = 
+msout.storagemanager = dysco
+
+numthreads=1
+
+steps = []

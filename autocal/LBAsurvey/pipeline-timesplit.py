@@ -101,6 +101,13 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
 s.run(check=True)
 
+# Re-set weights of flagged data to 0 - this is necessary if we want to use dysco
+# due to NDPPP leaving flagged weight at super-high values compared to unflagged ones
+logging.info('Set weight of flagged data to 0...')
+for ms in mss:
+    s.add('flag_weight_to_zero.py '+ms, log=ms+'_resetweight.log', cmd_type='python')
+s.run(check=True)
+
 ###################################################################################################
 # Create groups
 groupnames = []
@@ -122,6 +129,7 @@ for i, msg in enumerate(np.array_split(mss, ngroups)):
     for j in range(num_init, num_fin+1):
         msg.append(ms_name_init.replace('SB%03i' % num_init, 'SB%03i' % j))
 
+    # TODO: add dysco compression here
     # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
     s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
                 log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
