@@ -1,0 +1,88 @@
+# losoto parset
+LoSoTo.Steps = [residuals2, plotP3]
+#LoSoTo.Steps = [plotP1, fr, plotFR, residuals1, plotP2, ct, plotCLOCK, plotTEC, plotTEC3, residuals2, plotP3]
+LoSoTo.Solset = [sol000]
+LoSoTo.Soltab = []
+LoSoTo.SolType = []
+LoSoTo.ant = []
+LoSoTo.pol = []
+LoSoTo.dir = []
+LoSoTo.Ncpu = 6
+
+LoSoTo.Steps.plotP1.Operation = PLOT
+LoSoTo.Steps.plotP1.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotP1.Axes = [time,freq]
+LoSoTo.Steps.plotP1.TableAxis = ant
+LoSoTo.Steps.plotP1.PlotFlag = True
+LoSoTo.Steps.plotP1.Prefix = plots/ph1_
+LoSoTo.Steps.plotP1.Reference = 'CS001LBA'
+LoSoTo.Steps.plotP1.MinMax = [-3.14,3.14]
+
+# fr
+LoSoTo.Steps.fr.Operation = FARADAY
+LoSoTo.Steps.fr.Soltab = [sol000/phase000]
+
+LoSoTo.Steps.plotFR.Operation = PLOT
+LoSoTo.Steps.plotFR.Soltab = [sol000/rotationmeasure000]
+LoSoTo.Steps.plotFR.Axes = [time]
+LoSoTo.Steps.plotFR.ColorAxis = ant
+LoSoTo.Steps.plotFR.Prefix = plots/fr
+
+LoSoTo.Steps.residuals1.Operation = RESIDUALS
+LoSoTo.Steps.residuals1.Soltab = [sol000/phase000]
+LoSoTo.Steps.residuals1.Sub = [sol000/rotationmeasure000]
+
+LoSoTo.Steps.plotP2.Operation = PLOT
+LoSoTo.Steps.plotP2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotP2.Axes = [time,freq]
+LoSoTo.Steps.plotP2.TableAxis = ant
+LoSoTo.Steps.plotP2.PlotFlag = True
+LoSoTo.Steps.plotP2.Prefix = plots/ph2_
+LoSoTo.Steps.plotP2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotP2.MinMax = [-3.14,3.14]
+
+# ct
+LoSoTo.Steps.ct.Operation = CLOCKTEC
+LoSoTo.Steps.ct.Soltab = [sol000/phase000]
+LoSoTo.Steps.ct.CombinePol = True
+LoSoTo.Steps.ct.FlagBadChannels = False
+LoSoTo.Steps.ct.Fit3rdOrder = False
+LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
+LoSoTo.Steps.ct.Circular = False
+
+LoSoTo.Steps.plotCLOCK.Operation = PLOT
+LoSoTo.Steps.plotCLOCK.Soltab = [sol000/clock000]
+LoSoTo.Steps.plotCLOCK.Axes = [time]
+LoSoTo.Steps.plotCLOCK.ColorAxis = ant
+LoSoTo.Steps.plotCLOCK.Prefix = plots/clock
+LoSoTo.Steps.plotCLOCK.PlotFlag = False
+
+LoSoTo.Steps.plotTEC.Operation = PLOT
+LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
+LoSoTo.Steps.plotTEC.Axes = [time]
+LoSoTo.Steps.plotTEC.ColorAxis = ant
+LoSoTo.Steps.plotTEC.Prefix = plots/tec
+LoSoTo.Steps.plotTEC.MinMax = [-1,1]
+LoSoTo.Steps.plotTEC.PlotFlag = False
+
+LoSoTo.Steps.plotTEC3.Operation = PLOT
+LoSoTo.Steps.plotTEC3.Soltab = [sol000/tec3rd000]
+LoSoTo.Steps.plotTEC3.Axes = [time]
+LoSoTo.Steps.plotTEC3.ColorAxis = ant
+LoSoTo.Steps.plotTEC3.Prefix = plots/tec3rd
+LoSoTo.Steps.plotTEC3.MinMax = [-300,300]
+LoSoTo.Steps.plotTEC3.PlotFlag = False
+
+LoSoTo.Steps.residuals2.Operation = RESIDUALS
+LoSoTo.Steps.residuals2.Soltab = [sol000/phase000]
+#LoSoTo.Steps.residuals2.Sub = [sol000/tec000,sol000/clock000]
+LoSoTo.Steps.residuals2.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
+
+LoSoTo.Steps.plotP3.Operation = PLOT
+LoSoTo.Steps.plotP3.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotP3.Axes = [time,freq]
+LoSoTo.Steps.plotP3.TableAxis = ant
+LoSoTo.Steps.plotP3.PlotFlag = True
+LoSoTo.Steps.plotP3.Prefix = plots/ph3_
+LoSoTo.Steps.plotP3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotP3.MinMax = [-3.14,3.14]
