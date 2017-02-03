@@ -2,7 +2,9 @@ msin =
 msin.datacolumn = CORRECTED_DATA
 msin.missingdata = True
 msin.orderms = False
+
 msout = 
-msout.datacolumn = DATA
+msout.storagemanager = dysco
+msout.writefullresflag = False
 
 steps = []

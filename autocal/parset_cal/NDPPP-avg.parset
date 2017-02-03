@@ -2,8 +2,8 @@ msin =
 msin.datacolumn = DATA
 msin.baseline = [CR]S*&&
 msout = 
-msout.datacolumn = DATA
 msout.writefullresflag = False
+msout.storagemanager = dysco
 
 steps = [avg]
 

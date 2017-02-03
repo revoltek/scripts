@@ -9,7 +9,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-patch = '3C196'
+patch = ''
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
@@ -23,6 +23,8 @@ else:
     print "IMPORTANT: for survey also remove bad ant at flag time"
     datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
     do_fixbeamtable = False
+
+#TODO: moved to dysco, problem with WEIGHTED_SPECTRUM to fix
 
 ###################################################
 
@@ -72,6 +74,10 @@ if do_fixbeamtable:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
 
+###############################################
+# TODO Predict to save time
+
+
 ############################################
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
@@ -104,10 +110,10 @@ s.run(check=True)
 
 #################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
 logging.info('BL-smooth...')
 for ms in mss:
-    s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################
@@ -188,7 +194,8 @@ s.run(check=True)
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smoothing...')
 for ms in mss:
-    s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################
