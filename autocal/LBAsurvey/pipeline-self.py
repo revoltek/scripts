@@ -17,7 +17,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 from make_mask import make_mask
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self_test/'
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
 niter = 2
 
 if 'tooth' in os.getcwd():
@@ -92,7 +92,7 @@ concat_ms = 'mss/concat.MS'
 
 ###############################################################################################
 # Create columns (non compressed)
-# TODO: remove MODEL_DATA_HIGHRES when moving to NDPPP DFT
+# TODO: remove when moving to NDPPP DFT
 logging.info('Creating MODEL_DATA_HIGHRES...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
@@ -111,38 +111,6 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
 s.run(check=True)
 
-## 1. find and remove FR
-
-################################################################################################
-# Smooth DATA -> SMOOTHED_DATA (circular, smooth)
-logging.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max') # TEST
-    #s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python', processors='max')
-s.run(check=True, max_threads=4)
-
-##################################################################################################
-# solve+correct TEC - group*_TC.MS:SMOOTHED_DATA -> group*_TC.MS:CORRECTED_DATA (circular, smooth, TEC-calibrated)
-# TODO: move to single call
-# TODO: CORRECTED_DATA is dysco-compressed
-logging.info('Calibrating TEC...')
-for ms in mss:
-    check_rm(ms+'/instrument-tecinit')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tecinit sol.applysolution=False', log=ms+'_sol-tecinit.log', cmd_type='NDPPP')
-s.run(check=True)
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA \
-            cor1.parmdb='+ms+'/instrument-tecinit cor2.parmdb='+ms+'/instrument-tecinit', log=ms+'_cor-tecinit.log', cmd_type='NDPPP')
-s.run(check=True)
-
-###############################################################################################
-# Solve G SB.MS:CORRECTED_DATA (only solve)
-logging.info('Solving G...')
-for ms in mss:
-    check_rm(ms+'/instrument-ginit')
-    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA sol.parmdb='+ms+'/instrument-ginit sol.solint=10 sol.nchan=8', log=ms+'_sol-g.log', cmd_type='NDPPP')
-s.run(check=True)
-
 ###################################################################################
 # Preapre fake FR parmdb
 logging.info('Prepare fake FR parmdb...')
@@ -153,82 +121,16 @@ for ms in mss:
     s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
-# merge parmdbs
-logging.info('Merging instrument tables...')
-for ms in mss:
-    merge_parmdb(ms+'/instrument-tecinit', ms+'/instrument-ginit', ms+'/instrument', clobber=True)
-
-#################################################
-# Prepare and run losoto
-check_rm('globaldb')
-check_rm('globaldb-fr')
-os.system('mkdir globaldb')
-os.system('mkdir globaldb-fr')
-for i, ms in enumerate(mss):
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy: '+ms+'/instrument -> globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    logging.debug('Copy: '+ms+'/instrument-fr -> globaldb-fr/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
-
-logging.info('Running LoSoTo...')
-check_rm('plots')
-check_rm('global-fr.h5')
-s.add('H5parm_importer.py -v global-fr.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
-s.run(check=True)
-s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-plot.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-s.add('H5parm_exporter.py -v -t rotationmeasure000 global-fr.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
-s.run(check=True)
-os.system('mv plots self/solutions/plots-fr')
-os.system('mv global-fr.h5 self/solutions')
-
-for i, ms in enumerate(mss):
-    num = re.findall(r'\d+', ms)[-1]
-    check_rm(ms+'/instrument-fr')
-    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' -> '+ms+'/instrument-fr')
-    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
-
-###################################################################################################
-# To linear - SB.MS:DATA -> SB.MS:CORRECTED_DATA (linear)
-logging.info('Convert to linear...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -w -r -i '+ms+':DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=4)
-
-####################################################
-# Correct FR SB.MS:CORRECTED_DATA->DATA_INIT
-# TODO: DATA_INIT is dysco-compressed
-logging.info('Faraday rotation correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-s.run(check=True)
-
-###################################################################################################
-# To circular - SB.MS:DATA_INIT -> SB.MS:INIT_DATA (circular)
-# TODO: better stay in linear?
-logging.info('Convert to circular...')
-for ms in mss:
-    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':DATA_INIT -o '+ms+':DATA_INIT', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True, max_threads=4)
-
-# 2: recalibrate without FR
-
 #####################################################################################################
 # Self-cal cycle
 for c in xrange(niter):
     logging.info('Start selfcal cycle: '+str(c))
 
-    #################################################################################################
-    # Smooth DATA_INIT -> SMOOTHED_DATA
+    # Smooth DATA -> SMOOTHED_DATA
     logging.info('BL-based smoothing...')
     for ms in mss:
-        s.add('BLsmooth.py -r -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
-        #s.add('BLsmooth.py -r -w -i DATA_INIT -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
+        #s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
     s.run(check=True, max_threads=4)
 
     if c == 0:
@@ -241,38 +143,99 @@ for c in xrange(niter):
     logging.info('Solving TEC...')
     for ms in mss:
         check_rm(ms+'/instrument-tec')
-        s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec sol.applysolution=False', \
+        s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     # LoSoTo plot
-    # TODO: add flagging
+    # TODO: add flagging?
     losoto(c, mss, parset_dir+'/losoto-plot.parset', instrument_in='instrument-tec')
 
-    # correct TEC - group*_TC.MS:DATA_INIT -> group*_TC.MS:CORRECTED_DATA
-    # need to apply solutions to DATA_INIT, not SMOOTHED_DATA
+    # correct TEC - group*_TC.MS:DATA -> group*_TC.MS:CORRECTED_DATA
+    # separate step, need to apply solutions to DATA, not SMOOTHED_DATA
     logging.info('Correcting TEC...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=DATA_INIT cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+        s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    ################################################################################################
-    ## Solve SB.MS:CORRECTED_DATA (only solve)
-    ## TESTTESTTEST
-    #logging.info('Calibrating G...')
-    #for ms in mss:
-    #    check_rm(ms+'/instrument-g')
-    #    s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cal.parmdb='+ms+'/instrument-g cal.solint=30 cal.nchan=4', log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
-    #s.run(check=True)
-    #losoto(c, mss, parset_dir+'/losoto-fr.parset', instrument_in='instrument-g', instrument_out='instrument-g')
+    #####################################################################################################
+    # Faraday rotation correction
+    if c >= 1:
 
-    logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
-    s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
-    s.run(check=True)
+        # Smooth CORRECTED_DATA -> SMOOTHED_DATA
+        logging.info('BL-based smoothing...')
+        for ms in mss:
+            s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
+            #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.run(check=True, max_threads=4)
+
+        # Solve G SB.MS:SMOOTHED_DATA (only solve)
+        logging.info('Solving G...')
+        for ms in mss:
+            check_rm(ms+'/instrument-g')
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=10 sol.nchan=8', \
+                    log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        # losoto
+        check_rm('globaldb')
+        check_rm('globaldb-fr')
+        os.system('mkdir globaldb')
+        os.system('mkdir globaldb-fr')
+        for i, ms in enumerate(mss):
+            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
+            num = re.findall(r'\d+', ms)[-1]
+            logging.debug('Copy: '+ms+'/instrument-g -> globaldb/instrument-'+str(num))
+            os.system('cp -r '+ms+'/instrument-g globaldb/instrument-'+str(num))
+            logging.debug('Copy: '+ms+'/instrument-fr -> globaldb-fr/instrument-'+str(num))
+            os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-'+str(num))
+        
+        logging.info('Running LoSoTo...')
+        check_rm('plots')
+        check_rm('global-fr.h5')
+        s.add('H5parm_importer.py -v global-fr.h5 globaldb', log='losoto-fr-c'+str(c)+'.log', cmd_type='python', processors=1)
+        s.run(check=True)
+        s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python', processors='max')
+        s.run(check=True)
+        s.add('H5parm_exporter.py -v -t rotationmeasure000 global-fr.h5 globaldb-fr', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python', processors=1)
+        s.run(check=True)
+        os.system('mv plots self/solutions/plots-fr')
+        os.system('mv global-fr.h5 self/solutions')
+        
+        for i, ms in enumerate(mss):
+            num = re.findall(r'\d+', ms)[-1]
+            check_rm(ms+'/instrument-fr')
+            logging.debug('Copy globaldb-fr/sol000_instrument-'+str(num)+' -> '+ms+'/instrument-fr')
+            os.system('cp -r globaldb-fr/sol000_instrument-'+str(num)+' '+ms+'/instrument-fr')
+
+        # TODO: better stay in linear?
+        # To linear - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (linear)
+        logging.info('Convert to linear...')
+        for ms in mss:
+            s.add('/home/fdg/scripts/mslin2circ.py -s -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True, max_threads=4)
+        
+        # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        logging.info('Faraday rotation correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        # To circular - SB.MS:DATA_INIT -> SB.MS:INIT_DATA (circular)
+        logging.info('Convert to circular...')
+        for ms in mss:
+            s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True, max_threads=4)
 
     ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
+
+    # TODO: fix dysco
+    #logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
+    #s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
+    #s.run(check=True)
 
     # do beam-corrected+deeper image at last cycle
     if c == niter-1:
@@ -365,11 +328,10 @@ for c in xrange(niter):
     s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql4-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
-    # Flag on residuals
+    # Flag on residuals (CORRECTED_DATA)
     logging.info('Flagging residuals...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, \
-                log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     # Concat models
