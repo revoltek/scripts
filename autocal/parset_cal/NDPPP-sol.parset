@@ -6,14 +6,14 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, cal]
 
-filter.blrange = [3000, 1e30]
+filter.blrange = [2000, 1e30]
 
 cal.type = gaincal
 #cal.caltype = fulljones
 cal.caltype = diagonal
-cal.maxiter = 100
+cal.maxiter = 500
 cal.sourcedb =
-cal.sources = 
+cal.sources = []
 cal.usebeammodel = True
 cal.usechannelfreq = False
 cal.beammode = array_factor
