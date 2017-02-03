@@ -136,8 +136,39 @@ def scale_from_ms(ms):
     #print 'Min scale: ~',wavelenght/maxdist*(180/np.pi)*3600, 'arcsec'
     return int(round(wavelenght/maxdist*(180/np.pi)*3600/3.)) # arcsec
 
+def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0.):
+    """
+    Set to "blankval" all the pixels inside the given region
+    if inverse=True, set to "blankval" pixels outside region.
 
-def blank_image(filename, region, outfile=None, inverse=False, blankval=0.):
+    filename: fits file
+    region: ds9 region
+    outfile: output name
+    inverse: reverse region mask
+    blankval: pixel value to set
+    """
+    import astropy.io.fits as pyfits
+    import pyregion
+
+    if outfile == None: outfile = filename
+
+    with pyfits.open(maskname) as fits:
+        mask = fits[0].data
+    
+    if inverse: mask = ~(mask.astype(bool))
+
+    with pyfits.open(filename) as fits:
+        data = fits[0].data
+
+        assert mask.shape == data.shape # mask and data should be same shape
+
+        sum_before = np.sum(data)
+        data[mask] = blankval
+        print "Sum of values: %f -> %f" % (sum_before, np.sum(data))
+        fits.writeto(outfile, clobber=True)
+
+ 
+def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0.):
     """
     Set to "blankval" all the pixels inside the given region
     if inverse=True, set to "blankval" pixels outside region.
@@ -154,17 +185,17 @@ def blank_image(filename, region, outfile=None, inverse=False, blankval=0.):
     if outfile == None: outfile = filename
 
     # open fits
-    fits = pyfits.open(filename)
-    origshape = fits[0].data.shape
-    header, data = flatten(fits)
-    # extract mask
-    r = pyregion.open(region)
-    mask = r.get_mask(header=header, shape=data.shape)
-    if inverse: mask = ~mask
-    data[mask] = blankval
-    # save fits
-    fits[0].data = data.reshape(origshape)
-    fits.writeto(outfile, clobber=True)
+    with pyfits.open(filename) as fits:
+        origshape = fits[0].data.shape
+        header, data = flatten(fits)
+        # extract mask
+        r = pyregion.open(region)
+        mask = r.get_mask(header=header, shape=data.shape)
+        if inverse: mask = ~mask
+        data[mask] = blankval
+        # save fits
+        fits[0].data = data.reshape(origshape)
+        fits.writeto(outfile, clobber=True)
 
 
 def get_coord_centroid(filename, region):

@@ -2,11 +2,11 @@
 
 # create a mask using bdsm of an image
 
-def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=None, rmsbox=(55,12), mask_combine=None):
+def make_mask(image_name, mask_name=None, threshpix=5, threshisl=3, atrous_do=False, rmsbox=(55,12), mask_combine=None):
 
     import sys, os
     import numpy as np
-    import pyfits, pyrap
+    from astropy.io import fits as pyfits
     import lofar.bdsm as bdsm
 
     # wavelets are required to fit gaussians
@@ -23,22 +23,20 @@ def make_mask(image_name, threshpix=5, threshisl=3, atrous_do=False, mask_name=N
     if mask_name == None: mask_name = image_name+'.newmask'
     if os.path.exists(mask_name): os.system('rm -r ' + mask_name)
     print 'Making mask:', mask_name
-    img.export_image(img_type='island_mask', img_format='casa', outfile=mask_name)
+    img.export_image(img_type='island_mask', img_format='fits', outfile=mask_name)
     del img
 
     # do an pixel-by-pixel "OR" operation with a given mask
-    if mask_combine != None:
-        print "Combining with "+mask_combine
-        img = pyrap.images.image(mask_name)
-        pixels_mask = img.getdata()
-        imgcomb = pyrap.images.image(mask_combine)
-        assert imgcomb.shape() == img.shape()
-        pixels_mask[np.where(imgcomb.getdata() == 1.)] = 1.
-        img.putdata(pixels_mask)
-        img.unlock()
-        imgcomb.unlock()
-        del img
-        del imgcomb
+    if not mask_combine is None:
+        print "Doing a pix-by-pix OR with %s." % mask_combine
+        with pyfits.open(mask_combine) as fits:
+            data_comb = fits[0].data
+        with pyfits.open(mask_name) as fits:
+            data = fits[0].data
+            assert data.shape() == data_comb.shape()
+            data[(data_comb == 1.)] = 1.
+            fits[0].data = data
+            fits.writeto(mask_name, clobber=True)
 
     return mask_name
 
@@ -54,4 +52,4 @@ if __name__=='__main__':
     (options, args) = opt.parse_args()
     
     rmsbox = (int(options.rmsbox.split(',')[0]),int(options.rmsbox.split(',')[1]))
-    make_mask(args[0].rstrip('/'), options.threshpix, options.threshisl, options.atrous_do, options.newmask, rmsbox, options.combinemask)
+    make_mask(args[0].rstrip('/'), options.newmask, options.threshpix, options.threshisl, options.atrous_do, rmsbox, options.combinemask)
