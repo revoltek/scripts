@@ -17,7 +17,7 @@ import pyrap.tables as pt
 from lib_pipeline import *
 from make_mask import make_mask
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
+parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self_test/'
 niter = 2
 
 if 'tooth' in os.getcwd():
@@ -87,23 +87,12 @@ if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/models'): os.makedirs('self/models')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 
-# TODO: move to timesplit
-#mss = sorted(glob.glob(datadir+'/mss/TC*[0-9].MS'))
-################################################################################################
-# Copy and compress data
-#logging.info('Compressing data...')
-#for ms in mss:
-#    msout = 'mss/'+os.path.basename(ms)
-#    if os.path.exists(msout): continue
-#    s.add('NDPPP '+parset_dir+'/NDPPP-dysco.parset msin='+ms+' msout='+ms, log=ms+'_dysco.log', cmd_type='NDPPP', processors=1)
-#s.run(check=True)
-
 mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 concat_ms = 'mss/concat.MS'
 
 ###############################################################################################
 # Create columns (non compressed)
-# TODO: remove MODEL_DATA_HIGHRES when moving to NDPPP
+# TODO: remove MODEL_DATA_HIGHRES when moving to NDPPP DFT
 logging.info('Creating MODEL_DATA_HIGHRES...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
@@ -314,18 +303,12 @@ for c in xrange(niter):
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    #maskname = imagename+'.newmask'
-    #make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname)
-    #s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-    #           params={'imgs':imagename+'.newmask', 'region':'/home/fdg/scripts/autocal/LBAsurvey/tooth_mask.crtf', 'setTo':1}, log='casablank-c'+str(c)+'.log')
-    #s.run(check=True)
-    #logging.info('Cleaning with mask (cycle: '+str(c)+')...')
-    #imagename = 'img/wideM-'+str(c)
-    #s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-    #        -scale 10arcsec -weight briggs 0.0 -auto-threshold 5 -niter 5000 -no-update-model-required -maxuv-l 5000 -mgain 0.75 \
-    #        -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
-    #        log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    #s.run(check=True)
+    # make mask
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+    # remove CC not in mask
+    for modelname in glob.glob(imagename+'*model.fits'):
+        blank_image_fits(modelname, maskname, inverse=True)
     
     # TODO: move to DFT with NDPPP
     # update-model cannot be done in wsclean because of baseline-averaging
@@ -358,15 +341,12 @@ for c in xrange(niter):
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    #maskname = imagename+'.newmask'
-    #make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshpix=6) # a bit higher treshold
-    #logging.info('Cleaning low resolution with mask (cycle: '+str(c)+')...')
-    #imagename = 'img/wideM-lr-'+str(c)
-    #s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-    #        -scale 20arcsec -weight briggs 0.0 -auto-threshold 5 -niter 3000 -no-update-model-required -maxuv-l 2000 -mgain 0.75 \
-    #        -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -casamask '+maskname+' '+concat_ms, \
-    #        log='wscleanB-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    #s.run(check=True)
+    # make mask
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+    # remove CC not in mask
+    for modelname in glob.glob(imagename+'*model.fits'):
+        blank_image_fits(modelname, maskname, inverse=True)
 
     # TODO: move to DFT with NDPPP
     # resample at high res to avoid FFT problem on long baselines and predict
