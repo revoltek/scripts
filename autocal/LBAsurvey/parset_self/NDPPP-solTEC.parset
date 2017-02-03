@@ -16,4 +16,3 @@ sol.solint = 5 # TEST: it was 1
 sol.nchan = 1
 sol.propagatesolutions = False
 sol.blrange = [1000,1e9]
-sol.applysolution = True
