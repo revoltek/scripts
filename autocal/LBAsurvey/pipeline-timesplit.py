@@ -34,7 +34,7 @@ s = Scheduler(dry=False)
 assert os.path.isdir(globaldb)
 
 #################################################
-## Clear
+# Clear
 logging.info('Cleaning...')
 
 check_rm('*group*')
@@ -129,7 +129,7 @@ for i, msg in enumerate(np.array_split(mss, ngroups)):
     for j in range(num_init, num_fin+1):
         msg.append(ms_name_init.replace('SB%03i' % num_init, 'SB%03i' % j))
 
-    # TODO: add dysco compression here
+    # NOTE: dysco is added here! After fixing high weight of flagged data
     # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
     s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
                 log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
