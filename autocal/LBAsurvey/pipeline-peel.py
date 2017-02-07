@@ -12,11 +12,9 @@
 
 
 # coordinate of the region to find the DD
-#coord = [90.833333,42.233333] # toorhbrush
-#coord = [91.733333,41.680000] # strong pts
-#ddset = [{'name': 'src1', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.reg', 'reg_facet': 'facet1.reg', 'faint': False, 'coord':[]},
-ddset = [{'name': 'src2', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.reg', 'reg_facet': 'facet2.reg', 'faint': False, 'coord':[]},
-        {'name': 'tooth', 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.reg', 'reg_facet': 'facet3.reg', 'faint': True, 'coord':[]}]
+ddset = [{'name': 'src1', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.reg', 'reg_facet': 'facet1.reg', 'faint': False, 'coord':[]},
+         {'name': 'src2', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.reg', 'reg_facet': 'facet2.reg', 'faint': False, 'coord':[]}]
+#        {'name': 'tooth', 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.reg', 'reg_facet': 'facet3.reg', 'faint': True, 'coord':[]}]
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
 niter = 2
 
@@ -75,39 +73,17 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
     # TODO: add multiscale
-    if dd['extended']: multiscale = [0,4,16,64]
-    else: multiscale = []
+    if dd['extended']: pass
 
     # Clean mask clean
     logging.info('Cleaning (cycle: '+str(c)+')...')
-    s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    imagename = 'img/wide-'+str(c)
+    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -threshold 0.05 -niter 10000 -no-update-model-required -mgain 0.6 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+' '.join(mss), \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-method rms -rms-background-window 20 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
-
-    if skip_mask:
-        check_rm('mss_imgavg')
-        return imagename, trim, pixscale
-
-    if dd['faint'] or facet:
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=5)
-    else:
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = imagename+'.newmask', atrous_do=dd['extended'], threshisl=20)
-
-    # if dd['mask'] is set then add it to the new mask
-    if dd['mask'] != '':
-        s.add_casa('/home/fdg/scripts/autocal/casa_comm/casa_blank.py', \
-            params={'imgs':imagename+'.newmask', 'region':dd['mask'], 'setTo':1}, log='casablank-c'+str(c)+'.log', log_append=True)
-        s.run(check=True)
-
-    logging.info('Cleaning with mask (cycle: '+str(c)+')...')
-    s.add('wsclean -reorder -name ' + imagename + '-M -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
-            -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 -casamask '+imagename+'.newmask \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -threshold 0.05 -niter 5000 -no-update-model-required -mgain 0.6 \
-            -pol I -cleanborder 0 -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+' '.join(mss), \
-            log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     check_rm('mss_imgavg')
@@ -193,22 +169,21 @@ def peel(dd):
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_facet')
         blank_image(model, 'regions/'+dd['reg_facet'], outfile, inverse=True)
 
-#    clean('emptybefore', allmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
-#
-#    #####################################################################################################
-#    # Add DD cal model - mss/TC*.MS:MODEL_DATA (high+low resolution model)
-#    logging.info('Ft DD calibrator model...')
-#    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
-#            -scale 10arcsec -channelsout 10 '+concat_ms, \
-#            log='wscleanPRE-dd.log', cmd_type='wsclean', processors='max')
-#    s.run(check=True)
-#
-#    ###########################################################################################################
-#    # ADD model mss/TC*.MS:SUBTRACTED_DATA + MODEL_DATA -> mss/TC*.MS:CORRECTED_DATA (empty data + DD cal from model)
-#    logging.info('Add model...')
-#    for ms in allmss:
-#        s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
-#    s.run(check=True)
+    clean('emptybefore', allmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
+
+    #####################################################################################################
+    # Add DD cal model - mss/TC*.MS:MODEL_DATA (high+low resolution model)
+    logging.info('Ft DD calibrator model...')
+    s.add('wsclean -predict -name ' + modeldir + 'peel_dd -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
+            log='wscleanPRE-dd.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+
+    ###########################################################################################################
+    # ADD model mss/TC*.MS:CORRECTED_DATA + MODEL_DATA -> mss/TC*.MS:CORRECTED_DATA (empty data + DD cal from model)
+    logging.info('Add model...')
+    for ms in allmss:
+        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+    s.run(check=True)
     
     # avg and ph-shift (to 1 chan/SB, 5 sec) -  mss/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, avg, phase shifted)
     logging.info('Shifting+averaging (CORRECTED_DATA)...')
@@ -246,11 +221,12 @@ def peel(dd):
         # Smooth
         logging.info('BL-based smoothing...')
         for ms in peelmss:
-            s.add('BLavg.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+            #s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         if c == 0:
-            # make concat after the smoother to have the WEIGHT_SPECTRUM_ORIG included
+            # make concat after the smoother to have the WEIGHT_SPECTRUM_ORIG and SMOOTHED_DATA included
             logging.info('Concatenating TCs...')
             concat_ms_peel = 'mss_peel/concat.MS'
             check_rm(concat_ms_peel+'*')
@@ -258,8 +234,7 @@ def peel(dd):
     
         # ft model - mss_peel/TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
-        s.add('wsclean -predict -name ' + model + ' -size '+str(imsize)+' '+str(imsize)+' -mem 90 -j '+str(s.max_processors)+' \
-                -scale '+str(pixscale)+'asec -channelsout 10 '+concat_ms_peel, \
+        s.add('wsclean -predict -name ' + model + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms_peel, \
                 log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
     
@@ -267,7 +242,7 @@ def peel(dd):
         logging.info('Solving TEC...')
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' cal.parmdb='+ms+'/instrument-tec cal2.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec sol2.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         logging.info('Correcting TEC...')
@@ -281,7 +256,7 @@ def peel(dd):
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
             check_rm(ms+'/instrument-amp')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' cal.parmdb='+ms+'/instrument-amp cal.solint=60', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-amp csol.solint=60', \
                 log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
     
@@ -300,9 +275,9 @@ def peel(dd):
                 log=ms+'_cor-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Restoring WEIGHT_SPECTRUM...')
-        s.add('taql "update '+concat_ms_peel+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
-        s.run(check=True)
+        #logging.info('Restoring WEIGHT_SPECTRUM...')
+        #s.add('taql "update '+concat_ms_peel+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
+        #s.run(check=True)
     
         ######################################################################################################################
         # clean
@@ -312,8 +287,7 @@ def peel(dd):
     ##############################################################################################################################
     # Add rest of the facet - mss/TC*.MS:MODEL_DATA (high+low resolution facet model)
     logging.info('Ft facet model...')
-    s.add('wsclean -predict -name ' + modeldir + 'peel_facet -size 8000 8000 -mem 90 -j '+str(s.max_processors)+' \
-            -scale 10arcsec -channelsout 10 '+concat_ms, \
+    s.add('wsclean -predict -name ' + modeldir + 'peel_facet -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
             log='wscleanPRE-facet.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 

@@ -4,15 +4,14 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
-steps = [filter, cal]
+steps = [sol]
 
-filter.blrange = [200, 1e30]
-
-cal.type = gaincal
-cal.parmdb = 
-cal.caltype = tecandphase
-cal.maxiter = 50
-cal.usemodelcolumn = True
-cal.solint = 1
-cal.nchan = 1
-cal.propagatesolutions = False
+sol.type = gaincal
+sol.parmdb = 
+sol.caltype = tecandphase
+sol.maxiter = 500
+sol.usemodelcolumn = True
+sol.solint = 1
+sol.nchan = 1
+sol.propagatesolutions = False
+sol.blrange = [1000,1e9]
