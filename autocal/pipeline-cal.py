@@ -33,9 +33,16 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
 
-###########################################################
+############################################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
+# kill weights of flagged data to prevent dysco bug
+
+#logging.info('Set weight of flagged data to 0...')
+#for ms in mss:
+#    s.add('flag_weight_to_zero.py '+ms, log=os.path.basename(ms)+'_resetweight.log', cmd_type='python')
+#s.run(check=True)
+
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
@@ -121,7 +128,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ################################################
@@ -203,7 +210,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #############################################################
