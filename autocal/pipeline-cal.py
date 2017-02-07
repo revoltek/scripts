@@ -9,7 +9,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-patch = '3C196'
+patch = ''
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
@@ -24,6 +24,8 @@ else:
     datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
     do_fixbeamtable = False
 
+#TODO: moved to dysco, problem with WEIGHTED_SPECTRUM to fix
+
 ###################################################
 
 set_logger('pipeline-cal.logging')
@@ -31,9 +33,16 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
 
-###########################################################
+############################################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
+# kill weights of flagged data to prevent dysco bug
+
+#logging.info('Set weight of flagged data to 0...')
+#for ms in mss:
+#    s.add('flag_weight_to_zero.py '+ms, log=os.path.basename(ms)+'_resetweight.log', cmd_type='python')
+#s.run(check=True)
+
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
@@ -72,6 +81,10 @@ if do_fixbeamtable:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
 
+###############################################
+# TODO Predict to save time
+
+
 ############################################
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
@@ -104,10 +117,10 @@ s.run(check=True)
 
 #################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-# NOTE: the WEIGHTED_COLUMN is now smoothed in this dataset, a backup is in WEIGHTED_COLUMN_ORIG
 logging.info('BL-smooth...')
 for ms in mss:
-    s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################
@@ -115,7 +128,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-circ.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ################################################
@@ -188,7 +201,8 @@ s.run(check=True)
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smoothing...')
 for ms in mss:
-    s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################
@@ -196,7 +210,7 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' cal.sourcedb='+sourcedb+' cal.sources='+patch, log=ms+'_sol-lin.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
 s.run(check=True)
 
 #############################################################
