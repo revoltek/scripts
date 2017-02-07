@@ -4,19 +4,17 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
-steps = [filter, cal]
+steps = [sol, count]
 
-filter.blrange = [2000, 1e30]
-
-cal.type = gaincal
-#cal.caltype = fulljones
-cal.caltype = diagonal
-cal.maxiter = 500
-cal.sourcedb =
-cal.sources = []
-cal.usebeammodel = True
-cal.usechannelfreq = False
-cal.beammode = array_factor
-cal.nchan = 1
-cal.solint = 1
-cal.propagatesolutions = False
+sol.type = gaincal
+sol.caltype = diagonal
+sol.maxiter = 500
+sol.sourcedb =
+sol.sources = []
+sol.usebeammodel = True
+sol.usechannelfreq = False
+sol.beammode = array_factor
+sol.nchan = 1
+sol.solint = 1
+sol.propagatesolutions = False
+sol.blrange = [2000,1e30]
