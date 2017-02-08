@@ -256,6 +256,7 @@ for c in xrange(niter):
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
+    # TODO: add multiscale and rms-variable-background
     # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
     # -use-differential-lofar-beam -baseline-averaging
     logging.info('Cleaning (cycle: '+str(c)+')...')
