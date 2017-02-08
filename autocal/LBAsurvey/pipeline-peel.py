@@ -12,9 +12,9 @@
 
 
 # coordinate of the region to find the DD
-ddset = [{'name': 'src1', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src1.reg', 'reg_facet': 'facet1.reg', 'faint': False, 'coord':[]},
-         {'name': 'src2', 'extended': False, 'facet_extended': False, 'mask':'', 'reg': 'src2.reg', 'reg_facet': 'facet2.reg', 'faint': False, 'coord':[]}]
-#        {'name': 'tooth', 'extended': False, 'facet_extended': False, 'mask':'tooth_mask.crtf', 'reg': 'src3.reg', 'reg_facet': 'facet3.reg', 'faint': True, 'coord':[]}]
+ddset = [{'name': 'src1', 'mask':'', 'reg': 'src1.reg', 'reg_facet': 'facet1.reg', 'faint': False, 'coord':[]},
+         {'name': 'src2', 'mask':'', 'reg': 'src2.reg', 'reg_facet': 'facet2.reg', 'faint': False, 'coord':[]}]
+#        {'name': 'tooth', 'mask':'tooth_mask.crtf', 'reg': 'src3.reg', 'reg_facet': 'facet3.reg', 'faint': True, 'coord':[]}]
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
 niter = 2
 
@@ -56,10 +56,8 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
     pixscale = scale_from_ms(mss[0])
     if facet:
         imsize = size_from_reg('peel/'+dd['name']+'/models/peel_facet-0000-model.fits', 'regions/'+dd['reg_facet'], dd['coord'], pixscale, pad=1.5)
-#        niter = 10000
     else:
         imsize = size_from_reg('peel/'+dd['name']+'/models/peel_dd-0000-model.fits', 'regions/'+dd['reg'], dd['coord'], pixscale, pad=1.5)
-#        niter = 2000
 
     if imsize < 512:
         trim = 512
@@ -72,17 +70,15 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
 
     logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
-    # TODO: add multiscale
-    if dd['extended']: pass
-
     # Clean mask clean
+    # TODO: add multiscale
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-method rms -rms-background-window 20 '+' '.join(mss), \
+            -auto-mask 5 -auto-threshold 1 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -129,6 +125,7 @@ def peel(dd):
     check_rm('mss_facet') 
     check_rm('mss_shiftback') 
     check_rm('plot')
+    check_rm('img')
     
     logging.info('Creating dirs...')
     os.makedirs('logs/mss')
@@ -144,6 +141,7 @@ def peel(dd):
     os.makedirs('peel/'+dd['name']+'/images')
     os.makedirs('peel/'+dd['name']+'/plots')
     os.makedirs('peel/'+dd['name']+'/h5')
+    os.makedirs('img')
     
     logging.info('Indexing...')
     allmss = sorted(glob.glob('mss/TC*.MS'))
@@ -165,11 +163,11 @@ def peel(dd):
     for model in sorted(glob.glob('self/models/*.fits')):
         logging.debug(model)
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_dd')
-        blank_image(model, 'regions/'+dd['reg'], outfile, inverse=True)
+        blank_image_reg(model, 'regions/'+dd['reg'], outfile, inverse=True)
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','peel_facet')
-        blank_image(model, 'regions/'+dd['reg_facet'], outfile, inverse=True)
+        blank_image_reg(model, 'regions/'+dd['reg_facet'], outfile, inverse=True)
 
-    clean('emptybefore', allmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
+    clean('emptybefore', allmss, dd, avgfreq=1, avgtime=5, facet=True, skip_mask=True) # DEBUG
 
     #####################################################################################################
     # Add DD cal model - mss/TC*.MS:MODEL_DATA (high+low resolution model)
@@ -180,9 +178,13 @@ def peel(dd):
 
     ###########################################################################################################
     # ADD model mss/TC*.MS:CORRECTED_DATA + MODEL_DATA -> mss/TC*.MS:CORRECTED_DATA (empty data + DD cal from model)
+    logging.info('Add SUBTRACTED_DATA...')
+    for ms in allmss:
+        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol1.log', cmd_type='python', processors='max')
+    s.run(check=True, max_threads=4)
     logging.info('Add model...')
     for ms in allmss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+        s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
     s.run(check=True)
     
     # avg and ph-shift (to 1 chan/SB, 5 sec) -  mss/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, avg, phase shifted)
@@ -198,11 +200,11 @@ def peel(dd):
     # Add MODEL_DATA and CORRECTED_DATA for cleaning
     logging.info('Add MODEL_DATA and CORRECTED_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
-    s.run(check=True, max_threads=1)
+        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
+    s.run(check=True, max_threads=4)
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
-    s.run(check=True, max_threads=1)
+        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol3.log', cmd_type='python', processors='max')
+    s.run(check=True, max_threads=4)
 
     # do a first clean to get the starting model (CORRECTED_DATA is == DATA now)
     #clean('initdd', peelmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
@@ -242,7 +244,7 @@ def peel(dd):
         logging.info('Solving TEC...')
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec sol2.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         logging.info('Correcting TEC...')
@@ -312,7 +314,7 @@ def peel(dd):
     logging.info('Set CORRECTED_DATA = DATA')
     for ms in facetmss:
         s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_facet-addcolDEBUG.log', cmd_type='python', processors='max', log_append=True)
-    s.run(check=True)
+    s.run(check=True, max_threads=4)
     clean('initfacet', facetmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
     
     # Correct amp+ph - mss_facet/TC*.MS:DATA -> mss_facet/TC*.MS:CORRECTED_DATA (selfcal tec+amp corrected)
