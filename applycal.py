@@ -8,7 +8,7 @@ import tables
 import casacore.tables as pt
 import numpy as np
 
-direction = 1
+direction = 0
 
 t = pt.table(sys.argv[1], readonly=False)
 h5 = tables.open_file(sys.argv[2])
