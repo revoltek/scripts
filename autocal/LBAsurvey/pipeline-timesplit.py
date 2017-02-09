@@ -74,9 +74,9 @@ if do_fixbeamtable:
     s.run(check=False)
 
 # flag below elev 30
-logging.info('Flagging...')
+logging.info('Flagging elevation...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag-init.parset msin='+ms, log=ms+'_flag-init.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ####################################################
