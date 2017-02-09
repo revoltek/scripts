@@ -38,11 +38,6 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 # Remove internationals
 # kill weights of flagged data to prevent dysco bug
 
-#logging.info('Set weight of flagged data to 0...')
-#for ms in mss:
-#    s.add('flag_weight_to_zero.py '+ms, log=os.path.basename(ms)+'_resetweight.log', cmd_type='python')
-#s.run(check=True)
-
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
 if nchan % 4 != 0:
@@ -66,7 +61,7 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     timeint = timeint * avg_factor_t
     mss = sorted(glob.glob('*-avg.MS'))
 
-# flag below elev 35 and bad stations, flags will propagate
+# flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
 for ms in mss:
 #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA',log=m+'_flag.log', cmd_type='NDPPP')

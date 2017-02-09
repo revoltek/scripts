@@ -73,6 +73,12 @@ if do_fixbeamtable:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
 
+# flag below elev 30
+logging.info('Flagging...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag.log', cmd_type='NDPPP')
+s.run(check=True)
+
 ####################################################
 # Beam correction DATA -> CORRECTED_DATA (beam corrected+reweight)
 logging.info('Beam correction...')
