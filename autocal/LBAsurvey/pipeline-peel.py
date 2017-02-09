@@ -78,12 +78,12 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-mask 5 -auto-threshold 1 '+' '.join(mss), \
+            -auto-mask 10 -auto-threshold 1 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     check_rm('mss_imgavg')
-    return imagename, trim, pixscale
+    return imagename
 
 
 def losoto(c, mss, dd, parset):
@@ -208,12 +208,10 @@ def peel(dd):
 #
 #    # do a first clean to get the starting model (CORRECTED_DATA is == DATA now)
 #    #clean('initdd', peelmss, dd, avgfreq=2, avgtime=5, facet=True, skip_mask=True) # DEBUG
-#    model, imsize, pixscale = clean('init', peelmss, dd)
+#    model = clean('init', peelmss, dd)
 #
 #    # DEBUG
 #    #model = 'peel/src2/images/peel-init-M'
-#    #imsize = 512
-#    #pixscale = 4
 #   
 #    ###################################################################################################################
 #    # self-cal cycle
@@ -283,7 +281,7 @@ def peel(dd):
 #    
 #        ######################################################################################################################
 #        # clean
-#        model, imsize, pixscale = clean(c, peelmss, dd)
+#        model = clean(c, peelmss, dd)
 #    
 #    # now do the same but for the entire facet to obtain a complete image of the facet and do a final subtraction
 #    ##############################################################################################################################
@@ -315,27 +313,25 @@ def peel(dd):
 #    for ms in facetmss:
 #        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_facet-addcolDEBUG.log', cmd_type='python', processors='max', log_append=True)
 #    s.run(check=True, max_threads=4)
-    clean('initfacet', facetmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
-    
-    # Correct amp+ph - mss_facet/TC*.MS:DATA -> mss_facet/TC*.MS:CORRECTED_DATA (selfcal tec+amp corrected)
-    # Copy instrument table in facet dataset
-    for msFacet in facetmss:
-        msDD = msFacet.replace('mss_facet','mss_peel')
-        logging.debug(msDD+'/instrument -> '+msFacet+'/instrument')
-        check_rm(msFacet+'/instrument')
-        os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
-    logging.info('Correcting facet amplitude+phase...')
-    for ms in facetmss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
-            log=ms+'_cor-facet.log', cmd_type='NDPPP')
-    s.run(check=True)
+#    clean('initfacet', facetmss, dd, avgfreq=4, avgtime=5, facet=True, skip_mask=True) # DEBUG
+#    
+#    # Correct amp+ph - mss_facet/TC*.MS:DATA -> mss_facet/TC*.MS:CORRECTED_DATA (selfcal tec+amp corrected)
+#    # Copy instrument table in facet dataset
+#    for msFacet in facetmss:
+#        msDD = msFacet.replace('mss_facet','mss_peel')
+#        logging.debug(msDD+'/instrument -> '+msFacet+'/instrument')
+#        check_rm(msFacet+'/instrument')
+#        os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
+#    logging.info('Correcting facet amplitude+phase...')
+#    for ms in facetmss:
+#        s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
+#            log=ms+'_cor-facet.log', cmd_type='NDPPP')
+#    s.run(check=True)
     
     # Cleaning facet
-    facetmodel, imsize, pixscale = clean('facet', facetmss, dd, avgfreq=4, avgtime=5, facet=True)
+    facetmodel = clean('facet', facetmss, dd, avgfreq=4, avgtime=5, facet=True)
     # DEBUG
     #facetmodel = 'peel/src1/images/peel-facet'
-    #imsize = 2208
-    #pixscale = 4
 
     # Blank pixels outside facet, new foccussed sources are cleaned (so they don't interfere) but we don't want to subtract them
     logging.info('Blank pixels outside facet...')
@@ -354,8 +350,7 @@ def peel(dd):
     
     # ft model - mss_peel/TC*.MS:MODEL_DATA (best available model)
     logging.info('FT facet model...')
-    s.add('wsclean -predict -name ' + facetmodel + ' -size '+str(imsize)+' '+str(imsize)+' -mem 90 -j '+str(s.max_processors)+' \
-            -scale '+str(pixscale)+'asec -channelsout 10 '+concat_ms_facet, \
+    s.add('wsclean -predict -name ' + facetmodel + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms_facet, \
             log='wscleanPRE-facet2.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 

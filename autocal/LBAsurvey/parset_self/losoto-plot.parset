@@ -1,6 +1,6 @@
 # losoto parset
-#LoSoTo.Steps = [plotTEC]
-LoSoTo.Steps = [plotTEC, plotCSP, plotCSPTEC]
+LoSoTo.Steps = [plotTEC]
+#LoSoTo.Steps = [plotTEC, plotCSP, plotCSPTEC]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
