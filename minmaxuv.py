@@ -24,19 +24,17 @@ import math
 
 c = 299792458
 
-t = table(sys.argv[1])
+t = table(sys.argv[1]).query('not all(FLAG)')
 col = t.getcol('UVW')
-maxdist = 0; mindist=np.inf
 
 t = table(sys.argv[1]+'/SPECTRAL_WINDOW')
 
 wavelenght = c/t.getcol('REF_FREQUENCY')[0]
 print 'Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1.e6)+' MHz)'
 
-for u,v,w in col:
-        dist = math.sqrt(u*u+v*v)
-        if dist > maxdist: maxdist = dist
-        if dist < mindist and dist != 0.0: mindist = dist
+dist = np.sqrt(col[:,0]**2 + col[:,1]**2)
+maxdist = np.max( dist )
+mindist = np.min( dist[(dist != 0)] )
 
 print 'MaxUVdist (wavelenght): ', maxdist/wavelenght
 print 'MaxUVdist (meters): ', maxdist

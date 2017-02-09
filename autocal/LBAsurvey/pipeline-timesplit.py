@@ -73,15 +73,21 @@ if do_fixbeamtable:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
 
+# flag below elev 30
+logging.info('Flagging elevation...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag-init.parset msin='+ms, log=ms+'_flag-init.log', cmd_type='NDPPP')
+s.run(check=True)
+
 ####################################################
-# Beam correction DATA -> CORRECTED_DATA (beam corrected)
+# Beam correction DATA -> CORRECTED_DATA (beam corrected+reweight)
 logging.info('Beam correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ###################################################################################################
-# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
+# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
 logging.info('Convert to circular...')
 for ms in mss:
     s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
@@ -95,7 +101,7 @@ for ms in mss:
     logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
     os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
 
-# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected data, beam corrected, lin)
+# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
 logging.info('Apply solutions...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
@@ -129,7 +135,7 @@ for i, msg in enumerate(np.array_split(mss, ngroups)):
     for j in range(num_init, num_fin+1):
         msg.append(ms_name_init.replace('SB%03i' % num_init, 'SB%03i' % j))
 
-    # NOTE: dysco is added here! After fixing high weight of flagged data
+    # NOTE: dysco is added here! After fixing high weight of flagged data and remove of autocorr
     # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
     s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
                 log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')

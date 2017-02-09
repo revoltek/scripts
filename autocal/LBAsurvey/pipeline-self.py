@@ -256,12 +256,13 @@ for c in xrange(niter):
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
+    # TODO: add multiscale and rms-variable-background
     # clean mask clean (cut at 8k lambda) - MODEL_DATA updated
     # -use-differential-lofar-beam -baseline-averaging
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 12arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+            -scale 12arcsec -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+' '.join(mss), \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -270,7 +271,7 @@ for c in xrange(niter):
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
     # remove CC not in mask
-    for modelname in glob.glob(imagename+'*model.fits'):
+    for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
     
     # TODO: move to DFT with NDPPP
@@ -299,7 +300,7 @@ for c in xrange(niter):
     logging.info('Cleaning low resolution (cycle: '+str(c)+')...')
     imagename = 'img/wide-lr-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 20arcsec -weight briggs 0.0 -auto-mask 20 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+            -scale 20arcsec -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 '+' '.join(mss), \
             log='wscleanA-lr-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -314,7 +315,7 @@ for c in xrange(niter):
     # TODO: move to DFT with NDPPP
     # resample at high res to avoid FFT problem on long baselines and predict
     logging.info('Predict...')
-    for model in glob.glob(imagename+'*model.fits'):
+    for model in sorted(glob.glob(imagename+'*model.fits')):
         model_out = model.replace(imagename,imagename+'-resamp')
         s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
     s.run(check=True)
@@ -362,10 +363,9 @@ s.run(check=True)
 #[ os.system('mv img/wide-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
 #[ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
 os.system('mv img/wideBeam-MFS-image.fits self/images')
+os.system('mv img/wideBeamLow-MFS-image.fits self/images')
 [ os.system('mv img/wide-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 [ os.system('mv img/wide-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-#[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-#[ os.system('mv img/wideM-lr-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 os.system('mv img/empty-image.fits self/images')
 os.system('mv logs self')
 

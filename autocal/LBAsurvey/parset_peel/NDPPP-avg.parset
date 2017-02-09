@@ -3,6 +3,7 @@ msin.datacolumn = CORRECTED_DATA
 msout = 
 msout.datacolumn = DATA
 msout.writefullresflag = False
+msout.storagemanager = dysco
 
 steps = [avg]
 

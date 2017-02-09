@@ -42,7 +42,7 @@ def main(options):
                 # if non dysco is done by default
                 if options.dysco:
                     logging.warning('Setting '+col+' = 0')
-                    t.taql("update $t set "+col+"=0")
+                    pt.taql("update $t set "+col+"=0")
 
             else:
                 # prepare col metadata
@@ -54,7 +54,7 @@ def main(options):
                 t.addcols(pt.makecoldesc(col, cd), coldmi)
 
                 logging.warning('Setting '+col+' = '+incol)
-                t.taql("update $t set "+col+"="+incol)
+                pt.taql("update $t set "+col+"="+incol)
 
         else:
             logging.warning('Column '+col+' already exists.')
