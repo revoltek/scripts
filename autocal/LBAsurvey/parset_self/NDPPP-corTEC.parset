@@ -4,8 +4,8 @@ msout = .
 msout.datacolumn = CORRECTED_DATA
 msout.storagemanager = dysco
 
-#steps = [cor1, count]
-steps = [cor1, cor2, count]
+steps = [cor1, count]
+#steps = [cor1, cor2, count]
 
 cor1.type = applycal
 cor1.parmdb =

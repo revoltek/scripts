@@ -112,28 +112,24 @@ def size_from_reg(filename, region, coord, pixscale, pad=1.2):
 def scale_from_ms(ms):
     """
     Get the pixel scale in arcsec for a full-res image.
-    It is 1/3 of the max resolution assuming zenit observation.
+    It is 1/4 of the max resolution assuming zenit observation.
+    Completely flagged lines are removed
     """
     from pyrap.tables import *
     import numpy as np
 
-    c = 299792458
+    c = 299792458.
 
-    t = table(ms, ack=False)
+    t = table(ms, ack=False).query('not all(FLAG)')
     col = t.getcol('UVW')
     maxdist = 0
-    #mindist=np.inf
 
     t = table(ms+'/SPECTRAL_WINDOW', ack=False)
     wavelenght = c/t.getcol('REF_FREQUENCY')[0]
     #print 'Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1.e6)+' MHz)'
 
-    for u,v,w in col:
-        dist = np.sqrt(u*u+v*v)
-        if dist > maxdist: maxdist = dist
-    #    if dist < mindist and dist != 0.0: mindist = dist
+    maxdist = np.max( np.sqrt(col[:,0]**2 + col[:,1]**2) )
 
-    #print 'Min scale: ~',wavelenght/maxdist*(180/np.pi)*3600, 'arcsec'
     return int(round(wavelenght/maxdist*(180/np.pi)*3600/3.)) # arcsec
 
 def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0.):
