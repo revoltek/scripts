@@ -360,8 +360,6 @@ for model in glob.glob('img/wide-'+str(c)+'*-model.fits'):
 s.run(check=True) 
 
 # Copy images
-#[ os.system('mv img/wide-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
-#[ os.system('mv img/wide-lr-'+str(c)+'.newmask self/images') for c in xrange(niter) ]
 os.system('mv img/wideBeam-MFS-image.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits self/images')
 [ os.system('mv img/wide-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
