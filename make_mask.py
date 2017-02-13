@@ -14,7 +14,7 @@ def make_mask(image_name, mask_name=None, threshpix=5, threshisl=3, atrous_do=Fa
     else: stop_at = 'isl'
 
     # DO THE SOURCE DETECTION
-    img = bdsm.process_image(image_name, mean_map='zero', rms_box=rmsbox, \
+    img = bdsm.process_image(image_name, rms_box=rmsbox, \
         thresh_pix=int(threshpix), thresh_isl=int(threshisl), atrous_do=atrous_do, atrous_jmax=3, \
         adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
         stop_at=stop_at, blank_limit=1e-5, quiet=True)

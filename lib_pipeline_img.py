@@ -115,7 +115,7 @@ def scale_from_ms(ms):
     It is 1/4 of the max resolution assuming zenit observation.
     Completely flagged lines are removed
     """
-    from pyrap.tables import *
+    from pyrap.tables import table
     import numpy as np
 
     c = 299792458.
@@ -192,6 +192,15 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0.):
         # save fits
         fits[0].data = data.reshape(origshape)
         fits.writeto(outfile, clobber=True)
+
+
+def get_nose_img(filename):
+    """
+    Return the rms of all the pixels in an image
+    """
+    import astropy.io.fits as pyfits
+    with pyfits.open(filename) as fits:
+        return np.sqrt(np.mean((fits[0].data)**2))
 
 
 def get_coord_centroid(filename, region):
