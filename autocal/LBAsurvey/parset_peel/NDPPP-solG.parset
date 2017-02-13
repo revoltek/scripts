@@ -4,14 +4,14 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
-steps = [filter, sol]
+steps = [sol]
 
 sol.type = gaincal
 sol.parmdb = 
 sol.caltype = diagonal
 sol.maxiter = 100
 sol.usemodelcolumn = True
-sol.solint = 1
+sol.solint = 100
 sol.nchan = 0
 sol.propagatesolutions = False
-sol.blrange = [1500,1e9]
+sol.blrange = [1000,1e9]
