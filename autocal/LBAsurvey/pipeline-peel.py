@@ -16,7 +16,7 @@ ddset = [{'name': 'src1', 'mask':'', 'reg': 'src1.reg', 'reg_facet': 'facet1.reg
          {'name': 'src2', 'mask':'', 'reg': 'src2.reg', 'reg_facet': 'facet2.reg', 'faint': False, 'coord':[]}]
 #        {'name': 'tooth', 'mask':'tooth_mask.crtf', 'reg': 'src3.reg', 'reg_facet': 'facet3.reg', 'faint': True, 'coord':[]}]
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
-maxniter = 5
+maxniter = 10
 
 ##########################################################################################
 
@@ -259,11 +259,11 @@ def peel(dd):
         s.run(check=True)
 
         # calibrate amplitude (solve only) - mss_peel/TC*.MS:CORRECTED_DATA
-        # TODO: do it only after 3rd cycle?
+        # TODO: do it only after 3rd cycle
         logging.info('Calibrating amplitude...')
         for ms in peelmss:
             check_rm(ms+'/instrument-amp')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-amp csol.solint=60', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-amp csol.solint=100', \
                 log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
     
