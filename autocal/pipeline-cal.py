@@ -3,7 +3,7 @@
 import sys, os, glob, re
 import numpy as np
 import pyrap.tables as pt
-from lib_pipeline import *
+from autocal.lib_pipeline import *
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 

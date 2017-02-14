@@ -10,7 +10,7 @@ import matplotlib.pyplot as pl
 import numpy as np
 import os, sys, glob, re
 import pyrap.images
-from lib_pipeline import *
+from autocal.lib_pipeline import *
 from lib_coordinates_mode import *
 set_logger()
 try:
