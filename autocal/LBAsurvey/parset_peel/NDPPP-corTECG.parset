@@ -3,8 +3,8 @@ msin.datacolumn = DATA
 msout = 
 msout.datacolumn = CORRECTED_DATA
 
-#steps = [cor1, cor3, count]
-steps = [cor1, cor2, cor3, count]
+steps = [cor1, cor3, count]
+#steps = [cor1, cor2, cor3, count]
 
 cor1.type = applycal
 cor1.parmdb =

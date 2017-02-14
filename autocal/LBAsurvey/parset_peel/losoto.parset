@@ -1,6 +1,6 @@
 # losoto parset: peel
-LoSoTo.Steps = [norm, plotA1, plotTEC, plotCSP, plotCSPTEC]
-#LoSoTo.Steps = [norm, plotA1, plotA2, plotTEC]
+#LoSoTo.Steps = [norm, plotA1, plotTEC, plotCSP, plotCSPTEC]
+LoSoTo.Steps = [norm, plotA1, plotTEC]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
