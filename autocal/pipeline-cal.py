@@ -9,7 +9,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 
 skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
 sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-patch = '' # test with all sources
+patch = '3C196' # test with all sources
 #skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
 #sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
 #patch = '3C295'
@@ -36,7 +36,6 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 ############################################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
-# kill weights of flagged data to prevent dysco bug
 
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
@@ -64,8 +63,10 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA',log=m+'_flag.log', cmd_type='NDPPP')
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', log=ms+'_flag.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA', \
+            log=ms+'_flag.log', cmd_type='NDPPP')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', \
+#            log=ms+'_flag.log', cmd_type='NDPPP')
 s.run(check=True)
     
 ###############################################
