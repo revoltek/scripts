@@ -3,19 +3,18 @@
 import os, sys
 import logging
 import numpy as np
-import lsmtool
 import shapely.geometry
 from shapely.ops import cascaded_union
 from itertools import combinations
 from astropy.coordinates import Angle
 
-def make_directions_file_from_skymodel(filename, flux_min_Jy=4.0, size_max_arcmin=2.0,
-    directions_separation_max_arcmin=10.0, directions_max_num=None, flux_min_for_merging_Jy=1.0):
+def make_directions_file_from_skymodel(filename, flux_min_Jy=3.0, size_max_arcmin=1.0,
+    directions_separation_max_arcmin=10.0, directions_max_num=None, flux_min_for_merging_Jy=0.1):
     """
-    Selects appropriate calibrators from sky model and makes the directions file
+    Selects appropriate calibrators from srl file
     Parameters
     ----------
-    s : LSMTool SkyModel object
+    filename : srl file
         Skymodel made by grouping clean components of dir-independent model
     flux_min_Jy : float
         Minimum flux density for a calibrator in Jy
@@ -33,61 +32,54 @@ def make_directions_file_from_skymodel(filename, flux_min_Jy=4.0, size_max_arcmi
     directions_file : str
         Filename of resulting Factor-formatted directions file
     """
-    s = lsmtool.load(filename)
+    # open astropy table
+    t = table.open(filename) # TODO: restrict to some cols and add units
+    logging.info('# sources initial: %i' % len(t))
 
-    # Filter patches on size
-    s_large = s.copy()
-    sizes = s.getPatchSizes(units='arcmin', weight=True)
-    s.select(sizes < size_max_arcmin, aggregate=True, force=True)
-    if len(s) == 0:
+    # exclude sources that are too extended
+    t_large = t[ (t['Maj'] >= size_max_arcmin*u.amin) ]
+    t = t[ (t['Maj'] < size_max_arcmin*u.amin) ]
+    logging.info('# sources after cut on size: %i' % len(t))
+    if len(t) == 0:
         logging.critical("No sources found that meet the specified max size criterion.")
         sys.exit(1)
-    logging.info('Found {0} sources with sizes below {1} '
-        'arcmin'.format(len(s.getPatchNames()), size_max_arcmin))
-    s_large.remove(sizes < size_max_arcmin, aggregate=True, force=True)
 
-    # Filter patches on flux density limit for merging
-    s.select('I > {0} Jy'.format(flux_min_for_merging_Jy), aggregate='sum', force=True)
-    if len(s) == 0:
-        logging.critical("No sources found above {} Jy.".format(flux_min_for_merging_Jy))
+    # combine close sources
+    t = t[ (t['Total_flux'] > flux_min_for_merging_Jy) ]
+    logging.info('# sources after cut min flux for merging: %i' % len(t))
+    if len(t) == 0:
+        logging.critical("No sources found above %f Jy." % flux_min_for_merging_Jy )
         sys.exit(1)
-    logging.info('Found {0} sources with flux densities above {1} Jy'.format(
-        len(s.getPatchNames()), flux_min_for_merging_Jy))
-    if len(s_large) > 0:
-        s_large.select('I > {0} Jy'.format(flux_min_for_merging_Jy), aggregate='sum', force=True)
+    t_large = t_large[ (t_large['Total_flux'] > flux_min_for_merging_Jy) ]
 
-    # Look for nearby pairs
-    pRA, pDec = s.getPatchPositions(asArray=True)
-    for ra, dec in zip(pRA.tolist()[:], pDec.tolist()[:]):
-        dist = s.getDistance(ra, dec, byPatch=True, units='arcmin')
-        nearby = np.where(dist < directions_separation_max_arcmin)
-        if len(nearby[0]) > 1:
-            patches = s.getPatchNames()[nearby]
-            s.merge(patches.tolist())
-    # update patch positions
-    s.setPatchPositions(method='mid')
-    logging.info('Souece merged in {0} groups within {1} arcmin of each other.'.format(
-        len(s.getPatchNames()), directions_separation_max_arcmin))
+    # restrict to brightest directions
+    # match_coordinates_sky() gives an idx of the 2nd catalogue for each source of the 1st catalogue
+    idx, dist, _ = match_coordinates_sky(SkyCoord(t['RA']*u.deg, t['DEC']*u.deg),\
+                                      SkyCoord(t['RA']*u.deg, t['DEC']*u.deg), nthneighbor=2)
+    idx_duplicates = []
+    for i1, i2 in enumerate(idx):
+        if i1 in idx_duplicates: continue
+        if dist[i1] < directions_separation_max_arcmin*u.amin:
+            idx_duplicate.append(i2)
+            t['Total_flux'][i1] += t['Total_flux'][i2]
+            t['RA'][i1] = 0.5*(t['RA'][i1] + t['RA'][i2])
+            t['DEC'][i1] = 0.5*(t['DEC'][i1] + t['DEC'][i2])
+            t['size'][i1] = 
+
+    t.remove_rows(idx_duplicates)
 
     # Filter patches on total flux density limit
-    s.select('I > {0} Jy'.format(flux_min_Jy), aggregate='sum', force=True)
-    if len(s) == 0:
+    t = t[ (t['Total_flux'] > flux_min_Jy) ]
+    logging.info('# sources after cut min flux: %i' % len(t))
+    if len(t) == 0:
         logging.critical("No sources or merged groups found that meet the specified "
             "min total flux density criterion.")
         sys.exit(1)
-    logging.info('Found {0} sources or merged groups with total flux densities above {1} Jy'.format(
-        len(s.getPatchNames()), flux_min_Jy))
 
     # Trim directions list to get directions_max_num of directions
     if directions_max_num is not None:
-        dir_fluxes = s.getColValues('I', aggregate='sum')
-        dir_fluxes_sorted = dir_fluxes.tolist()
-        dir_fluxes_sorted.sort(reverse=True)
-        cut_jy = dir_fluxes_sorted[-1]
-        while len(dir_fluxes_sorted) > directions_max_num:
-            cut_jy = dir_fluxes_sorted.pop() + 0.00001
-        s.remove('I < {0} Jy'.format(cut_jy), aggregate='sum')
-    logging.info('Kept {0} directions in total'.format(len(s.getPatchNames())))
+        t = t.sort('Total_flux')[:directions_max_num]
+    logging.info('# sources after cut on max directions: %i' % len(t))
 
     # Now, merge calibrator patches with any extended sources that meet the
     # flux density limit for merging
@@ -120,11 +112,10 @@ def make_directions_file_from_skymodel(filename, flux_min_Jy=4.0, size_max_arcmi
             calibrator_name in calibrator_names if calibrator_name in all_names])
         s.select(calibrator_ind, aggregate=True)
 
-    # Logs
-    s.info()
-
     # Write region files, one per patch
-    s.setPatchPositions(method='mid')
+    t.write('test.skymodel', format='ds9', clobber=True)
+
+    # save source by source
     for i, patch in enumerate(s.getPatchNames()):
         w = s.getRowValues(patch)
         w.write('regions/src%02i.reg' % i, format='ds9')

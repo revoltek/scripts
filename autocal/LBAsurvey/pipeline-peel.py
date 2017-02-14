@@ -407,9 +407,9 @@ bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
         quiet=True)
 check_rm('regions')
 os.makedirs('regions')
-bdsm_img.write_catalog('regions/catalog.skymodel', catalog_type='srl', bbs_patches='source', format='bbs')
-make_directions_file_from_skymodel('regions/catalog.skymodel', flux_min_Jy=4.0, size_max_arcmin=2.0,
-        directions_separation_max_arcmin=10.0, directions_max_num=15, flux_min_for_merging_Jy=1.0)
+bdsm_img.write_catalog('regions/catalog.skymodel', catalog_type='gaul', bbs_patches='source', format='bbs')
+make_directions_file_from_skymodel('regions/catalog.skymodel', flux_min_Jy=3.0, size_max_arcmin=2.0,
+        directions_separation_max_arcmin=10.0, directions_max_num=15, flux_min_for_merging_Jy=0.1)
 
 for dd in ddset: peel(dd)
 logging.info("Done.")
