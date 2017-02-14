@@ -24,8 +24,8 @@ import sys, os, glob, re
 import numpy as np
 from lofar import bdsm
 import pyrap.tables as pt
-from lib_pipeline import *
-from lib_pipeline_dd import *
+from autocal.lib_pipeline import *
+from autocal.lib_pipeline_dd import *
 from make_mask import make_mask
 import lofar.bdsm as bdsm
 
@@ -80,7 +80,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False, skip_mask=False):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-mask 10 -auto-threshold 1 '+' '.join(mss), \
+            -auto-mask 5 -auto-threshold 1 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 

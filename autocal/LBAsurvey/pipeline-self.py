@@ -14,7 +14,7 @@
 import sys, os, glob, re
 import numpy as np
 import pyrap.tables as pt
-from lib_pipeline import *
+from autocal.lib_pipeline import *
 from make_mask import make_mask
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'

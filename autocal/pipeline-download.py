@@ -9,7 +9,7 @@ rename = True
 import sys, os, re, glob, time
 import numpy as np
 import pyrap.tables as pt
-from lib_pipeline import *
+from autocal.lib_pipeline import *
 
 def nu2num(nu):
     """

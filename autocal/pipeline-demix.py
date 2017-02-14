@@ -8,7 +8,7 @@ origmss_dir = '../tgts-full'
 
 import sys, os, glob
 import numpy as np
-from lib_pipeline import *
+from autocal.lib_pipeline import *
 
 set_logger()
 check_rm('logs')
