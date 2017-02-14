@@ -5,7 +5,7 @@ import sys, os
 import argparse
 import numpy as np
 
-class Ms(object):
+class Fits(object):
     def __init__(self, filename):
         self.filename = filename
         self.data, self.header = fits.getdata(filename, 0, header=True)
@@ -25,37 +25,37 @@ class Ms(object):
         else:
             raise "Incompatible axes format in %s." % filename
 
-def main(outfile, ms_files, clobber=False):
+def main(outfile, fitsfiles, clobber=False):
     
-    # create ms objects
-    mss_list = []
-    for ms_file in ms_files:
-        mss_list.append(Ms(ms_file))
+    # create fits objects
+    fits_list = []
+    for fitsfile in fitsfiles:
+        fits_list.append(Fits(fitsfile))
 
-        assert mss_list[0].nx == mss_list[-1].nx # assume same x size
-        assert mss_list[0].ny == mss_list[-1].ny # assume same y size
+        assert fits_list[0].nx == fits_list[-1].nx # assume same x size
+        assert fits_list[0].ny == fits_list[-1].ny # assume same y size
         # not true in many wsclean cases!
-        #assert mss_list[0].deltafreq == mss_list[-1].deltafreq # assume same freq size
+        #assert fits_list[0].deltafreq == fits_list[-1].deltafreq # assume same freq size
 
     # Order by incresing freq
-    freqs = [ms.freq for ms in mss_list]
-    mss_list = [ms for (freq, ms) in sorted(zip(freqs, mss_list))]
+    freqs = [fits.freq for fits in fits_list]
+    fits_list = [fits for (freq, fits) in sorted(zip(freqs, fits_list))]
     freqs = sorted(freqs)
     print "Frequencies:", freqs
 
     # Get cube dimensions from first image
-    nx = mss_list[0].nx
-    ny = mss_list[0].ny
-    nv = len(mss_list)
+    nx = fits_list[0].nx
+    ny = fits_list[0].ny
+    nv = len(fits_list)
 
     # Create the cube, only stokes I
     cube = np.empty([1, nv, ny, nx], dtype=float)
     
-    for i, ms in enumerate(mss_list):
-        cube[0,i,:,:] = ms.data
+    for i, fits in enumerate(fits_list):
+        cube[0,i,:,:] = fits.data
 
     hdulist = fits.PrimaryHDU(cube)
-    hdulist.header = mss_list[0].header.copy()
+    hdulist.header = fits_list[0].header.copy()
     hdulist.writeto(outfile, clobber=clobber)
     
 if __name__ == '__main__':
