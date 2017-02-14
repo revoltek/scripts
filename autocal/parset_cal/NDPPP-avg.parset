@@ -1,6 +1,6 @@
 msin = 
 msin.datacolumn = DATA
-# do not copy aucorr as they have too weird weights
+# do not copy aucorr as they have too weird weights for dysco
 msin.baseline = [CR]S*&
 msout = 
 msout.writefullresflag = False
