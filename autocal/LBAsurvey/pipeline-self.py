@@ -356,6 +356,7 @@ for model in glob.glob('img/wide-'+str(c)+'*-model.fits'):
     if "MFS" in model: continue
     model_lr = model.replace('wide-'+str(c),'wide-lr-'+str(c)+'-resamp')
     model_out = model.replace('img/wide-'+str(c),'self/models/coadd')
+    # if this pixel scale is changed, change also the resampling in the peel pipeline
     s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
 s.run(check=True) 
 
