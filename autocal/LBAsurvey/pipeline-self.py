@@ -127,6 +127,7 @@ for c in xrange(niter):
     logging.info('Start selfcal cycle: '+str(c))
 
     # Smooth DATA -> SMOOTHED_DATA
+    # Re-done in case of new flags
     logging.info('BL-based smoothing...')
     for ms in mss:
         s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
