@@ -5,31 +5,30 @@ import logging
 import numpy as np
 
 
-#def size_from_facet(img, c_coord, pixsize):
-#    """
-#    Given an image, a new centre find the smallest image size which cover the whole image.
-#    img = CASA-image name
-#    c_coord = [ra,dec] in degrees, the wanted image centre
-#    pixsize = in arcsec, the final image will have this pixels size, so a rescaling might be needed
-#    """
-#    import pyrap.images
-#    img = pyrap.images.image(img)
-#    c = img.coordinates()
-#    # assumes images in a standard casa shape
-#    assert c.get_axes()[2] == ['Declination', 'Right Ascension']
-#    # assume same increment in image axes
-#    assert abs(c.get_increment()[2][0]) == abs(c.get_increment()[2][1])
-#    cen_y, cen_x = img.topixel([1,1,c_coord[1]*np.pi/180., c_coord[0]*np.pi/180.])[2:]
-#    max_y, max_x = img.shape()[2:]
-#    max_dist = max(max(cen_x, max_x - cen_x), max(cen_y, max_y - cen_y))
-#    max_dist = max_dist * abs(c.get_increment()[2][0])*180/np.pi*3600 / pixsize
-#    if max_dist > 6400: return 6400
-#    # multiply distance *2 (so to have the image size) and add 100% to be conservative
-#    max_dist = (max_dist*2)*2
-#    goodvalues = np.array([6400,6144,5600,5400,5184,5000,4800,4608,4320,4096,3840,3600,3200,3072,2880,2560,2304,2048, 1600, 1536, 1200, 1024, 800, 512, 256, 128])
-#    shape = min(goodvalues[np.where(goodvalues>=max_dist)])
-#    del img
-#    return shape
+def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
+    """Returns angular separation between two coordinates (all in degrees)"""
+    import math
+
+    if ra1deg == ra2deg and dec1deg == dec2deg: return 0
+
+    ra1rad=ra1deg*math.pi/180.0
+    dec1rad=dec1deg*math.pi/180.0
+    ra2rad=ra2deg*math.pi/180.0
+    dec2rad=dec2deg*math.pi/180.0
+
+    # calculate scalar product for determination
+    # of angular separation
+    x=math.cos(ra1rad)*math.cos(dec1rad)*math.cos(ra2rad)*math.cos(dec2rad)
+    y=math.sin(ra1rad)*math.cos(dec1rad)*math.sin(ra2rad)*math.cos(dec2rad)
+    z=math.sin(dec1rad)*math.sin(dec2rad)
+
+    if x+y+z >= 1: rad = 0
+    else: rad=math.acos(x+y+z)
+
+    # Angular separation
+    deg=rad*180/math.pi
+    return deg
+
 
 def flatten(f, channel=0, freqaxis=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -74,8 +73,10 @@ def flatten(f, channel=0, freqaxis=0):
 
 def size_from_reg(filename, region, coord, pixscale, pad=1.2):
     """
-    find the minimum image size to cover a certain region
-    pad: multiplicative factor on the final size
+    find the minimum image size in pixels to cover a certain region given an img center
+    coord : coordinate of the image center
+    pad : multiplicative factor on the final size
+    pixscale : pixel scale in arcsec
     """
     import astropy.io.fits as pyfits
     import astropy.wcs as pywcs
@@ -84,29 +85,25 @@ def size_from_reg(filename, region, coord, pixscale, pad=1.2):
     # open fits
     fits = pyfits.open(filename)
     header, data = flatten(fits)
+    w = pywcs.WCS(header)
 
     # extract mask
     r = pyregion.open(region)
     mask = r.get_mask(header=header, shape=data.shape)
     y,x = mask.nonzero()
-    min_ra_pix = np.min(x)
-    min_dec_pix = np.min(y)
-    max_ra_pix = np.max(x)
-    max_dec_pix = np.max(y)
-#    print 'min ra - min dec (pix)', min_ra_pix, min_dec_pix
-#    print 'max ra - max dec (pix)', max_ra_pix, max_dec_pix
+    x_min = np.min(x)
+    y_min = np.min(y)
+    x_max = np.max(x)
+    y_max = np.max(y)
 
-    # to degrees
-    w = pywcs.WCS(fits[0].header)
-    min_ra, min_dec = w.all_pix2world(min_ra_pix, min_dec_pix, 0, 0, 0, ra_dec_order=True)
-    max_ra, max_dec = w.all_pix2world(max_ra_pix, max_dec_pix, 0, 0, 0, ra_dec_order=True)
-#    print 'min ra - min dec (sky)', min_ra, min_dec
-#    print 'max ra - max dec (sky)', max_ra, max_dec
+    # find max dist in pixel on reference image
+    x_c, y_c = w.all_world2pix(coord[0], coord[1], 0, ra_dec_order=True)
+    max_x_size = 2*max([abs(x_c - x_min), abs(x_c - x_max)])
+    max_y_size = 2*max([abs(y_c - y_min), abs(y_c - y_max)])
 
-    max_ra_size = 2*max([abs(coord[0] - min_ra), abs(coord[0] - max_ra)])*3600 # arcsec
-    max_dec_size = 2*max([abs(coord[1] - min_dec), abs(coord[1] - max_dec)])*3600 # arcsec
-
-    return int(pad*max([max_ra_size, max_dec_size])/pixscale)
+    # in case ref image and pixscale are different
+    pix_factor = np.abs(header['CDELT1']*3600/pixscale)
+    return int(pad*max([max_x_size, max_y_size])*pix_factor)
 
  
 def scale_from_ms(ms):

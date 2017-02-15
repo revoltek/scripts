@@ -133,6 +133,7 @@ check_rm('globaldb')
 check_rm('globaldb-fr')
 os.system('mkdir globaldb')
 os.system('mkdir globaldb-fr')
+check_rm('plots-fr')
 for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
@@ -160,7 +161,6 @@ s.run(check=True)
 
 s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
-check_rm('plots-fr')
 os.system('mv plots plots-fr')
 
 for i, ms in enumerate(mss):
