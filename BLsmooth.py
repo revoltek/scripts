@@ -125,7 +125,7 @@ for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
     if ant[0] >= ant[1]: continue
     if stddevs[i] == 0: continue # fix for missing anstennas
 
-    print '.'
+    print '.',
     sys.stdout.flush()
 
     sel = (ant1 == ant[0]) & (ant2 == ant[1])
