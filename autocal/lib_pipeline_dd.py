@@ -3,19 +3,20 @@
 import os, sys
 import logging
 import numpy as np
-import shapely.geometry
-from shapely.ops import cascaded_union
-from itertools import combinations
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, SkyCoord, match_coordinates_sky
+import astropy.units as u
+from astropy.table import Table
 
-def make_directions_file_from_skymodel(filename, flux_min_Jy=3.0, size_max_arcmin=1.0,
-    directions_separation_max_arcmin=10.0, directions_max_num=None, flux_min_for_merging_Jy=0.1):
+def make_directions_from_skymodel(filename, outdir='regions/' flux_min_Jy=1.0, size_max_arcmin=3.0,
+    directions_separation_max_arcmin=5.0, directions_max_num=20, flux_min_for_merging_Jy=0.2):
     """
     Selects appropriate calibrators from srl file
     Parameters
     ----------
     filename : srl file
         Skymodel made by grouping clean components of dir-independent model
+    outdir: string
+        Directory where to save the ds9 regions
     flux_min_Jy : float
         Minimum flux density for a calibrator in Jy
     size_max_arcmin : float
@@ -29,44 +30,65 @@ def make_directions_file_from_skymodel(filename, flux_min_Jy=3.0, size_max_arcmi
         Minimum flux density for a source to be considered for merging
     Returns
     -------
-    directions_file : str
-        Filename of resulting Factor-formatted directions file
+    table : astropy table
+        Table with direction information
     """
     # open astropy table
-    t = table.open(filename) # TODO: restrict to some cols and add units
+    t = Table.read(filename, format='fits')['RA','DEC','Maj','Peak_flux','Total_flux'] # restrict to some cols
     logging.info('# sources initial: %i' % len(t))
 
     # exclude sources that are too extended
-    t_large = t[ (t['Maj'] >= size_max_arcmin*u.amin) ]
-    t = t[ (t['Maj'] < size_max_arcmin*u.amin) ]
+    t_large = t[ (t['Maj'] >= size_max_arcmin*u.arcmin) ]
+    t = t[ (t['Maj'] < size_max_arcmin*u.arcmin) ]
     logging.info('# sources after cut on size: %i' % len(t))
+    logging.info('# large sources: %i' % len(t_large))
     if len(t) == 0:
         logging.critical("No sources found that meet the specified max size criterion.")
         sys.exit(1)
 
-    # combine close sources
+    # exclude sources that are too faint
+    t_large = t_large[ (t_large['Total_flux'] > flux_min_for_merging_Jy) ]
     t = t[ (t['Total_flux'] > flux_min_for_merging_Jy) ]
     logging.info('# sources after cut min flux for merging: %i' % len(t))
     if len(t) == 0:
         logging.critical("No sources found above %f Jy." % flux_min_for_merging_Jy )
         sys.exit(1)
-    t_large = t_large[ (t_large['Total_flux'] > flux_min_for_merging_Jy) ]
 
-    # restrict to brightest directions
-    # match_coordinates_sky() gives an idx of the 2nd catalogue for each source of the 1st catalogue
-    idx, dist, _ = match_coordinates_sky(SkyCoord(t['RA']*u.deg, t['DEC']*u.deg),\
-                                      SkyCoord(t['RA']*u.deg, t['DEC']*u.deg), nthneighbor=2)
-    idx_duplicates = []
-    for i1, i2 in enumerate(idx):
-        if i1 in idx_duplicates: continue
-        if dist[i1] < directions_separation_max_arcmin*u.amin:
-            idx_duplicate.append(i2)
-            t['Total_flux'][i1] += t['Total_flux'][i2]
-            t['RA'][i1] = 0.5*(t['RA'][i1] + t['RA'][i2])
-            t['DEC'][i1] = 0.5*(t['DEC'][i1] + t['DEC'][i2])
-            t['size'][i1] = 
+    t.sort('Total_flux')
+    t.reverse()
 
-    t.remove_rows(idx_duplicates)
+    # combine nearby sources
+    for s in t:
+        # if ra/dec changes, continue finding nearby sources until no-sources are found
+        updated = True
+        while updated:
+            dists = SkyCoord(ra=s['RA']*u.degree, dec=s['DEC']*u.degree).separation(SkyCoord(ra=t['RA'], dec=t['DEC']))
+            updated = False
+            for i, dist in enumerate(dists):
+                if dist < directions_separation_max_arcmin*u.arcmin and dist > 0.*u.degree:
+                    # if a source is dominant keep that at the center of the patch
+                    if t['Peak_flux'][i] > 3*s['Peak_flux']:
+                        s['RA'] = t['RA'][i]
+                        s['DEC'] = t['DEC'][i]
+                        s['Maj'] = max(s['Maj'], t['Maj'][i]) + dist.degree
+                        updated = True
+                    # other wise weighted mean
+                    elif t['Peak_flux'][i] > s['Peak_flux']:
+                        s['RA'] = (s['RA']*s['Peak_flux'] + t['RA'][i]*t['Peak_flux'][i])/(s['Peak_flux']+t['Peak_flux'][i])
+                        s['DEC'] = (s['DEC']*s['Peak_flux'] + t['DEC'][i]*t['Peak_flux'][i])/(s['Peak_flux']+t['Peak_flux'][i])
+                        s['Maj'] = max(s['Maj'], t['Maj'][i]) + dist.degree/2.
+                        updated = True
+                    else:
+                        s['Maj'] = max(s['Maj'], t['Maj'][i]) + dist.degree
+
+                    s['Total_flux'] += t['Total_flux'][i]
+                    s['Peak_flux'] = max(s['Peak_flux'], t['Peak_flux'][i])
+
+                    t.remove_rows(i)
+    logging.info('# sources after combining close-by sources: %i' % len(t))
+
+    t.sort('Total_flux')
+    t.reverse()
 
     # Filter patches on total flux density limit
     t = t[ (t['Total_flux'] > flux_min_Jy) ]
@@ -78,47 +100,53 @@ def make_directions_file_from_skymodel(filename, flux_min_Jy=3.0, size_max_arcmi
 
     # Trim directions list to get directions_max_num of directions
     if directions_max_num is not None:
-        t = t.sort('Total_flux')[:directions_max_num]
-    logging.info('# sources after cut on max directions: %i' % len(t))
+        t = t[:directions_max_num]
+        logging.info('# sources after cut on max directions: %i' % len(t))
 
-    # Now, merge calibrator patches with any extended sources that meet the
-    # flux density limit for merging
-    if len(s_large) > 0:
-        logging.info('Merging extended sources within {0} arcmin of calibrators...'.format(
-            directions_separation_max_arcmin))
-        calibrator_names = s.getPatchNames().tolist()
-        # calibrator positions
-        pRA, pDec = s.getPatchPositions(asArray=True)
-        s.concatenate(s_large)
-        for ra, dec in zip(pRA.tolist()[:], pDec.tolist()[:]):
-            dist = s.getDistance(ra, dec, byPatch=True, units='arcmin')
-            nearby = np.where(dist < directions_separation_max_arcmin)
-            if len(nearby[0]) > 1:
-                patches = s.getPatchNames()[nearby].tolist()
+    for s in t_large:
+        dists = SkyCoord(ra=s['RA']*u.degree, dec=s['DEC']*u.degree).separation(SkyCoord(ra=t['RA'], dec=t['DEC']))
+        for i, dist in enumerate(dists):
+            if dist < directions_separation_max_arcmin*u.arcmin:
+                t['Total_flux'][i] += s['Total_flux']
+                t['Maj'][i] = max(s['Maj'], t['Maj'][i]) + dist.degree
 
-                # Ensure that calibrator patch is first in list (as merged
-                # patch will get its name). If there are two calibrator patches
-                # in the list, use the first one
-                for calibrator_name in calibrator_names:
-                    if calibrator_name in patches:
-                        patches.remove(calibrator_name)
-                        patches.insert(0, calibrator_name)
-                        break
-                s.merge(patches)
+    t.sort('Total_flux')
+    t.reverse()
 
-        # Remove any non-calibrator patches from the merged model
-        all_names = s.getPatchNames().tolist()
-        calibrator_ind = np.array([all_names.index(calibrator_name) for
-            calibrator_name in calibrator_names if calibrator_name in all_names])
-        s.select(calibrator_ind, aggregate=True)
+    print t
 
-    # Write region files, one per patch
-    t.write('test.skymodel', format='ds9', clobber=True)
+    # Writedd global region files
+    table_to_circ_region(t, outdir+'/all.reg')
 
     # save source by source
-    for i, patch in enumerate(s.getPatchNames()):
-        w = s.getRowValues(patch)
-        w.write('regions/src%02i.reg' % i, format='ds9')
+    for i, s in enumerate(t):
+        table_to_circ_region(t[i:i+1], outdir+'/ddcal%02i.reg' % i)
+
+    t['name'] = ['ddcal%02i' % i for i in xrange(len(t))]
+    t[''] = ['ddcal%02i' % i for i in xrange(len(t))]
+    return t
+
+
+def table_to_circ_region(table, outfile, racol='RA', deccol='DEC', sizecol='Maj', color='green'):
+
+    import pyregion
+    from pyregion.parser_helper import Shape
+
+    color = [color] * len(table)
+
+    regions = []
+    for i, r in enumerate(table):
+        s = Shape('circle', None)
+        s.coord_format = 'fk5'
+        s.coord_list = [ r[racol], r[deccol], r[sizecol] ]
+        s.coord_format = 'fk5'
+        s.attr = ([], {'width': '5', 'point': 'cross',
+                       'font': '"helvetica 16 normal roman"'})
+        s.comment = 'color={} text="{}"'.format(color[i], str(i))
+        regions.append(s)
+
+    regions = pyregion.ShapeList(regions)
+    regions.write(outfile)
 
 
 def thiessen(directions_list, field_ra_deg, field_dec_deg, faceting_radius_deg,
