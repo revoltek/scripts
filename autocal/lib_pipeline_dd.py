@@ -331,9 +331,11 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
         #print t['facet_size'][idx_for_facet[i]]
         #print '###'
 
-    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(t) - len(idx_for_facet))
+    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(t) - len(idx_for_facet)))
 
     # plot tasselization
+    import matplotlib as mpl
+    mpl.use('Agg')
     import matplotlib.pyplot as pl
     pl.figure(figsize=(8,8))
     ax1 = pl.gca()

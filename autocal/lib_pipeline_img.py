@@ -107,7 +107,7 @@ def size_from_reg(filename, regions, coord):
 def scale_from_ms(ms):
     """
     Get the pixel scale in arcsec for a full-res image.
-    It is 1/4 of the max resolution assuming zenit observation.
+    It is 1/3 of the max resolution assuming zenit observation.
     Completely flagged lines are removed
     """
     from pyrap.tables import table
@@ -189,13 +189,15 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0.):
         fits.writeto(outfile, clobber=True)
 
 
-def get_nose_img(filename):
+def get_noise_img(filename):
     """
     Return the rms of all the pixels in an image
     """
     import astropy.io.fits as pyfits
     with pyfits.open(filename) as fits:
-        return np.sqrt(np.mean((fits[0].data)**2))
+        rms_noise = np.sqrt(np.mean((fits[0].data)**2))
+        logging.debug('Rms_noise: %f' % rms_noise)
+        return rms_noise
 
 
 def get_coord_centroid(filename, region):

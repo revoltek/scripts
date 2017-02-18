@@ -1,6 +1,6 @@
 # losoto parset: peel
-#LoSoTo.Steps = [norm, plotA1, plotTEC, plotCSP, plotCSPTEC]
-LoSoTo.Steps = [norm, plotA1, plotTEC]
+#LoSoTo.Steps = [plotTEC, plotCSP, plotCSPTEC]
+LoSoTo.Steps = [plotTEC]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -8,23 +8,6 @@ LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
-
-LoSoTo.Steps.norm.Operation = NORM
-LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.norm.NormVal = 1.
-LoSoTo.Steps.norm.NormAxes = [time,ant,pol]
-
-# plot amp
-LoSoTo.Steps.plotA1.Operation = PLOT
-LoSoTo.Steps.plotA1.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA1.Axes = time
-LoSoTo.Steps.plotA1.TableAxis = ant
-LoSoTo.Steps.plotA1.ColorAxis = pol
-LoSoTo.Steps.plotA1.PlotFlag = True
-LoSoTo.Steps.plotA1.Prefix = plots/amp_
-LoSoTo.Steps.plotA1.Columns = 2
-LoSoTo.Steps.plotA1.FigSize = [20,20]
-#LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
 
 # plot CSP+TEC
 LoSoTo.Steps.plotCSPTEC.Operation = PLOT
