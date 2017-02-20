@@ -4,14 +4,13 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
-steps = [filter, sol, count]
+steps = [filter, sol]
 
-
-filter.blrange = [3000,1e30]
+filter.blrange = [2000,1e30]
 
 sol.type = gaincal
 sol.caltype = diagonal
-sol.maxiter = 100
+sol.maxiter = 500
 sol.sourcedb =
 sol.sources = 
 sol.usebeammodel = True
