@@ -1,12 +1,7 @@
 # losoto parset: peel
 #LoSoTo.Steps = [plotTEC, plotCSP, plotCSPTEC]
-LoSoTo.Steps = [plotTEC]
+LoSoTo.Steps = [plotTEC, tecjump, plotTEC2]
 LoSoTo.Solset = [sol000]
-LoSoTo.Soltab = []
-LoSoTo.SolType = []
-LoSoTo.ant = []
-LoSoTo.pol = [XX, YY]
-LoSoTo.dir = []
 LoSoTo.Ncpu = 10
 
 # plot CSP+TEC
@@ -38,3 +33,14 @@ LoSoTo.Steps.plotTEC.MinMax = [-0.1,0.1]
 LoSoTo.Steps.plotTEC.Prefix = plots/tec_
 LoSoTo.Steps.plotTEC.Reference = 'CS001LBA'
 
+LoSoTo.Steps.tecjump.Operation = TECJUMP
+LoSoTo.Steps.tecjump.Soltab = [sol000/tec000]
+
+LoSoTo.Steps.plotTEC2.Operation = PLOT
+LoSoTo.Steps.plotTEC2.Soltab = [sol000/tec000]
+LoSoTo.Steps.plotTEC2.Axes = time
+LoSoTo.Steps.plotTEC2.TableAxis = ant
+LoSoTo.Steps.plotTEC2.PlotFlag = True
+LoSoTo.Steps.plotTEC2.MinMax = [-0.1,0.1]
+LoSoTo.Steps.plotTEC2.Prefix = plots/tec-nojump_
+LoSoTo.Steps.plotTEC2.Reference = 'CS001LBA'

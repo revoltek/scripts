@@ -155,7 +155,7 @@ def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0
 
         sum_before = np.sum(data)
         data[mask] = blankval
-        print "Sum of values: %f -> %f" % (sum_before, np.sum(data))
+        logging.debug("Sum of values for %s: %f -> %f" % (filename, sum_before, np.sum(data)))
         fits.writeto(outfile, clobber=True)
 
  
