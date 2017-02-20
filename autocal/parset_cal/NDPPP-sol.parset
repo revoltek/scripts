@@ -1,21 +1,22 @@
 msin =
-#msin.datacolumn = SMOOTHED_DATA
-msin.datacolumn = DATA
+msin.datacolumn = SMOOTHED_DATA
 msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
-steps = [sol, count]
+steps = [filter, sol]
+
+filter.blrange = [2000,1e30]
 
 sol.type = gaincal
 sol.caltype = diagonal
 sol.maxiter = 500
 sol.sourcedb =
-sol.sources = []
+sol.sources = 
 sol.usebeammodel = True
 sol.usechannelfreq = False
 sol.beammode = array_factor
 sol.nchan = 1
 sol.solint = 1
 sol.propagatesolutions = False
-sol.blrange = [2000,1e30]
+#sol.blrange = [3000,1e30]

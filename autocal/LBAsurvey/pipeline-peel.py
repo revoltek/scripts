@@ -18,12 +18,11 @@ pb_cut = 5 # degree to cut faceting
 
 import sys, os, glob, re
 import numpy as np
-from lofar import bdsm
-import pyrap.tables as pt
 from autocal.lib_pipeline import *
 from autocal.lib_pipeline_dd import *
 from make_mask import make_mask
-import lofar.bdsm as bdsm
+from lofar import bdsm
+import pyrap.tables as pt
 
 set_logger('pipeline-peel.logging')
 check_rm('logs')
@@ -62,9 +61,9 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     #if imsize < 512:
     #    trim = 512
     #    imsize = 1024
-    if imsize < 1024:
+    if imsize < 512:
     #    trim = 1024
-        imsize = 1024
+        imsize = 512
     #else:
     #    trim = imsize
 
@@ -74,12 +73,14 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     logging.info('Cleaning (cycle: '+str(c)+')...')
     if facet: imagename = 'img/facet-'+str(c)
     else: imagename = 'img/ddcal-'+str(c)
-    #-trim '+str(trim)+' '+str(trim)+'
+    # -trim '+str(trim)+' '+str(trim)+'
+    # -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 '+' '.join(mss), \
+    # -multiscale
     s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.6 -pol I \
-            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-mask 10 -auto-threshold 1 -rms-background -rms-background-window 25 '+' '.join(mss), \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -cleanborder 0 \
+            -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -187,15 +188,17 @@ def peel(dd):
     # reproject + cut model image to speed up prediction
     logging.info("Reprojecting models...")
     s.add('mHdr -p 10 "%f %f" %f %s/dd.hdr' % (dd['RA'], dd['DEC'], dd['dd_size']*5, modeldir), log='reproject.log', log_append=True, cmd_type="general")
-    s.add('mHdr -p 10 "%f %f" %f %s/facet.hdr' % (dd['RA'], dd['DEC'], dd['facet_size']*1.2, modeldir), log='reproject.log', log_append=True, cmd_type="general")
+    if dd['facet_size'] > 0:
+        s.add('mHdr -p 10 "%f %f" %f %s/facet.hdr' % (dd['RA'], dd['DEC'], dd['facet_size']*1.2, modeldir), log='reproject.log', log_append=True, cmd_type="general")
     s.run(check=True)
     os.system('sed -i \'s/TAN/SIN/\' '+modeldir+'/*.hdr') # wsclean wants SIN projection
     for model in sorted(glob.glob(modeldir+'large_peel_dd*.fits')):
         outmodel = model.replace('large_','')
         s.add("mProjectPP "+model+" "+outmodel+" "+modeldir+"dd.hdr", log='reproject.log', log_append=True, cmd_type="general")
-    for model in sorted(glob.glob(modeldir+'large_peel_facet*.fits')):
-        outmodel = model.replace('large_','')
-        s.add("mProjectPP "+model+" "+outmodel+" "+modeldir+"facet.hdr", log='reproject.log', log_append=True, cmd_type="general")
+    if dd['facet_size'] > 0:
+        for model in sorted(glob.glob(modeldir+'large_peel_facet*.fits')):
+            outmodel = model.replace('large_','')
+            s.add("mProjectPP "+model+" "+outmodel+" "+modeldir+"facet.hdr", log='reproject.log', log_append=True, cmd_type="general")
     s.run(check=True)
 
     ###########################################################
@@ -320,6 +323,7 @@ def peel(dd):
         rms_noise_pre = rms_noise
 
     if dd['facet_size'] > 0:
+        logging.info('Doing facet...')
 
         # now do the same but for the entire facet to obtain a complete image of the facet and do a final subtraction
         ##############################################################################################################################
@@ -337,7 +341,7 @@ def peel(dd):
         # Add rest of the facet - mss/TC*.MS:MODEL_DATA (high+low resolution facet model)
         logging.info('Ft facet model...')
         s.add('wsclean -predict -name ' + modeldir + 'peel_facet -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(facetmss), \
-                log='wscleanPRE_facet1.log', cmd_type='wsclean', processors='max')
+                log='wscleanPRE-facet1.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
     
         # ADD mss_facet/TC*.MS:DATA + MODEL_DATA -> mss_facet/TC*.MS:DATA (empty data + facet from model)
@@ -383,7 +387,7 @@ def peel(dd):
  
     # for ddcal without associated facet
     else:
-        logging.info('This DD cal does not ahve an associate facet, just subtract it...')
+        logging.info('This DD cal does not have an associate facet, just subtract it...')
 
         # Blank pixels outside facet, new foccussed sources are cleaned (so they don't interfere) but we don't want to subtract them
         logging.info('Blank pixels outside dd region...')
@@ -395,7 +399,7 @@ def peel(dd):
     # ft model - mss_peel/TC*.MS:MODEL_DATA (best available model)
     logging.info('FT model...')
     s.add('wsclean -predict -name ' + model + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(facetmss), \
-                log='wscleanPRE_facet2.log', cmd_type='wsclean', processors='max')
+                log='wscleanPRE-facet2.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     for ms in facetmss:
@@ -422,6 +426,12 @@ def peel(dd):
     for ms in shiftbackmss:
         msorig = ms.replace('mss_shiftback','mss')
         s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=ms+'_final-taql.log', cmd_type='general')
+    s.run(check=True)
+
+    logging.info('Add SUBTRACTED_DATA_DDCAL## (backup)...')
+    for ms in allmss:
+        colout = 'SUBTRACTED_DATA_'+dd['name'].upper()
+        s.add('addcol2ms.py -m '+ms+' -c '+colout+' -i SUBTRACTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
     s.run(check=True)
 
     #clean('emptyafter', allmss, dd, avgfreq=4, avgtime=5, facet=True) # DEBUG
@@ -456,6 +466,9 @@ make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
 ddset = make_tassellation(ddset, imagename, beam_reg='regions/beam.reg')
 
 print ddset
+
+if not os.path.exists("pipeline-peel.status"):
+    os.mknod("pipeline-peel.status")
 
 for dd in ddset: peel(dd)
 logging.info("Done.")

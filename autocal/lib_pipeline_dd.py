@@ -3,6 +3,8 @@
 import os, sys
 import logging
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from astropy.table import Table
 from astropy.coordinates import Angle, SkyCoord, match_coordinates_sky
 from astropy.io import fits as pyfits
@@ -334,8 +336,6 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
     logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(t) - len(idx_for_facet)))
 
     # plot tasselization
-    import matplotlib as mpl
-    mpl.use('Agg')
     import matplotlib.pyplot as pl
     pl.figure(figsize=(8,8))
     ax1 = pl.gca()
