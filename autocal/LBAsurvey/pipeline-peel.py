@@ -12,6 +12,7 @@
 
 parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
 maxniter = 10 # max iteration if source not converged
+pb_cut = 5 # degree to cut faceting
 
 ##########################################################################################
 
@@ -28,6 +29,7 @@ set_logger('pipeline-peel.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 allmss = sorted(glob.glob('mss/TC*.MS'))
+phasecentre = get_phase_centre(allmss[0])
 
 def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     """
@@ -53,9 +55,11 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
     if facet:
-        imsize = size_from_reg('peel/'+dd['name']+'/models/peel_facet-0000-model.fits', 'regions/'+dd['name']+'-facet.reg', [dd['RA'],dd['DEC']], pixscale, pad=1.5)
+        imsize = int(dd['facet_size']*pixscale*1.5)
+        #imsize = size_from_reg('peel/'+dd['name']+'/models/peel_facet-0000-model.fits', 'regions/'+dd['name']+'-facet.reg', [dd['RA'],dd['DEC']], pixscale, pad=1.5)
     else:
-        imsize = size_from_reg('peel/'+dd['name']+'/models/peel_dd-0000-model.fits', 'regions/'+dd['name']+'.reg', [dd['RA'],dd['DEC']], pixscale, pad=1.5)
+        imsize = int(dd['dd_size']*pixscale*1.5)
+        #imsize = size_from_reg('peel/'+dd['name']+'/models/peel_dd-0000-model.fits', 'regions/'+dd['name']+'.reg', [dd['RA'],dd['DEC']], pixscale, pad=1.5)
 
     if imsize < 512:
         trim = 512
@@ -79,12 +83,12 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    # make mask
-    maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
-    # remove CC not in mask
-    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-        blank_image_fits(modelname, maskname, inverse=True)
+#    # make mask
+#    maskname = imagename+'-mask.fits'
+#    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+#    # remove CC not in mask
+#    for modelname in sorted(glob.glob(imagename+'*model.fits')):
+#        blank_image_fits(modelname, maskname, inverse=True)
 
     check_rm('mss_imgavg')
     return imagename
@@ -148,26 +152,27 @@ def peel(dd):
     os.makedirs('img')
     
     logging.info('Indexing...')
-    phasecentre = get_phase_centre(allmss[0])
     modeldir = 'peel/'+dd['name']+'/models/'
    
     #clean('emptybefore', allmss, dd, avgfreq=1, avgtime=5, facet=True) # DEBUG
 
     #################################################################################################
-    # Blank unwanted part of models
+    # Blank unwanted part of models + intersect with beam
     logging.info('Splitting skymodels...')
     for model in sorted(glob.glob('self/models/*.fits')):
         logging.debug(model)
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_dd')
         blank_image_reg(model, 'regions/'+dd['name']+'.reg', outfile, inverse=True)
+        blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
         blank_image_reg(model, 'regions/'+dd['name']+'-facet.reg', outfile, inverse=True)
+        blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
 
     ##############################################################
     # regrid + cut model image to speed up prediction
     logging.info("Regridding models...")
     s.add('mHdr -p 10 "%f %f" %f %s/dd.hdr' % (dd['RA'], dd['DEC'], dd['dd_size']*5, modeldir), cmd_type="general")
-    s.add('mHdr -p 10 "%f %f" %f %s/facet.hdr' % (dd['RA'], dd['DEC'], dd['facet_size']*2, modeldir), cmd_type="general")
+    s.add('mHdr -p 10 "%f %f" %f %s/facet.hdr' % (dd['RA'], dd['DEC'], dd['facet_size']*1.2, modeldir), cmd_type="general")
     s.run(check=True)
     os.system('sed -i \'s/TAN/SIN/\' '+modeldir+'/*.hdr') # wsclean wants SIN projection
     for model in sorted(glob.glob(modeldir+'large_peel_dd*.fits')):
@@ -196,27 +201,30 @@ def peel(dd):
 
     peelmss = sorted(glob.glob('mss_peel/TC*.MS'))
 
-     # Add MODEL_DATA and CORRECTED_DATA for cleaning
-    logging.info('Add MODEL_DATA, and CORRECTED_DATA...')
-    for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
-    s.run(check=True)
+    #####################################################################################################
+     # Add MODEL_DATA
+    logging.info('Add MODEL_DATA...')
     for ms in peelmss:
         s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol3.log', cmd_type='python', processors='max')
     s.run(check=True)
 
-    #####################################################################################################
-    # Add DD cal model - peel_mss/TC*.MS:MODEL_DATA (high+low resolution model)
+    # Add DD cal model - peel_mss/TC*.MS:MODEL_DATA
     logging.info('Ft DD calibrator model...')
     s.add('wsclean -predict -name ' + modeldir + 'peel_dd -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
             log='wscleanPRE-dd.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    ###########################################################################################################
-    # ADD model peel_mss/TC*.MS:DATA + MODEL_DATA -> mss/TC*.MS:CORRECTED_DATA (empty data + DD cal from model)
+    # ADD model peel_mss/TC*.MS:DATA + MODEL_DATA -> peel_mss/TC*.MS:DATA (empty data + DD cal from model)
     logging.info('Add model...')
     for ms in peelmss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+        s.add('taql "update '+ms+' set DATA = DATA + MODEL_DATA"', log=ms+'_init-taql.log', cmd_type='general')
+    s.run(check=True)
+
+    ###########################################################################################################
+    # Add CORRECTED_DATA for cleaning
+    logging.info('Add CORRECTED_DATA...')
+    for ms in peelmss:
+        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
     s.run(check=True)
     
     # do a first clean to get the starting model
@@ -228,20 +236,19 @@ def peel(dd):
     for c in xrange(maxniter):
         logging.info('Start peel cycle: '+str(c))
 
-        # Smooth
-        logging.info('BL-based smoothing...')
-        for ms in peelmss:
-            s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
-            #s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
-
         # ft model - mss_peel/TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
         s.add('wsclean -predict -name ' + model + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
                 log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-    
-        # solve+correct TEC - mss_peel/TC*.MS:SMOOTHED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA
+ 
+        # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
+        logging.info('BL-based smoothing...')
+        for ms in peelmss:
+            s.add('BLsmooth.py -r -i DATA -o CORRECTED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
+   
+        # solve+correct TEC - mss_peel/TC*.MS:CORRECTED_DATA (smoothed!) -> mss_peel/TC*.MS:CORRECTED_DATA (smoothed corrected TEC)
         logging.info('Solving TEC...')
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
@@ -271,7 +278,7 @@ def peel(dd):
         # LoSoTo Amp rescaling + plotting
         losoto(c, peelmss, dd, parset_dir+'/losoto.parset')
     
-        # correct TEC+amplitude - mss_peel/TC*.MS:DATA -> mss_peel/TC*.MS:CORRECTED_DATA
+        # correct TEC+amplitude - mss_peel/TC*.MS:DATA -> mss_peel/TC*.MS:CORRECTED_DATA (corrected TEC+G)
         logging.info('Correcting phase+amplitude...')
         for ms in peelmss:
             s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
@@ -420,7 +427,8 @@ ddset = make_directions_from_skymodel('regions/DIEcatalog.fits', outdir='regions
         directions_separation_max_arcmin=5.0, directions_max_num=20, flux_min_for_merging_Jy=0.2)
 
 logging.info('Voronoi tassellation...')
-ddset = make_tassellation(ddset, imagename, pb_cut=5)
+make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
+ddset = make_tassellation(ddset, imagename, beam_reg='regions/beam.reg')
 
 print ddset
 
