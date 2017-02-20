@@ -58,14 +58,9 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     else:
         imsize = int((dd['dd_size']/(pixscale/3600.))*1.5)
 
-    #if imsize < 512:
-    #    trim = 512
-    #    imsize = 1024
     if imsize < 512:
-    #    trim = 1024
         imsize = 512
-    #else:
-    #    trim = imsize
+    trim = int(imsize*0.75)
 
     logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
@@ -76,20 +71,21 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     # -trim '+str(trim)+' '+str(trim)+'
     # -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 '+' '.join(mss), \
     # -multiscale
-    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' \
+    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.6 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -cleanborder 0 \
-            -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 '+' '.join(mss), \
+            -auto-mask 5 -auto-threshold 1 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-#    # make mask
-#    maskname = imagename+'-mask.fits'
-#    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
-#    # remove CC not in mask
-#    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-#        blank_image_fits(modelname, maskname, inverse=True)
+    # make mask
+    # TODO: adjust isl_thresh 10-first cycle and then down to 5
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
+    # remove CC not in mask
+    for modelname in sorted(glob.glob(imagename+'*model.fits')):
+        blank_image_fits(modelname, maskname, inverse=True)
 
     check_rm('mss_imgavg')
     return imagename

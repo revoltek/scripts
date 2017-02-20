@@ -60,7 +60,7 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
     directions_max_num : int, optional
         Limit total number of directions to this value
     flux_min_for_merging_Jy : float, optional
-        Minimum flux density for a source to be considered for merging
+        Minimum peak flux for a source to be considered for merging
     Returns
     -------
     table : astropy table
@@ -81,14 +81,14 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
         sys.exit(1)
 
     # exclude sources that are too faint
-    t_large = t_large[ (t_large['Total_flux'] > flux_min_for_merging_Jy) ]
-    t = t[ (t['Total_flux'] > flux_min_for_merging_Jy) ]
+    t_large = t_large[ (t_large['Peak_flux'] > flux_min_for_merging_Jy) ]
+    t = t[ (t['Peak_flux'] > flux_min_for_merging_Jy) ]
     logging.info('# sources after cut min flux for merging: %i' % len(t))
     if len(t) == 0:
         logging.critical("No sources found above %f Jy." % flux_min_for_merging_Jy )
         sys.exit(1)
 
-    t.sort('Total_flux')
+    t.sort('Peak_flux')
     t.reverse()
 
     # combine nearby sources
@@ -119,9 +119,6 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
                     t.remove_rows(i)
     logging.info('# sources after combining close-by sources: %i' % len(t))
 
-    t.sort('Total_flux')
-    t.reverse()
-
     # Filter patches on total flux density limit
     t = t[ (t['Total_flux'] > flux_min_Jy) ]
     logging.info('# sources after cut min flux: %i' % len(t))
@@ -131,6 +128,8 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
         sys.exit(1)
 
     # Trim directions list to get directions_max_num of directions
+    t.sort('Peak_flux')
+    t.reverse()
     if directions_max_num is not None:
         t = t[:directions_max_num]
         logging.info('# sources after cut on max directions: %i' % len(t))
@@ -142,7 +141,9 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
                 t['Total_flux'][i] += s['Total_flux']
                 t['dd_size'][i] = max(s['dd_size'], t['dd_size'][i]) + dist.degree
 
-    t.sort('Total_flux')
+    # sort on a weighted mix of total and peak flux
+    t['Comb_flux'] = 0.33*t['Total_flux']+0.66*t['Peak_flux']
+    t.sort('Comb_flux')
     t.reverse()
 
     # Writedd global region files
@@ -154,6 +155,7 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
 
     t['name'] = ['ddcal%02i' % i for i in xrange(len(t))]
 
+    t.remove_column('Comb_flux')
     return t
 
 
