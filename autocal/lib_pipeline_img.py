@@ -71,39 +71,37 @@ def flatten(f, channel=0, freqaxis=0):
     return header,f[0].data[slice]
 
 
-def size_from_reg(filename, region, coord, pixscale, pad=1.2):
+def size_from_reg(filename, regions, coord):
     """
-    find the minimum image size in pixels to cover a certain region given an img center
+    find number of pixels necessary to cover the intersection of the regions with a square centered on coord
+    filename : a fits file
+    regions : ds9 regions
     coord : coordinate of the image center
-    pad : multiplicative factor on the final size
-    pixscale : pixel scale in arcsec
     """
     import astropy.io.fits as pyfits
     import astropy.wcs as pywcs
     import pyregion
 
-    # open fits
     fits = pyfits.open(filename)
     header, data = flatten(fits)
     w = pywcs.WCS(header)
 
-    # extract mask
-    r = pyregion.open(region)
-    mask = r.get_mask(header=header, shape=data.shape)
-    y,x = mask.nonzero()
-    x_min = np.min(x)
-    y_min = np.min(y)
-    x_max = np.max(x)
-    y_max = np.max(y)
-
     # find max dist in pixel on reference image
     x_c, y_c = w.all_world2pix(coord[0], coord[1], 0, ra_dec_order=True)
-    max_x_size = 2*max([abs(x_c - x_min), abs(x_c - x_max)])
-    max_y_size = 2*max([abs(y_c - y_min), abs(y_c - y_max)])
+    #print x_c, y_c
+    
+    # ditance would overestimate, get max of x-x_c and y-y_c
+    mask = np.ones(shape=data.shape, dtype=bool)
+    for region in regions:
+        r = pyregion.open(region)
+        mask = (mask & r.get_mask(header=header, shape=data.shape))
+    y, x = mask.nonzero()
 
-    # in case ref image and pixscale are different
-    pix_factor = np.abs(header['CDELT1']*3600/pixscale)
-    return int(pad*max([max_x_size, max_y_size])*pix_factor)
+    if len(x) == 0: return 0
+
+    max_size = 2 * np.max([np.abs(np.array(y) - y_c), np.abs(np.array(x) - x_c)])
+
+    return int(max_size)
 
  
 def scale_from_ms(ms):
