@@ -16,8 +16,4 @@ sol.usemodelcolumn = True
 sol.solint = 100
 sol.nchan = 0
 sol.propagatesolutions = False
-<<<<<<< HEAD
-#sol.blrange = [1000,1e9]
-=======
 #sol.blrange = [1500,1e9]
->>>>>>> 5ab79f8e76c3884808a2059fb27bb3c4982fc9b9
