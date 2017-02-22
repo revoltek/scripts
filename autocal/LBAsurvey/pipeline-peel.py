@@ -48,42 +48,57 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     s.run(check=True)
     mssavg = [ms for ms in sorted(glob.glob('mss_imgavg/*MS'))]
 
-    # set image name
-    imagename = 'peel/'+dd['name']+'/images/peel-'+str(c)
-
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
     if facet:
-        imsize = int((dd['facet_size']/(pixscale/3600.))*1.5)
+        imsize = int((dd['facet_size']/(pixscale/3600.))*2.0)
     else:
         imsize = int((dd['dd_size']/(pixscale/3600.))*1.5)
 
     if imsize < 512:
         imsize = 512
-    trim = int(imsize*0.75)
+    trim = int(imsize*0.7)
 
     logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
-    # TODO: add multiscale/add rmsnoise for mask
+    # -trim '+str(trim)+' '+str(trim)+'
+    # -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 \
+    # -multiscale
+
+    # clean 1
     logging.info('Cleaning (cycle: '+str(c)+')...')
     if facet: imagename = 'img/facet-'+str(c)
     else: imagename = 'img/ddcal-'+str(c)
-    # -trim '+str(trim)+' '+str(trim)+'
-    # -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 '+' '.join(mss), \
-    # -multiscale
     s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
-            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -cleanborder 0 \
-            -auto-mask 5 -auto-threshold 1 '+' '.join(mss), \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -auto-threshold 10 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+    os.system('cat log/wsclean-c'+str(c)+'.log | grep Jy')
 
     # make mask
-    # TODO: adjust isl_thresh 10-first cycle and then down to 5
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
+
+    # clean 2
+    logging.info('Cleaning (cycle: '+str(c)+')...')
+    logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
+    if facet: imagename = 'img/facetM-'+str(c)
+    else: imagename = 'img/ddcalM-'+str(c)
+    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+            -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -auto-threshold 1 -fitsmask '+maskname+' '+' '.join(mss), \
+            log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+    os.system('cat log/wscleanM-c'+str(c)+'.log | grep Jy')
+
+    # remove CC not in mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
-    # remove CC not in mask
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -131,7 +146,7 @@ def losoto(c, mss, dd, parset, instrument='instrument', putback=True):
 
 def peel(dd):
 
-    logging.info('### Peeling: '+dd['name'])
+    logging.info('######################## Peeling: '+dd['name']+' #################################')
 
     with open('pipeline-peel.status', 'r') as status_file:
         if any(dd['name'] == line.rstrip('\r\n') for line in status_file):
@@ -176,9 +191,10 @@ def peel(dd):
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_dd')
         blank_image_reg(model, 'regions/'+dd['name']+'.reg', outfile, inverse=True)
         blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
-        outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
-        blank_image_reg(model, 'regions/'+dd['name']+'-facet.reg', outfile, inverse=True)
-        blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
+        if dd['facet_size'] > 0:
+            outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
+            blank_image_reg(model, 'regions/'+dd['name']+'-facet.reg', outfile, inverse=True)
+            blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
 
     ##############################################################
     # reproject + cut model image to speed up prediction
@@ -286,12 +302,14 @@ def peel(dd):
 
         #######################################
         # calibrate amplitude (solve only) - mss_peel/TC*.MS:CORRECTED_DATA
-        # TODO: CSA?
+        # TODO: if strong sources add multichan amp solve, wait for NDPPP to divide chans evenly
         if c > 0:
+            #nchan = find_nchan(peelmss[0])
+            #nchan = min(np.rint(nchan/10.), np.rint(nchan/dd['Total_flux']/10.))
             logging.info('Calibrating amplitude...')
             for ms in peelmss:
                 check_rm(ms+'/instrument-amp')
-                s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-amp csol.solint=100', \
+                s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-amp sol.solint=100 sol.nchan=0', \
                     log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
             s.run(check=True)
     

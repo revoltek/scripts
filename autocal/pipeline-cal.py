@@ -6,25 +6,32 @@ import pyrap.tables as pt
 from autocal.lib_pipeline import *
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
-
-skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
-sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-patch = '3C196' # test with all sources
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
-#sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
-#patch = '3C295'
+skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
 if 'tooth' in os.getcwd():
     # tooth
     datadir = '.'
     do_fixbeamtable = True
+    sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+    patch = '3C196' # test with all sources
 else:
     # survey
+    obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
+    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     print "IMPORTANT: for survey also remove bad ant at flag time"
-    datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
+    #datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % (obs, calname)
+    datadir = '.'
     do_fixbeamtable = False
 
-#TODO: moved to dysco, problem with WEIGHTED_SPECTRUM to fix
+    if calname == '3c196':
+        sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+        patch = '3C196'
+    elif calname == '3c380':
+        sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
+        patch = '3c380'
+    elif calname == 'CygA':
+        sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
+        patch = 'CygA'
 
 ###################################################
 
@@ -61,13 +68,13 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     mss = sorted(glob.glob('*-avg.MS'))
 
 # flag below elev 20 and bad stations, flags will propagate
-logging.info('Flagging...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA', \
-            log=ms+'_flag.log', cmd_type='NDPPP')
+#logging.info('Flagging...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA', \
+#            log=ms+'_flag.log', cmd_type='NDPPP')
 #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', \
 #            log=ms+'_flag.log', cmd_type='NDPPP')
-s.run(check=True)
+#s.run(check=True)
     
 ###############################################
 # Initial processing (2/2013->2/2014)
@@ -78,7 +85,7 @@ if do_fixbeamtable:
     s.run(check=False)
 
 ###############################################
-# TODO Predict to save time
+# TODO Create MODEL column + predict to save time
 
 
 ############################################
@@ -137,11 +144,12 @@ check_rm('plots-fr')
 for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
+    tnum = re.findall(r'\d+', ms)[-2]
+    sbnum = re.findall(r'\d+', ms)[-1]
+    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
+    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(tnum)+'-'+str(sbnum))
 
 logging.info('Running LoSoTo...')
 check_rm('plots')
@@ -218,9 +226,10 @@ for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
 #    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
 
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
+    tnum = re.findall(r'\d+', ms)[-2]
+    sbnum = re.findall(r'\d+', ms)[-1]
+    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
    
 #    # We export clock, need to create a new parmdb
 #    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
