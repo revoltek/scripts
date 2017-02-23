@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-#download_file = 'html.txt'
-download_file = None # just renaming
+download_file = 'html.txt'
+#download_file = None # just renaming
 rename = True
 
 ###################################################
