@@ -6,7 +6,7 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, sol]
 
-filter.blrange = [2000,1e30]
+filter.blrange = [1000,100e3]
 
 sol.type = gaincal
 sol.caltype = diagonal
@@ -19,4 +19,3 @@ sol.beammode = array_factor
 sol.nchan = 1
 sol.solint = 1
 sol.propagatesolutions = False
-#sol.blrange = [3000,1e30]
