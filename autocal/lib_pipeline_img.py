@@ -159,34 +159,39 @@ def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0
         fits.writeto(outfile, clobber=True)
 
  
-def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0.):
+def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0., op='AND'):
     """
     Set to "blankval" all the pixels inside the given region
     if inverse=True, set to "blankval" pixels outside region.
+    If a list of region is provided the operation is applied to each region one after the other
 
     filename: fits file
     region: ds9 region or list of regions
     outfile: output name
-    inverse: reverse region mask
+    inverse: reverse final combined mask
     blankval: pixel value to set
+    op: how to combine multiple regions with AND or OR
     """
     import astropy.io.fits as pyfits
     import pyregion
 
     if outfile == None: outfile = filename
     if not type(region) is list: region=[region]
-    print region
 
     # open fits
     with pyfits.open(filename) as fits:
         origshape = fits[0].data.shape
         header, data = flatten(fits)
+        if op=='AND': total_mask = np.ones(shape=data.shape).astype(bool)
+        if op=='OR': total_mask = np.zeros(shape=data.shape).astype(bool)
         for this_region in region:
             # extract mask
             r = pyregion.open(this_region)
             mask = r.get_mask(header=header, shape=data.shape)
-            if inverse: mask = ~mask
-            data[mask] = blankval
+            if op=='AND': total_mask = total_mask & mask
+            if op=='OR': total_mask = total_mask | mask
+        if inverse: total_mask = ~total_mask
+        data[total_mask] = blankval
         # save fits
         fits[0].data = data.reshape(origshape)
         fits.writeto(outfile, clobber=True)

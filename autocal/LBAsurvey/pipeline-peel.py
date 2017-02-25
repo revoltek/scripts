@@ -31,7 +31,7 @@ s = Scheduler(dry=False)
 allmss = sorted(glob.glob('mss/TC*.MS'))
 phasecentre = get_phase_centre(allmss[0])
 
-def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
+def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
     """
     c = cycle/name
     mss = list of mss to avg/clean
@@ -173,12 +173,12 @@ def peel(dd):
     os.makedirs('logs/mss_facet')
     os.makedirs('logs/mss_shiftback')
     os.makedirs('mss_peel')
-    os.makedirs('mss_facet')
     os.makedirs('mss_shiftback')
     check_rm('peel/'+dd['name'])
     os.makedirs('peel/'+dd['name'])
     os.makedirs('peel/'+dd['name']+'/models')
     os.makedirs('peel/'+dd['name']+'/images')
+    os.makedirs('peel/'+dd['name']+'/masks')
     os.makedirs('peel/'+dd['name']+'/plots')
     os.makedirs('peel/'+dd['name']+'/h5')
     os.makedirs('img')
@@ -194,12 +194,12 @@ def peel(dd):
     for model in sorted(glob.glob('self/models/*.fits')):
         logging.debug(model)
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_dd')
-        blank_image_reg(model, 'regions/'+dd['name']+'.reg', outfile, inverse=True)
-        blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
+        blank_image_reg(model, ['regions/'+dd['name']+'.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
+        #blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
         if dd['facet_size'] > 0:
             outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
-            blank_image_reg(model, 'regions/'+dd['name']+'-facet.reg', outfile, inverse=True)
-            blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
+            blank_image_reg(model, ['regions/'+dd['name']+'-facet.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
+            #blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
 
     ##############################################################
     # reproject + cut model image to speed up prediction
@@ -218,7 +218,7 @@ def peel(dd):
             s.add("mProjectPP "+model+" "+outmodel+" "+modeldir+"facet.hdr", log='reproject.log', log_append=True, cmd_type="general")
     s.run(check=True)
     check_rm(modeldir+'*hdr')
-    check_rm(modeldir+'*area.fts')
+    check_rm(modeldir+'*area.fits')
     check_rm(modeldir+'large*')
     # remove NaNs that mProject can create
     for model in glob.glob(modeldir+'/*fits'):
@@ -228,33 +228,37 @@ def peel(dd):
     # keep SUBTRACTED_DATA as a working columns so we can re-start each time
     logging.info('Add SUBTRACTED_DATA (only first direction)...')
     for ms in allmss:
-        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
  
     ###################################################################
-    # avg and ph-shift (to 1 chan/SB, 5 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, avg, phase shifted)
-    logging.info('Shifting+averaging (SUBTRACTED_DATA)...')
+    # avg and ph-shift (to 4 chan/SB, 4 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, phase shifted)
+    logging.info('Shifting (SUBTRACTED_DATA)...')
     for ms in allmss:
         msout = ms.replace('mss','mss_peel')
-        s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' msin.datacolumn=SUBTRACTED_DATA \
-                shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_init-shiftavg.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msout='+msout+' msin.datacolumn=SUBTRACTED_DATA \
+                shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_init-shift.log', cmd_type='NDPPP')
     s.run(check=True)
 
     peelmss = sorted(glob.glob('mss_peel/TC*.MS'))
 
     #####################################################################################################
-     # Add MODEL_DATA
+    # BKP empty DATA for faceting
+    logging.info('Add EMTPY_DATA...')
+    for ms in peelmss:
+        s.add('addcol2ms.py -m '+ms+' -c EMPTY_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
+    s.run(check=True)
+ 
+    ######################################################################################################
+    # Add DD cal model - peel_mss/TC*.MS:MODEL_DATA
     logging.info('Add MODEL_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol3.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
-
-    # Add DD cal model - peel_mss/TC*.MS:MODEL_DATA
     logging.info('Ft DD calibrator model...')
     s.add('wsclean -predict -name ' + modeldir + 'peel_dd -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
             log='wscleanPRE-dd.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-
     # ADD model peel_mss/TC*.MS:DATA + MODEL_DATA -> peel_mss/TC*.MS:DATA (empty data + DD cal from model)
     logging.info('Set DATA = DATA + MODEL_DATA...')
     for ms in peelmss:
@@ -265,9 +269,8 @@ def peel(dd):
     # Add CORRECTED_DATA for cleaning
     logging.info('Add CORRECTED_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol2.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
     s.run(check=True)
-    
     # do a first clean to get the starting model
     model = clean('init', peelmss, dd)
     rms_noise = get_noise_img(model+'-MFS-residual.fits')
@@ -292,17 +295,25 @@ def peel(dd):
    
         ####################################
         # solve+correct TEC - mss_peel/TC*.MS:CORRECTED_DATA (smoothed!) -> mss_peel/TC*.MS:CORRECTED_DATA (smoothed corrected TEC)
+
+        # sol.solint depends on peak flux
+        if dd['Peak_flux'] > 5: solint = 1
+        elif dd['Peak_flux'] > 4: solint = 2
+        elif dd['Peak_flux'] > 3: solint = 4
+        elif dd['Peak_flux'] > 2: solint = 8
+        else: solint = 16
+
         logging.info('Solving TEC...')
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec sol.solint='+str(solint), \
                 log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         
         losoto(str(c)+'-tec', peelmss, dd, parset_dir+'/losoto-tec.parset', instrument='instrument-tec', putback=False)
 
         # correct on smoothed data only when solve also amp
-        if c>0: incol = 'CORRECTED_DATA' # <- smoothed
+        if c > 0 and dd['Total_flux'] > 3: incol = 'CORRECTED_DATA' # <- smoothed
         else: incol = 'DATA'
 
         logging.info('Correcting TEC...')
@@ -313,10 +324,12 @@ def peel(dd):
 
         #######################################
         # calibrate amplitude (solve only) - mss_peel/TC*.MS:CORRECTED_DATA
-        # TODO: if strong sources add multichan amp solve, wait for NDPPP to divide chans evenly
-        if c > 0:
+        if c > 0 and dd['Peak_flux'] > 3:
+
+            # TODO: if strong sources add multichan amp solve, wait for NDPPP to divide chans evenly
             #nchan = find_nchan(peelmss[0])
             #nchan = min(np.rint(nchan/10.), np.rint(nchan/dd['Total_flux']/10.))
+
             logging.info('Calibrating amplitude...')
             for ms in peelmss:
                 check_rm(ms+'/instrument-amp')
@@ -324,18 +337,13 @@ def peel(dd):
                     log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
             s.run(check=True)
     
-            # merge parmdbs
-            logging.info('Merging instrument tables...')
-            for ms in peelmss:
-                merge_parmdb(ms+'/instrument-tec', ms+'/instrument-amp', ms+'/instrument', clobber=True)
-    
             # LoSoTo Amp rescaling + plotting
-            losoto(str(c)+'-amp', peelmss, dd, parset_dir+'/losoto-g.parset')
+            losoto(str(c)+'-amp', peelmss, dd, parset_dir+'/losoto-g.parset', instrument='instrument-amp')
     
             # correct TEC+amplitude - mss_peel/TC*.MS:DATA -> mss_peel/TC*.MS:CORRECTED_DATA (corrected TEC+G)
             logging.info('Correcting phase+amplitude...')
             for ms in peelmss:
-                s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
                     log=ms+'_cor-tecg-c'+str(c)+'.log', cmd_type='NDPPP')
             s.run(check=True)
 
@@ -354,25 +362,30 @@ def peel(dd):
         ##############################################################################################################################
         # Cannot avg since the same dataset has to be shifted back and used for other facets
         # Phase shift -  mss/TC*.MS:SUBTRACTED_DATA -> mss_facet/TC*.MS:DATA (not corrected, field subtracted but facet, phase shifted)
-        logging.info('Shifting (SUBTRACTED_DATA)...')
-        for ms in allmss:
-            msout = ms.replace('mss','mss_facet')
-            s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msout='+msout+' msin.datacolumn=SUBTRACTED_DATA \
-                    shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_facet-shift.log', cmd_type='NDPPP')
+        #logging.info('Shifting (SUBTRACTED_DATA)...')
+        #for ms in allmss:
+        #    msout = ms.replace('mss','mss_facet')
+        #    s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msout='+msout+' msin.datacolumn=SUBTRACTED_DATA \
+        #            shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_facet-shift.log', cmd_type='NDPPP')
+        #s.run(check=True)
+        #
+        #facetmss = sorted(glob.glob('mss_facet/TC*.MS'))
+
+        # mss_peel/TC*.MS:DATA = EMPTY_DATA (empty data)
+        logging.info('Copy back EMPTY_DATA...')
+        for ms in peelmss:
+            s.add('taql "update '+ms+' set DATA = EMPTY_DATA"', log=ms+'_facet-taql.log', cmd_type='general')
         s.run(check=True)
 
-        facetmss = sorted(glob.glob('mss_facet/TC*.MS'))
-
-        # Add rest of the facet - mss/TC*.MS:MODEL_DATA (high+low resolution facet model)
+        # Add rest of the facet - mss_peel/TC*.MS:MODEL_DATA (high+low resolution facet model)
         logging.info('Ft facet model...')
-        s.add('wsclean -predict -name ' + modeldir + 'peel_facet -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(facetmss), \
+        s.add('wsclean -predict -name ' + modeldir + 'peel_facet -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
                 log='wscleanPRE-facet1.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-    
-        # ADD mss_facet/TC*.MS:DATA + MODEL_DATA -> mss_facet/TC*.MS:DATA (empty data + facet from model)
+        # ADD mss_peel/TC*.MS:DATA + MODEL_DATA -> mss_facet/TC*.MS:DATA (empty data + facet from model)
         logging.info('Add facet model...')
-        for ms in facetmss:
-            s.add('taql "update '+ms+' set DATA = DATA + MODEL_DATA"', log=ms+'_facet-taql.log', cmd_type='general')
+        for ms in peelmss:
+            s.add('taql "update '+ms+' set DATA = DATA + MODEL_DATA"', log=ms+'_facet-taql.log', cmd_type='general', log_append=True)
         s.run(check=True)
     
         ### DEBUG
@@ -384,24 +397,25 @@ def peel(dd):
         
         # Correct amp+ph - mss_facet/TC*.MS:DATA -> mss_facet/TC*.MS:CORRECTED_DATA (selfcal tec+amp corrected)
         # Copy instrument table in facet dataset
-        for msFacet in facetmss:
-            msDD = msFacet.replace('mss_facet','mss_peel')
-            logging.debug(msDD+'/instrument -> '+msFacet+'/instrument')
-            check_rm(msFacet+'/instrument')
-            os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
+        #for msFacet in facetmss:
+        #    msDD = msFacet.replace('mss_facet','mss_peel')
+        #    logging.debug(msDD+'/instrument -> '+msFacet+'/instrument')
+        #    check_rm(msFacet+'/instrument')
+        #    os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
         logging.info('Correcting facet amplitude+phase...')
-        for ms in facetmss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' cor1.parmdb='+ms+'/instrument cor2.parmdb='+ms+'/instrument cor3.parmdb='+ms+'/instrument', \
+        for ms in peelmss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' \
+                   cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
                 log=ms+'_facet-cor.log', cmd_type='NDPPP')
         s.run(check=True)
         
         # Cleaning facet
-        model = clean('facet', facetmss, dd, avgfreq=4, avgtime=5, facet=True)
+        model = clean('facet', peelmss, dd, avgtime=5, facet=True)
         # DEBUG
         #model = 'peel/src1/images/peel-facet'
        
         logging.info('Add MODEL_DATA')
-        for ms in facetmss:
+        for ms in peelmss:
             s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
         s.run(check=True)
     
@@ -419,30 +433,27 @@ def peel(dd):
         for modelfits in glob.glob(model+'*model.fits'):
             blank_image_reg(modelfits, 'regions/'+dd['name']+'.reg', inverse=True, blankval=0.)
 
-        facetmss = peelmss
-
     # ft model - mss_peel/TC*.MS:MODEL_DATA (best available model)
     logging.info('FT model...')
-    s.add('wsclean -predict -name ' + model + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(facetmss), \
+    s.add('wsclean -predict -name ' + model + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
                 log='wscleanPRE-facet2.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    for ms in facetmss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_facet-taql2.log', cmd_type='general')
+    for ms in peelmss:
+        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_facet-taql.log', cmd_type='general', log_append=True)
     s.run(check=True)
 
-    # Corrupt empty data amp+ph - mss_facet/TC*.MS:CORRECTED_DATA -> mss_facet/TC*.MS:CORRECTED_DATA (selfcal empty)
+    # Corrupt empty data amp+ph - mss_peel/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA (selfcal empty)
     logging.info('Corrupting facet amplitude+phase...')
-    for ms in facetmss:
+    for ms in peelmss:
         s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
                 cor1.parmdb='+ms+'/instrument cor1.invert=false cor2.parmdb='+ms+'/instrument cor2.invert=false cor3.parmdb='+ms+'/instrument cor3.invert=false', \
                 log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
     s.run(check=True)
 
     logging.info('Shifting back...')
-    for ms in facetmss:
-        if 'peel' in ms: msout = ms.replace('mss_peel','mss_shiftback')
-        elif 'facet' in ms: msout = ms.replace('mss_facet','mss_shiftback')
+    for ms in peelmss:
+        msout = ms.replace('mss_peel','mss_shiftback')
         s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA \
                 shift.phasecenter=\['+str(phasecentre[0])+'deg,'+str(phasecentre[1])+'deg\]', log=msout+'_facet-shiftback.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -450,13 +461,13 @@ def peel(dd):
     shiftbackmss = sorted(glob.glob('mss_shiftback/TC*.MS'))
     for ms in shiftbackmss:
         msorig = ms.replace('mss_shiftback','mss')
-        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=ms+'_final-taql.log', cmd_type='general')
+        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.CORRECTED_DATA"', log=ms+'_taql.log', cmd_type='general')
     s.run(check=True)
 
     logging.info('Add SUBTRACTED_DATA_DDCAL## (backup)...')
     for ms in allmss:
         colout = 'SUBTRACTED_DATA_'+dd['name'].upper()
-        s.add('addcol2ms.py -m '+ms+' -c '+colout+' -i SUBTRACTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c '+colout+' -i SUBTRACTED_DATA', log=ms+'_bkp-addcol.log', cmd_type='python', processors='max')
     s.run(check=True)
 
     #clean('emptyafter', allmss, dd, avgfreq=4, avgtime=5, facet=True) # DEBUG
@@ -465,6 +476,8 @@ def peel(dd):
     os.system('mv logs peel/'+dd['name']+'/')
     # save images
     os.system('mv img/*MFS-image.fits peel/'+dd['name']+'/images/')
+    # save masks
+    os.system('mv img/*mask.fits peel/'+dd['name']+'/masks/')
     # direction completed, write status
     with open('pipeline-peel.status', 'a') as status_file:
         status_file.write(dd['name']+'\n')
@@ -491,6 +504,7 @@ make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
 ddset = make_tassellation(ddset, imagename, beam_reg='regions/beam.reg')
 
 print ddset
+ddset.write('ddset.txt', format='ascii')
 
 if not os.path.exists("pipeline-peel.status"):
     os.mknod("pipeline-peel.status")
