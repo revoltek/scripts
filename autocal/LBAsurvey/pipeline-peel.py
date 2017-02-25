@@ -20,6 +20,7 @@ import sys, os, glob, re
 import numpy as np
 from autocal.lib_pipeline import *
 from autocal.lib_pipeline_dd import *
+from autocal.lib_pipeline_img import *
 from make_mask import make_mask
 from lofar import bdsm
 import pyrap.tables as pt
@@ -51,13 +52,17 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
     if facet:
-        imsize = int((dd['facet_size']/(pixscale/3600.))*2.0)
+        imsize = int((dd['facet_size']/(pixscale/3600.))*1.5)
     else:
         imsize = int((dd['dd_size']/(pixscale/3600.))*1.5)
 
     if imsize < 512:
         imsize = 512
+
     trim = int(imsize*0.7)
+
+    if imsize % 2 == 1: imsize += 1 # make even
+    if trim % 2 == 1: trim += 1 # make even
 
     logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
@@ -69,14 +74,14 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     logging.info('Cleaning (cycle: '+str(c)+')...')
     if facet: imagename = 'img/facet-'+str(c)
     else: imagename = 'img/ddcal-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-threshold 10 '+' '.join(mss), \
+            -auto-threshold 20 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat log/wsclean-c'+str(c)+'.log | grep Jy')
+    os.system('cat logs/wsclean-c'+str(c)+'.log | grep Jy')
 
     # make mask
     maskname = imagename+'-mask.fits'
@@ -87,14 +92,14 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     if facet: imagename = 'img/facetM-'+str(c)
     else: imagename = 'img/ddcalM-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.7/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
             -auto-threshold 1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat log/wscleanM-c'+str(c)+'.log | grep Jy')
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
@@ -212,6 +217,12 @@ def peel(dd):
             outmodel = model.replace('large_','')
             s.add("mProjectPP "+model+" "+outmodel+" "+modeldir+"facet.hdr", log='reproject.log', log_append=True, cmd_type="general")
     s.run(check=True)
+    check_rm(modeldir+'*hdr')
+    check_rm(modeldir+'*area.fts')
+    check_rm(modeldir+'large*')
+    # remove NaNs that mProject can create
+    for model in glob.glob(modeldir+'/*fits'):
+        nan2zeros(model)
 
     ###########################################################
     # keep SUBTRACTED_DATA as a working columns so we can re-start each time

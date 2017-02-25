@@ -52,8 +52,8 @@ if nchan % 4 != 0:
 
 avg_factor_f = nchan / 4 # to 4 ch/SB
 if avg_factor_f < 1: avg_factor_f = 1
-avg_factor_t = int(np.round(4/timeint))
-if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
+avg_factor_t = int(np.round(4/timeint)) # to 4 sec
+if avg_factor_t < 1: avg_factor_t = 1
 
 if avg_factor_f != 1 or avg_factor_t != 1:
     logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
@@ -172,10 +172,11 @@ s.run(check=True)
 os.system('mv plots plots-fr')
 
 for i, ms in enumerate(mss):
+    tnum = re.findall(r'\d+', ms)[-2]
     num = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument-fr')
-    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
-    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
+    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' into '+ms+'/instrument-fr')
+    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' '+ms+'/instrument-fr')
 
 # 2: recalibrate without FR
 

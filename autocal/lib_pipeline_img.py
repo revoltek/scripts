@@ -165,7 +165,7 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0.):
     if inverse=True, set to "blankval" pixels outside region.
 
     filename: fits file
-    region: ds9 region
+    region: ds9 region or list of regions
     outfile: output name
     inverse: reverse region mask
     blankval: pixel value to set
@@ -174,16 +174,19 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0.):
     import pyregion
 
     if outfile == None: outfile = filename
+    if not type(region) is list: region=[region]
+    print region
 
     # open fits
     with pyfits.open(filename) as fits:
         origshape = fits[0].data.shape
         header, data = flatten(fits)
-        # extract mask
-        r = pyregion.open(region)
-        mask = r.get_mask(header=header, shape=data.shape)
-        if inverse: mask = ~mask
-        data[mask] = blankval
+        for this_region in region:
+            # extract mask
+            r = pyregion.open(this_region)
+            mask = r.get_mask(header=header, shape=data.shape)
+            if inverse: mask = ~mask
+            data[mask] = blankval
         # save fits
         fits[0].data = data.reshape(origshape)
         fits.writeto(outfile, clobber=True)
@@ -198,6 +201,16 @@ def get_noise_img(filename):
         rms_noise = np.sqrt(np.mean((fits[0].data)**2))
         logging.debug('Rms_noise: %f' % rms_noise)
         return rms_noise
+
+
+def nan2zeros(filename):
+    """
+    Replace NaNs to zeros in a fits file
+    """
+    import astropy.io.fits as pyfits
+    with pyfits.open(filename) as fits:
+        fits[0].data = np.nan_to_num(fits[0].data)
+        fits.writeto(filename, clobber=True)
 
 
 def get_coord_centroid(filename, region):
