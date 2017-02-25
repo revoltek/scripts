@@ -117,6 +117,8 @@ s.run(check=True)
 
 ###################################################################################################
 # Create groups
+# TODO: adapt to new names
+sys.exit()
 groupnames = []
 logging.info('Concatenating in frequency...')
 for i, msg in enumerate(np.array_split(mss, ngroups)):

@@ -19,8 +19,8 @@ else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     print "IMPORTANT: for survey also remove bad ant at flag time"
-    #datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % (obs, calname)
-    datadir = '.'
+    datadir = '/lofar5/stsf309/LBAsurvey/%s/%s/' % (obs, calname)
+    #datadir = '.'
     do_fixbeamtable = False
 
     if calname == '3c196':
@@ -122,7 +122,6 @@ s.run(check=True)
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smooth...')
 for ms in mss:
-    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
@@ -131,7 +130,8 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+    #s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources=[]', log=ms+'_sol1.log', cmd_type='NDPPP') # use all sources
 s.run(check=True)
 
 ################################################
@@ -205,7 +205,6 @@ s.run(check=True)
 logging.info('BL-smoothing...')
 for ms in mss:
     s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################
