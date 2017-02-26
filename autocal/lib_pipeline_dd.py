@@ -369,3 +369,34 @@ def make_beam_reg(ra_c, dec_c, pb_cut, outfile):
     t['DEC'] = [dec_c]
     t['size'] = [pb_cut/2.]
     table_to_circ_region(t, outfile, racol='RA', deccol='DEC', sizecol='size', color='blue', label=False)
+
+
+#def patch_skymodel_from_ref(skymodel, fitsfile, regionfiles=[]):
+#    """
+#    group sources in a BBS skymodel based on a set of regions
+#    skymodel : a BBS skymodel
+#    fitsfile : an image to use for reference
+#    regionfiles : a list of region files
+#    """
+#    t = Table.read(skymodel)
+#    logging.debug('Read %i regions' % len(regionfiles))
+#    t['Patch'] = 'None'
+#
+#    for regionfile in regionfiles
+#        total_flux = 0
+#        for source in t:
+#
+#            # open region
+#
+#            # check if source in region
+#            if source['RA'] in region and source['DEC'] in region:
+#                source['Patch'] = regionfile
+#                total_flux += source['Total_flux']
+#
+#        logging.info("Total flux in patch %s: %.3f Jy" % (regionfile, total_flux )
+#
+#    # remove None patches
+#    t.remove_rows( np.where( t['Patch'] == 'None' ) )
+#
+#    # write new skymodel
+#    t.write()
