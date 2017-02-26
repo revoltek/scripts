@@ -27,6 +27,7 @@ LoSoTo.Steps.plotFR.Soltab = [sol000/rotationmeasure000]
 LoSoTo.Steps.plotFR.Axes = [time]
 LoSoTo.Steps.plotFR.ColorAxis = ant
 LoSoTo.Steps.plotFR.Prefix = plots/fr
+LoSoTo.Steps.plotFR.PlotFlag = False
 
 # calculate residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS

@@ -124,25 +124,24 @@ class Scheduler():
         # if they are set, double check number are reasonable
         if self.qsub == None:
             if self.cluster == 'Hamburg': self.qsub = True
-            elif self.cluster == 'Leiden': self.qsub = True
             else: self.qsub = False
         else:
-            if (self.qsub == False and (self.cluster == 'Hamburg' or self.cluster == 'Leiden')) or \
-               (self.qsub == True and self.cluster == 'CEP3'):
+            if (self.qsub == False and self.cluster == 'Hamburg') or \
+               (self.qsub == True and (self.cluster == 'Leiden' or self.cluster == 'CEP3')):
                 logging.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
                 sys.exit(1)
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 64
-            elif self.cluster == 'Leiden': self.max_threads = 64
-            elif self.cluster == 'CEP3': self.max_threads = 20
+            elif self.cluster == 'Leiden': self.max_threads = 32
+            elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
         else:
             self.max_threads = max_threads
 
         if max_processors == None:
             if self.cluster == 'Hamburg': self.max_processors = 6
-            elif self.cluster == 'Leiden': self.max_processors = 12
+            elif self.cluster == 'Leiden': self.max_processors = 32
             elif self.cluster == 'CEP3': self.max_processors = 40
             else: self.max_processors = 12
         else:
@@ -250,7 +249,7 @@ class Scheduler():
                     # run on all cluster
                     cmd = 'salloc --job-name LBApipe --time=24:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
                             ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\''
-                elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd[0]+' '+cmd[1]+' >> qsub.log'
+                #elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd[0]+' '+cmd[1]+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
         if max_threads == None: max_threads = self.max_threads
@@ -308,7 +307,8 @@ class Scheduler():
                 return 1
 
         elif cmd_type == 'wsclean':
-            out = subprocess.check_output('grep -L "Cleaning up temporary files..." '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out = subprocess.check_output('grep -l "exception occurred" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -L "Cleaning up temporary files..." '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('WSClean run problem on:\n'+out)
                 return 1

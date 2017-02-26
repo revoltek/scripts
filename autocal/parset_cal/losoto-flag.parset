@@ -46,7 +46,7 @@ LoSoTo.Steps.plotA3.Axes = [time,freq]
 LoSoTo.Steps.plotA3.TableAxis = ant
 LoSoTo.Steps.plotA3.PlotFlag = True
 LoSoTo.Steps.plotA3.Prefix = plots/ampPF_
-#LoSoTo.Steps.plotA3.MinMax = [1e-4,3e-3]
+LoSoTo.Steps.plotA3.MinMax = [100,300]
 
 # flag
 LoSoTo.Steps.flag.Operation = FLAG
