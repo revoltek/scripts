@@ -158,7 +158,7 @@ class Scheduler():
             os.makedirs(log_dir)
         self.log_dir = log_dir
 
-    def add(self, cmd='', log='', log_append = False, cmd_type='', processors = None):
+    def add(self, cmd='', log='', log_append=False, cmd_type='', processors=None):
         """
         Add cmd to the scheduler list
         cmd: the command to run
@@ -189,7 +189,7 @@ class Scheduler():
         if log != '':
             self.log_list.append((log,cmd_type))
 
-    def add_casa(self, cmd = '', params = {}, wkd = None, log = '', log_append = False, processors = None):
+    def add_casa(self, cmd='', params={}, wkd=None, log='', log_append=False, processors=None):
         """
         Run a casa command pickling the parameters passed in params
         NOTE: running casa commands in parallel is a problem for the log file, better avoid
@@ -252,7 +252,8 @@ class Scheduler():
                 #elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd[0]+' '+cmd[1]+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
-        if max_threads == None: max_threads = self.max_threads
+        # limit threads only when qsub doesn't do it
+        if max_threads == None and not self.qsub: max_threads = self.max_threads
         q = Queue()
         threads = [Thread(target=worker, args=(q,)) for _ in range(max_threads)]
     
@@ -314,6 +315,7 @@ class Scheduler():
                 return 1
 
         elif cmd_type == 'python':
+            out = subprocess.check_output('grep -l "Traceback (most recent call last):" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out = subprocess.check_output('grep -l "[a-z]*Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "[a-z]*Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':

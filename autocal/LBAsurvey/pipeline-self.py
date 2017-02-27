@@ -132,7 +132,7 @@ for c in xrange(niter):
     for ms in mss:
         s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
         #s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
-    s.run(check=True, max_threads=4)
+    s.run(check=True)
 
     if c == 0:
         # on first cycle concat (need to be done after smoothing)
@@ -168,8 +168,7 @@ for c in xrange(niter):
         logging.info('BL-based smoothing...')
         for ms in mss:
             s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
-            #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python', processors='max')
-        s.run(check=True, max_threads=4)
+        s.run(check=True)
 
         # Solve G SB.MS:SMOOTHED_DATA (only solve)
         logging.info('Solving G...')
@@ -216,7 +215,7 @@ for c in xrange(niter):
         logging.info('Convert to linear...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -s -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True, max_threads=4)
+        s.run(check=True)
         
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logging.info('Faraday rotation correction...')
@@ -228,15 +227,10 @@ for c in xrange(niter):
         logging.info('Convert to circular...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True, max_threads=4)
+        s.run(check=True)
 
     ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
-
-    # TODO: fix dysco
-    #logging.info('Restoring WEIGHT_SPECTRUM before imaging...')
-    #s.add('taql "update '+concat_ms+' set WEIGHT_SPECTRUM = WEIGHT_SPECTRUM_ORIG"', log='taql-resetweights-c'+str(c)+'.log', cmd_type='general')
-    #s.run(check=True)
 
     # do beam-corrected+deeper image at last cycle
     if c == niter-1:
