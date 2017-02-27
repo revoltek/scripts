@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-download_file = 'html.txt'
-#download_file = None # just renaming
+#download_file = 'html.txt'
+download_file = None # just renaming
 rename = True
 
 ###################################################
@@ -66,7 +66,12 @@ if rename:
         newName = regex.sub(code+'_', ms)
         newName = regex2.sub('', newName)
 
-        cycle_obs, sou = code.split('_')
+        try:
+            cycle_obs, sou = code.split('_')
+        except:
+            cycle_obs = 'ukn'
+            sou = code
+
         if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
 
         # get freq

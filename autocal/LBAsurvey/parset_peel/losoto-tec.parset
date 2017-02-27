@@ -2,7 +2,7 @@
 LoSoTo.Steps = [plotTEC, plotCSP, plotCSPTEC]
 #LoSoTo.Steps = [plotTEC, tecjump, plotTEC2]
 LoSoTo.Solset = [sol000]
-LoSoTo.Ncpu = 10
+LoSoTo.Ncpu = 0
 
 # plot CSP+TEC
 LoSoTo.Steps.plotCSPTEC.Operation = PLOT

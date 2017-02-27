@@ -3,6 +3,7 @@
 import sys, os, glob, re
 import numpy as np
 import pyrap.tables as pt
+from astropy.time import Time
 from autocal.lib_pipeline import *
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
@@ -11,7 +12,6 @@ skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 if 'tooth' in os.getcwd():
     # tooth
     datadir = '.'
-    do_fixbeamtable = True
     sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
     patch = '3C196' # test with all sources
 else:
@@ -19,16 +19,15 @@ else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     print "IMPORTANT: for survey also remove bad ant at flag time"
-    #datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % (obs, calname)
-    datadir = '.'
-    do_fixbeamtable = False
+    datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
+    #datadir = '.'
 
     if calname == '3c196':
         sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
         patch = '3C196'
     elif calname == '3c380':
         sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
-        patch = '3c380'
+        patch = '3C380'
     elif calname == 'CygA':
         sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
         patch = 'CygA'
@@ -46,7 +45,7 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
-if nchan % 4 != 0:
+if nchan % 4 != 0 and nchan != 1:
     logging.error('Channels should be a multiple of 4.')
     sys.exit(1)
 
@@ -68,18 +67,22 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     mss = sorted(glob.glob('*-avg.MS'))
 
 # flag below elev 20 and bad stations, flags will propagate
-#logging.info('Flagging...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA', \
-#            log=ms+'_flag.log', cmd_type='NDPPP')
+logging.info('Flagging...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA', \
+            log=ms+'_flag.log', cmd_type='NDPPP')
 #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', \
 #            log=ms+'_flag.log', cmd_type='NDPPP')
-#s.run(check=True)
+s.run(check=True)
     
 ###############################################
 # Initial processing (2/2013->2/2014)
-if do_fixbeamtable:
-    logging.warning('Fix beam table...')
+obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
+t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+time = np.int(t.iso.replace('-','')[0:8])
+obs.close()
+if time > 20130200 and time < 20140300:
+    logging.info('Fix beam table...')
     for ms in mss:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
@@ -122,7 +125,6 @@ s.run(check=True)
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smooth...')
 for ms in mss:
-    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
@@ -131,7 +133,8 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+    #s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources=[]', log=ms+'_sol1.log', cmd_type='NDPPP') # use all sources
 s.run(check=True)
 
 ################################################
@@ -206,7 +209,6 @@ s.run(check=True)
 logging.info('BL-smoothing...')
 for ms in mss:
     s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 ################################################

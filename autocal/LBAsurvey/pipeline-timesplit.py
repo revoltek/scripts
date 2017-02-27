@@ -96,10 +96,11 @@ s.run(check=True)
 ##########################################################################################
 # Copy instrument tables
 for ms in mss:
-    num = re.findall(r'\d+', ms)[-1]
+    tnum = re.findall(r'\d+', ms)[-2]
+    sbnum = re.findall(r'\d+', ms)[-1]
     check_rm(ms+'/instrument')
-    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
-    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/instrument')
+    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
+    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
 
 # Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
 logging.info('Apply solutions...')
@@ -116,6 +117,8 @@ s.run(check=True)
 
 ###################################################################################################
 # Create groups
+# TODO: adapt to new names
+sys.exit()
 groupnames = []
 logging.info('Concatenating in frequency...')
 for i, msg in enumerate(np.array_split(mss, ngroups)):
