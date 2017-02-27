@@ -1,12 +1,12 @@
 # losoto parset
-LoSoTo.Steps = [plotA1, plotA2, plotA3, flag, flagextend, merge]
+LoSoTo.Steps = [plotA1, plotA2, plotA3, flag, flag2 flagextend, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
-LoSoTo.Ncpu = 6
+LoSoTo.Ncpu = 0
 
 #LoSoTo.Steps.reweight.Operation = REWEIGHT
 #LoSoTo.Steps.reweight.WeightVal = 0.
@@ -26,7 +26,7 @@ LoSoTo.Steps.plotA1.TableAxis = ant
 LoSoTo.Steps.plotA1.ColorAxis = pol
 LoSoTo.Steps.plotA1.PlotFlag = True
 LoSoTo.Steps.plotA1.Prefix = plots/ampPF_
-LoSoTo.Steps.plotA1.Columns = 2
+LoSoTo.Steps.plotA1.Columns = 4
 LoSoTo.Steps.plotA1.FigSize = [20,20]
 #LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
 
@@ -52,19 +52,30 @@ LoSoTo.Steps.plotA3.MinMax = [100,300]
 LoSoTo.Steps.flag.Operation = FLAG
 LoSoTo.Steps.flag.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.flag.Axes = [freq]
-LoSoTo.Steps.flag.MaxCycles = 3
-LoSoTo.Steps.flag.MaxRms = 5
+LoSoTo.Steps.flag.MaxCycles = 1
+LoSoTo.Steps.flag.MaxRmsNoise = 7
 LoSoTo.Steps.flag.Order = [100] 
 LoSoTo.Steps.flag.Replce = False
 LoSoTo.Steps.flag.PreFlagZeros = False
 LoSoTo.Steps.flag.Mode = smooth
 
+# flag2
+LoSoTo.Steps.flag2.Operation = FLAG
+LoSoTo.Steps.flag2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flag2.Axes = [time]
+LoSoTo.Steps.flag2.MaxCycles = 3
+LoSoTo.Steps.flag2.MaxRms = 7
+LoSoTo.Steps.flag2.Order = [100] 
+LoSoTo.Steps.flag2.Replce = False
+LoSoTo.Steps.flag2.PreFlagZeros = False
+LoSoTo.Steps.flag2.Mode = smooth
+
 # extend on very bad time/freq
 LoSoTo.Steps.flagextend.Operation = FLAGEXTEND
 LoSoTo.Steps.flagextend.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.flagextend.Axes = [freq,time]
-LoSoTo.Steps.flagextend.Percent = 40
-LoSoTo.Steps.flagextend.Size = [7,10]
+LoSoTo.Steps.flagextend.Percent = 50
+LoSoTo.Steps.flagextend.Size = [50,100]
 LoSoTo.Steps.flagextend.Cycles = 3
 
 # copy flags on phases
