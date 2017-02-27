@@ -88,7 +88,6 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
 
     # clean 2
-    logging.info('Cleaning (cycle: '+str(c)+')...')
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     if facet: imagename = 'img/facetM-'+str(c)
     else: imagename = 'img/ddcalM-'+str(c)
@@ -444,10 +443,11 @@ def peel(dd):
     s.run(check=True)
 
     # Corrupt empty data amp+ph - mss_peel/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA (selfcal empty)
+    # TODO: do not corrupt on first calibrator to propagate its solutions
     logging.info('Corrupting facet amplitude+phase...')
     for ms in peelmss:
         s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
-                cor1.parmdb='+ms+'/instrument cor1.invert=false cor2.parmdb='+ms+'/instrument cor2.invert=false cor3.parmdb='+ms+'/instrument cor3.invert=false', \
+                cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false cor3.parmdb='+ms+'/instrument-amp cor3.invert=false', \
                 log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -461,7 +461,7 @@ def peel(dd):
     shiftbackmss = sorted(glob.glob('mss_shiftback/TC*.MS'))
     for ms in shiftbackmss:
         msorig = ms.replace('mss_shiftback','mss')
-        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.CORRECTED_DATA"', log=ms+'_taql.log', cmd_type='general')
+        s.add('taql "update '+msorig+', '+ms+' as shiftback set SUBTRACTED_DATA=shiftback.DATA"', log=ms+'_taql.log', cmd_type='general')
     s.run(check=True)
 
     logging.info('Add SUBTRACTED_DATA_DDCAL## (backup)...')
