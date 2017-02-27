@@ -132,9 +132,8 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    #s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources=[]', log=ms+'_sol1.log', cmd_type='NDPPP') # use all sources
-s.run(check=True)
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+s.run(check=True, max_threads=s.max_threads/6)
 
 ################################################
 # Prepare and run losoto
@@ -216,7 +215,7 @@ logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
-s.run(check=True)
+s.run(check=True, max_threads=s.max_threads/6)
 
 #############################################################
 # Prepare and run losoto
