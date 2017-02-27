@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [plotA1, plotA2, plotA3, flag, flag2 flagextend, merge]
+LoSoTo.Steps = [plotA1, plotA2, plotA3, flag, flagextend, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -46,29 +46,18 @@ LoSoTo.Steps.plotA3.Axes = [time,freq]
 LoSoTo.Steps.plotA3.TableAxis = ant
 LoSoTo.Steps.plotA3.PlotFlag = True
 LoSoTo.Steps.plotA3.Prefix = plots/ampPF_
-LoSoTo.Steps.plotA3.MinMax = [100,300]
+#LoSoTo.Steps.plotA3.MinMax = [100,300]
 
 # flag
 LoSoTo.Steps.flag.Operation = FLAG
 LoSoTo.Steps.flag.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flag.Axes = [freq]
-LoSoTo.Steps.flag.MaxCycles = 1
-LoSoTo.Steps.flag.MaxRmsNoise = 7
+LoSoTo.Steps.flag.Axes = [time]
+LoSoTo.Steps.flag.MaxCycles = 2
+LoSoTo.Steps.flag.MaxRms = 5
 LoSoTo.Steps.flag.Order = [100] 
 LoSoTo.Steps.flag.Replce = False
 LoSoTo.Steps.flag.PreFlagZeros = False
 LoSoTo.Steps.flag.Mode = smooth
-
-# flag2
-LoSoTo.Steps.flag2.Operation = FLAG
-LoSoTo.Steps.flag2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.flag2.Axes = [time]
-LoSoTo.Steps.flag2.MaxCycles = 3
-LoSoTo.Steps.flag2.MaxRms = 7
-LoSoTo.Steps.flag2.Order = [100] 
-LoSoTo.Steps.flag2.Replce = False
-LoSoTo.Steps.flag2.PreFlagZeros = False
-LoSoTo.Steps.flag2.Mode = smooth
 
 # extend on very bad time/freq
 LoSoTo.Steps.flagextend.Operation = FLAGEXTEND
