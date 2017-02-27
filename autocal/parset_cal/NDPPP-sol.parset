@@ -6,7 +6,7 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, sol]
 
-filter.blrange = [1000,100e3]
+filter.blrange = [2000,1e30]
 
 sol.type = gaincal
 sol.caltype = diagonal
