@@ -253,9 +253,11 @@ class Scheduler():
                 subprocess.call(cmd, shell=True)
     
         # limit threads only when qsub doesn't do it
-        if max_threads == None and not self.qsub: max_threads = self.max_threads
+        if max_threads != None and not self.qsub: max_threads_run = max_threads
+        else: max_threads_run = self.max_threads
+
         q = Queue()
-        threads = [Thread(target=worker, args=(q,)) for _ in range(max_threads)]
+        threads = [Thread(target=worker, args=(q,)) for _ in range(max_threads_run)]
     
         for i, t in enumerate(threads): # start workers
             t.daemon = True
