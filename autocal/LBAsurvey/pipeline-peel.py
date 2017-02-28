@@ -69,7 +69,6 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
     # -trim '+str(trim)+' '+str(trim)+'
     # -auto-mask 5 -auto-threshold 1 -rms-background -rms-background-window 25 \
     # -multiscale
-    # -taper-edge-tukey 100 - for N/S artifact
 
     # clean 1
     logging.info('Cleaning (cycle: '+str(c)+')...')

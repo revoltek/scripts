@@ -344,6 +344,7 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
     pl.figure(figsize=(8,8))
     ax1 = pl.gca()
     ax1.plot(t['x'],t['y'],'*',color='red')
+    for i, d in enumerate(t): ax1.text(d['x'], d['y'], str(i), fontsize=15)
     if beam_reg != '':
         c1 = pl.Circle((x_c, y_c), beamradius_pix, color='g', fill=False)
         ax1.add_artist(c1)
