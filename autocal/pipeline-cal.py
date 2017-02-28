@@ -194,7 +194,7 @@ s.run(check=True)
 logging.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-s.run(check=True)
+s.run(check=True, max_threads=s.max_threads/6)
 
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
