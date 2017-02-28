@@ -10,27 +10,29 @@ parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
 if 'tooth' in os.getcwd():
-    # tooth
     datadir = '.'
-    sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-    patch = '3C196' # test with all sources
+    bl2flag = 'CS031LBA\;RS409LBA'
+    calname = '3c196'
+if 'bootes' in os.getcwd(): # bootes 2013
+    datadir = '.'
+    bl2flag = 'CS013LBA'
+    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
 else:
-    # survey
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
-    print "IMPORTANT: for survey also remove bad ant at flag time"
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
-    #datadir = '.'
+    bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA' # survey
 
-    if calname == '3c196':
-        sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-        patch = '3C196'
-    elif calname == '3c380':
-        sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
-        patch = '3C380'
-    elif calname == 'CygA':
-        sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
-        patch = 'CygA'
+
+if calname == '3c196':
+    sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+    patch = '3C196'
+elif calname == '3c380':
+    sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
+    patch = '3C380'
+elif calname == 'CygA':
+    sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
+    patch = 'CygA'
 
 ###################################################
 
@@ -69,10 +71,8 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA', \
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline='+bl2flag+' msin.datacolumn=DATA', \
             log=ms+'_flag.log', cmd_type='NDPPP')
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', \
-#            log=ms+'_flag.log', cmd_type='NDPPP')
 s.run(check=True)
     
 ###############################################
@@ -133,9 +133,8 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    #s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources=[]', log=ms+'_sol1.log', cmd_type='NDPPP') # use all sources
-s.run(check=True)
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+s.run(check=True, max_threads=s.max_threads/6)
 
 ################################################
 # Prepare and run losoto
@@ -218,7 +217,7 @@ logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
-s.run(check=True)
+s.run(check=True, max_threads=s.max_threads/6)
 
 #############################################################
 # Prepare and run losoto
