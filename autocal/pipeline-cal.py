@@ -149,9 +149,9 @@ for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
     tnum = re.findall(r'\d+', ms)[-2]
     sbnum = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
-    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(tnum)+'-'+str(sbnum))
 
 logging.info('Running LoSoTo...')
@@ -199,10 +199,11 @@ s.run(check=True)
 
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-logging.warning('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+# NOTE: in linear
+#logging.info('Converting to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 ################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
@@ -231,7 +232,7 @@ for i, ms in enumerate(mss):
 
     tnum = re.findall(r'\d+', ms)[-2]
     sbnum = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
    
 #    # We export clock, need to create a new parmdb

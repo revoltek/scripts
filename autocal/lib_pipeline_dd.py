@@ -80,6 +80,8 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
         logging.critical("No sources found that meet the specified max size criterion.")
         sys.exit(1)
 
+    t['dd_size'] *= 2 # now that we cut on size, enlarge all the regions to peak up artifacts and sidelobes around dd calibrators
+
     # exclude sources that are too faint
     t_large = t_large[ (t_large['Peak_flux'] > flux_min_for_merging_Jy) ]
     t = t[ (t['Peak_flux'] > flux_min_for_merging_Jy) ]
