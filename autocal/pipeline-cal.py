@@ -11,27 +11,28 @@ skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
 if 'tooth' in os.getcwd():
     datadir = '.'
-    sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-    patch = '3C196' # test with all sources
     bl2flag = 'CS031LBA\;RS409LBA'
+    calname = '3c196'
+if 'bootes' in os.getcwd(): # bootes 2013
+    datadir = '.'
+    bl2flag = 'CS013LBA'
+    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA' # survey
 
-    #datadir = '.'
-    #bl2flag = 'CS013LBA' # bootes 2013
 
-    if calname == '3c196':
-        sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-        patch = '3C196'
-    elif calname == '3c380':
-        sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
-        patch = '3C380'
-    elif calname == 'CygA':
-        sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
-        patch = 'CygA'
+if calname == '3c196':
+    sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+    patch = '3C196'
+elif calname == '3c380':
+    sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
+    patch = '3C380'
+elif calname == 'CygA':
+    sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
+    patch = 'CygA'
 
 ###################################################
 
