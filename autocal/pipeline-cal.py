@@ -10,17 +10,17 @@ parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
 if 'tooth' in os.getcwd():
-    datadir = '.'
-    bl2flag = 'CS031LBA\;RS409LBA'
     calname = '3c196'
+    datadir = '../cals-bkp/'
+    bl2flag = 'CS031LBA\;RS409LBA'
 if 'bootes' in os.getcwd(): # bootes 2013
-    datadir = '.'
+    calname = os.getcwd().split('/')[-1]
+    datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA'
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
 if 'daycomm' in os.getcwd(): # daytest
-    datadir = '.'
+    calname = os.getcwd().split('/')[-1]
+    datadir = '/data/scratch/COMMISSIONING2017/c07-o00/%s' % calname
     bl2flag = ''
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
@@ -70,7 +70,9 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     s.run(check=True)
     nchan = nchan / avg_factor_f
     timeint = timeint * avg_factor_t
-    mss = sorted(glob.glob('*-avg.MS'))
+
+mss = sorted(glob.glob('*.MS'))
+
 
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')

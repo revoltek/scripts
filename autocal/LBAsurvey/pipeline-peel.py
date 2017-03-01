@@ -403,9 +403,14 @@ def peel(dd):
         #    os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
         logging.info('Correcting facet amplitude+phase...')
         for ms in peelmss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' \
-                   cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
-                log=ms+'_facet-cor.log', cmd_type='NDPPP')
+            if dd['Peak_flux'] > 3:
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' \
+                       cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
+                       log=ms+'_facet-cor.log', cmd_type='NDPPP')
+            else:
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' \
+                       cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                       log=ms+'_facet-cor.log', cmd_type='NDPPP')
         s.run(check=True)
         
         # Cleaning facet
