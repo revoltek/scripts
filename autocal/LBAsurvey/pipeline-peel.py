@@ -297,10 +297,8 @@ def peel(dd):
 
         # sol.solint depends on peak flux
         if dd['Peak_flux'] > 5: solint = 1
-        elif dd['Peak_flux'] > 4: solint = 2
-        elif dd['Peak_flux'] > 3: solint = 4
-        elif dd['Peak_flux'] > 2: solint = 8
-        else: solint = 16
+        elif dd['Peak_flux'] > 2: solint = 2
+        else: solint = 3
 
         logging.info('Solving TEC (solint=%i)...' % solint)
         for ms in peelmss:
