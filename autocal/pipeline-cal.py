@@ -10,13 +10,17 @@ parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
 if 'tooth' in os.getcwd():
-    datadir = '.'
-    bl2flag = 'CS031LBA\;RS409LBA'
     calname = '3c196'
+    datadir = '../cals-bkp/'
+    bl2flag = 'CS031LBA\;RS409LBA'
 if 'bootes' in os.getcwd(): # bootes 2013
-    datadir = '.'
+    calname = os.getcwd().split('/')[-1]
+    datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA'
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
+if 'daycomm' in os.getcwd(): # daytest
+    calname = os.getcwd().split('/')[-1]
+    datadir = '/data/scratch/COMMISSIONING2017/c07-o00/%s' % calname
+    bl2flag = ''
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
@@ -66,7 +70,9 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     s.run(check=True)
     nchan = nchan / avg_factor_f
     timeint = timeint * avg_factor_t
-    mss = sorted(glob.glob('*-avg.MS'))
+
+mss = sorted(glob.glob('*.MS'))
+
 
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
@@ -148,9 +154,9 @@ for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
     tnum = re.findall(r'\d+', ms)[-2]
     sbnum = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
-    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(tnum)+'-'+str(sbnum))
 
 logging.info('Running LoSoTo...')
@@ -194,14 +200,15 @@ s.run(check=True)
 logging.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-s.run(check=True)
+s.run(check=True, max_threads=s.max_threads/6)
 
 ###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-logging.warning('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+# NOTE: in linear
+#logging.info('Converting to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 ################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
@@ -230,7 +237,7 @@ for i, ms in enumerate(mss):
 
     tnum = re.findall(r'\d+', ms)[-2]
     sbnum = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
    
 #    # We export clock, need to create a new parmdb

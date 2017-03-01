@@ -18,13 +18,11 @@ if 'tooth' in os.getcwd():
     ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
     datadir = '.' # tooth
     globaldb = 'globaldb'
-    do_fixbeamtable = True
 else:
     # survey
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
     globaldb = '../3c196/globaldb' #TODO: copy form repository
-    do_fixbeamtable = False
 
 ##################################################################################################
 
@@ -67,7 +65,11 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 
 ################################################
 # Initial processing
-if do_fixbeamtable:
+obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
+t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+time = np.int(t.iso.replace('-','')[0:8])
+obs.close()
+if time > 20130200 and time < 20140300:
     logging.warning('Fix beam table')
     for ms in mss:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')

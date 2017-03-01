@@ -80,6 +80,8 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
         logging.critical("No sources found that meet the specified max size criterion.")
         sys.exit(1)
 
+    t['dd_size'] *= 2 # now that we cut on size, enlarge all the regions to peak up artifacts and sidelobes around dd calibrators
+
     # exclude sources that are too faint
     t_large = t_large[ (t_large['Peak_flux'] > flux_min_for_merging_Jy) ]
     t = t[ (t['Peak_flux'] > flux_min_for_merging_Jy) ]
@@ -342,6 +344,7 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
     pl.figure(figsize=(8,8))
     ax1 = pl.gca()
     ax1.plot(t['x'],t['y'],'*',color='red')
+    for i, d in enumerate(t): ax1.text(d['x'], d['y'], str(i), fontsize=15)
     if beam_reg != '':
         c1 = pl.Circle((x_c, y_c), beamradius_pix, color='g', fill=False)
         ax1.add_artist(c1)

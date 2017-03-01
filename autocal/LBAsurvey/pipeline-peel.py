@@ -50,7 +50,7 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
     mssavg = [ms for ms in sorted(glob.glob('mss_imgavg/*MS'))]
 
     # set pixscale and imsize
-    pixscale = scale_from_ms(mss[0])
+    pixscale = scale_from_ms(mssavg[0])
     if facet:
         imsize = int((dd['facet_size']/(pixscale/3600.))*1.5)
     else:
@@ -78,7 +78,7 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-threshold 20 '+' '.join(mss), \
+            -auto-threshold 20 '+' '.join(mssavg), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wsclean-c'+str(c)+'.log | grep Jy')
@@ -95,7 +95,7 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-threshold 1 -fitsmask '+maskname+' '+' '.join(mss), \
+            -auto-threshold 1 -fitsmask '+maskname+' '+' '.join(mssavg), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
@@ -278,7 +278,7 @@ def peel(dd):
     # self-cal cycle
     rms_noise_pre = np.inf
     for c in xrange(maxniter):
-        logging.info('Start peel cycle: '+str(c))
+        logging.info('### Start peel cycle: '+str(c))
 
         # ft model - mss_peel/TC*.MS:MODEL_DATA (best available model)
         logging.info('FT model...')
@@ -302,7 +302,7 @@ def peel(dd):
         elif dd['Peak_flux'] > 2: solint = 8
         else: solint = 16
 
-        logging.info('Solving TEC...')
+        logging.info('Solving TEC (solint=%i)...' % solint)
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
             s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec sol.solint='+str(solint), \
@@ -403,13 +403,18 @@ def peel(dd):
         #    os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
         logging.info('Correcting facet amplitude+phase...')
         for ms in peelmss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' \
-                   cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
-                log=ms+'_facet-cor.log', cmd_type='NDPPP')
+            if dd['Peak_flux'] > 3:
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' \
+                       cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
+                       log=ms+'_facet-cor.log', cmd_type='NDPPP')
+            else:
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' \
+                       cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                       log=ms+'_facet-cor.log', cmd_type='NDPPP')
         s.run(check=True)
         
         # Cleaning facet
-        model = clean('facet', peelmss, dd, avgtime=5, facet=True)
+        model = clean('facet', peelmss, dd, avgfreq=4, avgtime=5, facet=True)
         # DEBUG
         #model = 'peel/src1/images/peel-facet'
        
