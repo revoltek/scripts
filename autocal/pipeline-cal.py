@@ -73,7 +73,6 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 
 mss = sorted(glob.glob('*.MS'))
 
-
 ## flag below elev 20 and bad stations, flags will propagate
 #logging.info('Flagging...')
 #for ms in mss:
@@ -92,18 +91,14 @@ mss = sorted(glob.glob('*.MS'))
 #    for ms in mss:
 #        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
 #    s.run(check=False)
-
-###############################################
-# TODO Create MODEL column + predict to save time
-
-
+#
 ############################################
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
-logging.info('Creating fake parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-s.run(check=True)
+#logging.info('Creating fake parmdb...')
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+#s.run(check=True)
 #for ms in mss:
 #    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 #s.run(check=True)
@@ -120,8 +115,8 @@ s.run(check=True)
 #    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 #s.run(check=True)
 #
-################################################
-## Convert to circular CORRECTED_DATA -> CORRECTED_DATA
+###############################################
+# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 #logging.info('Converting to circular...')
 #for ms in mss:
 #    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
@@ -133,54 +128,63 @@ s.run(check=True)
 #for ms in mss:
 #    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 #s.run(check=True)
-#
-#################################################
-## Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-#logging.info('Calibrating...')
-#for ms in mss:
-#    check_rm(ms+'/instrument')
+
+################################################
+# Solve cal_SB.MS:SMOOTHED_DATA (only solve)
+logging.info('Calibrating...')
+for ms in mss:
+    check_rm(ms+'/instrument')
 #    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
+    s.add('calibrate-stand-alone -f '+ms+' '+parset_dir+'/BBS-sol.parset 3c380.skymodel', log=ms+'_sol1.log', cmd_type='BBS')
+s.run(check=True)
 #s.run(check=True, max_threads=s.max_threads/6)
-#
-#################################################
-## Prepare and run losoto
-#check_rm('globaldb')
-#check_rm('globaldb-fr')
-#os.system('mkdir globaldb')
-#os.system('mkdir globaldb-fr')
-#check_rm('plots-fr')
-#for i, ms in enumerate(mss):
-#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-#    tnum = re.findall(r'\d+', ms)[-2]
-#    sbnum = re.findall(r'\d+', ms)[-1]
-#    #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
-#    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
-#    #logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
-#    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(tnum)+'-'+str(sbnum))
-#
-#logging.info('Running LoSoTo...')
-#check_rm('plots')
-#check_rm('cal1.h5')
-#s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
-#s.run(check=True)
+
+################################################
+# Prepare and run losoto
+check_rm('globaldb')
+check_rm('globaldb-fr')
+os.system('mkdir globaldb')
+os.system('mkdir globaldb-fr')
+check_rm('plots-fr')
+for i, ms in enumerate(mss):
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
+    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
+    tnum = re.findall(r'\d+', ms)[-2]
+    sbnum = re.findall(r'\d+', ms)[-1]
+    #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
+    #logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
+    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(tnum)+'-'+str(sbnum))
+
+logging.info('Running LoSoTo...')
+check_rm('plots')
+check_rm('cal1.h5')
+s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
+s.run(check=True)
 #s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 #s.run(check=True)
 #os.system('cp -r cal1.h5 cal1.h5-flag')
 #s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 #s.run(check=True)
-#
-#s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
-#s.run(check=True)
-#os.system('mv plots plots-fr')
-#
-#for i, ms in enumerate(mss):
-#    tnum = re.findall(r'\d+', ms)[-2]
-#    num = re.findall(r'\d+', ms)[-1]
-#    check_rm(ms+'/instrument-fr')
-#    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' into '+ms+'/instrument-fr')
-#    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' '+ms+'/instrument-fr')
-#
+# TESTTESTTEST
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-amp.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-ph.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+s.run(check=True)
+
+sys.exit(1)
+
+s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
+s.run(check=True)
+os.system('mv plots plots-fr')
+
+for i, ms in enumerate(mss):
+    tnum = re.findall(r'\d+', ms)[-2]
+    num = re.findall(r'\d+', ms)[-1]
+    check_rm(ms+'/instrument-fr')
+    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' into '+ms+'/instrument-fr')
+    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' '+ms+'/instrument-fr')
+
 ## 2: recalibrate without FR
 #
 ################################################
