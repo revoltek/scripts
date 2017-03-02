@@ -55,3 +55,6 @@ Session.vim
 
 # Python
 *.pyc
+
+# lock file
+*.lock
