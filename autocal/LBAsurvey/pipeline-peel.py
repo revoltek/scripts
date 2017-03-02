@@ -193,12 +193,10 @@ def peel(dd):
     for model in sorted(glob.glob('self/models/*.fits')):
         logging.debug(model)
         outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_dd')
-        blank_image_reg(model, ['regions/'+dd['name']+'.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
-        #blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
+        blank_image_reg(model, 'regions/'+dd['name']+'.reg', outfile, inverse=True) # no cut for beam of ddcal (also solves problem for ddcal outside beam
         if dd['facet_size'] > 0:
             outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
             blank_image_reg(model, ['regions/'+dd['name']+'-facet.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
-            #blank_image_reg(outfile, 'regions/beam.reg', outfile, inverse=True)
 
     ##############################################################
     # reproject + cut model image to speed up prediction
@@ -446,13 +444,18 @@ def peel(dd):
     s.run(check=True)
 
     # Corrupt empty data amp+ph - mss_peel/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA (selfcal empty)
-    # TODO: do not corrupt on first calibrator to propagate its solutions
-    logging.info('Corrupting facet amplitude+phase...')
-    for ms in peelmss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
-                cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false cor3.parmdb='+ms+'/instrument-amp cor3.invert=false', \
-                log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
-    s.run(check=True)
+    if dd['name'] != 'ddcal00': # Do not corrupt on first calibrator to propagate its solutions
+        logging.info('Corrupting facet amplitude+phase...')
+        for ms in peelmss:
+            if dd['Peak_flux'] > 3:
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
+                    cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false cor3.parmdb='+ms+'/instrument-amp cor3.invert=false', \
+                    log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
+            else:
+                s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
+                    cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false', \
+                    log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
+        s.run(check=True)
 
     logging.info('Shifting back...')
     for ms in peelmss:
