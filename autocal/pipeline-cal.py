@@ -93,8 +93,8 @@ if time > 20130200 and time < 20140300:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
 
- Prepare output parmdb
- TODO: remove as soon as losoto has the proper exporter
+# Prepare output parmdb
+# TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
 for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
