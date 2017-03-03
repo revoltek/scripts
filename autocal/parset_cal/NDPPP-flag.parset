@@ -3,6 +3,8 @@ msin.datacolumn = DATA
 msin.baseline = [CR]S*&&
 msout = .
 
+numthreads = 1 # bug fix
+
 steps = [flag1, flag2, count]
 
 flag1.type = preflagger
