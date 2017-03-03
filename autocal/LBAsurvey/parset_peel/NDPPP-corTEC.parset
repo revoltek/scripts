@@ -3,6 +3,8 @@ msin.datacolumn = DATA
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
+numthreads = 1 # bug fix
+
 #steps = [cor1, count]
 steps = [cor1, cor2, count]
 

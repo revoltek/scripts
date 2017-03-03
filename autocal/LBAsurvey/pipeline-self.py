@@ -108,7 +108,7 @@ for ms in mss:
     os.system('cp -r '+sourcedb+' '+ms)
 logging.info('Add model to MODEL_DATA...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP', processors=3)
+    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ###################################################################################
@@ -130,7 +130,7 @@ for c in xrange(niter):
     # Re-done in case of new flags
     logging.info('BL-based smoothing...')
     for ms in mss:
-        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
+        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     if c == 0:
@@ -166,7 +166,7 @@ for c in xrange(niter):
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logging.info('BL-based smoothing...')
         for ms in mss:
-            s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
+            s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         # Solve G SB.MS:SMOOTHED_DATA (only solve)
@@ -194,11 +194,11 @@ for c in xrange(niter):
         logging.info('Running LoSoTo...')
         check_rm('plots')
         check_rm('global-fr.h5')
-        s.add('H5parm_importer.py -v global-fr.h5 globaldb', log='losoto-fr-c'+str(c)+'.log', cmd_type='python', processors=1)
+        s.add('H5parm_importer.py -v global-fr.h5 globaldb', log='losoto-fr-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
         s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python', processors='max')
         s.run(check=True)
-        s.add('H5parm_exporter.py -v -t rotationmeasure000 global-fr.h5 globaldb-fr', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python', processors=1)
+        s.add('H5parm_exporter.py -v -t rotationmeasure000 global-fr.h5 globaldb-fr', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python')
         s.run(check=True)
         os.system('mv plots self/solutions/plots-fr')
         os.system('mv global-fr.h5 self/solutions')
