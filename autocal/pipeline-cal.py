@@ -134,6 +134,7 @@ for ms in mss:
 s.run(check=True)
 
 # Prepare and run losoto
+logging.info('Running LoSoTo...')
 check_rm('globaldb')
 os.system('mkdir globaldb')
 check_rm('plots-cd')
@@ -144,7 +145,6 @@ for i, ms in enumerate(mss):
     #logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
 
-logging.info('Running LoSoTo...')
 check_rm('plots')
 check_rm('cal1.h5')
 s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
@@ -154,6 +154,7 @@ s.run(check=True)
 os.system('cp -r cal1.h5 cal1.h5-flag')
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-cd.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
+sys.exit(1)
 
 s.add('H5parm_exporter.py -v -t amplitude000,crossdelay cal1.h5 globaldb', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
@@ -196,6 +197,7 @@ for ms in mss:
 s.run(check=True)
 
 # Prepare and run losoto
+logging.info('Running LoSoTo...')
 check_rm('globaldb')
 check_rm('globaldb-fr')
 os.system('mkdir globaldb')
@@ -211,7 +213,6 @@ for i, ms in enumerate(mss):
     #logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(tnum)+'-'+str(sbnum))
     os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(tnum)+'-'+str(sbnum))
 
-logging.info('Running LoSoTo...')
 check_rm('plots')
 check_rm('cal2.h5')
 s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors=1)
@@ -274,6 +275,7 @@ for ms in mss:
 s.run(check=True)
 
 # Prepare and run losoto
+logging.info('Running LoSoTo...')
 check_rm('globaldb') # remove it as it was used for the fr
 #check_rm('globaldb-clock')
 os.system('mkdir globaldb')
@@ -291,18 +293,12 @@ for i, ms in enumerate(mss):
 #    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
 #    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
 
-logging.info('Running LoSoTo...')
 check_rm('plots')
 os.makedirs('plots')
 check_rm('cal3.h5')
 
 s.add('H5parm_importer.py -v cal3.h5 globaldb', log='losoto3.log', cmd_type='python', processors=1)
 s.run(check=True)
-
-# TESTTESTTEST
-#os.system('cp -r cal3.h5 cal3.h5-bkp')
-#s.add('losoto -v cal3.h5 '+parset_dir+'/losoto-fr.parset', log='losoto3.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
 
 s.add('losoto -v cal3.h5 '+parset_dir+'/losoto-flag.parset', log='losoto3.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
