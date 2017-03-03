@@ -1,0 +1,38 @@
+# losoto parset
+LoSoTo.Steps = [plotPi, crossdelay, plotCD, reset]
+LoSoTo.Solset = [sol000]
+LoSoTo.Soltab = []
+LoSoTo.SolType = []
+LoSoTo.ant = []
+LoSoTo.pol = [XX, YY]
+LoSoTo.dir = []
+LoSoTo.Ncpu = 0
+
+# plot initials
+LoSoTo.Steps.plotPi.Operation = PLOT
+LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPi.Axes = [time,freq]
+LoSoTo.Steps.plotPi.TableAxis = ant
+LoSoTo.Steps.plotPi.PlotFlag = True
+LoSoTo.Steps.plotPi.Prefix = plots/ph-init
+LoSoTo.Steps.plotPi.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi.MinMax = [-3.14,3.14]
+
+# cross delay
+LoSoTo.Steps.crossdelay.Soltab = [sol000/phase000]
+LoSoTo.Steps.crossdelay.Operation = CROSSDELAY
+LoSoTo.Steps.crossdelay.OutTable = crossdelay
+
+# plot cross delay
+LoSoTo.Steps.plotCD.Operation = PLOT
+LoSoTo.Steps.plotCD.Soltab = [sol000/crossdelay]
+LoSoTo.Steps.plotCD.Axes = [time,freq]
+LoSoTo.Steps.plotCD.TableAxis = ant
+LoSoTo.Steps.plotCD.PlotFlag = True
+LoSoTo.Steps.plotCD.Prefix = plots/ph-CD
+LoSoTo.Steps.plotCD.Reference = 'CS001LBA'
+LoSoTo.Steps.plotCD.MinMax = [-3.14,3.14]
+
+# reset amplitude
+LoSoTo.Steps.reset.Operation = RESET
+LoSoTo.Steps.reset.Soltab = [sol000/amplitude000]
