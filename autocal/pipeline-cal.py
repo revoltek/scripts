@@ -19,7 +19,7 @@ elif 'bootes' in os.getcwd(): # bootes 2013
     bl2flag = 'CS013LBA'
 elif 'daycomm' in os.getcwd(): # daytest
     calname = os.getcwd().split('/')[-1]
-    datadir = '/data/scratch/COMMISSIONING2017/c07-o00/%s' % calname
+    datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
     bl2flag = ''
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
