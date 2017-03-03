@@ -131,7 +131,6 @@ for c in xrange(niter):
     logging.info('BL-based smoothing...')
     for ms in mss:
         s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max') # TEST
-        #s.add('BLsmooth.py -r -w -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python', processors='max')
     s.run(check=True)
 
     if c == 0:
@@ -307,7 +306,6 @@ for c in xrange(niter):
     for modelname in glob.glob(imagename+'*model.fits'):
         blank_image_fits(modelname, maskname, inverse=True)
 
-    # TODO: move to DFT with NDPPP
     # resample at high res to avoid FFT problem on long baselines and predict
     logging.info('Predict...')
     for model in sorted(glob.glob(imagename+'*model.fits')):
