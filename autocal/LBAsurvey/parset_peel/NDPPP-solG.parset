@@ -4,6 +4,8 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
+numthreads = 1 # bug fix
+
 steps = [filter, sol]
 
 filter.blrange = [1500,1e30]

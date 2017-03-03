@@ -4,6 +4,8 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = MODEL_DATA
 
+numthreads = 1 # bug fix
+
 steps = [pre]
 
 pre.type = predict

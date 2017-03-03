@@ -5,6 +5,8 @@ msout.datacolumn = DATA
 msout.writefullresflag = False
 msout.storagemanager = dysco
 
+numthreads = 1 # bug fix
+
 steps = [shift, count]
 
 shift.type = phaseshifter
