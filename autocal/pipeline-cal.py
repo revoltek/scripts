@@ -154,7 +154,6 @@ s.run(check=True)
 os.system('cp -r cal1.h5 cal1.h5-flag')
 s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-cd.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 s.run(check=True)
-sys.exit(1)
 
 s.add('H5parm_exporter.py -v -t amplitude000,crossdelay cal1.h5 globaldb', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
