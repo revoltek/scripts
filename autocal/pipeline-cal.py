@@ -74,63 +74,6 @@ if avg_factor_f != 1 or avg_factor_t != 1:
 
 mss = sorted(glob.glob('*.MS'))
 
-<<<<<<< HEAD
-## flag below elev 20 and bad stations, flags will propagate
-#logging.info('Flagging...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline='+bl2flag+' msin.datacolumn=DATA', \
-#            log=ms+'_flag.log', cmd_type='NDPPP')
-#s.run(check=True)
-#    
-################################################
-## Initial processing (2/2013->2/2014)
-#obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
-#t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-#time = np.int(t.iso.replace('-','')[0:8])
-#obs.close()
-#if time > 20130200 and time < 20140300:
-#    logging.info('Fix beam table...')
-#    for ms in mss:
-#        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#    s.run(check=False)
-#
-############################################
-# Prepare output parmdb
-# TODO: remove as soon as losoto has the proper exporter
-#logging.info('Creating fake parmdb...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-#s.run(check=True)
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
-#s.run(check=True)
-#for ms in mss:
-#    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
-#s.run(check=True)
-#
-## 1: find the FR and remve it
-#
-################################################
-## Beam correction DATA -> CORRECTED_DATA
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-#s.run(check=True)
-#
-###############################################
-# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-#logging.info('Converting to circular...')
-#for ms in mss:
-#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
-#
-##################################################
-## Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-#logging.info('BL-smooth...')
-#for ms in mss:
-#    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#s.run(check=True)
-=======
 ##########################################################
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
@@ -176,7 +119,6 @@ logging.info('BL-smooth...')
 for ms in mss:
     s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
->>>>>>> 3bbd27f92d1e2b8189a0aa48aaf80e4fb99cb04e
 
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
 logging.info('Calibrating...')
@@ -290,13 +232,6 @@ for i, ms in enumerate(mss):
     #logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' into '+ms+'/instrument-fr')
     os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(tnum)+'-'+str(num)+' '+ms+'/instrument-fr')
 
-<<<<<<< HEAD
-## 2: recalibrate without FR
-#
-################################################
-## Beam correction DATA -> CORRECTED_DATA
-#logging.info('Beam correction...')
-=======
 ##################################################
 # 3: recalibrate without FR
 
@@ -315,42 +250,9 @@ s.run(check=True, max_threads=s.max_threads/6)
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 # NOTE: in linear
 #logging.info('Converting to circular...')
->>>>>>> 3bbd27f92d1e2b8189a0aa48aaf80e4fb99cb04e
 #for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 #s.run(check=True)
-<<<<<<< HEAD
-#
-#######################################################
-## Correct FR CORRECTED_DATA -> CORRECTED_DATA
-#logging.info('Faraday rotation correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
-#s.run(check=True, max_threads=s.max_threads/6)
-#
-################################################
-## Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-## NOTE: in linear
-##logging.info('Converting to circular...')
-##for ms in mss:
-##    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-##s.run(check=True)
-#
-#################################################
-## Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-#logging.info('BL-smoothing...')
-#for ms in mss:
-#    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#s.run(check=True)
-#
-#################################################
-## Solve cal_SB.MS:SMOOTHED_DATA (only solve)
-#logging.info('Calibrating...')
-#for ms in mss:
-#    check_rm(ms+'/instrument')
-#    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
-#s.run(check=True, max_threads=s.max_threads/6)
-=======
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smoothing...')
@@ -364,16 +266,15 @@ for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
 s.run(check=True, max_threads=s.max_threads/6)
->>>>>>> 3bbd27f92d1e2b8189a0aa48aaf80e4fb99cb04e
 
 # Prepare and run losoto
 check_rm('globaldb') # remove it as it was used for the fr
-check_rm('globaldb-clock')
+#check_rm('globaldb-clock')
 os.system('mkdir globaldb')
-os.system('mkdir globaldb-clock')
+#os.system('mkdir globaldb-clock')
 for i, ms in enumerate(mss):
     if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
+#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
 
     tnum = re.findall(r'\d+', ms)[-2]
     sbnum = re.findall(r'\d+', ms)[-1]
@@ -381,8 +282,8 @@ for i, ms in enumerate(mss):
     os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(tnum)+'-'+str(sbnum))
    
 #    # We export clock, need to create a new parmdb
-    #logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(tnum)+'-'+str(sbnum))
-    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(tnum)+'-'+str(sbnum))
+#    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
+#    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
 
 logging.info('Running LoSoTo...')
 check_rm('plots')
@@ -392,16 +293,12 @@ check_rm('cal3.h5')
 s.add('H5parm_importer.py -v cal3.h5 globaldb', log='losoto3.log', cmd_type='python', processors=1)
 s.run(check=True)
 
-<<<<<<< HEAD
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-flag.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-=======
 # TESTTESTTEST
 #os.system('cp -r cal3.h5 cal3.h5-bkp')
 #s.add('losoto -v cal3.h5 '+parset_dir+'/losoto-fr.parset', log='losoto3.log', log_append=True, cmd_type='python', processors='max')
 #s.run(check=True)
 
 s.add('losoto -v cal3.h5 '+parset_dir+'/losoto-flag.parset', log='losoto3.log', log_append=True, cmd_type='python', processors='max')
->>>>>>> 3bbd27f92d1e2b8189a0aa48aaf80e4fb99cb04e
 s.run(check=True)
 os.system('cp -r cal3.h5 cal3.h5-flag')
 
@@ -412,20 +309,11 @@ s.add('losoto -v cal3.h5 '+parset_dir+'/losoto-ph.parset', log='losoto3.log', lo
 s.run(check=True)
 
 # copy clock+BP
-<<<<<<< HEAD
-s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-
-# copy ph+BP
-#s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors=1)
-#s.run(check=True)
-=======
 #s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal3.h5 globaldb-clock', log='losoto3.log', log_append=True, cmd_type='python', processors='max')
 #s.run(check=True)
 
 # copy ph+BP
 s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal3.h5 globaldb', log='losoto3.log', log_append=True, cmd_type='python', processors=1)
 s.run(check=True)
->>>>>>> 3bbd27f92d1e2b8189a0aa48aaf80e4fb99cb04e
 
 logging.info("Done.")
