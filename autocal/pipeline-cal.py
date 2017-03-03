@@ -75,6 +75,7 @@ else:
     logging.info('Copy data - no averaging...')
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+        if os.path.exists(msout): continue
         os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
@@ -130,7 +131,7 @@ logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
-s.run(check=True, max_threads=s.max_threads/6)
+s.run(check=True)
 
 # Prepare and run losoto
 logging.info('Running LoSoTo...')
@@ -174,7 +175,7 @@ for i, ms in enumerate(mss):
 logging.info('Cross delay correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
-s.run(check=True, max_threads=s.max_threads/6)
+s.run(check=True)
 
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 logging.info('Converting to circular...')
@@ -193,7 +194,7 @@ logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
-s.run(check=True, max_threads=s.max_threads/6)
+s.run(check=True)
 
 # Prepare and run losoto
 logging.info('Running LoSoTo...')
@@ -251,7 +252,7 @@ s.run(check=True)
 logging.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
-s.run(check=True, max_threads=s.max_threads/6)
+s.run(check=True)
 
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 # NOTE: in linear
@@ -271,7 +272,7 @@ logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
-s.run(check=True, max_threads=s.max_threads/6)
+s.run(check=True)
 
 # Prepare and run losoto
 logging.info('Running LoSoTo...')
