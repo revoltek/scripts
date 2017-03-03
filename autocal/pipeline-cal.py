@@ -13,11 +13,11 @@ if 'tooth' in os.getcwd():
     calname = '3c196'
     datadir = '../cals-bkp/'
     bl2flag = 'CS031LBA\;RS409LBA'
-if 'bootes' in os.getcwd(): # bootes 2013
+elif 'bootes' in os.getcwd(): # bootes 2013
     calname = os.getcwd().split('/')[-1]
     datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA'
-if 'daycomm' in os.getcwd(): # daytest
+elif 'daycomm' in os.getcwd(): # daytest
     calname = os.getcwd().split('/')[-1]
     datadir = '/data/scratch/COMMISSIONING2017/c07-o00/%s' % calname
     bl2flag = ''
@@ -34,6 +34,9 @@ if calname == '3c196':
 elif calname == '3c380':
     sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
     patch = '3C380'
+elif calname == '3c295':
+    sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
+    patch = '3C295'
 elif calname == 'CygA':
     sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
     patch = 'CygA'
@@ -70,9 +73,14 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     s.run(check=True)
     nchan = nchan / avg_factor_f
     timeint = timeint * avg_factor_t
+else:
+    logging.info('Copy data (no avg)...')
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+        if os.path.exists(msout): continue
+        os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
-
 
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
