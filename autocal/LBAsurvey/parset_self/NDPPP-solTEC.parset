@@ -4,6 +4,8 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
+#numthreads = 1 # this is multithread, keep max
+
 steps = [filter, sol]
 
 filter.blrange = [1000,1e30]

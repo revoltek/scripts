@@ -225,7 +225,7 @@ def peel(dd):
     # keep SUBTRACTED_DATA as a working columns so we can re-start each time
     logging.info('Add SUBTRACTED_DATA (only first direction)...')
     for ms in allmss:
-        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
+        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
  
     ###################################################################
@@ -243,14 +243,14 @@ def peel(dd):
     # BKP empty DATA for faceting
     logging.info('Add EMTPY_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c EMPTY_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
+        s.add('addcol2ms.py -m '+ms+' -c EMPTY_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
  
     ######################################################################################################
     # Add DD cal model - peel_mss/TC*.MS:MODEL_DATA
     logging.info('Add MODEL_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
+        s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
     logging.info('Ft DD calibrator model...')
     s.add('wsclean -predict -name ' + modeldir + 'peel_dd -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
@@ -266,7 +266,7 @@ def peel(dd):
     # Add CORRECTED_DATA for cleaning
     logging.info('Add CORRECTED_DATA...')
     for ms in peelmss:
-        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', processors='max', log_append=True)
+        s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
     # do a first clean to get the starting model
     model = clean('init', peelmss, dd)
@@ -416,7 +416,7 @@ def peel(dd):
        
         logging.info('Add MODEL_DATA')
         for ms in peelmss:
-            s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', processors='max', log_append=True)
+            s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA', log=ms+'_facet-addcol.log', cmd_type='python', log_append=True)
         s.run(check=True)
     
         # Blank pixels outside facet, new foccussed sources are cleaned (so they don't interfere) but we don't want to subtract them
@@ -473,7 +473,7 @@ def peel(dd):
     logging.info('Add SUBTRACTED_DATA_DDCAL## (backup)...')
     for ms in allmss:
         colout = 'SUBTRACTED_DATA_'+dd['name'].upper()
-        s.add('addcol2ms.py -m '+ms+' -c '+colout+' -i SUBTRACTED_DATA', log=ms+'_bkp-addcol.log', cmd_type='python', processors='max')
+        s.add('addcol2ms.py -m '+ms+' -c '+colout+' -i SUBTRACTED_DATA', log=ms+'_bkp-addcol.log', cmd_type='python')
     s.run(check=True)
 
     #clean('emptyafter', allmss, dd, avgfreq=4, avgtime=5, facet=True) # DEBUG

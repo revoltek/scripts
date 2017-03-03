@@ -4,7 +4,9 @@ msin.datacolumn = DATA
 msin.baseline = [CR]S*&
 msout = 
 msout.writefullresflag = False
-#msout.storagemanager = dysco
+msout.storagemanager = dysco
+
+numthreads = 1 # bug fix
 
 steps = [avg]
 
