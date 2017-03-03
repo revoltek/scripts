@@ -13,11 +13,11 @@ if 'tooth' in os.getcwd():
     calname = '3c196'
     datadir = '../cals-bkp/'
     bl2flag = 'CS031LBA\;RS409LBA'
-elif 'bootes' in os.getcwd(): # bootes 2013
+if 'bootes' in os.getcwd(): # bootes 2013
     calname = os.getcwd().split('/')[-1]
     datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA'
-elif 'daycomm' in os.getcwd(): # daytest
+if 'daycomm' in os.getcwd(): # daytest
     calname = os.getcwd().split('/')[-1]
     datadir = '/data/scratch/COMMISSIONING2017/c07-o00/%s' % calname
     bl2flag = ''
@@ -35,9 +35,6 @@ if calname == '3c196':
 elif calname == '3c380':
     sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
     patch = '3C380'
-elif calname == '3c295':
-    sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
-    patch = '3C295'
 elif calname == 'CygA':
     sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
     patch = 'CygA'
@@ -74,19 +71,10 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     s.run(check=True)
     nchan = nchan / avg_factor_f
     timeint = timeint * avg_factor_t
-else:
-    logging.info('Copy data (no avg)...')
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-        if os.path.exists(msout): continue
-        os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
 
-<<<<<<< HEAD
-=======
 ##########################################################
->>>>>>> 7016d179f1c094ea0355ea323f25ba9a06394773
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
 for ms in mss:
@@ -105,8 +93,8 @@ if time > 20130200 and time < 20140300:
         s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
     s.run(check=False)
 
-# Prepare output parmdb
-# TODO: remove as soon as losoto has the proper exporter
+ Prepare output parmdb
+ TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
 for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
