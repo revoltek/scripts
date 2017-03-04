@@ -16,7 +16,7 @@ if 'tooth' in os.getcwd():
 elif 'bootes' in os.getcwd(): # bootes 2013
     calname = os.getcwd().split('/')[-1]
     datadir = '../cals-bkp/'
-    bl2flag = 'CS013LBA'
+    bl2flag = 'CS013LBA;CS031LBA'
 elif 'daycomm' in os.getcwd(): # daytest
     calname = os.getcwd().split('/')[-1]
     datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
@@ -102,9 +102,9 @@ if time > 20130200 and time < 20140300:
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
-for ms in mss:
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-s.run(check=True)
+#for ms in mss:
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+#s.run(check=True)
 for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
@@ -242,9 +242,15 @@ for i, ms in enumerate(mss):
 # 3: recalibrate without FR
 
 # Beam correction DATA -> CORRECTED_DATA
-logging.info('Beam correction...')
+#logging.info('Beam correction...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+#s.run(check=True)
+
+# Convert to linear CORRECTED_DATA -> CORRECTED_DATA
+logging.info('Converting to linear...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+    s.add('mslin2circ.py -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 # Correct FR CORRECTED_DATA -> CORRECTED_DATA
