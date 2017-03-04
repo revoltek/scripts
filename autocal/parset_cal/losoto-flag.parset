@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [plotA1, plotA2, plotA3, flag, flagextend, merge]
+LoSoTo.Steps = [plotA1, flag, flagextend, plotA2, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -17,36 +17,13 @@ LoSoTo.Ncpu = 0
 #LoSoTo.Steps.reweight.WeightVal = 0.
 #LoSoTo.Steps.reweight.time.minmax = [4868874002,4868874015] # first 3 timeslots
 
-# plot initials
 LoSoTo.Steps.plotA1.Operation = PLOT
 LoSoTo.Steps.plotA1.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA1.freq.minmax = [0,100e6,50]
-LoSoTo.Steps.plotA1.Axes = time
+LoSoTo.Steps.plotA1.Axes = [time,freq]
 LoSoTo.Steps.plotA1.TableAxis = ant
-LoSoTo.Steps.plotA1.ColorAxis = pol
 LoSoTo.Steps.plotA1.PlotFlag = True
 LoSoTo.Steps.plotA1.Prefix = plots/ampPF_
-LoSoTo.Steps.plotA1.Columns = 4
-LoSoTo.Steps.plotA1.FigSize = [20,20]
-#LoSoTo.Steps.plotA1.MinMax = [1e-4,3e-3]
-
-LoSoTo.Steps.plotA2.Operation = PLOT
-LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA2.time.minmax = [0,1e20,500]
-LoSoTo.Steps.plotA2.Axes = freq
-LoSoTo.Steps.plotA2.TableAxis = ant
-LoSoTo.Steps.plotA2.ColorAxis = pol
-LoSoTo.Steps.plotA2.PlotFlag = True
-LoSoTo.Steps.plotA2.Prefix = plots/ampPF_
-#LoSoTo.Steps.plotA2.MinMax = [1e-4,3e-3]
-
-LoSoTo.Steps.plotA3.Operation = PLOT
-LoSoTo.Steps.plotA3.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotA3.Axes = [time,freq]
-LoSoTo.Steps.plotA3.TableAxis = ant
-LoSoTo.Steps.plotA3.PlotFlag = True
-LoSoTo.Steps.plotA3.Prefix = plots/ampPF_
-#LoSoTo.Steps.plotA3.MinMax = [100,300]
+#LoSoTo.Steps.plotA1.MinMax = [100,300]
 
 # flag
 LoSoTo.Steps.flag.Operation = FLAG
@@ -66,6 +43,14 @@ LoSoTo.Steps.flagextend.Axes = [freq,time]
 LoSoTo.Steps.flagextend.Percent = 50
 LoSoTo.Steps.flagextend.Size = [50,100]
 LoSoTo.Steps.flagextend.Cycles = 3
+
+LoSoTo.Steps.plotA2.Operation = PLOT
+LoSoTo.Steps.plotA2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotA2.Axes = [time,freq]
+LoSoTo.Steps.plotA2.TableAxis = ant
+LoSoTo.Steps.plotA2.PlotFlag = True
+LoSoTo.Steps.plotA2.Prefix = plots/ampAF_
+#LoSoTo.Steps.plotA2.MinMax = [100,300]
 
 # copy flags on phases
 LoSoTo.Steps.merge.Operation = REWEIGHT

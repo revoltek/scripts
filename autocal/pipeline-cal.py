@@ -16,11 +16,11 @@ if 'tooth' in os.getcwd():
 elif 'bootes' in os.getcwd(): # bootes 2013
     calname = os.getcwd().split('/')[-1]
     datadir = '../cals-bkp/'
-    bl2flag = 'CS013LBA;CS031LBA'
+    bl2flag = 'CS013LBA\;CS031LBA'
 elif 'daycomm' in os.getcwd(): # daytest
     calname = os.getcwd().split('/')[-1]
     datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
-    bl2flag = ''
+    bl2flag = 'CS031LBA'
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
