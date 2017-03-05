@@ -242,16 +242,16 @@ for i, ms in enumerate(mss):
 # 3: recalibrate without FR
 
 # Beam correction DATA -> CORRECTED_DATA
-#logging.info('Beam correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
-#s.run(check=True)
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+s.run(check=True)
 
 # Convert to linear CORRECTED_DATA -> CORRECTED_DATA
-logging.info('Converting to linear...')
-for ms in mss:
-    s.add('mslin2circ.py -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Converting to linear...')
+#for ms in mss:
+#    s.add('mslin2circ.py -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 # Correct FR CORRECTED_DATA -> CORRECTED_DATA
 logging.info('Faraday rotation correction...')
