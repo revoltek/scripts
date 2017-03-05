@@ -149,8 +149,8 @@ mss = sorted(glob.glob('*.MS'))
 #check_rm('cal1.h5')
 #s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
 #s.run(check=True)
-#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
+##s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
+##s.run(check=True)
 #os.system('cp -r cal1.h5 cal1.h5-flag')
 #s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-cd.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
 #s.run(check=True)
@@ -242,28 +242,22 @@ mss = sorted(glob.glob('*.MS'))
 # 3: recalibrate without FR
 
 # Beam correction DATA -> CORRECTED_DATA
-logging.info('Beam correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
-s.run(check=True)
-
-# Convert to linear CORRECTED_DATA -> CORRECTED_DATA
-#logging.info('Converting to linear...')
+#logging.info('Beam correction...')
 #for ms in mss:
-#    s.add('mslin2circ.py -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+#s.run(check=True)
+
+# Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
+#logging.info('Cross delay correction...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
 #s.run(check=True)
 
 # Correct FR CORRECTED_DATA -> CORRECTED_DATA
-logging.info('Faraday rotation correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
-s.run(check=True)
-# Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
-# TODO: before the beam? definitely before going to circular!
-logging.info('Cross delay correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
-s.run(check=True)
+#logging.info('Faraday rotation correction...')
+#for ms in mss:
+#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
+#s.run(check=True)
 
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 # NOTE: in linear
@@ -275,7 +269,7 @@ s.run(check=True)
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smoothing...')
 for ms in mss:
-    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -a -f 1.0 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
@@ -327,8 +321,8 @@ s.run(check=True)
 #s.run(check=True)
 
 # copy ph+BP
-s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal3.h5 globaldb', log='losoto3.log', log_append=True, cmd_type='python', processors=1)
-s.run(check=True)
+#s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal3.h5 globaldb', log='losoto3.log', log_append=True, cmd_type='python', processors=1)
+#s.run(check=True)
 
 os.system('mv plots plots-final')
 

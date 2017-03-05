@@ -10,6 +10,7 @@ import lofar.stationresponse as st
 import casacore.tables as pt
 
 msname = sys.argv[1]
+print "Plotting beam of "+msname
 
 # get time
 t = pt.table(msname)
