@@ -46,6 +46,7 @@ for idx_station in xrange(len(stations)):
     im = np.imag(beam_matrix)
 
     amp = np.sqrt((re**2)+(im**2))
+    #print amp[0,:,:]
     axa_a[idx_station].plot(times,amp[:,0,0],'og',markersize=2, markeredgecolor='none')
     axa_a[idx_station].plot(times,amp[:,1,1],'ob',markersize=2, markeredgecolor='none')
 
