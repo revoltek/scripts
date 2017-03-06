@@ -52,8 +52,8 @@ LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
 LoSoTo.Steps.ct.CombinePol = True
 LoSoTo.Steps.ct.FlagBadChannels = False
-LoSoTo.Steps.ct.Fit3rdOrder = False
-#LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
+#LoSoTo.Steps.ct.Fit3rdOrder = False
+LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
 LoSoTo.Steps.ct.Circular = False
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
@@ -83,8 +83,8 @@ LoSoTo.Steps.plotTEC3.PlotFlag = False
 # calculate residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
-LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
-#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
+#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
+LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT
