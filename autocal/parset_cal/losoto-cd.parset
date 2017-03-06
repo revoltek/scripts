@@ -16,7 +16,7 @@ LoSoTo.Steps.plotPi.TableAxis = ant
 LoSoTo.Steps.plotPi.PlotFlag = True
 LoSoTo.Steps.plotPi.Prefix = plots/ph-init_
 LoSoTo.Steps.plotPi.Reference = 'CS001LBA'
-#LoSoTo.Steps.plotPi.MinMax = [-3.14,3.14]
+LoSoTo.Steps.plotPi.MinMax = [-3.14,3.14]
 
 LoSoTo.Steps.plotPi2.Operation = PLOT
 LoSoTo.Steps.plotPi2.Soltab = [sol000/phase000]
@@ -27,7 +27,7 @@ LoSoTo.Steps.plotPi2.ColorAxis = pol
 LoSoTo.Steps.plotPi2.PlotFlag = True
 LoSoTo.Steps.plotPi2.Prefix = plots/ph-init_
 LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
-#LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
+LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
 
 # cross delay
 LoSoTo.Steps.crossdelay.Soltab = [sol000/phase000]

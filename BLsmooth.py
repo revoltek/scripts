@@ -48,6 +48,7 @@ opt.add_option('-o', '--outcol', help='Output column [default: SMOOTHED_DATA]', 
 opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, this action permanently modify the MS! [default: False]', action="store_true", default=False)
 opt.add_option('-r', '--restore', help='If WEIGHT_SPECTRUM_ORIG exists then restore it before smoothing [default: False]', action="store_true", default=False)
 opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: do backup if -w]', action="store_true", default=False)
+opt.add_option('-a', '--onlyamp', help='Smooth only amplitudes [default: smooth real/imag]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
 
 if msfile == []:
@@ -110,7 +111,7 @@ for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
 del all_uvw
 
 nchans = len(pt.table(msfile+"/SPECTRAL_WINDOW",ack=False)[0]["CHAN_FREQ"])
-pols = [0,3]
+pols = [0,1,2,3] # full-pol smoothing
 for pol in pols:
     logging.debug("Workign on pol %i" % pol)
     all_data = ms.getcolslice(options.outcol, [0,pol], [nchans-1,pol])
@@ -142,12 +143,20 @@ for pol in pols:
         data = np.nan_to_num(data*weights)
     
         # smear weighted data and weights
-        dataR = gfilter(np.real(data), stddevs[i], axis=0)#, truncate=4.)
-        dataI = gfilter(np.imag(data), stddevs[i], axis=0)#, truncate=4.)
+        if options.onlyamp:
+            dataAMP = gfilter(np.abs(data), stddevs[i], axis=0)
+            dataPH = np.angle(data)
+        else:
+            dataR = gfilter(np.real(data), stddevs[i], axis=0)#, truncate=4.)
+            dataI = gfilter(np.imag(data), stddevs[i], axis=0)#, truncate=4.)
+
         weights = gfilter(weights, stddevs[i], axis=0)#, truncate=4.)
     
         # re-create data
-        data = (dataR + 1j * dataI)
+        if options.onlyamp:
+            data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
+        else:
+            data = (dataR + 1j * dataI)
         data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
         all_data[sel] = data
         all_weights[sel] = weights

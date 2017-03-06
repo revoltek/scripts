@@ -294,6 +294,7 @@ def peel(dd):
         # solve+correct TEC - mss_peel/TC*.MS:CORRECTED_DATA (smoothed!) -> mss_peel/TC*.MS:CORRECTED_DATA (smoothed corrected TEC)
 
         # sol.solint depends on peak flux
+        # TODO: change with different smoothing
         if dd['Peak_flux'] > 5: solint = 1
         elif dd['Peak_flux'] > 2: solint = 2
         else: solint = 3
@@ -353,18 +354,8 @@ def peel(dd):
     if dd['facet_size'] > 0:
         logging.info('Doing facet...')
 
-        # now do the same but for the entire facet to obtain a complete image of the facet and do a final subtraction
         ##############################################################################################################################
         # Cannot avg since the same dataset has to be shifted back and used for other facets
-        # Phase shift -  mss/TC*.MS:SUBTRACTED_DATA -> mss_facet/TC*.MS:DATA (not corrected, field subtracted but facet, phase shifted)
-        #logging.info('Shifting (SUBTRACTED_DATA)...')
-        #for ms in allmss:
-        #    msout = ms.replace('mss','mss_facet')
-        #    s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msout='+msout+' msin.datacolumn=SUBTRACTED_DATA \
-        #            shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_facet-shift.log', cmd_type='NDPPP')
-        #s.run(check=True)
-        #
-        #facetmss = sorted(glob.glob('mss_facet/TC*.MS'))
 
         # mss_peel/TC*.MS:DATA = EMPTY_DATA (empty data)
         logging.info('Copy back EMPTY_DATA...')
@@ -390,13 +381,6 @@ def peel(dd):
         #s.run(check=True)
         #clean('initfacet', facetmss, dd, avgfreq=4, avgtime=5, facet=True) # DEBUG
         
-        # Correct amp+ph - mss_facet/TC*.MS:DATA -> mss_facet/TC*.MS:CORRECTED_DATA (selfcal tec+amp corrected)
-        # Copy instrument table in facet dataset
-        #for msFacet in facetmss:
-        #    msDD = msFacet.replace('mss_facet','mss_peel')
-        #    logging.debug(msDD+'/instrument -> '+msFacet+'/instrument')
-        #    check_rm(msFacet+'/instrument')
-        #    os.system('cp -r '+msDD+'/instrument '+msFacet+'/instrument')
         logging.info('Correcting facet amplitude+phase...')
         for ms in peelmss:
             if dd['Peak_flux'] > 3:
@@ -411,8 +395,6 @@ def peel(dd):
         
         # Cleaning facet
         model = clean('facet', peelmss, dd, avgfreq=4, avgtime=5, facet=True)
-        # DEBUG
-        #model = 'peel/src1/images/peel-facet'
        
         logging.info('Add MODEL_DATA')
         for ms in peelmss:
@@ -422,7 +404,7 @@ def peel(dd):
         # Blank pixels outside facet, new foccussed sources are cleaned (so they don't interfere) but we don't want to subtract them
         logging.info('Blank pixels outside facet...')
         for modelfits in glob.glob(model+'*model.fits'):
-            blank_image_reg(modelfits, 'regions/'+dd['name']+'-facet.reg', inverse=True, blankval=0.)
+            blank_image_reg(modelfits, ['regions/'+dd['name']+'-facet.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND', blankval=0.)
  
     # for ddcal without associated facet
     else:
@@ -444,6 +426,7 @@ def peel(dd):
     s.run(check=True)
 
     # Corrupt empty data amp+ph - mss_peel/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA (selfcal empty)
+    # TODO: check that is in the beam
     if dd['name'] != 'ddcal00': # Do not corrupt on first calibrator to propagate its solutions
         logging.info('Corrupting facet amplitude+phase...')
         for ms in peelmss:
@@ -516,4 +499,7 @@ if not os.path.exists("pipeline-peel.status"):
     os.mknod("pipeline-peel.status")
 
 for dd in ddset: peel(dd)
+
+# TODO: add re-imaging of all facets from empty dataset
+
 logging.info("Done.")
