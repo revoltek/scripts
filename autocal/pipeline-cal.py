@@ -56,10 +56,10 @@ def run_losoto(c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb='g
     # prepare globaldbs
     check_rm('plots-'+c)
     check_rm(inglobaldb)
-    os.system('mkdir globaldb')
+    os.system('mkdir '+inglobaldb)
     if inglobaldb != outglobaldb: 
         check_rm(outglobaldb)
-        os.system('mkdir globaldb')
+        os.system('mkdir '+outglobaldb)
 
     for i, ms in enumerate(mss):
         if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+inglobaldb)
