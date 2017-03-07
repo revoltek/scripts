@@ -125,27 +125,29 @@ def losoto(c, mss, dd, parset, instrument='instrument', putback=True):
     check_rm('globaldb')
     os.makedirs('globaldb')
 
+    h5parm = 'global-c'+str(c)+'.h5'
+    globaldb = 'globaldb-c'+str(c)
+
     for num, ms in enumerate(mss):
-        os.system('cp -r '+ms+'/'+instrument+' globaldb/instrument-'+str(num))
+        os.system('cp -r '+ms+'/'+instrument+' '+globaldb+'/instrument-'+str(num))
         if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD globaldb/')
 
-    h5parm = 'global-c'+str(c)+'.h5'
-
-    s.add('H5parm_importer.py -v '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+    s.add('H5parm_importer.py -v '+h5parm+' '+globaldb, log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
     s.run(check=False)
     s.add('losoto -v '+h5parm+' '+parset, log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
     s.run(check=True)
 
     if putback:
-        s.add('H5parm_exporter.py -v -c '+h5parm+' globaldb', log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
+        s.add('H5parm_exporter.py -v -c '+h5parm+' '+globaldb, log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
         s.run(check=True)
 
         for num, ms in enumerate(mss):
             check_rm(ms+'/'+instrument)
-            os.system('mv globaldb/sol000_instrument-'+str(num)+' '+ms+'/'+instrument)
+            os.system('mv '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/'+instrument)
 
     os.system('mv plots peel/'+dd['name']+'/plots/plots-c'+str(c))
     os.system('mv '+h5parm+' peel/'+dd['name']+'/h5')
+    os.system('mv '+globaldb+' peel/'+dd['name']+'/h5')
 
 
 def peel(dd):
@@ -161,7 +163,6 @@ def peel(dd):
     # Clear
     logging.info('Cleaning...')
     check_rm('mss_peel') 
-    check_rm('mss_facet') 
     check_rm('mss_shiftback') 
     check_rm('plot')
     check_rm('img')
@@ -169,7 +170,6 @@ def peel(dd):
     logging.info('Creating dirs...')
     os.makedirs('logs/mss')
     os.makedirs('logs/mss_peel')
-    os.makedirs('logs/mss_facet')
     os.makedirs('logs/mss_shiftback')
     os.makedirs('mss_peel')
     os.makedirs('mss_shiftback')
@@ -229,7 +229,7 @@ def peel(dd):
     s.run(check=True)
  
     ###################################################################
-    # avg and ph-shift (to 4 chan/SB, 4 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA (empty+DD, phase shifted)
+    # ph-shift (to 4 chan/SB, 4 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA
     logging.info('Shifting (SUBTRACTED_DATA)...')
     for ms in allmss:
         msout = ms.replace('mss','mss_peel')
@@ -368,7 +368,7 @@ def peel(dd):
         s.add('wsclean -predict -name ' + modeldir + 'peel_facet -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
                 log='wscleanPRE-facet1.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-        # ADD mss_peel/TC*.MS:DATA + MODEL_DATA -> mss_facet/TC*.MS:DATA (empty data + facet from model)
+        # ADD mss_peel/TC*.MS:DATA + MODEL_DATA -> mss_peel/TC*.MS:DATA (empty data + facet from model)
         logging.info('Add facet model...')
         for ms in peelmss:
             s.add('taql "update '+ms+' set DATA = DATA + MODEL_DATA"', log=ms+'_facet-taql.log', cmd_type='general', log_append=True)
@@ -498,8 +498,62 @@ ddset.write('ddset.txt', format='ascii')
 if not os.path.exists("pipeline-peel.status"):
     os.mknod("pipeline-peel.status")
 
+# do peeling
 for dd in ddset: peel(dd)
 
-# TODO: add re-imaging of all facets from empty dataset
+# re-imaging all facets
+os.makedirs('img')
+for dd in ddset:
+    if dd['facet_size'] == 0: continue
+    check_rm('mss_peel')
+    os.makedirs('logs/mss_peel')
+    os.makedirs('mss_peel')
+    modeldir = 'peel/'+dd['name']+'/models/'
+    
+    # ph-shift (to 4 chan/SB, 4 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA
+    logging.info('Shifting (SUBTRACTED_DATA)...')
+    for ms in allmss:
+        msout = ms.replace('mss','mss_peel')
+        s.add('NDPPP '+parset_dir+'/NDPPP-shift.parset msin='+ms+' msout='+msout+' msin.datacolumn=SUBTRACTED_DATA \
+                shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_init-shift.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    peelmss = sorted(glob.glob('mss_peel/TC*.MS'))
+
+    # Add facet - mss_peel/TC*.MS:MODEL_DATA (high+low resolution facet model)
+    logging.info('Ft facet model...')
+    s.add('wsclean -predict -name ' + modeldir + 'peel_facet -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
+                log='wscleanPRE-facet1.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+    # ADD mss_peel/TC*.MS:DATA + MODEL_DATA -> mss_peel/TC*.MS:DATA (empty data + facet from model)
+    logging.info('Add facet model...')
+    for ms in peelmss:
+        s.add('taql "update '+ms+' set DATA = DATA + MODEL_DATA"', log=ms+'_facet-taql.log', cmd_type='general', log_append=True)
+    s.run(check=True)
+
+    # restore last instrument table
+    globaldb_tec = sorted(glob.glob('peel/'+dd['name']+'/h5/globaldb*tec'))[-1]
+    globaldb_amp = sorted(glob.glob('peel/'+dd['name']+'/h5/globaldb*amp'))[-1]
+    for num, ms in enumerate(peelmss):
+        check_rm(ms+'/instrument-tec')
+        os.system('mv '+globaldb_tec+'/sol000_instrument-'+str(num)+' '+ms+'/instrument-tec')
+        if dd['Peak_flux'] > 3:
+            check_rm(ms+'/instrument-amp')
+            os.system('mv '+globaldb_amp+'/sol000_instrument-'+str(num)+' '+ms+'/instrument-amp')
+ 
+    logging.info('Correcting facet amplitude+phase...')
+    for ms in peelmss:
+        if dd['Peak_flux'] > 3:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' \
+                   cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec cor3.parmdb='+ms+'/instrument-amp', \
+                   log=ms+'_facet-cor.log', cmd_type='NDPPP')
+        else:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' \
+                   cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                   log=ms+'_facet-cor.log', cmd_type='NDPPP')
+    s.run(check=True)
+        
+    # Cleaning facet
+    clean(dd['name'], peelmss, dd, avgfreq=4, avgtime=5, facet=True)
 
 logging.info("Done.")
