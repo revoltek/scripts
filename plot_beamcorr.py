@@ -18,8 +18,8 @@ times = t.getcol('TIME')[::600] # every 10 min
 t.close()
 
 # get direction
-t = pt.table(msname+'/POINTING')
-direction = t.getcol('TARGET')[0][0]
+t = pt.table(msname+'/FIELD')
+direction = t.getcol('PHASE_DIR')[0][0]
 print "Direction:", direction
 t.close()
 
@@ -27,12 +27,15 @@ t.close()
 t = pt.table(msname+'/ANTENNA')
 stations = t.getcol('NAME')
 t.close()
+print "Stations:", stations
 
 s = st.stationresponse( msname=msname, inverse=True, useElementResponse=True, useArrayFactor=False, useChanFreq=False )
 s.setDirection(direction[0],direction[1])
 
-f_a, axa_a = plt.subplots(6, 7, sharey=True, sharex=True, figsize=(15,12))
-f_p, axa_p = plt.subplots(6, 7, sharey=True, sharex=True, figsize=(15,12))
+Nc = int(np.ceil(np.sqrt(len(stations))))
+Nr = int(np.ceil(np.float(len(stations))/Nc))
+f_a, axa_a = plt.subplots(Nc, Nr, sharey=True, sharex=True, figsize=(15,12))
+f_p, axa_p = plt.subplots(Nc, Nr, sharey=True, sharex=True, figsize=(15,12))
 axa_a = axa_a.flatten()
 axa_p = axa_p.flatten()
 for idx_station in xrange(len(stations)):
