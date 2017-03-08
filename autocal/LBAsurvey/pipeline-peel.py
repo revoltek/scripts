@@ -122,15 +122,16 @@ def losoto(c, mss, dd, parset, instrument='instrument', putback=True):
     logging.info('Running LoSoTo...')
     check_rm('plots')
     os.makedirs('plots')
-    check_rm('globaldb')
-    os.makedirs('globaldb')
 
     h5parm = 'global-c'+str(c)+'.h5'
     globaldb = 'globaldb-c'+str(c)
 
+    check_rm(globaldb)
+    os.makedirs(globaldb)
+
     for num, ms in enumerate(mss):
         os.system('cp -r '+ms+'/'+instrument+' '+globaldb+'/instrument-'+str(num))
-        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD globaldb/')
+        if num == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+globaldb)
 
     s.add('H5parm_importer.py -v '+h5parm+' '+globaldb, log='losoto-c'+str(c)+'.log', log_append=True, cmd_type='python')
     s.run(check=False)
