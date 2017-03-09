@@ -21,6 +21,7 @@ elif 'daycomm' in os.getcwd(): # daytest
     calname = os.getcwd().split('/')[-1]
     datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
     bl2flag = 'CS031LBA'
+    bl2flag += '\;RS310LBA\;RS210LBA\;RS407LBA' # only o00
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
@@ -141,38 +142,38 @@ else:
 mss = sorted(glob.glob('*.MS'))
 
 ###########################################################
-## flag below elev 20 and bad stations, flags will propagate
-#logging.info('Flagging...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline='+bl2flag+' msin.datacolumn=DATA', \
-#            log=ms+'_flag.log', cmd_type='NDPPP')
-#s.run(check=True)
-#    
-## Initial processing (2/2013->2/2014)
-#obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
-#t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-#time = np.int(t.iso.replace('-','')[0:8])
-#obs.close()
-#if time > 20130200 and time < 20140300:
-#    logging.info('Fix beam table...')
-#    for ms in mss:
-#        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#    s.run(check=False)
-#
-## Prepare output parmdb
-## TODO: remove as soon as losoto has the proper exporter
-#logging.info('Creating fake parmdb...')
-##for ms in mss:
-#     if os.path.exists(ms+'/instrument-clock'): continue
-##    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-##s.run(check=True)
-#for ms in mss:
-#    if os.path.exists(ms+'/instrument-fr'): continue
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
-#s.run(check=True)
-#for ms in mss:
-#    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
-#s.run(check=True)
+# flag below elev 20 and bad stations, flags will propagate
+logging.info('Flagging...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline='+bl2flag+' msin.datacolumn=DATA', \
+            log=ms+'_flag.log', cmd_type='NDPPP')
+s.run(check=True)
+    
+# Initial processing (2/2013->2/2014)
+obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
+t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+time = np.int(t.iso.replace('-','')[0:8])
+obs.close()
+if time > 20130200 and time < 20140300:
+    logging.info('Fix beam table...')
+    for ms in mss:
+        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+    s.run(check=False)
+
+# Prepare output parmdb
+# TODO: remove as soon as losoto has the proper exporter
+logging.info('Creating fake parmdb...')
+for ms in mss:
+    if os.path.exists(ms+'/instrument-clock'): continue
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+s.run(check=True)
+for ms in mss:
+    if os.path.exists(ms+'/instrument-fr'): continue
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
+s.run(check=True)
+for ms in mss:
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+s.run(check=True)
 
 #################################################
 # 1: find the FR and remve it
@@ -182,13 +183,6 @@ logging.info('Beam correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
-
-# TESTTESTTEST
-# Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
-#logging.info('Cross delay correction...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
-#s.run(check=True)
 
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 logging.info('Converting to circular...')
@@ -283,13 +277,9 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
 s.run(check=True)
 
-run_losoto('final', mss, ['losoto-flag.parset','losoto-amp.parset','losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
-#run_losoto('final', mss, ['losoto-flag.parset','losoto-amp.parset','losoto-ph.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
-#    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument-clock', outinstrument='instrument', putback=False)
-
-# TESTTESTTEST
-#run_losoto('final', mss, ['losoto-amp.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+#run_losoto('final', mss, ['losoto-flag.parset','losoto-amp.parset','losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
 #    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+run_losoto('final', mss, ['losoto-flag.parset','losoto-amp.parset','losoto-ph.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 logging.info("Done.")
