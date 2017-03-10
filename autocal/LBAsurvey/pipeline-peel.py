@@ -85,7 +85,7 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
 
     # make mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
 
     # clean 2
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
@@ -102,7 +102,7 @@ def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 7)
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -427,19 +427,17 @@ def peel(dd):
     s.run(check=True)
 
     # Corrupt empty data amp+ph - mss_peel/TC*.MS:CORRECTED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA (selfcal empty)
-    # TODO: check that is in the beam
-    if dd['name'] != 'ddcal00': # Do not corrupt on first calibrator to propagate its solutions
-        logging.info('Corrupting facet amplitude+phase...')
-        for ms in peelmss:
-            if dd['Peak_flux'] > 3:
-                s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
-                    cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false cor3.parmdb='+ms+'/instrument-amp cor3.invert=false', \
-                    log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
-            else:
-                s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
-                    cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false', \
-                    log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
-        s.run(check=True)
+    logging.info('Corrupting facet amplitude+phase...')
+    for ms in peelmss:
+        if dd['Peak_flux'] > 3:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTECG.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
+                cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false cor3.parmdb='+ms+'/instrument-amp cor3.invert=false', \
+                log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
+        else:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA \
+                cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false', \
+                log=ms+'_facet-corrupt.log', cmd_type='NDPPP')
+    s.run(check=True)
 
     logging.info('Shifting back...')
     for ms in peelmss:
@@ -493,6 +491,12 @@ logging.info('Voronoi tassellation...')
 make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
 ddset = make_tassellation(ddset, imagename, beam_reg='regions/beam.reg')
 
+# TESTTESTTEST test using entire facet
+for d in ddset:
+    if d['Total_flux']<5 and d['facet_size']!=0:
+        d['dd_size'] = d['facet_size']
+        d['facet_size'] = 0.
+        os.system('cp regions/'+d['name']+'-facet.reg regions/'+d['name']+'.reg')
 print ddset
 ddset.write('ddset.txt', format='ascii')
 

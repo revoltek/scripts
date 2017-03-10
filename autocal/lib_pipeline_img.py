@@ -228,7 +228,7 @@ def get_noise_img(filename, boxsize=None, niter=20, eps=1e-5):
                 subim = data[ys/2-boxsize/2:ys/2+boxsize/2,xs/2-boxsize/2:xs/2+boxsize/2].flatten()
         oldrms = 1.
         for i in range(niter):
-            rms = np.std(subim)
+            rms = np.nanstd(subim)
             #print len(subim),rms
             if np.abs(oldrms-rms)/rms < eps:
                 return rms
