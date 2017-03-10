@@ -4,6 +4,9 @@ msin.baseline = [CR]S*&&
 
 msout = 
 msout.writefullresflag = False
+# no dysco here, before need to fix weights
+
+numthreads = 1 # bug fix
 
 steps = [avg]
 
