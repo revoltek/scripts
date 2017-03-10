@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
 #parser.add_argument('--directories', metavar='D', nargs='+',
 #                    help='directory name')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
-parser.add_argument('--regions', dest='regions', nargs='+', help='List of regions used to blank images')
+parser.add_argument('--regions', dest='regions', nargs='+', help='List of regions to blank images')
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
 parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at')
 #parser.add_argument('--exact', dest='exact', action='store_true', help='Do exact reprojection (slow)')
@@ -30,71 +30,69 @@ parser.add_argument('--scale', dest='scale', type=float, nargs='+', help='Scale 
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before mosaicing')
 #parser.add_argument('--no_write', dest='no_write', action='store_true', help='Do not write final mosaic')
 parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image')
-#parser.add_argument('--load_layout', dest='load_layout', action='store_true', help='Load a previously defined mosaic layout rather than determining from the images.')
+parser.add_argument('--load_layout', dest='load_layout', help='Name of a previously defined mosaic layout rather than determining from the images')
+parser.add_argument('--pipe', dest='pipe', action='store_true', help='Run in the directiory of PiLL-peel to mosaic facets')
 
 args = parser.parse_args()
 
 # if pipe then find images, regions and pb automatically
-re 
 if args.pipe == True:
     args.images = sorted(glob.glob('peel/ddcal*/images/facetM-facet-MFS-image.fits'))
     args.regions = []
     for image in args.images:
-        args.regions.append('regions/%s-facet.reg' % re.)
-    args.beams = makeBeam('self/images/beam') # TODO: uno per facet
+        args.regions.append('regions/%s-facet.reg' % image[4:12])
+    # TODO: beam are not per facet in pipe case... how to do?
+    args.beams = [makeBeam('self/images/beam')]*len(args.images) # all facets have same beam
 
 if args.scale is not None:
-    if len(args.scale) != len(args.directories):
-        logging.error('Scales provided must match directories')
-        sys.exit()
+    if len(args.scale) != len(args.images):
+        logging.error('Scales provided must match images')
+        sys.exit(1)
 
 if args.noise is not None:
-    if len(args.noise) != len(args.directories):
-        logging.error('Noises provided must match directories')
-        sys.exit()
+    if len(args.noise) != len(args.imagess):
+        logging.error('Noises provided must match images')
+        sys.exit(1)
 
+# TODO: copy all files in working directory
 
 class Direction(object):
-    def __init__(self, imagefile, beamfile, region=None):
+    def __init__(self, imagefile, beamfile=None, regionfile=None):
         self.imagefile = imagefile
         self.beamfile = beamfile
-        self.region = region
+        self.regionfile = regionfile
+        self.noise = None
+        if self.regionfile is not None: self.apply_mask()
+        if self.beamfile is not None: self.apply_beam()
 
+    def apply_mask(self):
 
-#if args.exact:
-#    reproj=reproject_exact
-#else:
-#    reproj=reproject_interp_chunk_2d
+    def apply_beam(self):
 
+    def reproject(self):
+
+    def calc_noise(self):
+        self.noise = get_noise_img(self.imagefile, boxsize=None, niter=20, eps=1e-5)
+
+############
 threshold = float(args.beamcut)
-hdus=[]
-app=[]
-wcs=[]
 
 logging.info('Reading files...')
 directions = []
-for image in args.images:
-    directions.append(Direction(image,))
+for i, image in enumerate(args.images):
+    if args.beams is not None: beam = args.beams[i]
+    if args.regions is not None: region = args.regions[i]
+    directions.append(Direction(image, beam, region))
 
-noise=[]
-name=[]
-for d in args.directories:
-    name.append(d.split('/')[-1])
-    hdu=fits.open(d+'/image_full_ampphase1m.smooth.int.restored.fits')
-    if args.find_noise:
-        noise.append(get_rms(hdu))
-    hdus.append(flatten(hdu))
-    app.append(flatten(fits.open(d+'/image_full_ampphase1m.app.restored.fits')))
-
-if args.find_noise:
-    args.noise=noise
-    print 'Noise values are:'
-    for t,n in zip(name,noise):
-        print t,n
+for i, d in enumerate(directions):
+    if args.noise is not None:
+        d.noise = args.noise[i]
+    elif args.find_noise:
+        d.calc_noise()
 
 logging.info('Computing noise/beam factors...')
 for i in range(len(app)):
-    app[i].data/=hdus[i].data
+    app[i].data/=hdus[i].data # probabilmente qui app e' beam corrected image dal quale estra il beam dividendo l'image
     app[i].data[app[i].data<threshold]=0
     # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
     if args.noise is not None:
