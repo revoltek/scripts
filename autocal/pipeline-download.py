@@ -1,8 +1,6 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-#download_file = 'html.txt'
-download_file = None # just renaming
 rename = True
 
 ###################################################
@@ -12,6 +10,11 @@ import numpy as np
 import pyrap.tables as pt
 from autocal.lib_pipeline import *
 from astropy.time import Time
+
+if os.path.exists('html.txt'):
+    download_file = 'html.txt'
+else:
+    download_file = None # just renaming
 
 def nu2num(nu):
     """
@@ -54,42 +57,43 @@ if not download_file is None:
 if rename:
     logging.info('Renaming...')
     flog = open('renamed.txt', 'a', 0)
-    regex = re.compile(r"^L[0-9]*_")
-    regex2 = re.compile(r"_uv\.dppp")
-    regex3 = re.compile(r"_SB[0-9]*[_uv]*.MS")
     start = time.time()
     for ms in glob.glob('*MS'):
+
+        # fix table
+        os.system('fixMS_TabRef.py '+ms)
     
-        field = pt.table(ms+'/FIELD', readonly=True, ack=False)
-        code = field.getcell('CODE',0)
-        field.close()
-        newName = regex.sub(code+'_', ms)
-        newName = regex2.sub('', newName)
-
-        try:
-            cycle_obs, sou = code.split('_')
-        except:
-            cycle_obs = 'ukn'
-            sou = code
-
-        if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
+        with pt.table(ms+'/FIELD', readonly=True, ack=False) as t:
+            code = t.getcell('CODE',0)
+        if code == '':
+            with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
+                code = t.getcell('LOFAR_TARGET',0)[0]
+        
+        code = code.lower()
 
         # get freq
-        spw = pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False)
-        freq = spw.getcell('REF_FREQUENCY',0)
-        spw.close()
+        with pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False) as t:
+            freq = t.getcell('REF_FREQUENCY',0)
 
         # get time (saved in ms as MJD in seconds)
-        obs = pt.table(ms+'/OBSERVATION', readonly=True, ack=False)
-        t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-        time = t.iso.replace(':','')[11:15]
-        obs.close()
+        with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
+            time = Time(t.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+            time = time.iso.replace('-','').replace(' ','').replace(':','')[0:12]
 
-        newName = regex3.sub('_'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS', newName)
+        # make name
+        pattern = re.compile("^c[0-9][0-9]_.*$")
+        # is survey?
+        if pattern.match(code):
+            cycle_obs, sou = code.split('_')
+            if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
+            newName = cycle_obs+'/'+sou+'/'+sou+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+        else:
+            newName = code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+            if newName == ms: continue
+    
+        logging.debug('Rename '+ms+' -> '+newName)
+        os.system('mv '+ms+' '+newName)
 
-        logging.debug('Rename '+ms+' -> '+cycle_obs+'/'+sou+'/'+newName)
-        os.system('mv '+ms+' '+cycle_obs+'/'+sou+'/'+newName)
-        os.system('fixMS_TabRef.py '+cycle_obs+'/'+sou+'/'+newName)
         flog.write(ms+'\n')
     flog.close()
 
