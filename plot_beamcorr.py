@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import lofar.stationresponse as st
 import casacore.tables as pt
 
 msname = sys.argv[1]
@@ -29,6 +28,7 @@ stations = t.getcol('NAME')
 t.close()
 print "Stations:", stations
 
+import lofar.stationresponse as st
 s = st.stationresponse( msname=msname, inverse=True, useElementResponse=True, useArrayFactor=False, useChanFreq=False )
 s.setDirection(direction[0],direction[1])
 
