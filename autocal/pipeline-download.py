@@ -53,6 +53,11 @@ if not download_file is None:
         logging.debug('Queue download of: '+ms)
     s.run(check=True)
 
+    # fix table
+    for ms in glob.glob('*MS'):
+        os.system('fixMS_TabRef.py '+ms)
+ 
+
 # rename files using codename and freq
 if rename:
     logging.info('Renaming...')
@@ -60,9 +65,6 @@ if rename:
     start = time.time()
     for ms in glob.glob('*MS'):
 
-        # fix table
-        os.system('fixMS_TabRef.py '+ms)
-    
         with pt.table(ms+'/FIELD', readonly=True, ack=False) as t:
             code = t.getcell('CODE',0)
         if code == '':
@@ -81,7 +83,7 @@ if rename:
             time = time.iso.replace('-','').replace(' ','').replace(':','')[0:12]
 
         # make name
-        pattern = re.compile("^c[0-9][0-9]_.*$")
+        pattern = re.compile("^c[0-9][0-9]-.*$")
         # is survey?
         if pattern.match(code):
             cycle_obs, sou = code.split('_')
