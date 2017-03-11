@@ -9,9 +9,9 @@ LoSoTo.dir = []
 LoSoTo.Ncpu = 0
 
 # bkp copy
-LoSoTo.Steps.duplicatePbkp.Operation = DUPLICATE
-LoSoTo.Steps.duplicatePbkp.InTable = sol000/phase000
-LoSoTo.Steps.duplicatePbkp.OutTable = sol000/phaseOrig000
+LoSoTo.Steps.duplicateBkp.Operation = DUPLICATE
+LoSoTo.Steps.duplicateBkp.InTable = sol000/phase000
+LoSoTo.Steps.duplicateBkp.OutTable = sol000/phaseOrig000
 
 # plot initials
 LoSoTo.Steps.plotPi.Operation = PLOT
