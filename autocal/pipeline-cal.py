@@ -53,6 +53,7 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 ############################################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
+# TODO: move to download pipeline
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
 if nchan % 4 != 0 and nchan != 1:

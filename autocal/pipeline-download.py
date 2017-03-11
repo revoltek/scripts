@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-rename = True
+rename = False
 fix_tables = True
 
 ###################################################
@@ -58,6 +58,7 @@ mss = glob.glob('*MS')
 
 if fix_tables:
 
+    logging.info('Fix MS table...')
     for ms in mss:
         os.system('fixMS_TabRef.py '+ms)
 
