@@ -11,7 +11,7 @@ import pyrap.tables as pt
 from astropy.time import Time
 from autocal.lib_pipeline import *
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit'
+parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 
 if 'tooth' in os.getcwd():

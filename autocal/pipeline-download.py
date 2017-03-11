@@ -2,6 +2,7 @@
 # download from LTA using WGET
 
 rename = True
+fix_tables = True
 
 ###################################################
 
@@ -53,9 +54,10 @@ if not download_file is None:
         logging.debug('Queue download of: '+ms)
     s.run(check=True)
 
-    mss = glob.glob('*MS')
+mss = glob.glob('*MS')
 
-    # fix table
+if fix_tables:
+
     for ms in mss:
         os.system('fixMS_TabRef.py '+ms)
 
@@ -75,7 +77,7 @@ if rename:
     logging.info('Renaming...')
     flog = open('renamed.txt', 'a', 0)
     start = time.time()
-    for ms in glob.glob('*MS'):
+    for ms in mss:
 
         with pt.table(ms+'/FIELD', readonly=True, ack=False) as t:
             code = t.getcell('CODE',0)

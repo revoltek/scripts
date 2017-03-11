@@ -17,7 +17,7 @@ import pyrap.tables as pt
 from autocal.lib_pipeline import *
 from make_mask import make_mask
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_self/'
+parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 niter = 2
 
 if 'tooth' in os.getcwd():
