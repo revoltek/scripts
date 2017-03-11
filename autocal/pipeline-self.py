@@ -111,7 +111,7 @@ for c in xrange(niter):
 
     # LoSoTo plot
     # TODO: add flagging?
-    run_losoto(str(c), mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+    run_losoto(s, str(c), mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
     os.system('mv plots-'+str(c)+' self/solutions/plots-c'+str(c))
     os.system('mv cal-'+str(c)+'.h5 self/solutions/')
 
@@ -147,7 +147,7 @@ for c in xrange(niter):
                     log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        run_losoto('fr', mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+        run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
             outinstrument='instrument-fr', outglobaldb='globaldb-fr', outtab='rotationmeasure000', putback=False)
         os.system('mv plots-fr self/solutions/')
         os.system('mv cal-fr.h5 self/solutions/')

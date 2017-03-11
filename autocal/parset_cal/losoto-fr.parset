@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateBKP, plotPi, faraday, plotFR, residuals, plotPr]
+LoSoTo.Steps = [duplicateBkp, plotPi, faraday, plotFR, residuals, plotPr]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
