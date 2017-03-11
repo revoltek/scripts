@@ -1,9 +1,6 @@
-#!/usr/bin/python
-
 import os, sys
 import logging
 import numpy as np
-
 
 def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
@@ -196,16 +193,6 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0., 
         fits[0].data = data.reshape(origshape)
         fits.writeto(outfile, clobber=True)
 
-
-#def get_noise_img(filename):
-#    """
-#    Return the rms of all the pixels in an image
-#    """
-#    import astropy.io.fits as pyfits
-#    with pyfits.open(filename) as fits:
-#        rms_noise = np.sqrt(np.mean((fits[0].data)**2))
-#        logging.debug('Rms_noise: %f' % rms_noise)
-#        return rms_noise
 
 def get_noise_img(filename, boxsize=None, niter=20, eps=1e-5):
     """

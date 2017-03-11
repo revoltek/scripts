@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import os, sys
 import logging
 import numpy as np
