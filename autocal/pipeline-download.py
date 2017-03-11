@@ -53,10 +53,22 @@ if not download_file is None:
         logging.debug('Queue download of: '+ms)
     s.run(check=True)
 
+    mss = glob.glob('*MS')
+
     # fix table
-    for ms in glob.glob('*MS'):
+    for ms in mss:
         os.system('fixMS_TabRef.py '+ms)
- 
+
+    # only ms created in range (2/2013->2/2014)
+    with pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False) as obs:
+        t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+        time = np.int(t.iso.replace('-','')[0:8])
+    if time > 20130200 and time < 20140300:
+        logging.info('Fix beam table...')
+        for ms in mss:
+            s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
+        s.run(check=False)
+
 
 # rename files using codename and freq
 if rename:

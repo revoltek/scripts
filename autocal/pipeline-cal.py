@@ -43,62 +43,6 @@ elif calname == 'CygA':
     sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
     patch = 'CygA'
 
-def run_losoto(c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False):
-    """
-    c : cycle name, e.g. "final"
-    mss : lists of MS files
-    parsets : lists of parsets to execute
-    outtab : strings with soltab to output e.g. 'amplitudeSmooth000,phaseOrig000'
-    putback : put back in MS the instrument tables
-    """
-
-    logging.info('Running LoSoTo...')
-
-    # prepare globaldbs
-    check_rm('plots-'+c)
-    check_rm(inglobaldb)
-    os.system('mkdir '+inglobaldb)
-    if inglobaldb != outglobaldb: 
-        check_rm(outglobaldb)
-        os.system('mkdir '+outglobaldb)
-
-    for i, ms in enumerate(mss):
-        if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+inglobaldb)
-        if inglobaldb != outglobaldb:
-            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+outglobaldb)
-    
-        tnum = re.findall(r't\d+', ms)[0][1:]
-        sbnum = re.findall(r'SB\d+', ms)[0][2:]
-        os.system('cp -r '+ms+'/'+ininstrument+' '+inglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
-       
-        if inglobaldb != outglobaldb:
-            os.system('cp -r '+ms+'/'+outinstrument+' '+outglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
-    
-    check_rm('plots')
-    os.makedirs('plots')
-    check_rm('cal-'+c+'.h5')
-    
-    s.add('H5parm_importer.py -v cal-'+c+'.h5 globaldb', log='losoto-'+c+'.log', cmd_type='python')
-    s.run(check=True)
-    
-    for parset in parsets:
-        logging.debug('-- executing '+parset+'...')
-        s.add('losoto -v cal-'+c+'.h5 '+parset_dir+'/'+parset, log='losoto-'+c+'.log', log_append=True, cmd_type='python', processors='max')
-        s.run(check=True)
-
-    os.system('mv plots plots-'+c)
-    
-    if outtab != '':
-        s.add('H5parm_exporter.py -v -c --soltab '+outtab+' cal-'+c+'.h5 '+outglobaldb, log='losoto-'+c+'.log', log_append=True, cmd_type='python')
-        s.run(check=True)
-
-    if putback:
-        for i, ms in enumerate(mss):
-            tnum = re.findall(r't\d+', ms)[0][1:]
-            sbnum = re.findall(r'SB\d+', ms)[0][2:]
-            check_rm(ms+'/'+outinstrument)
-            os.system('cp -r '+outglobaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/'+outinstrument)
-
 ###################################################
 
 set_logger('pipeline-cal.logging')
@@ -141,6 +85,7 @@ mss = sorted(glob.glob('*.MS'))
 
 ###########################################################   
 # Initial processing (2/2013->2/2014)
+# TODO: remove, moved to download pipeline
 obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
 t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
 time = np.int(t.iso.replace('-','')[0:8])
@@ -201,7 +146,7 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
 s.run(check=True)
 
-run_losoto('fr', mss, ['losoto-fr.parset'], outtab='rotationmeasure000', \
+run_losoto('fr', mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
     inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)
 
 #####################################################
@@ -232,7 +177,7 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
 s.run(check=True)
 
-run_losoto('cd', mss, ['losoto-flag.parset','losoto-cd.parset'], outtab='amplitude000,crossdelay', \
+run_losoto('cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitude000,crossdelay', \
     inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument-cd', putback=True)
 
 ##################################################
@@ -275,9 +220,9 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
 s.run(check=True)
 
-#run_losoto('final', mss, ['losoto-flag.parset','losoto-amp.parset','losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+#run_losoto('final', mss, [parset_dir+'losoto-flag.parset',parset_dir+'losoto-amp.parset',parset_dir+'losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
 #    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
-run_losoto('final', mss, ['losoto-flag.parset','losoto-amp.parset','losoto-ph.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+run_losoto('final', mss, [parset_dir+'losoto-flag.parset',parset_dir+'losoto-amp.parset',parset_dir+'losoto-ph.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
     inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 logging.info("Done.")
