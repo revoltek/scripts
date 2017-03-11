@@ -10,7 +10,7 @@
 # DD-calibrated and subtracted data in SUBTRACTED_DATA
 # Image of the facet
 
-parset_dir = '/home/fdg/scripts/autocal/LBAsurvey/parset_peel'
+parset_dir = '/home/fdg/scripts/autocal/parset_peel'
 maxniter = 10 # max iteration if source not converged
 pb_cut = 5 # degree to cut faceting
 
@@ -277,7 +277,7 @@ def peel(dd):
     # NOTE: if new flags are added, BLsmooth should be re-run
     logging.info('BL-based smoothing...')
     for ms in peelmss:
-        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################################

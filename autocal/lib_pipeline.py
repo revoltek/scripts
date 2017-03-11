@@ -1,4 +1,4 @@
-import os, sys, time, pickle, random, shutil
+import os, sys, re, time, pickle, random, shutil
 import subprocess
 import logging
 from threading import Thread
@@ -80,8 +80,9 @@ def check_rm(regexp):
             os.system('rm -r '+f)
 
 
-def run_losoto(c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False):
+def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False):
     """
+    s : scheduler
     c : cycle name, e.g. "final"
     mss : lists of MS files
     parsets : lists of parsets to execute
