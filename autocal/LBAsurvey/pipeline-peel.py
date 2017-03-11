@@ -273,6 +273,13 @@ def peel(dd):
     model = clean('init', peelmss, dd)
     rms_noise = get_noise_img(model+'-MFS-residual.fits')
 
+    # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
+    # NOTE: if new flags are added, BLsmooth should be re-run
+    logging.info('BL-based smoothing...')
+    for ms in peelmss:
+        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
+
     ###################################################################################################################
     # self-cal cycle
     rms_noise_pre = np.inf
@@ -284,21 +291,16 @@ def peel(dd):
         s.add('wsclean -predict -name ' + model + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(peelmss), \
                 log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
- 
-        # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
-        logging.info('BL-based smoothing...')
-        for ms in peelmss:
-            s.add('BLsmooth.py -r -i DATA -o CORRECTED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
    
         ####################################
-        # solve+correct TEC - mss_peel/TC*.MS:CORRECTED_DATA (smoothed!) -> mss_peel/TC*.MS:CORRECTED_DATA (smoothed corrected TEC)
+        # solve+correct TEC - mss_peel/TC*.MS:SMOOTHED_DATA (only solve)
 
         # sol.solint depends on peak flux
         # TODO: change with different smoothing
-        if dd['Peak_flux'] > 5: solint = 1
-        elif dd['Peak_flux'] > 2: solint = 2
-        else: solint = 3
+        #if dd['Peak_flux'] > 5: solint = 1
+        #elif dd['Peak_flux'] > 2: solint = 2
+        #else: solint = 3
+        solint = 1
 
         logging.info('Solving TEC (solint=%i)...' % solint)
         for ms in peelmss:
@@ -309,8 +311,8 @@ def peel(dd):
         
         losoto(str(c)+'-tec', peelmss, dd, parset_dir+'/losoto-tec.parset', instrument='instrument-tec', putback=False)
 
-        # correct on smoothed data only when solve also amp
-        if c > 0 and dd['Total_flux'] > 3: incol = 'CORRECTED_DATA' # <- smoothed
+        # correct on smoothed data only when solve also amp - mss_peel/TC*.MS:DATA/SMOOTHED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA
+        if c > 0 and dd['Total_flux'] > 3: incol = 'SMOOTHED_DATA' # <- smoothed
         else: incol = 'DATA'
 
         logging.info('Correcting TEC...')
