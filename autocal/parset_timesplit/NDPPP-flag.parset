@@ -1,0 +1,9 @@
+msin=
+msin.datacolumn = DATA
+msout=.
+
+numthreads = 6
+
+steps=[aoflagger, count]
+aoflagger.strategy=/home/fdg/scripts/autocal/LBAsurvey/parset_timesplit/LBAdefault.rfis
+aoflagger.memoryperc=6
