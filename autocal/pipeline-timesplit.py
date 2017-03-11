@@ -46,6 +46,7 @@ mss = sorted(glob.glob(datadir+'/*MS'))
 ##############################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
+# TODO: move to download pipeline
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
 if nchan % 4 != 0 and nchan != 1:
@@ -90,6 +91,7 @@ mss = sorted(glob.glob('*.MS'))
 #    s.run(check=False)
 
 # flag below elev 30
+# TODO: move to download pipeline
 logging.info('Flagging elevation...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-flag-init.parset msin='+ms, log=ms+'_flag-init.log', cmd_type='NDPPP')
