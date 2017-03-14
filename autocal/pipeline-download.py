@@ -92,20 +92,19 @@ if rename:
         with pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False) as t:
             freq = t.getcell('REF_FREQUENCY',0)
 
-        # get time (saved in ms as MJD in seconds)
-        with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
-            time = Time(t.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-            time = time.iso.replace('-','').replace(' ','').replace(':','')[0:12]
-
         # make name
         pattern = re.compile("^c[0-9][0-9]-.*$")
         # is survey?
         if pattern.match(code):
+            # get time (saved in ms as MJD in seconds)
+            with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
+                time = Time(t.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+                time = time.iso.replace('-','').replace(' ','').replace(':','')[8:12]
             cycle_obs, sou = code.split('_')
             if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
             newName = cycle_obs+'/'+sou+'/'+sou+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
         else:
-            newName = code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+            newName = code+'_SB'+str(nu2num(freq/1.e6))+'.MS'
             if newName == ms: continue
     
         logging.debug('Rename '+ms+' -> '+newName)
