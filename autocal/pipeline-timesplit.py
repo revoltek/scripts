@@ -17,7 +17,9 @@ initc = 0 # initial tc num (useful for multiple observation of same target) - to
 if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-    globaldb = '../3c196/globaldb' #TODO: copy form repository
+    globaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
+    logging.info('Copy: dsk:/disks/paradata/fdg/LBAsurvey/%s -> .' % globaldb)
+    os.system('scp dsk:/disks/paradata/fdg/LBAsurvey/%s .' % globaldb) # TODO: move only _tXXX files
 else:
     ngroups = 1
     globaldb = '../cals/globaldb-clock'
@@ -69,26 +71,6 @@ else:
         os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
-
-################################################
-# Initial processing
-# TODO: remove, moved to download pipeline
-#obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
-#t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-#time = np.int(t.iso.replace('-','')[0:8])
-#obs.close()
-#if time > 20130200 and time < 20140300:
-#    logging.warning('Fix beam table')
-#    for ms in mss:
-#        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#    s.run(check=False)
-
-# flag below elev 30
-# TODO: move to download pipeline
-logging.info('Flagging elevation...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag-init.parset msin='+ms, log=ms+'_flag-init.log', cmd_type='NDPPP')
-s.run(check=True)
 
 ####################################################
 # Beam correction DATA -> CORRECTED_DATA (beam corrected+reweight)

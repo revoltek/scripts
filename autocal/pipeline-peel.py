@@ -230,14 +230,6 @@ def peel(dd):
     for model in glob.glob(modeldir+'/*fits'):
         nan2zeros(model)
 
-    ###########################################################
-    # keep SUBTRACTED_DATA as a working columns so we can re-start each time
-    logging.info('Add SUBTRACTED_DATA (only first direction)...')
-    for ms in allmss:
-        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
-        #s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
-    s.run(check=True)
- 
     ###################################################################
     # ph-shift (to 4 chan/SB, 4 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA
     logging.info('Shifting (SUBTRACTED_DATA)...')
@@ -247,7 +239,7 @@ def peel(dd):
                 shift.phasecenter=\['+str(dd['RA'])+'deg,'+str(dd['DEC'])+'deg\]', log=msout+'_init-shift.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    peelmss = sorted(glob.glob('mss_peel/TC*.MS'))
+    peelmss = sorted(glob.glob('mss_peel/TC*MS'))
 
     #####################################################################################################
     # BKP empty DATA for faceting
@@ -303,7 +295,7 @@ def peel(dd):
         s.run(check=True)
    
         ####################################
-        # solve+correct TEC - mss_peel/TC*.MS:SMOOTHED_DATA (only solve)
+        # solve+correct TEC - mss_peel/TC*.MS:DATA (only solve)
 
         # sol.solint depends on peak flux
         # TODO: change with different smoothing
@@ -492,14 +484,17 @@ avg_factor_f = int(np.round(0.2e6/chanband)) # to 1 ch/SB
 
 if avg_factor_f > 1:
     logging.info('Average in freq (factor of %i)...' % avg_factor_f)
-    for ms in mss:
+    for ms in allmss:
         msout = ms.replace('.MS','-avg.MS')
         if os.path.exists(msout): continue
         s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA avg.timestep=1 avg.freqstep='+str(avg_factor_f), \
-                log=msout+'_avg.log', cmd_type='NDPPP')
+                log=msout.split('/')[-1]+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
-
-allmss = sorted(glob.glob('mss/TC*.MS-avg'))
+allmss = sorted(glob.glob('mss/TC*-avg.MS'))
+logging.info('Add SUBTRACTED_DATA...')
+for ms in allmss:
+    s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i DATA', log=ms.split('/')[-1]+'_init-addcol.log', cmd_type='python', log_append=True)
+s.run(check=True)
 
 # Run pyBDSM to create a model used to find good DD-calibrator and tassellate the sky
 logging.info('Finding directions...')

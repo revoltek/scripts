@@ -71,7 +71,7 @@ def find_chanband(ms):
     with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
         chan_w = t.getcol('CHAN_WIDTH')[0]
     assert all(x==chan_w[0] for x in chan_w) # all chans have same width
-    logging.debug('Channel width in '+ms+': '+str(chan_w[0]))
+    logging.debug('Channel width in '+ms+': '+str(chan_w[0]/1e6)+' MHz')
     return chan_w[0]
 
 
