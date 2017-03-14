@@ -30,8 +30,8 @@ set_logger('pipeline-cal.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
-calname = mss[0].split('_')[0].lower()
-print "Calibrator name: %s." % calname
+calname = mss[0].split('/')[-1].split('_')[0].lower()
+logging.info("Calibrator name: %s." % calname)
 
 if calname == '3c196':
     sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
@@ -79,7 +79,9 @@ else:
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
         if os.path.exists(msout): continue
-        os.system('cp -r '+ms+' '+msout)
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=1 avg.freqstep=1', \
+                log=msout+'_cp.log', cmd_type='NDPPP') # better than cp as activates dysco
+    s.run(check=True)
 
 mss = sorted(glob.glob('*.MS'))
 
