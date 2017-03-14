@@ -78,18 +78,6 @@ else:
 mss = sorted(glob.glob('*.MS'))
 
 ################################################
-# Initial processing
-# TODO: remove, moved to download pipeline
-#obs = pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False)
-#t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-#time = np.int(t.iso.replace('-','')[0:8])
-#obs.close()
-#if time > 20130200 and time < 20140300:
-#    logging.warning('Fix beam table')
-#    for ms in mss:
-#        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#    s.run(check=False)
-
 # flag below elev 30
 # TODO: move to download pipeline
 logging.info('Flagging elevation...')
