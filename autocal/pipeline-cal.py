@@ -49,7 +49,6 @@ else:
     logging.error("Calibrator not recognised.")
     sys.exit(1)
 
-
 ############################################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
@@ -215,8 +214,9 @@ run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losot
     inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 if 'LBAsurvey' in os.getcwd():
+    check_rm('globaldb-clock/instrument*') # keep only filled instrument tables
     newglobaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
-    logging.info('Copy: globaldb-clock -> %s' % newglobaldb)
+    logging.info('Copy: globaldb-clock -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
     os.system('scp -r globaldb-clock dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 logging.info("Done.")
