@@ -313,13 +313,13 @@ def peel(dd):
         
         losoto(str(c)+'-tec', peelmss, dd, parset_dir+'/losoto-tec.parset', instrument='instrument-tec', putback=False)
 
-        # correct on smoothed data only when solve also amp - mss_peel/TC*.MS:DATA/SMOOTHED_DATA -> mss_peel/TC*.MS:CORRECTED_DATA
-        if c > 0 and dd['Total_flux'] > 3: incol = 'SMOOTHED_DATA' # <- smoothed
-        else: incol = 'DATA'
+        # correct on smoothed data only when solve also amp - mss_peel/TC*.MS:DATA/DATA -> mss_peel/TC*.MS:CORRECTED_DATA
+        #if c > 0 and dd['Total_flux'] > 3: incol = 'DATA' # <- smoothed TODO:Remove if
+        #else: incol = 'DATA'
 
         logging.info('Correcting TEC...')
         for ms in peelmss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn='+incol+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
