@@ -77,6 +77,7 @@ s.run(check=True)
 # Preapre fake FR parmdb
 logging.info('Prepare fake FR parmdb...')
 for ms in mss:
+    if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 for ms in mss:
