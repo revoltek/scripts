@@ -14,23 +14,16 @@ from autocal.lib_pipeline import *
 parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 
-if 'tooth' in os.getcwd():
-    # tooth
-    ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
-    datadir = '.'
-    globaldb = 'globaldb'
-elif 'bootes' in os.getcwd(): # bootes 2013
-    ngroups = 2
-    datadir = '../tgts-bkp/' 
-    globaldb = '../3c295/globaldb-clock/'
-else:
-    # survey
+if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
     globaldb = '../3c196/globaldb' #TODO: copy form repository
+else:
+    ngroups = 1
+    globaldb = '../cals/globaldb-clock'
+    datadir = '../tgts-bkp/' 
 
 ##################################################################################################
-
 set_logger('pipeline-timesplit.logging')
 check_rm('logs')
 s = Scheduler(dry=False)

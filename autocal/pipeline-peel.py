@@ -199,6 +199,14 @@ def peel(dd):
             outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
             blank_image_reg(model, ['regions/'+dd['name']+'-facet.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
 
+    # TEST: use entire facet - do it after facet model creation
+    if dd['Total_flux']<5 and dd['facet_size']!=0:
+        dd['dd_size'] = dd['facet_size']
+        dd['facet_size'] = 0.
+        os.system('cp regions/'+dd['name']+'-facet.reg regions/'+dd['name']+'.reg')
+        for model in sorted(glob.glob(modeldir+'/*facet*')):
+            os.system('cp '+model+' '+model.replace('facet','dd'))
+
     ##############################################################
     # reproject + cut model image to speed up prediction
     logging.info("Reprojecting models...")
@@ -493,12 +501,6 @@ logging.info('Voronoi tassellation...')
 make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
 ddset = make_tassellation(ddset, imagename, beam_reg='regions/beam.reg')
 
-# TESTTESTTEST test using entire facet
-for d in ddset:
-    if d['Total_flux']<5 and d['facet_size']!=0:
-        d['dd_size'] = d['facet_size']
-        d['facet_size'] = 0.
-        os.system('cp regions/'+d['name']+'-facet.reg regions/'+d['name']+'.reg')
 print ddset
 ddset.write('ddset.txt', format='ascii')
 

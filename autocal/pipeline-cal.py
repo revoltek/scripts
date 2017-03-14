@@ -9,26 +9,29 @@ from autocal.lib_pipeline import *
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
-if 'tooth' in os.getcwd():
-    calname = '3c196'
+if 'tooth' in os.getcwd(): # tooth 2013
     datadir = '../cals-bkp/'
     bl2flag = 'CS031LBA\;RS409LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
-    calname = os.getcwd().split('/')[-1]
     datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA\;CS031LBA'
 elif 'c07' in os.getcwd(): # daytest
-    calname = os.getcwd().split('/')[-1]
     datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
     bl2flag = 'CS031LBA'
     #bl2flag += '\;RS310LBA\;RS210LBA\;RS407LBA' # only o00
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
     #bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA'
     bl2flag = 'CS031LBA'
 
+########################################################
+set_logger('pipeline-cal.logging')
+check_rm('logs')
+s = Scheduler(dry=False)
+mss = sorted(glob.glob(datadir+'/*MS'))
+calname = mss[0].split('_')[0].lower()
+print "Calibrator name: %s." % calname
 
 if calname == '3c196':
     sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
@@ -42,13 +45,10 @@ elif calname == '3c295':
 elif calname == 'CygA':
     sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
     patch = 'CygA'
+else:
+    logging.error("Calibrator not recognised.")
+    sys.exit(1)
 
-###################################################
-
-set_logger('pipeline-cal.logging')
-check_rm('logs')
-s = Scheduler(dry=False)
-mss = sorted(glob.glob(datadir+'/*MS'))
 
 ############################################################
 # Avg to 4 chan and 4 sec
@@ -213,5 +213,10 @@ s.run(check=True)
 #    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
 run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
     inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+
+if 'LBAsurvey' in os.getcwd():
+    newglobaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
+    logging.info('Copy: globaldb-clock -> %s' % newglobaldb)
+    os.system('scp -r globaldb-clock dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 logging.info("Done.")
