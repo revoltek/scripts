@@ -14,23 +14,18 @@ from autocal.lib_pipeline import *
 parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
 
-if 'tooth' in os.getcwd():
-    # tooth
-    ngroups = 2 # number of groups (totalSB/SBperFREQgroup)
-    datadir = '.'
-    globaldb = 'globaldb'
-elif 'bootes' in os.getcwd(): # bootes 2013
-    ngroups = 2
-    datadir = '../tgts-bkp/' 
-    globaldb = '../3c295/globaldb-clock/'
-else:
-    # survey
+if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-    globaldb = '../3c196/globaldb' #TODO: copy form repository
+    globaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
+    logging.info('Copy: dsk:/disks/paradata/fdg/LBAsurvey/%s -> .' % globaldb)
+    os.system('scp dsk:/disks/paradata/fdg/LBAsurvey/%s .' % globaldb) # TODO: move only _tXXX files
+else:
+    ngroups = 1
+    globaldb = '../cals/globaldb-clock'
+    datadir = '../tgts-bkp/' 
 
 ##################################################################################################
-
 set_logger('pipeline-timesplit.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
@@ -76,14 +71,6 @@ else:
         os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
-
-################################################
-# flag below elev 30
-# TODO: move to download pipeline
-logging.info('Flagging elevation...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag-init.parset msin='+ms, log=ms+'_flag-init.log', cmd_type='NDPPP')
-s.run(check=True)
 
 ####################################################
 # Beam correction DATA -> CORRECTED_DATA (beam corrected+reweight)
