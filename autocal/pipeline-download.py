@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-rename = False
+rename = True
 fix_tables = True
 
 ###################################################
@@ -34,7 +34,7 @@ def nu2num(nu):
 
 set_logger('pipeline-download.logging')
 check_rm('logs')
-s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
+s = Scheduler(dry=False)
 
 if not download_file is None:
     df = open(download_file,'r')
@@ -52,7 +52,7 @@ if not download_file is None:
         s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
     #    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
         logging.debug('Queue download of: '+ms)
-    s.run(check=True)
+    s.run(check=True, max_threads=4)
 
 mss = glob.glob('*MS')
 
@@ -60,7 +60,8 @@ if fix_tables:
 
     logging.info('Fix MS table...')
     for ms in mss:
-        os.system('fixMS_TabRef.py '+ms)
+        s.add('fixMS_TabRef.py '+ms, log=ms+'_fixms.log')
+    s.run(check=False)
 
     # only ms created in range (2/2013->2/2014)
     with pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False) as obs:

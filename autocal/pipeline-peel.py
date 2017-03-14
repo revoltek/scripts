@@ -31,7 +31,7 @@ s = Scheduler(dry=False)
 allmss = sorted(glob.glob('mss/TC*.MS'))
 phasecentre = get_phase_centre(allmss[0])
 
-def clean(c, mss, dd, avgfreq=8, avgtime=10, facet=False):
+def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
     """
     c = cycle/name
     mss = list of mss to avg/clean
@@ -234,7 +234,8 @@ def peel(dd):
     # keep SUBTRACTED_DATA as a working columns so we can re-start each time
     logging.info('Add SUBTRACTED_DATA (only first direction)...')
     for ms in allmss:
-        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
+        s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
+        #s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i CORRECTED_DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
  
     ###################################################################
@@ -278,15 +279,16 @@ def peel(dd):
         s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
     # do a first clean to get the starting model
+    # TODO: remove avg is using all facet
     model = clean('init', peelmss, dd)
     rms_noise = get_noise_img(model+'-MFS-residual.fits')
 
     # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
     # NOTE: if new flags are added, BLsmooth should be re-run
-    logging.info('BL-based smoothing...')
-    for ms in peelmss:
-        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-    s.run(check=True)
+#    logging.info('BL-based smoothing...')
+#    for ms in peelmss:
+#        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+#    s.run(check=True)
 
     ###################################################################################################################
     # self-cal cycle
@@ -355,6 +357,7 @@ def peel(dd):
             s.run(check=True)
 
         # clean
+        # TODO: remove avg is using all facet
         model = clean(c, peelmss, dd)
 
         # get noise, if larger than 95% of prev cycle: break
@@ -390,7 +393,7 @@ def peel(dd):
         #for ms in facetmss:
         #    s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_facet-addcolDEBUG.log', cmd_type='python', processors='max', log_append=True)
         #s.run(check=True)
-        #clean('initfacet', facetmss, dd, avgfreq=4, avgtime=5, facet=True) # DEBUG
+        #clean('initfacet', facetmss, dd, avgfreq=1, avgtime=5, facet=True) # DEBUG
         
         logging.info('Correcting facet amplitude+phase...')
         for ms in peelmss:
@@ -405,7 +408,7 @@ def peel(dd):
         s.run(check=True)
         
         # Cleaning facet
-        model = clean('facet', peelmss, dd, avgfreq=4, avgtime=5, facet=True)
+        model = clean('facet', peelmss, dd, avgfreq=1, avgtime=5, facet=True)
        
         logging.info('Add MODEL_DATA')
         for ms in peelmss:
@@ -468,7 +471,7 @@ def peel(dd):
         s.add('addcol2ms.py -m '+ms+' -c '+colout+' -i SUBTRACTED_DATA', log=ms+'_bkp-addcol.log', cmd_type='python')
     s.run(check=True)
 
-    #clean('emptyafter', allmss, dd, avgfreq=4, avgtime=5, facet=True) # DEBUG
+    #clean('emptyafter', allmss, dd, avgfreq=1, avgtime=5, facet=True) # DEBUG
 
     # backup logs
     os.system('mv logs peel/'+dd['name']+'/')
@@ -481,6 +484,22 @@ def peel(dd):
         status_file.write(dd['name']+'\n')
 
 # end peeling function
+
+############################################################
+# Avg to 1 chan/sb
+chanband = find_chanband(allmss[0])
+avg_factor_f = int(np.round(0.2e6/chanband)) # to 1 ch/SB
+
+if avg_factor_f > 1:
+    logging.info('Average in freq (factor of %i)...' % avg_factor_f)
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS')
+        if os.path.exists(msout): continue
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA avg.timestep=1 avg.freqstep='+str(avg_factor_f), \
+                log=msout+'_avg.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+allmss = sorted(glob.glob('mss/TC*.MS-avg'))
 
 # Run pyBDSM to create a model used to find good DD-calibrator and tassellate the sky
 logging.info('Finding directions...')
@@ -563,6 +582,6 @@ for dd in ddset:
     s.run(check=True)
         
     # Cleaning facet
-    clean(dd['name'], peelmss, dd, avgfreq=4, avgtime=5, facet=True)
+    clean(dd['name'], peelmss, dd, avgfreq=1, avgtime=5, facet=True)
 
 logging.info("Done.")
