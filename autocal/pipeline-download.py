@@ -1,8 +1,10 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-rename = False
-fix_tables = True
+rename = True
+fix_tables = False
+flag_elev = False
+parset_dir = '/home/fdg/scripts/autocal/parset_download'
 
 ###################################################
 
@@ -31,12 +33,42 @@ def nu2num(nu):
 
     return np.int(np.floor((1024./nu_clk) * (nu - (n-1) * nu_clk/2.)))
 
+def getName(ms):
+    """
+    Get new MS name based on obs name and time
+    """
+    with pt.table(ms+'/FIELD', readonly=True, ack=False) as t:
+        code = t.getcell('CODE',0)
+    if code == '':
+        with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
+            code = t.getcell('LOFAR_TARGET',0)[0]
+    
+    code = code.lower()
+
+    # get freq
+    with pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False) as t:
+        freq = t.getcell('REF_FREQUENCY',0)
+
+    # get time (saved in ms as MJD in seconds)
+    with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
+        time = Time(t.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
+        time = time.iso.replace('-','').replace(' ','').replace(':','')[8:12]
+
+    pattern = re.compile("^c[0-9][0-9]-.*$")
+    # is survey?
+    if pattern.match(code):
+        cycle_obs, sou = code.split('_')
+        if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
+        return cycle_obs+'/'+sou+'/'+sou+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+    else:
+        return code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+ 
 
 set_logger('pipeline-download.logging')
 check_rm('logs')
-s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
+s = Scheduler(dry=False)
 
-if not download_file is None:
+if download_file is not None:
     df = open(download_file,'r')
 
     logging.info('Downloading...')
@@ -52,15 +84,15 @@ if not download_file is None:
         s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
     #    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
         logging.debug('Queue download of: '+ms)
-    s.run(check=True)
+    s.run(check=True, max_threads=4)
 
-mss = glob.glob('*MS')
+mss = sorted(glob.glob('*MS'))
 
 if fix_tables:
-
     logging.info('Fix MS table...')
     for ms in mss:
-        os.system('fixMS_TabRef.py '+ms)
+        s.add('fixMS_TabRef.py '+ms, log=ms+'_fixms.log')
+    s.run(check=False)
 
     # only ms created in range (2/2013->2/2014)
     with pt.table(mss[0]+'/OBSERVATION', readonly=True, ack=False) as obs:
@@ -72,46 +104,38 @@ if fix_tables:
             s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
         s.run(check=False)
 
+if flag_elev:
+    logging.info('Flagging elevation...')
+    for ms in mss:
+        s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
+    s.run(check=True)
 
-# rename files using codename and freq
 if rename:
     logging.info('Renaming...')
-    flog = open('renamed.txt', 'a', 0)
-    start = time.time()
+    nchan = find_nchan(mss[0])
+    timeint = find_timeint(mss[0])
+    if nchan % 4 != 0 and nchan != 1:
+        logging.error('Channels should be a multiple of 4.')
+        sys.exit(1)
+
+    avg_factor_f = nchan / 4 # to 4 ch/SB
+    if avg_factor_f < 1: avg_factor_f = 1
+    avg_factor_t = int(np.round(4/timeint)) # to 4 sec
+    if avg_factor_t < 1: avg_factor_t = 1
+
     for ms in mss:
+        msout = getName(ms)
+        if os.path.exists(msout): continue
 
-        with pt.table(ms+'/FIELD', readonly=True, ack=False) as t:
-            code = t.getcell('CODE',0)
-        if code == '':
-            with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
-                code = t.getcell('LOFAR_TARGET',0)[0]
-        
-        code = code.lower()
-
-        # get freq
-        with pt.table(ms+'/SPECTRAL_WINDOW', readonly=True, ack=False) as t:
-            freq = t.getcell('REF_FREQUENCY',0)
-
-        # get time (saved in ms as MJD in seconds)
-        with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
-            time = Time(t.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
-            time = time.iso.replace('-','').replace(' ','').replace(':','')[0:12]
-
-        # make name
-        pattern = re.compile("^c[0-9][0-9]-.*$")
-        # is survey?
-        if pattern.match(code):
-            cycle_obs, sou = code.split('_')
-            if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
-            newName = cycle_obs+'/'+sou+'/'+sou+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+        if avg_factor_f != 1 or avg_factor_t != 1:
+            logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+            s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA \
+                avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                log=ms+'_avg.log', cmd_type='NDPPP')
         else:
-            newName = code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
-            if newName == ms: continue
-    
-        logging.debug('Rename '+ms+' -> '+newName)
-        os.system('mv '+ms+' '+newName)
-
-        flog.write(ms+'\n')
-    flog.close()
+            logging.info('Move data - no averaging...')
+            logging.debug('Rename: '+ms+' -> '+msout)
+            os.system('mv '+ms+' '+msout)
+    s.run(check=True)
 
 logging.info("Done.")
