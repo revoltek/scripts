@@ -35,7 +35,7 @@ assert os.path.isdir(globaldb)
 # Clear
 logging.info('Cleaning...')
 
-check_rm('*group*')
+check_rm('mss*')
 mss = sorted(glob.glob(datadir+'/*MS'))
 
 ##############################################
@@ -170,14 +170,15 @@ for groupname in groupnames:
     check_rm(ms) # remove not-timesplitted file
 
 # put everything together
-for group in xrange(ngroups):
-    if ngroups == 1:
-        groupname = 'mss'
-    else:
+if ngroups == 1:
+    check_rm('mss')
+    os.makedirs('mss')
+    os.system('cp -r mss_t*/*MS mss')
+else:
+    for group in xrange(ngroups):
         groupname = 'mss-%02i' % group
- 
-    check_rm(groupname)
-    os.makedirs(groupname)
-    os.system('cp -r mss_t*_%02i/*MS %s' % (group, groupname))
+        check_rm(groupname)
+        os.makedirs(groupname)
+        os.system('cp -r mss_t*_%02i/*MS %s' % (group, groupname))
 
 logging.info("Done.")
