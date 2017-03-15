@@ -192,10 +192,10 @@ for ms in mss:
 s.run(check=True)
 
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-#logging.info('Converting to circular...')
-#for ms in mss:
-#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
+logging.info('Converting to circular...')
+for ms in mss:
+    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+s.run(check=True)
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smooth...')
