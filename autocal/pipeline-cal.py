@@ -170,7 +170,7 @@ s.run(check=True)
 run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitude000,crossdelay', \
     inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument-cd', putback=True)
 
-##################################################
+#################################################
 # 3: recalibrate without FR
 
 # Beam correction DATA -> CORRECTED_DATA
@@ -212,7 +212,7 @@ s.run(check=True)
 
 #run_losoto('final', mss, [parset_dir+'losoto-flag.parset',parset_dir+'losoto-amp.parset',parset_dir+'losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
 #    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
-run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
     inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 if 'LBAsurvey' in os.getcwd():

@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, smoothP]
+LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, smoothP, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -122,10 +122,10 @@ LoSoTo.Steps.plotPr3.MinMax = [-3.14,3.14]
 
 LoSoTo.Steps.flag.Operation = FLAG
 LoSoTo.Steps.flag.Soltab = [sol000/phase000]
-LoSoTo.Steps.flag.Axes = [freq,time]
+LoSoTo.Steps.flag.Axes = [time,freq]
 LoSoTo.Steps.flag.MaxCycles = 1
 LoSoTo.Steps.flag.MaxRms = 5
-LoSoTo.Steps.flag.Order = [200]
+LoSoTo.Steps.flag.Order = [300,100]
 LoSoTo.Steps.flag.Replce = False
 LoSoTo.Steps.flag.PreFlagZeros = False
 LoSoTo.Steps.flag.Mode = smooth
@@ -154,3 +154,8 @@ LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
 LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
 LoSoTo.Steps.smoothP.Axes = [time,freq]
 LoSoTo.Steps.smoothP.Mode = median
+
+# copy flags on amp
+LoSoTo.Steps.merge.Operation = REWEIGHT
+LoSoTo.Steps.merge.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.merge.MergeFromSoltab = sol000/phase000
