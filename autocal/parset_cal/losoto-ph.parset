@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, smoothP]
+LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, smoothP]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -120,8 +120,37 @@ LoSoTo.Steps.plotPr3.Prefix = plots/phRes_
 LoSoTo.Steps.plotPr3.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPr3.MinMax = [-3.14,3.14]
 
+LoSoTo.Steps.flag.Operation = FLAG
+LoSoTo.Steps.flag.Soltab = [sol000/phase000]
+LoSoTo.Steps.flag.Axes = [freq,time]
+LoSoTo.Steps.flag.MaxCycles = 1
+LoSoTo.Steps.flag.MaxRms = 5
+LoSoTo.Steps.flag.Order = [200]
+LoSoTo.Steps.flag.Replce = False
+LoSoTo.Steps.flag.PreFlagZeros = False
+LoSoTo.Steps.flag.Mode = smooth
+
+LoSoTo.Steps.plotPrf2.Operation = PLOT
+LoSoTo.Steps.plotPrf2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPrf2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotPrf2.Axes = freq
+LoSoTo.Steps.plotPrf2.TableAxis = ant
+LoSoTo.Steps.plotPrf2.ColorAxis = pol
+LoSoTo.Steps.plotPrf2.PlotFlag = True
+LoSoTo.Steps.plotPrf2.Prefix = plots/phResFlag_
+LoSoTo.Steps.plotPrf2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPrf2.MinMax = [-3.14,3.14]
+
+LoSoTo.Steps.plotPrf3.Operation = PLOT
+LoSoTo.Steps.plotPrf3.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPrf3.Axes = [time,freq]
+LoSoTo.Steps.plotPrf3.TableAxis = ant
+LoSoTo.Steps.plotPrf3.PlotFlag = True
+LoSoTo.Steps.plotPrf3.Prefix = plots/phResFlag_
+LoSoTo.Steps.plotPrf3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
+
 # supersmooth phase residuals to be transferred
-LoSoTo.Steps.smoothP.Operation = SMOOTH
 LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
 LoSoTo.Steps.smoothP.Axes = [time,freq]
 LoSoTo.Steps.smoothP.Mode = median

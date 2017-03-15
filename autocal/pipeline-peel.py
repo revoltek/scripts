@@ -354,6 +354,7 @@ def peel(dd):
 
         # get noise, if larger than 95% of prev cycle: break
         rms_noise = get_noise_img(model+'-MFS-residual.fits')
+        logging.info('RMS noise: %f' % rms_noise)
         if rms_noise > 0.95 * rms_noise_pre: break
         rms_noise_pre = rms_noise
 
