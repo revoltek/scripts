@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [plotPi, plotPi2, crossdelay, plotCD, plotCD2, reset]
+LoSoTo.Steps = [duplicateBkp, plotPi, plotPi2, crossdelay, plotCD, plotCD2, residuals, plotPr, plotPr2, reset]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -7,6 +7,11 @@ LoSoTo.ant = []
 LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 0
+
+# bkp copy
+LoSoTo.Steps.duplicateBkp.Operation = DUPLICATE
+LoSoTo.Steps.duplicateBkp.InTable = sol000/phase000
+LoSoTo.Steps.duplicateBkp.OutTable = sol000/phaseOrig000
 
 # plot initials
 LoSoTo.Steps.plotPi.Operation = PLOT
@@ -29,17 +34,6 @@ LoSoTo.Steps.plotPi2.PlotFlag = True
 LoSoTo.Steps.plotPi2.Prefix = plots/ph-init_
 LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
 #LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
-
-LoSoTo.Steps.plotPi2.Operation = PLOT
-LoSoTo.Steps.plotPi2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPi2.time.minmax = [0,1e20,500]
-LoSoTo.Steps.plotPi2.Axes = freq
-LoSoTo.Steps.plotPi2.TableAxis = ant
-LoSoTo.Steps.plotPi2.ColorAxis = pol
-LoSoTo.Steps.plotPi2.PlotFlag = True
-LoSoTo.Steps.plotPi2.Prefix = plots/ph-init_
-LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
-LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
 
 # cross delay
 LoSoTo.Steps.crossdelay.Soltab = [sol000/phase000]
@@ -67,6 +61,32 @@ LoSoTo.Steps.plotCD2.PlotFlag = True
 LoSoTo.Steps.plotCD2.Prefix = plots/ph-CD_
 LoSoTo.Steps.plotCD2.Reference = 'CS001LBA'
 #LoSoTo.Steps.plotCD2.MinMax = [-3.14,3.14]
+
+LoSoTo.Steps.residuals.Operation = RESIDUALS
+LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
+LoSoTo.Steps.residuals.Sub = [sol000/crossdelay]
+
+# plot residuals
+LoSoTo.Steps.plotPr.Operation = PLOT
+LoSoTo.Steps.plotPr.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPr.Axes = [time,freq]
+LoSoTo.Steps.plotPr.TableAxis = ant
+LoSoTo.Steps.plotPr.DiffAxis = pol
+LoSoTo.Steps.plotPr.PlotFlag = True
+LoSoTo.Steps.plotPr.Prefix = plots/ph-res_
+LoSoTo.Steps.plotPr.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPr.MinMax = [-3.14,3.14]
+
+LoSoTo.Steps.plotPr2.Operation = PLOT
+LoSoTo.Steps.plotPr2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPr2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotPr2.Axes = freq
+LoSoTo.Steps.plotPr2.TableAxis = ant
+LoSoTo.Steps.plotPr2.DiffAxis = pol
+LoSoTo.Steps.plotPr2.PlotFlag = True
+LoSoTo.Steps.plotPr2.Prefix = plots/ph-res_
+LoSoTo.Steps.plotPr2.Reference = 'CS001LBA'
+#LoSoTo.Steps.plotPr2.MinMax = [-3.14,3.14]
 
 # reset amplitude
 LoSoTo.Steps.reset.Operation = RESET
