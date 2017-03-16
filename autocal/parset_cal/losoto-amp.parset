@@ -6,7 +6,7 @@ LoSoTo.SolType = []
 LoSoTo.ant = []
 LoSoTo.pol = []
 LoSoTo.dir = []
-LoSoTo.Ncpu = 6
+LoSoTo.Ncpu = 0
 
 # bkp copy
 LoSoTo.Steps.duplicateAbkp.Operation = DUPLICATE
@@ -22,7 +22,7 @@ LoSoTo.Steps.plotAi1.TableAxis = ant
 LoSoTo.Steps.plotAi1.ColorAxis = pol
 LoSoTo.Steps.plotAi1.PlotFlag = True
 LoSoTo.Steps.plotAi1.Prefix = plots/amp_
-LoSoTo.Steps.plotAi1.Columns = 2
+LoSoTo.Steps.plotAi1.Columns = 4
 LoSoTo.Steps.plotAi1.FigSize = [20,20]
 #LoSoTo.Steps.plotAi1.MinMax = [1e-4,3e-3]
 
@@ -42,7 +42,7 @@ LoSoTo.Steps.plotAi3.Axes = [time,freq]
 LoSoTo.Steps.plotAi3.TableAxis = ant
 LoSoTo.Steps.plotAi3.PlotFlag = True
 LoSoTo.Steps.plotAi3.Prefix = plots/amp_
-#LoSoTo.Steps.plotAi3.MinMax = [1e-4,3e-3]
+#LoSoTo.Steps.plotAi3.MinMax = [100,300]
 
 # copy
 LoSoTo.Steps.duplicateA.Operation = DUPLICATE
@@ -62,6 +62,7 @@ LoSoTo.Steps.plotAs.Axes = [time,freq]
 LoSoTo.Steps.plotAs.TableAxis = ant
 LoSoTo.Steps.plotAs.PlotFlag = True
 LoSoTo.Steps.plotAs.Prefix = plots/ampSmooth_
+#LoSoTo.Steps.plotAs.MinMax = [100,300]
 
 # plot amplitude smooth
 LoSoTo.Steps.plotAs2.Operation = PLOT
@@ -88,7 +89,7 @@ LoSoTo.Steps.plotAr1.TableAxis = ant
 LoSoTo.Steps.plotAr1.ColorAxis = pol
 LoSoTo.Steps.plotAr1.PlotFlag = True
 LoSoTo.Steps.plotAr1.Prefix = plots/ampRes_
-LoSoTo.Steps.plotAr1.Columns = 2
+LoSoTo.Steps.plotAr1.Columns = 4
 LoSoTo.Steps.plotAr1.FigSize = [20,20]
 #LoSoTo.Steps.plotAr1.MinMax = [-40e-2,40e-2]
 
@@ -108,7 +109,7 @@ LoSoTo.Steps.plotAr3.Axes = [time,freq]
 LoSoTo.Steps.plotAr3.TableAxis = ant
 LoSoTo.Steps.plotAr3.PlotFlag = True
 LoSoTo.Steps.plotAr3.Prefix = plots/ampRes_
-#LoSoTo.Steps.plotAr3.MinMax = [-40e-2,40e-2]
+#LoSoTo.Steps.plotAr3.MinMax = [100,300]
 
 # movie
 LoSoTo.Steps.plotAm.Operation = PLOT

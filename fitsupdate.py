@@ -55,7 +55,7 @@ except:
     sys.exit(1)
 
 if setkeyword is None and setbeam is None and delkeyword is None:
-    print hdulist[0].header.__repr__()
+    print hdulist[0].header
     sys.exit(0)
 
 if ( not setkeyword is None ):

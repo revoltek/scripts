@@ -1,0 +1,21 @@
+msin =
+msin.datacolumn = DATA
+msout = 
+msout.datacolumn = CORRECTED_DATA
+
+numthreads = 1 # bug fix
+
+#steps = [cor1, cor3, count]
+steps = [cor1, cor2, cor3, count]
+
+cor1.type = applycal
+cor1.parmdb =
+cor1.correction = tec
+
+cor2.type = applycal
+cor2.parmdb =
+cor2.correction = commonscalarphase
+
+cor3.type = applycal
+cor3.parmdb =
+cor3.correction = gain
