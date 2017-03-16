@@ -3,51 +3,66 @@
 import sys, os, glob, re
 import numpy as np
 import pyrap.tables as pt
-from lib_pipeline import *
+from astropy.time import Time
+from autocal.lib_pipeline import *
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal'
+skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
-skymodel = '/home/fdg/scripts/model/3C196-allfield.skymodel'
-sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-patch = ''
-#skymodel = '/home/fdg/scripts/model/3C295-allfield.skymodel'
-#sourcedb = '/home/fdg/scripts/model/3C295-allfield.skydb'
-#patch = '3C295'
-
-if 'tooth' in os.getcwd():
-    # tooth
-    datadir = '.'
-    do_fixbeamtable = True
+if 'tooth' in os.getcwd(): # tooth 2013
+    datadir = '../cals-bkp/'
+    bl2flag = 'CS031LBA\;RS409LBA'
+elif 'bootes' in os.getcwd(): # bootes 2013
+    datadir = '../cals-bkp/'
+    bl2flag = 'CS013LBA\;CS031LBA'
+elif 'c07' in os.getcwd(): # daytest
+    datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
+    bl2flag = 'CS031LBA'
+    #bl2flag += '\;RS310LBA\;RS210LBA\;RS407LBA' # only o00
 else:
-    # survey
-    print "IMPORTANT: for survey also remove bad ant at flag time"
-    datadir = '/lofar5/stsf309/LBAsurvey/%s/3c196' % os.getcwd().split('/')[-2] # assumes ~/data/LBAsurvey/c05-o07/3c196
-    do_fixbeamtable = False
+    obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
+    datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
+    #bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA'
+    bl2flag = 'CS031LBA'
 
-#TODO: moved to dysco, problem with WEIGHTED_SPECTRUM to fix
-
-###################################################
-
+########################################################
 set_logger('pipeline-cal.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
+calname = mss[0].split('/')[-1].split('_')[0].lower()
+logging.info("Calibrator name: %s." % calname)
+
+if calname == '3c196':
+    sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
+    patch = '3C196'
+elif calname == '3c380':
+    sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
+    patch = '3C380'
+elif calname == '3c295':
+    sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
+    patch = '3C295'
+elif calname == 'CygA':
+    sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
+    patch = 'CygA'
+else:
+    logging.error("Calibrator not recognised.")
+    sys.exit(1)
 
 ############################################################
 # Avg to 4 chan and 4 sec
 # Remove internationals
-# kill weights of flagged data to prevent dysco bug
-
+# TODO: move to download pipeline
 nchan = find_nchan(mss[0])
 timeint = find_timeint(mss[0])
-if nchan % 4 != 0:
+if nchan % 4 != 0 and nchan != 1:
     logging.error('Channels should be a multiple of 4.')
     sys.exit(1)
 
 avg_factor_f = nchan / 4 # to 4 ch/SB
 if avg_factor_f < 1: avg_factor_f = 1
-avg_factor_t = int(np.round(4/timeint))
-if avg_factor_t < 1: avg_factor_t = 1 # to 4 sec
+avg_factor_t = int(np.round(4/timeint)) # to 4 sec
+if avg_factor_t < 1: avg_factor_t = 1
 
 if avg_factor_f != 1 or avg_factor_t != 1:
     logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
@@ -59,66 +74,61 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     s.run(check=True)
     nchan = nchan / avg_factor_f
     timeint = timeint * avg_factor_t
-    mss = sorted(glob.glob('*-avg.MS'))
+else:
+    logging.info('Copy data - no averaging...')
+    for ms in mss:
+        msout = ms.replace('.MS','-avg.MS').split('/')[-1]
+        if os.path.exists(msout): continue
+        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep=1 avg.freqstep=1', \
+                log=msout+'_cp.log', cmd_type='NDPPP') # better than cp as activates dysco
+    s.run(check=True)
 
+mss = sorted(glob.glob('*.MS'))
+
+###########################################################   
 # flag below elev 20 and bad stations, flags will propagate
 logging.info('Flagging...')
 for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA msin.datacolumn=DATA',log=m+'_flag.log', cmd_type='NDPPP')
-    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline=CS031LBA\;RS409LBA msin.datacolumn=DATA', log=ms+'_flag.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline='+bl2flag+' msin.datacolumn=DATA', \
+            log=ms+'_flag.log', cmd_type='NDPPP')
 s.run(check=True)
-    
-###############################################
-# Initial processing (2/2013->2/2014)
-if do_fixbeamtable:
-    logging.warning('Fix beam table...')
-    for ms in mss:
-        s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-    s.run(check=False)
-
-###############################################
-# TODO Predict to save time
-
-
-############################################
+ 
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
-#for ms in mss:
-#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-#s.run(check=True)
 for ms in mss:
+    if os.path.exists(ms+'/instrument-clock'): continue
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+s.run(check=True)
+for ms in mss:
+    if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 for ms in mss:
     s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
+#################################################
 # 1: find the FR and remve it
 
-###############################################
 # Beam correction DATA -> CORRECTED_DATA
 logging.info('Beam correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
-###############################################
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 logging.info('Converting to circular...')
 for ms in mss:
     s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
-#################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smooth...')
 for ms in mss:
-    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth1.log', cmd_type='python')
 s.run(check=True)
 
-################################################
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
 logging.info('Calibrating...')
 for ms in mss:
@@ -126,81 +136,30 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol1.log', cmd_type='NDPPP')
 s.run(check=True)
 
-################################################
-# Prepare and run losoto
-check_rm('globaldb')
-check_rm('globaldb-fr')
-os.system('mkdir globaldb')
-os.system('mkdir globaldb-fr')
-for i, ms in enumerate(mss):
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-    logging.debug('Copy instrument-fr of '+ms+' into globaldb-fr/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-fr-'+str(num))
+run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
+    inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)
 
-logging.info('Running LoSoTo...')
-check_rm('plots')
-check_rm('cal1.h5')
-s.add('H5parm_importer.py -v cal1.h5 globaldb', log='losoto1.log', cmd_type='python', processors=1)
-s.run(check=True)
-s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-flag.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-os.system('cp -r cal1.h5 cal1.h5-flag')
-s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-# TESTTESTTEST
-#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-#s.add('losoto -v cal1.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-#sys.exit(1)
+#####################################################
+# 2: find CROSS DELAY and remve it
 
-s.add('H5parm_exporter.py -v -t rotationmeasure000 cal1.h5 globaldb-fr', log='losoto1.log', log_append=True, cmd_type='python', processors=1)
-s.run(check=True)
-check_rm('plots-fr')
-os.system('mv plots plots-fr')
-
-for i, ms in enumerate(mss):
-    num = re.findall(r'\d+', ms)[-1]
-    check_rm(ms+'/instrument-fr')
-    logging.debug('Copy globaldb-fr/sol000_instrument-fr-'+str(num)+' into '+ms+'/instrument-fr')
-    os.system('cp -r globaldb-fr/sol000_instrument-fr-'+str(num)+' '+ms+'/instrument-fr')
-
-# 2: recalibrate without FR
-
-###############################################
 # Beam correction DATA -> CORRECTED_DATA
 logging.info('Beam correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
-######################################################
 # Correct FR CORRECTED_DATA -> CORRECTED_DATA
 logging.info('Faraday rotation correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
 s.run(check=True)
 
-###############################################
-# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-logging.warning('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
-
-################################################
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
-logging.info('BL-smoothing...')
+logging.info('BL-smooth...')
 for ms in mss:
-    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-    #s.add('BLsmooth.py -r -w -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2.log', cmd_type='python')
 s.run(check=True)
 
-################################################
 # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
 logging.info('Calibrating...')
 for ms in mss:
@@ -208,53 +167,58 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol2.log', cmd_type='NDPPP')
 s.run(check=True)
 
-#############################################################
-# Prepare and run losoto
-check_rm('globaldb') # remove it as it was used for the fr
-#check_rm('globaldb-clock')
-os.system('mkdir globaldb')
-#os.system('mkdir globaldb-clock')
-for i, ms in enumerate(mss):
-    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-#    if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-clock/')
+run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitude000,crossdelay', \
+    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument-cd', putback=True)
 
-    num = re.findall(r'\d+', ms)[-1]
-    logging.debug('Copy instrument of '+ms+' into globaldb/instrument-'+str(num))
-    os.system('cp -r '+ms+'/instrument globaldb/instrument-'+str(num))
-   
-#    # We export clock, need to create a new parmdb
-#    logging.debug('Copy instrument-clock of '+ms+' into globaldb-clock/instrument-'+str(num))
-#    os.system('cp -r '+ms+'/instrument-clock globaldb-clock/instrument-'+str(num))
+#################################################
+# 3: recalibrate without FR
 
-logging.info('Running LoSoTo...')
-check_rm('plots')
-os.makedirs('plots')
-check_rm('cal2.h5')
-
-s.add('H5parm_importer.py -v cal2.h5 globaldb', log='losoto2.log', cmd_type='python', processors=1)
+# Beam correction DATA -> CORRECTED_DATA
+logging.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
 s.run(check=True)
 
-# TESTTESTTEST
-#os.system('cp -r cal2.h5 cal2.h5-bkp')
-#s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-fr.parset', log='losoto1.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-flag.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-s.run(check=True)
-os.system('cp -r cal2.h5 cal2.h5-flag')
-
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-amp.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+# Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
+logging.info('Cross delay correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
 s.run(check=True)
 
-s.add('losoto -v cal2.h5 '+parset_dir+'/losoto-ph.parset', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
+# Correct FR CORRECTED_DATA -> CORRECTED_DATA
+logging.info('Faraday rotation correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
 s.run(check=True)
 
-# copy clock+BP
-#s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phase000,clock000 cal2.h5 globaldb-clock', log='losoto2.log', log_append=True, cmd_type='python', processors='max')
-#s.run(check=True)
-
-# copy ph+BP
-s.add('H5parm_exporter.py -v -c --soltab amplitudeSmooth000,phaseOrig000 cal2.h5 globaldb', log='losoto2.log', log_append=True, cmd_type='python', processors=1)
+# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
+logging.info('Converting to circular...')
+for ms in mss:
+    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
+
+# Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
+logging.info('BL-smooth...')
+for ms in mss:
+    s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3.log', cmd_type='python')
+s.run(check=True)
+
+# Solve cal_SB.MS:SMOOTHED_DATA (only solve)
+logging.info('Calibrating...')
+for ms in mss:
+    check_rm(ms+'/instrument')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
+s.run(check=True)
+
+#run_losoto('final', mss, [parset_dir+'losoto-flag.parset',parset_dir+'losoto-amp.parset',parset_dir+'losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+#    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+
+if 'LBAsurvey' in os.getcwd():
+    check_rm('globaldb-clock/instrument*') # keep only filled instrument tables
+    newglobaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
+    logging.info('Copy: globaldb-clock -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
+    os.system('scp -r globaldb-clock dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 logging.info("Done.")

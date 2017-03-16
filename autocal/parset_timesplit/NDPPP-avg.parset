@@ -1,10 +1,10 @@
 msin = 
 msin.datacolumn = DATA
-# do not copy aucorr as they have too weird weights for dysco
-msin.baseline = [CR]S*&
+msin.baseline = [CR]S*&&
+
 msout = 
 msout.writefullresflag = False
-msout.storagemanager = dysco
+# no dysco here, before need to fix weights
 
 numthreads = 1 # bug fix
 

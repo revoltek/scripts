@@ -2,7 +2,7 @@
 
 # create a mask using bdsm of an image
 
-def make_mask(image_name, mask_name=None, threshpix=5, threshisl=3, atrous_do=False, rmsbox=(55,12), mask_combine=None):
+def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(70,12), mask_combine=None):
 
     import sys, os
     import numpy as np
@@ -14,10 +14,10 @@ def make_mask(image_name, mask_name=None, threshpix=5, threshisl=3, atrous_do=Fa
     else: stop_at = 'isl'
 
     # DO THE SOURCE DETECTION
-    img = bdsm.process_image(image_name, mean_map='zero', rms_box=rmsbox, \
-        thresh_pix=int(threshpix), thresh_isl=int(threshisl), atrous_do=atrous_do, atrous_jmax=3, \
-        adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
-        stop_at=stop_at, blank_limit=1e-5, quiet=True)
+    img = bdsm.process_image(image_name, rms_box=rmsbox, \
+        thresh_isl=int(threshisl), atrous_do=atrous_do, atrous_jmax=3, \
+        adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(50,12), \
+        stop_at=stop_at, quiet=True)
 
     # WRITE THE MASK FITS
     if mask_name == None: mask_name = image_name+'.newmask'
@@ -43,7 +43,6 @@ def make_mask(image_name, mask_name=None, threshpix=5, threshisl=3, atrous_do=Fa
 if __name__=='__main__':
     import optparse
     opt = optparse.OptionParser(usage='%prog [-v|-V] imagename \n Francesco de Gasperin', version='1.0')
-    opt.add_option('-p', '--threshpix', help='Threshold pixel (default=5)', type='int', default=5)
     opt.add_option('-i', '--threshisl', help='Threshold island (default=3)', type='int', default=3)
     opt.add_option('-t', '--atrous_do', help='BDSM extended source detection (default=False)', action='store_true', default=False)
     opt.add_option('-m', '--newmask', help='Mask name (default=imagename with mask in place of image)', default=None)
@@ -52,4 +51,4 @@ if __name__=='__main__':
     (options, args) = opt.parse_args()
     
     rmsbox = (int(options.rmsbox.split(',')[0]),int(options.rmsbox.split(',')[1]))
-    make_mask(args[0].rstrip('/'), options.newmask, options.threshpix, options.threshisl, options.atrous_do, rmsbox, options.combinemask)
+    make_mask(args[0].rstrip('/'), options.newmask, options.threshisl, options.atrous_do, rmsbox, options.combinemask)

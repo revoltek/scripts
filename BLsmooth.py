@@ -48,6 +48,7 @@ opt.add_option('-o', '--outcol', help='Output column [default: SMOOTHED_DATA]', 
 opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, this action permanently modify the MS! [default: False]', action="store_true", default=False)
 opt.add_option('-r', '--restore', help='If WEIGHT_SPECTRUM_ORIG exists then restore it before smoothing [default: False]', action="store_true", default=False)
 opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: do backup if -w]', action="store_true", default=False)
+opt.add_option('-a', '--onlyamp', help='Smooth only amplitudes [default: smooth real/imag]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
 
 if msfile == []:
@@ -109,65 +110,70 @@ for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
 
 del all_uvw
 
-logging.info('Reading data...')
-all_data = ms.getcol(options.outcol)
-all_weights = ms.getcol('WEIGHT_SPECTRUM')
-all_flags = ms.getcol('FLAG')
+nchans = len(pt.table(msfile+"/SPECTRAL_WINDOW",ack=False)[0]["CHAN_FREQ"])
+pols = [0,1,2,3] # full-pol smoothing
+for pol in pols:
+    logging.debug("Workign on pol %i" % pol)
+    all_data = ms.getcolslice(options.outcol, [0,pol], [nchans-1,pol])
+    all_weights = ms.getcolslice('WEIGHT_SPECTRUM', [0,pol], [nchans-1,pol])
+    all_flags = ms.getcolslice('FLAG', [0,pol], [nchans-1,pol])
 
-all_flags[ np.isnan(all_data) ] = True # flag NaNs
-all_weights[all_flags] = 0 # set weight of flagged data to 0
-del all_flags
+    all_flags[ np.isnan(all_data) ] = True # flag NaNs
+    all_weights[all_flags] = 0 # set weight of flagged data to 0
+    del all_flags
+    
+    # iteration on baseline combination
+    logging.info('Smoothing baselines')
+    for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
+    
+        if ant[0] >= ant[1]: continue
+        if stddevs[i] == 0: continue # fix for missing anstennas
+    
+        sel = (ant1 == ant[0]) & (ant2 == ant[1])
+    
+        #Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
+        #divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
+        #running weighted average with a Gaussian window function.
+    
+        # get cycle values
+        weights = all_weights[sel]
+        data = all_data[sel]
+    
+        # set bad data to 0 so nans do not propagate
+        data = np.nan_to_num(data*weights)
+    
+        # smear weighted data and weights
+        if options.onlyamp:
+            dataAMP = gfilter(np.abs(data), stddevs[i], axis=0)
+            dataPH = np.angle(data)
+        else:
+            dataR = gfilter(np.real(data), stddevs[i], axis=0)#, truncate=4.)
+            dataI = gfilter(np.imag(data), stddevs[i], axis=0)#, truncate=4.)
 
-# iteration on baseline combination
-logging.info('Smoothing baselines')
-for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
+        weights = gfilter(weights, stddevs[i], axis=0)#, truncate=4.)
+    
+        # re-create data
+        if options.onlyamp:
+            data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
+        else:
+            data = (dataR + 1j * dataI)
+        data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
+        all_data[sel] = data
+        all_weights[sel] = weights
+    
+        #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
+        #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
+        #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
+        #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
+    
+    logging.warning('Writing %s column.' % options.outcol)
+    ms.putcolslice(options.outcol, all_data, [0,pol], [nchans-1,pol])
+    del all_data
 
-    if ant[0] >= ant[1]: continue
-    if stddevs[i] == 0: continue # fix for missing anstennas
-
-    print '.'
-    sys.stdout.flush()
-
-    sel = (ant1 == ant[0]) & (ant2 == ant[1])
-
-    #Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
-    #divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
-    #running weighted average with a Gaussian window function.
-
-    # get cycle values
-    weights = all_weights[sel,:,:]
-    data = all_data[sel,:,:,]
-
-    # get data, and set bad data to 0 so nans do not propagate
-    data = np.nan_to_num(data*weights)
-
-    # smear weighted data and weights
-    dataR = gfilter(np.real(data), stddevs[i], axis=0)#, truncate=4.)
-    dataI = gfilter(np.imag(data), stddevs[i], axis=0)#, truncate=4.)
-    weights = gfilter(weights, stddevs[i], axis=0)#, truncate=4.)
-
-    # re-create data
-    data = (dataR + 1j * dataI)
-    data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
-    all_data[sel,:,:] = data
-    all_weights[sel,:,:] = weights
-
-    #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
-    #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
-    #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
-    #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
-
-print "done.\n"
-sys.stdout.flush()
-
-logging.warning('Writing %s column.' % options.outcol)
-ms.putcol(options.outcol, all_data)
-del all_data
-
-if options.weight:
-    logging.warning('Writing WEIGHT_SPECTRUM column.')
-    ms.putcol('WEIGHT_SPECTRUM', all_weights)
-    del all_weights
+    if options.weight:
+        logging.warning('Writing WEIGHT_SPECTRUM column.')
+        ms.putcol('WEIGHT_SPECTRUM', all_weights, [0,pol], [nchans-1,pol])
+        del all_weights
 
 ms.close()
 logging.info("Done.")

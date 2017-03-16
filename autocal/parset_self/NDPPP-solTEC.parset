@@ -4,20 +4,18 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
 
-numthreads = 1 # bug fix
+#numthreads = 1 # this is multithread, keep max
 
 steps = [filter, sol]
 
-filter.blrange = [3000,1e30]
+filter.blrange = [1000,1e30]
 
 sol.type = gaincal
-sol.caltype = diagonal
+sol.parmdb = 
+sol.caltype = tec
+#sol.caltype = tecandphase
 sol.maxiter = 500
-sol.sourcedb =
-sol.sources = 
-sol.usebeammodel = True
-sol.usechannelfreq = False
-sol.beammode = array_factor
-sol.nchan = 1
+sol.usemodelcolumn = True
 sol.solint = 1
+sol.nchan = 1
 sol.propagatesolutions = False

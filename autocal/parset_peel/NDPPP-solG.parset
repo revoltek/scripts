@@ -1,5 +1,5 @@
 msin =
-msin.datacolumn = SMOOTHED_DATA
+msin.datacolumn = CORRECTED_DATA
 msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = CORRECTED_DATA
@@ -8,16 +8,14 @@ numthreads = 1 # bug fix
 
 steps = [filter, sol]
 
-filter.blrange = [3000,1e30]
+filter.blrange = [1500,1e30]
 
 sol.type = gaincal
+sol.parmdb = 
 sol.caltype = diagonal
 sol.maxiter = 500
-sol.sourcedb =
-sol.sources = 
-sol.usebeammodel = True
-sol.usechannelfreq = False
-sol.beammode = array_factor
-sol.nchan = 1
-sol.solint = 1
+sol.usemodelcolumn = True
+sol.solint = 100
+sol.nchan = 0
 sol.propagatesolutions = False
+#sol.blrange = [1500,1e9]
