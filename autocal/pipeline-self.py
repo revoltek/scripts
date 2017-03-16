@@ -18,15 +18,16 @@ from autocal.lib_pipeline import *
 from make_mask import make_mask
 
 parset_dir = '/home/fdg/scripts/autocal/parset_self/'
+skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 2
 
 if 'tooth' in os.getcwd():
-    # Tooth
-    skymodel = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skymodel' # for this model remove beam in parset_self/NDPPP-predict.parset
+    # for this model remove beam in parset_self/NDPPP-predict.parset
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+elif 'bootes' in os.getcwd():
+    sourcedb = '/home/fdg/scripts/model/Bootes_HBA.corr.skydb'
 else:
     # Survey
-    skymodel = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skymodel' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
 
 #######################################################################################
