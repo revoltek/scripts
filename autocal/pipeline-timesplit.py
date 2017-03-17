@@ -110,9 +110,9 @@ s.run(check=True)
 # Create groups
 groupnames = []
 logging.info('Concatenating in frequency...')
-timechunks = set([re.findall(r't\d+', ms)[0][1:] for ms in mss ])
+timechunks = set([re.findall(r'_t\d+', ms)[0][2:] for ms in mss ])
 for timechunk in timechunks:
-    for i, msg in enumerate(np.array_split(glob.glob('*_t'+timechunk+'_*MS'), ngroups)):
+    for i, msg in enumerate(np.array_split(sorted(glob.glob('*_t'+timechunk+'_*MS')), ngroups)):
         if ngroups == 1:
             groupname = 'mss_t%s' % timechunk
         else:
