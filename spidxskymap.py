@@ -128,8 +128,8 @@ class t_surv():
         self.t.remove_rows(np.where(self.t['E_Total_flux'] == 0.)[0])
 
         self.len = len(self.t)
-        self.t['s2n'] = self.t['Total_flux']/self.t['E_Total_flux']
-        self.t['s2n'].unit = ''
+        #self.t['s2n'] = self.t['Total_flux']/self.t['E_Total_flux']
+        #self.t['s2n'].unit = ''
         x, y, _, _ = self.w.all_world2pix(self.t['RA'],self.t['DEC'],np.zeros(self.len),np.zeros(self.len), 0, ra_dec_order=True)
         self.x = x.round().astype(int)
         self.y = y.round().astype(int)
