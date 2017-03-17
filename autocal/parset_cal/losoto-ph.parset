@@ -125,21 +125,23 @@ LoSoTo.Steps.flag.Soltab = [sol000/phase000]
 LoSoTo.Steps.flag.Axes = [time]
 LoSoTo.Steps.flag.MaxCycles = 1
 LoSoTo.Steps.flag.MaxRms = 5
-LoSoTo.Steps.flag.Order = [100]
+LoSoTo.Steps.flag.Order = [1200]
 LoSoTo.Steps.flag.Replce = False
 LoSoTo.Steps.flag.PreFlagZeros = False
 LoSoTo.Steps.flag.Mode = smooth
 
 LoSoTo.Steps.plotPrf2.Operation = PLOT
 LoSoTo.Steps.plotPrf2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPrf2.time.minmax = [0,1e20,500]
-LoSoTo.Steps.plotPrf2.Axes = freq
+LoSoTo.Steps.plotPrf2.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotPrf2.Axes = time
 LoSoTo.Steps.plotPrf2.TableAxis = ant
 LoSoTo.Steps.plotPrf2.ColorAxis = pol
 LoSoTo.Steps.plotPrf2.PlotFlag = True
 LoSoTo.Steps.plotPrf2.Prefix = plots/phResFlag_
 LoSoTo.Steps.plotPrf2.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPrf2.MinMax = [-3.14,3.14]
+LoSoTo.Steps.plotPrf2.Columns = 4
+LoSoTo.Steps.plotPrf2.FigSize = [20,20]
 
 LoSoTo.Steps.plotPrf3.Operation = PLOT
 LoSoTo.Steps.plotPrf3.Soltab = [sol000/phase000]
