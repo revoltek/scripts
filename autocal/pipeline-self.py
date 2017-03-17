@@ -126,14 +126,8 @@ for c in xrange(niter):
     s.run(check=True)
 
     #####################################################################################################
-    # Faraday rotation correction
+    # Cross-delay + Faraday rotation correction
     if c >= 1:
-
-        # To circular - SB.MS:DATA_INIT -> SB.MS:INIT_DATA (circular)
-        logging.info('Convert to circular...')
-        for ms in mss:
-            s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
 
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logging.info('BL-based smoothing...')
@@ -146,46 +140,14 @@ for c in xrange(niter):
         for ms in mss:
             check_rm(ms+'/instrument-g')
             s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=10 sol.nchan=8', \
-                    log=ms+'_sol-g-c'+str(c)+'.log', cmd_type='NDPPP')
+                    log=ms+'_sol-g1-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
-            outinstrument='instrument-fr', outglobaldb='globaldb-fr', outtab='rotationmeasure000', putback=False)
+            outinstrument='instrument-fr', outglobaldb='globaldb-fr', outtab='rotationmeasure000', putback=True)
         os.system('mv plots-fr self/solutions/')
         os.system('mv cal-fr.h5 self/solutions/')
        
-#        # losoto
-#        check_rm('globaldb')
-#        check_rm('globaldb-fr')
-#        os.system('mkdir globaldb')
-#        os.system('mkdir globaldb-fr')
-#        for i, ms in enumerate(mss):
-#            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb/')
-#            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky globaldb-fr/')
-#            num = re.findall(r'\d+', ms)[-1]
-#            logging.debug('Copy: '+ms+'/instrument-g -> globaldb/instrument-'+str(num))
-#            os.system('cp -r '+ms+'/instrument-g globaldb/instrument-'+str(num))
-#            logging.debug('Copy: '+ms+'/instrument-fr -> globaldb-fr/instrument-'+str(num))
-#            os.system('cp -r '+ms+'/instrument-fr globaldb-fr/instrument-'+str(num))
-#        
-#        logging.info('Running LoSoTo...')
-#        check_rm('plots')
-#        check_rm('global-fr.h5')
-#        s.add('H5parm_importer.py -v global-fr.h5 globaldb', log='losoto-fr-c'+str(c)+'.log', cmd_type='python')
-#        s.run(check=True)
-#        s.add('losoto -v global-fr.h5 '+parset_dir+'/losoto-fr.parset', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python', processors='max')
-#        s.run(check=True)
-#        s.add('H5parm_exporter.py -v -t rotationmeasure000 global-fr.h5 globaldb-fr', log='losoto-fr-c'+str(c)+'.log', log_append=True, cmd_type='python')
-#        s.run(check=True)
-#        os.system('mv plots self/solutions/plots-fr')
-#        os.system('mv global-fr.h5 self/solutions')
-#        
-#        for i, ms in enumerate(mss):
-#            num = re.findall(r'\d+', ms)[-1]
-#            check_rm(ms+'/instrument-fr')
-#            logging.debug('Copy globaldb-fr/sol000_instrument-'+str(num)+' -> '+ms+'/instrument-fr')
-#            os.system('cp -r globaldb-fr/sol000_instrument-'+str(num)+' '+ms+'/instrument-fr')
-
         # To linear - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (linear)
         logging.info('Convert to linear...')
         for ms in mss:
@@ -196,6 +158,47 @@ for c in xrange(niter):
         logging.info('Faraday rotation correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        # Smooth CORRECTED_DATA -> SMOOTHED_DATA
+        logging.info('BL-based smoothing...')
+        for ms in mss:
+            s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
+
+        # Solve G SB.MS:SMOOTHED_DATA (only solve)
+        logging.info('Solving G...')
+        for ms in mss:
+            check_rm(ms+'/instrument-g')
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=10 sol.nchan=8', \
+                    log=ms+'_sol-g2-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        run_losoto(s, 'cd', mss, [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+            outinstrument='instrument-cd', outglobaldb='globaldb', outtab='amplitude000,crossdelay', putback=True)
+        os.system('mv plots-cd self/solutions/')
+        os.system('mv cal-cd.h5 self/solutions/')
+
+        run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+            outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
+        os.system('mv plots-amp self/solutions/')
+        os.system('mv cal-amp.h5 self/solutions/')
+
+        # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        logging.info('Cross-delay correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corCD.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+        # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        logging.info('Slow amp correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corG.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+ 
+        # To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
+        logging.info('Convert to circular...')
+        for ms in mss:
+            s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
    ###################################################################################################################

@@ -173,12 +173,12 @@ for groupname in groupnames:
 if ngroups == 1:
     check_rm('mss')
     os.makedirs('mss')
-    os.system('cp -r mss_t*/*MS mss')
+    os.system('mv mss_t*/*MS mss')
 else:
     for group in xrange(ngroups):
         groupname = 'mss-%02i' % group
         check_rm(groupname)
         os.makedirs(groupname)
-        os.system('cp -r mss_t*_%02i/*MS %s' % (group, groupname))
+        os.system('mv mss_t*_%02i/*MS %s' % (group, groupname))
 
 logging.info("Done.")
