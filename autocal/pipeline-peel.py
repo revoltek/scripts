@@ -85,7 +85,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
 
     # make mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
 
     # clean 2
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
@@ -102,7 +102,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 7)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -510,7 +510,7 @@ if not os.path.exists('regions/DIEcatalog.fits'):
     bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
 
 ddset = make_directions_from_skymodel('regions/DIEcatalog.fits', outdir='regions', flux_min_Jy=1.0, size_max_arcmin=3.0,
-        directions_separation_max_arcmin=5.0, directions_max_num=20, flux_min_for_merging_Jy=0.2)
+        directions_separation_max_arcmin=5.0, directions_max_num=10, flux_min_for_merging_Jy=0.2)
 
 logging.info('Voronoi tassellation...')
 make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
@@ -526,6 +526,7 @@ if not os.path.exists("pipeline-peel.status"):
 for dd in ddset: peel(dd)
 
 # re-imaging all facets
+check_rm('img')
 os.makedirs('img')
 for dd in ddset:
     if dd['facet_size'] == 0: continue
