@@ -129,6 +129,7 @@ LoSoTo.Steps.flag.Order = [1200]
 LoSoTo.Steps.flag.Replce = False
 LoSoTo.Steps.flag.PreFlagZeros = False
 LoSoTo.Steps.flag.Mode = smooth
+LoSoTo.Steps.flag.Reference = 'CS001LBA'
 
 LoSoTo.Steps.plotPrf2.Operation = PLOT
 LoSoTo.Steps.plotPrf2.Soltab = [sol000/phase000]
