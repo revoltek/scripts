@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [plotPi, faraday, plotFR, residuals, plotPr]
+LoSoTo.Steps = [duplicateBkp, plotPi, faraday, plotFR, residuals, plotPr]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -8,11 +8,17 @@ LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 0
 
+# bkp copy
+LoSoTo.Steps.duplicateBkp.Operation = DUPLICATE
+LoSoTo.Steps.duplicateBkp.InTable = sol000/phase000
+LoSoTo.Steps.duplicateBkp.OutTable = sol000/phaseOrig000
+
 # plot initials
 LoSoTo.Steps.plotPi.Operation = PLOT
 LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPi.Axes = [time,freq]
 LoSoTo.Steps.plotPi.TableAxis = ant
+LoSoTo.Steps.plotPi.DiffAxis = pol
 LoSoTo.Steps.plotPi.PlotFlag = True
 LoSoTo.Steps.plotPi.Prefix = plots/ph-rot_
 LoSoTo.Steps.plotPi.Reference = 'CS001LBA'
@@ -38,6 +44,7 @@ LoSoTo.Steps.plotPr.Operation = PLOT
 LoSoTo.Steps.plotPr.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPr.Axes = [time,freq]
 LoSoTo.Steps.plotPr.TableAxis = ant
+LoSoTo.Steps.plotPr.DiffAxis = pol
 LoSoTo.Steps.plotPr.PlotFlag = True
 LoSoTo.Steps.plotPr.Prefix = plots/phRes-rot_
 LoSoTo.Steps.plotPr.Reference = 'CS001LBA'

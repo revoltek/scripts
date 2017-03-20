@@ -1,9 +1,6 @@
-#!/usr/bin/python
-
 import os, sys
 import logging
 import numpy as np
-
 
 def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
@@ -168,7 +165,7 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0., 
     filename: fits file
     region: ds9 region or list of regions
     outfile: output name
-    inverse: reverse final combined mask
+    inverse: reverse final *combined* mask
     blankval: pixel value to set
     op: how to combine multiple regions with AND or OR
     """
@@ -197,16 +194,34 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0., 
         fits.writeto(outfile, clobber=True)
 
 
-def get_noise_img(filename):
+def get_noise_img(filename, boxsize=None, niter=20, eps=1e-5):
     """
     Return the rms of all the pixels in an image
+    boxsize : limit to central box of this pixelsize
+    niter : robust rms estimation
+    eps : convergency
     """
     import astropy.io.fits as pyfits
     with pyfits.open(filename) as fits:
-        rms_noise = np.sqrt(np.mean((fits[0].data)**2))
-        logging.debug('Rms_noise: %f' % rms_noise)
-        return rms_noise
-
+        data = fits[0].data
+        if boxsize is None:
+            subim = data
+        else:
+           if len(data.shape)==4:
+                _,_,ys,xs = data.shape
+                subim = data[0,0,ys/2-boxsize/2:ys/2+boxsize/2,xs/2-boxsize/2:xs/2+boxsize/2].flatten()
+           else:
+                ys,xs = data.shape
+                subim = data[ys/2-boxsize/2:ys/2+boxsize/2,xs/2-boxsize/2:xs/2+boxsize/2].flatten()
+        oldrms = 1.
+        for i in range(niter):
+            rms = np.nanstd(subim)
+            #print len(subim),rms
+            if np.abs(oldrms-rms)/rms < eps:
+                return rms
+            subim=subim[np.abs(subim)<5*rms]
+            oldrms=rms
+        raise Exception('Failed to converge')
 
 def nan2zeros(filename):
     """

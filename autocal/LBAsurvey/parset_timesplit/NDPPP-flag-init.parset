@@ -1,9 +1,0 @@
-msin = 
-msin.datacolumn = DATA
-msin.baseline = [CR]S*&&
-msout = .
-
-steps = [flag, count]
-
-flag.type = preflagger
-flag.elevation = 0deg..30deg
