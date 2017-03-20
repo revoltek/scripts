@@ -1,6 +1,4 @@
-#!/usr/bin/python
-
-import os, sys, time, pickle, random, shutil
+import os, sys, re, time, pickle, random, shutil
 import subprocess
 import logging
 from threading import Thread
@@ -82,31 +80,62 @@ def check_rm(regexp):
             os.system('rm -r '+f)
 
 
-def size_from_facet(img, c_coord, pixsize):
+def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False):
     """
-    Given an image, a new centre find the smallest image size which cover the whole image.
-    img = CASA-image name
-    c_coord = [ra,dec] in degrees, the wanted image centre
-    pixsize = in arcsec, the final image will have this pixels size, so a rescaling might be needed
+    s : scheduler
+    c : cycle name, e.g. "final"
+    mss : lists of MS files
+    parsets : lists of parsets to execute
+    outtab : strings with soltab to output e.g. 'amplitudeSmooth000,phaseOrig000'
+    putback : put back in MS the instrument tables
     """
-    import pyrap.images
-    img = pyrap.images.image(img)
-    c = img.coordinates()
-    # assumes images in a standard casa shape
-    assert c.get_axes()[2] == ['Declination', 'Right Ascension']
-    # assume same increment in image axes
-    assert abs(c.get_increment()[2][0]) == abs(c.get_increment()[2][1])
-    cen_y, cen_x = img.topixel([1,1,c_coord[1]*np.pi/180., c_coord[0]*np.pi/180.])[2:]
-    max_y, max_x = img.shape()[2:]
-    max_dist = max(max(cen_x, max_x - cen_x), max(cen_y, max_y - cen_y))
-    max_dist = max_dist * abs(c.get_increment()[2][0])*180/np.pi*3600 / pixsize
-    if max_dist > 6400: return 6400
-    # multiply distance *2 (so to have the image size) and add 100% to be conservative
-    max_dist = (max_dist*2)*2
-    goodvalues = np.array([6400,6144,5600,5400,5184,5000,4800,4608,4320,4096,3840,3600,3200,3072,2880,2560,2304,2048, 1600, 1536, 1200, 1024, 800, 512, 256, 128])
-    shape = min(goodvalues[np.where(goodvalues>=max_dist)])
-    del img
-    return shape
+
+    logging.info('Running LoSoTo...')
+
+    # prepare globaldbs
+    check_rm('plots-'+c)
+    check_rm(inglobaldb)
+    os.system('mkdir '+inglobaldb)
+    if inglobaldb != outglobaldb: 
+        check_rm(outglobaldb)
+        os.system('mkdir '+outglobaldb)
+
+    for i, ms in enumerate(mss):
+        if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+inglobaldb)
+        if inglobaldb != outglobaldb:
+            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+outglobaldb)
+    
+        tnum = re.findall(r't\d+', ms)[0][1:]
+        sbnum = re.findall(r'SB\d+', ms)[0][2:]
+        os.system('cp -r '+ms+'/'+ininstrument+' '+inglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
+       
+        if inglobaldb != outglobaldb:
+            os.system('cp -r '+ms+'/'+outinstrument+' '+outglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
+    
+    check_rm('plots')
+    os.makedirs('plots')
+    check_rm('cal-'+c+'.h5')
+    
+    s.add('H5parm_importer.py -v cal-'+c+'.h5 globaldb', log='losoto-'+c+'.log', cmd_type='python')
+    s.run(check=True)
+    
+    for parset in parsets:
+        logging.debug('-- executing '+parset+'...')
+        s.add('losoto -v cal-'+c+'.h5 '+parset, log='losoto-'+c+'.log', log_append=True, cmd_type='python', processors='max')
+        s.run(check=True)
+
+    os.system('mv plots plots-'+c)
+    
+    if outtab != '':
+        s.add('H5parm_exporter.py -v -c --soltab '+outtab+' cal-'+c+'.h5 '+outglobaldb, log='losoto-'+c+'.log', log_append=True, cmd_type='python')
+        s.run(check=True)
+
+    if putback:
+        for i, ms in enumerate(mss):
+            tnum = re.findall(r't\d+', ms)[0][1:]
+            sbnum = re.findall(r'SB\d+', ms)[0][2:]
+            check_rm(ms+'/'+outinstrument)
+            os.system('cp -r '+outglobaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/'+outinstrument)
 
 
 class Scheduler():
@@ -133,7 +162,7 @@ class Scheduler():
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 64
-            elif self.cluster == 'Leiden': self.max_threads = 32
+            elif self.cluster == 'Leiden': self.max_threads = 64
             elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
         else:
@@ -141,7 +170,7 @@ class Scheduler():
 
         if max_processors == None:
             if self.cluster == 'Hamburg': self.max_processors = 6
-            elif self.cluster == 'Leiden': self.max_processors = 32
+            elif self.cluster == 'Leiden': self.max_processors = 64
             elif self.cluster == 'CEP3': self.max_processors = 40
             else: self.max_processors = 12
         else:
@@ -296,6 +325,7 @@ class Scheduler():
 
         elif cmd_type == 'NDPPP':
             out = subprocess.check_output('grep -L "Finishing processing" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -l "Exception" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "**** uncaught exception ****" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('NDPPP run problem on:\n'+out)
@@ -318,7 +348,7 @@ class Scheduler():
 
         elif cmd_type == 'python':
             out = subprocess.check_output('grep -l "Traceback (most recent call last):" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-            out = subprocess.check_output('grep -l "[a-z]*Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -l "[a-z]*Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "[a-z]*Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logging.error('Python run problem on:\n'+out)

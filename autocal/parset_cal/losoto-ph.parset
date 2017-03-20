@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, smoothP]
+LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, smoothP, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -52,8 +52,8 @@ LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
 LoSoTo.Steps.ct.CombinePol = True
 LoSoTo.Steps.ct.FlagBadChannels = False
-LoSoTo.Steps.ct.Fit3rdOrder = False
-#LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
+#LoSoTo.Steps.ct.Fit3rdOrder = False
+LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
 LoSoTo.Steps.ct.Circular = False
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
@@ -83,8 +83,8 @@ LoSoTo.Steps.plotTEC3.PlotFlag = False
 # calculate residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
-LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
-#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
+#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
+LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT
@@ -120,8 +120,46 @@ LoSoTo.Steps.plotPr3.Prefix = plots/phRes_
 LoSoTo.Steps.plotPr3.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPr3.MinMax = [-3.14,3.14]
 
+LoSoTo.Steps.flag.Operation = FLAG
+LoSoTo.Steps.flag.Soltab = [sol000/phase000]
+LoSoTo.Steps.flag.Axes = [time]
+LoSoTo.Steps.flag.MaxCycles = 1
+LoSoTo.Steps.flag.MaxRms = 5
+LoSoTo.Steps.flag.Order = [1200]
+LoSoTo.Steps.flag.Replce = False
+LoSoTo.Steps.flag.PreFlagZeros = False
+LoSoTo.Steps.flag.Mode = smooth
+LoSoTo.Steps.flag.Reference = 'CS001LBA'
+
+LoSoTo.Steps.plotPrf2.Operation = PLOT
+LoSoTo.Steps.plotPrf2.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPrf2.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotPrf2.Axes = time
+LoSoTo.Steps.plotPrf2.TableAxis = ant
+LoSoTo.Steps.plotPrf2.ColorAxis = pol
+LoSoTo.Steps.plotPrf2.PlotFlag = True
+LoSoTo.Steps.plotPrf2.Prefix = plots/phResFlag_
+LoSoTo.Steps.plotPrf2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPrf2.MinMax = [-3.14,3.14]
+LoSoTo.Steps.plotPrf2.Columns = 4
+LoSoTo.Steps.plotPrf2.FigSize = [20,20]
+
+LoSoTo.Steps.plotPrf3.Operation = PLOT
+LoSoTo.Steps.plotPrf3.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPrf3.Axes = [time,freq]
+LoSoTo.Steps.plotPrf3.TableAxis = ant
+LoSoTo.Steps.plotPrf3.PlotFlag = True
+LoSoTo.Steps.plotPrf3.Prefix = plots/phResFlag_
+LoSoTo.Steps.plotPrf3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
+
 # supersmooth phase residuals to be transferred
 LoSoTo.Steps.smoothP.Operation = SMOOTH
 LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
 LoSoTo.Steps.smoothP.Axes = [time,freq]
 LoSoTo.Steps.smoothP.Mode = median
+
+# copy flags on amp
+LoSoTo.Steps.merge.Operation = REWEIGHT
+LoSoTo.Steps.merge.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.merge.MergeFromSoltab = sol000/phase000

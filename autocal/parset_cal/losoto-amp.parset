@@ -72,7 +72,7 @@ LoSoTo.Steps.plotAs2.time.minmax = [0,1e20,50000]
 LoSoTo.Steps.plotAs2.TableAxis = ant
 LoSoTo.Steps.plotAs2.ColorAxis = pol
 LoSoTo.Steps.plotAs2.PlotFlag = True
-LoSoTo.Steps.plotAs2.Prefix = plots/ampSmooth2_
+LoSoTo.Steps.plotAs2.Prefix = plots/ampSmooth_
 
 # residual
 LoSoTo.Steps.residualA.Operation = RESIDUALS

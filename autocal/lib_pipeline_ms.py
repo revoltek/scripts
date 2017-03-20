@@ -49,19 +49,30 @@ def merge_parmdb(parmdb_p, parmdb_a, parmdb_out, clobber=False):
 
     # Write values
     pdb_out.flush()
-
+    
 
 def find_nchan(ms):
     """
     Find number of channel in this ms
     """
     import pyrap.tables as tb
-    t = tb.table(ms+'/SPECTRAL_WINDOW', ack=False)
-    nchan = t.getcol('NUM_CHAN')
-    t.close()
+    with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
+        nchan = t.getcol('NUM_CHAN')
     assert (nchan[0] == nchan).all() # all spw have same channels?
     logging.debug('Channel in '+ms+': '+str(nchan[0]))
     return nchan[0]
+
+
+def find_chanband(ms):
+    """
+    Find bandwidth of a channel
+    """
+    import pyrap.tables as tb
+    with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
+        chan_w = t.getcol('CHAN_WIDTH')[0]
+    assert all(x==chan_w[0] for x in chan_w) # all chans have same width
+    logging.debug('Channel width in '+ms+': '+str(chan_w[0]/1e6)+' MHz')
+    return chan_w[0]
 
 
 def find_timeint(ms):
@@ -69,12 +80,10 @@ def find_timeint(ms):
     Get time interval in seconds
     """
     import pyrap.tables as tb
-    t = tb.table(ms, ack=False)
-    Ntimes = len(set(t.getcol('TIME')))
-    t.close()
-    t = tb.table(ms+'/OBSERVATION', ack=False)
-    deltat = (t.getcol('TIME_RANGE')[0][1]-t.getcol('TIME_RANGE')[0][0])/Ntimes
-    t.close()
+    with tb.table(ms, ack=False) as t:
+        Ntimes = len(set(t.getcol('TIME')))
+    with tb.table(ms+'/OBSERVATION', ack=False) as t:
+        deltat = (t.getcol('TIME_RANGE')[0][1]-t.getcol('TIME_RANGE')[0][0])/Ntimes
     logging.debug('Time interval for '+ms+': '+str(deltat))
     return deltat
 
@@ -84,10 +93,11 @@ def get_phase_centre(ms):
     Get the phase centre of the first source (is it a problem?) of an MS
     """
     import pyrap.tables as pt
-    field_table = pt.table(ms + '/FIELD', ack=False)
     field_no = 0
     ant_no = 0
-    direction = field_table.getcol('PHASE_DIR')
-    ra = direction[ ant_no, field_no, 0 ]
-    dec = direction[ ant_no, field_no, 1 ]
+    with pt.table(ms + '/FIELD', ack=False) as field_table:
+        direction = field_table.getcol('PHASE_DIR')
+        ra = direction[ ant_no, field_no, 0 ]
+        dec = direction[ ant_no, field_no, 1 ]
     return (ra*180/np.pi, dec*180/np.pi)
+
