@@ -61,7 +61,7 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
     return mean, err
 
 
-def linear_fit_bootstrap(x, y, yerr=None, niter=10000):
+def linear_fit_bootstrap(x, y, yerr=None, niter=1000):
     # An issue arises with scipy.curve_fit when errors in the y data points
     # are given.  Only the relative errors are used as weights, so the fit
     # parameter errors, determined from the covariance do not depended on the
