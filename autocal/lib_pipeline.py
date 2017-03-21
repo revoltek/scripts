@@ -105,12 +105,13 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
         if inglobaldb != outglobaldb:
             if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+outglobaldb)
     
-        tnum = re.findall(r't\d+', ms)[0][1:]
-        sbnum = re.findall(r'SB\d+', ms)[0][2:]
-        os.system('cp -r '+ms+'/'+ininstrument+' '+inglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
+        #tnum = re.findall(r't\d+', ms)[0][1:]
+        #sbnum = re.findall(r'SB\d+', ms)[0][2:]
+        #os.system('cp -r '+ms+'/'+ininstrument+' '+inglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
+        os.system('cp -r '+ms+'/'+ininstrument+' '+inglobaldb+'/instrument-'+str(i))
        
         if inglobaldb != outglobaldb:
-            os.system('cp -r '+ms+'/'+outinstrument+' '+outglobaldb+'/instrument-'+str(tnum)+'-'+str(sbnum))
+            os.system('cp -r '+ms+'/'+outinstrument+' '+outglobaldb+'/instrument-'+str(i))
     
     check_rm('plots')
     os.makedirs('plots')
@@ -132,10 +133,10 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
 
     if putback:
         for i, ms in enumerate(mss):
-            tnum = re.findall(r't\d+', ms)[0][1:]
-            sbnum = re.findall(r'SB\d+', ms)[0][2:]
+            #tnum = re.findall(r't\d+', ms)[0][1:]
+            #sbnum = re.findall(r'SB\d+', ms)[0][2:]
             check_rm(ms+'/'+outinstrument)
-            os.system('cp -r '+outglobaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/'+outinstrument)
+            os.system('cp -r '+outglobaldb+'/sol000_instrument-'+str(i)+' '+ms+'/'+outinstrument)
 
 
 class Scheduler():
