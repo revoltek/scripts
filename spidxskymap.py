@@ -148,18 +148,18 @@ for image_nvss in images_nvss:
 
     # source finder
     image_rms_nvss = image_nvss.replace('.fits','-rms.fits').replace('NVSS','NVSS/rms',1)
-    image_gaus_nvss = image_nvss.replace('.fits','-gaus.fits').replace('NVSS','NVSS/gaus',1)
+    #image_gaus_nvss = image_nvss.replace('.fits','-gaus.fits').replace('NVSS','NVSS/gaus',1)
     image_isl_nvss = image_nvss.replace('.fits','-isl.fits').replace('NVSS','NVSS/isl',1)
     cat_srl_nvss = image_nvss.replace('.fits','-srl.fits').replace('NVSS','NVSS/catalog',1)
     if not os.path.exists(cat_srl_nvss) or not os.path.exists(image_isl_nvss) or not os.path.exists(image_rms_nvss) or not os.path.exists(image_gaus_nvss):
         c = bdsm.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_nvss, img_type='rms', clobber=True)
-        c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
+        #c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
         c.export_image(outfile=image_isl_nvss, img_type='island_mask', clobber=True)
         c.write_catalog(outfile=cat_srl_nvss, catalog_type='srl', format='fits', clobber=True)
         # clip the gaus images and create island masks
         # we use gaus images because they catch better the extended emission than isl_mask
-        clip_gaus(image_gaus_nvss, image_rms_nvss)
+        #clip_gaus(image_gaus_nvss, image_rms_nvss)
 
     image_rms_tgss = image_tgss.replace('.fits','-rms.fits').replace('TGSS','TGSS/rms',1)
     image_gaus_tgss = image_tgss.replace('.fits','-gaus.fits').replace('TGSS','TGSS/gaus',1)
@@ -168,10 +168,10 @@ for image_nvss in images_nvss:
     if not os.path.exists(cat_srl_tgss) or not os.path.exists(image_isl_tgss) or not os.path.exists(image_rms_tgss) or not os.path.exists(image_gaus_tgss):
         c = bdsm.process_image(image_tgss, frequency=147e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_tgss, img_type='rms', clobber=True)
-        c.export_image(outfile=image_gaus_tgss, img_type='gaus_model', clobber=True)
+        #c.export_image(outfile=image_gaus_tgss, img_type='gaus_model', clobber=True)
         c.export_image(outfile=image_isl_tgss, img_type='island_mask', clobber=True)
         c.write_catalog(outfile=cat_srl_tgss, catalog_type='srl', format='fits', clobber=True)
-        clip_gaus(image_gaus_tgss, image_rms_tgss)
+        #clip_gaus(image_gaus_tgss, image_rms_tgss)
 
     image_mask = wdir+'masks/'+os.path.basename(image_nvss).replace('NVSS_','mask_')
     if not os.path.exists(image_mask):
@@ -392,18 +392,12 @@ for image_nvss in images_nvss:
         print "Number of upper lim: ", idx_u.sum()
         print "Number of lower lim: ", idx_l.sum()
 
-        data_nvss[idx_u] = 3*data_rms_nvss[idx_u] # set val for upper limits
-        data_tgss[idx_l] = 3*data_rms_nvss[idx_l] # set val for lower limits
-
-        #data_spidx_g = np.zeros(shape=data_nvss[idx_g].shape)
-        #data_spidx_g_err = np.zeros(shape=data_nvss[idx_g].shape)
-
         data_spidx_g, data_spidx_g_err = twopoint_spidx_bootstrap([147.,1400.], [data_tgss[idx_g],data_nvss[idx_g]], \
-                    [data_rms_tgss[idx_g],data_rms_nvss[idx_g]], niter=10000)
+                    [data_rms_tgss[idx_g],data_rms_nvss[idx_g]], niter=1000)
         # upper limits
-        data_spidx_u = (data_tgss[idx_u]-data_nvss[idx_u])/np.log10(147./1400.)
+        data_spidx_u = np.log10(data_tgss[idx_u]/(3*data_rms_nvss[idx_u]))/np.log10(147./1400.)
         # lower limits
-        data_spidx_l = (data_tgss[idx_l]-data_nvss[idx_l])/np.log10(147./1400.)
+        data_spidx_l = np.log10((3*data_rms_tgss[idx_l])/data_nvss[idx_l])/np.log10(147./1400.)
 
         # write spidx, spidx+upper/lower limits and spidx error map
         with pyfits.open(image_nvss) as fits_nvss:
