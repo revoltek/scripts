@@ -95,14 +95,14 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
-            -auto-threshold 1 -fitsmask '+maskname+' '+' '.join(mssavg), \
+            -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mssavg), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -144,7 +144,7 @@ def losoto(c, mss, dd, parset, instrument='instrument', putback=True):
 
         for num, ms in enumerate(mss):
             check_rm(ms+'/'+instrument)
-            os.system('mv '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/'+instrument)
+            os.system('cp -r '+globaldb+'/sol000_instrument-'+str(num)+' '+ms+'/'+instrument)
 
     os.system('mv plots peel/'+dd['name']+'/plots/plots-c'+str(c))
     os.system('mv '+h5parm+' peel/'+dd['name']+'/h5')
