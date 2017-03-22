@@ -21,7 +21,7 @@ warnings.filterwarnings("ignore")
 
 # options
 #wdir = '/home/fdg/phd/works/spidxskymap/sw_test/'
-wdir = '/home/fdg/data/spidxskymap/'
+wdir = '/data2/spidxskymap/'
 #area = 10.1978092553 # beam area in pixels - with beam: 45"x45" and pixels size: 15"x15"
 area = 0.0125*0.0125*np.pi/(4*np.log(2.)) # beam area in deg
 
@@ -151,7 +151,7 @@ for image_nvss in images_nvss:
     #image_gaus_nvss = image_nvss.replace('.fits','-gaus.fits').replace('NVSS','NVSS/gaus',1)
     image_isl_nvss = image_nvss.replace('.fits','-isl.fits').replace('NVSS','NVSS/isl',1)
     cat_srl_nvss = image_nvss.replace('.fits','-srl.fits').replace('NVSS','NVSS/catalog',1)
-    if not os.path.exists(cat_srl_nvss) or not os.path.exists(image_isl_nvss) or not os.path.exists(image_rms_nvss) or not os.path.exists(image_gaus_nvss):
+    if not os.path.exists(cat_srl_nvss) or not os.path.exists(image_isl_nvss) or not os.path.exists(image_rms_nvss):# or not os.path.exists(image_gaus_nvss):
         c = bdsm.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_nvss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
@@ -162,10 +162,10 @@ for image_nvss in images_nvss:
         #clip_gaus(image_gaus_nvss, image_rms_nvss)
 
     image_rms_tgss = image_tgss.replace('.fits','-rms.fits').replace('TGSS','TGSS/rms',1)
-    image_gaus_tgss = image_tgss.replace('.fits','-gaus.fits').replace('TGSS','TGSS/gaus',1)
+    #image_gaus_tgss = image_tgss.replace('.fits','-gaus.fits').replace('TGSS','TGSS/gaus',1)
     image_isl_tgss = image_tgss.replace('.fits','-isl.fits').replace('TGSS','TGSS/isl',1)
     cat_srl_tgss = image_tgss.replace('.fits','-srl.fits').replace('TGSS','TGSS/catalog',1)
-    if not os.path.exists(cat_srl_tgss) or not os.path.exists(image_isl_tgss) or not os.path.exists(image_rms_tgss) or not os.path.exists(image_gaus_tgss):
+    if not os.path.exists(cat_srl_tgss) or not os.path.exists(image_isl_tgss) or not os.path.exists(image_rms_tgss):# or not os.path.exists(image_gaus_tgss):
         c = bdsm.process_image(image_tgss, frequency=147e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_tgss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_tgss, img_type='gaus_model', clobber=True)
