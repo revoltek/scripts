@@ -21,7 +21,7 @@ if 'LBAsurvey' in os.getcwd():
     logging.info('Copy: dsk:/disks/paradata/fdg/LBAsurvey/%s -> .' % globaldb)
     os.system('scp dsk:/disks/paradata/fdg/LBAsurvey/%s .' % globaldb) # TODO: move only _tXXX files
 else:
-    ngroups = 1
+    ngroups = 2
     globaldb = '../cals/globaldb-clock'
     datadir = '../tgts-bkp/' 
 
