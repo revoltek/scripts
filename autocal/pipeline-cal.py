@@ -11,19 +11,19 @@ skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 
 if 'tooth' in os.getcwd(): # tooth 2013
     datadir = '../cals-bkp/'
-    bl2flag = 'CS031LBA\;RS409LBA'
+    bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
-    bl2flag = 'CS013LBA\;CS031LBA'
+    bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
 elif 'c07' in os.getcwd(): # daytest
     datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
-    bl2flag = 'CS031LBA'
-    #bl2flag += '\;RS310LBA\;RS210LBA\;RS407LBA' # only o00
+    bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA'
+    #bl2flag += '\;RS407LBA' # only o00
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
     #bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA'
-    bl2flag = 'CS031LBA'
+    bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA'
 
 ########################################################
 set_logger('pipeline-cal.logging')
@@ -192,10 +192,10 @@ for ms in mss:
 s.run(check=True)
 
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-logging.info('Converting to circular...')
-for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Converting to circular...')
+#for ms in mss:
+#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#s.run(check=True)
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logging.info('BL-smooth...')
