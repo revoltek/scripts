@@ -90,7 +90,7 @@ for ms in mss:
     tnum = re.findall(r't\d+', ms)[0][1:]
     sbnum = re.findall(r'SB\d+', ms)[0][2:]
     check_rm(ms+'/instrument')
-    logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
+    #logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
     os.system('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
 
 # Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
@@ -179,6 +179,6 @@ else:
         groupname = 'mss-%02i' % group
         check_rm(groupname)
         os.makedirs(groupname)
-        os.system('mv mss_t*_%02i/*MS %s' % (group, groupname))
+        os.system('mv mss_t*-%02i/*MS %s' % (group, groupname))
 
 logging.info("Done.")

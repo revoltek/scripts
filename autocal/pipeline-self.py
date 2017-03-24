@@ -13,7 +13,8 @@
 
 import sys, os, glob, re
 import numpy as np
-import pyrap.tables as pt
+import lofar.bdsm # import it befose casacore, bugfix
+import casacore.tables as pt
 from autocal.lib_pipeline import *
 from make_mask import make_mask
 
