@@ -102,7 +102,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -277,10 +277,10 @@ def peel(dd):
 
     # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
     # NOTE: if new flags are added, BLsmooth should be re-run
-#    logging.info('BL-based smoothing...')
-#    for ms in peelmss:
-#        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#    s.run(check=True)
+    logging.info('BL-based smoothing...')
+    for ms in peelmss:
+        s.add('BLsmooth.py -f 1 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+    s.run(check=True)
 
     ###################################################################################################################
     # self-cal cycle
@@ -307,19 +307,19 @@ def peel(dd):
         logging.info('Solving TEC (solint=%i)...' % solint)
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec sol.solint='+str(solint), \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA sol.parmdb='+ms+'/instrument-tec sol.solint='+str(solint), \
                 log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         
         losoto(str(c)+'-tec', peelmss, dd, parset_dir+'/losoto-tec.parset', instrument='instrument-tec', putback=False)
 
         # correct on smoothed data only when solve also amp - mss_peel/TC*.MS:DATA/DATA -> mss_peel/TC*.MS:CORRECTED_DATA
-        #if c > 0 and dd['Total_flux'] > 3: incol = 'DATA' # <- smoothed TODO:Remove if
-        #else: incol = 'DATA'
+        if c > 0 and dd['Total_flux'] > 3: incol = 'SMOOTHED_DATA' # <- smoothed
+        else: incol = 'DATA'
 
         logging.info('Correcting TEC...')
         for ms in peelmss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn='+incol+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -510,7 +510,7 @@ if not os.path.exists('regions/DIEcatalog.fits'):
     bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
 
 ddset = make_directions_from_skymodel('regions/DIEcatalog.fits', outdir='regions', flux_min_Jy=1.0, size_max_arcmin=3.0,
-        directions_separation_max_arcmin=5.0, directions_max_num=10, flux_min_for_merging_Jy=0.2)
+        directions_separation_max_arcmin=5.0, directions_max_num=20, flux_min_for_merging_Jy=0.2)
 
 logging.info('Voronoi tassellation...')
 make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
