@@ -241,7 +241,7 @@ for c in xrange(niter):
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
-    logging.info('Cleaning (cycle: '+str(c)+')...')
+    logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
