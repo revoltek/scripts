@@ -130,6 +130,12 @@ for c in xrange(niter):
     # Cross-delay + Faraday rotation correction
     if c >= 1:
 
+        # To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
+        logging.info('Convert to circular...')
+        for ms in mss:
+            s.add('/home/fdg/scripts/mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
+ 
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logging.info('BL-based smoothing...')
         for ms in mss:
@@ -152,13 +158,13 @@ for c in xrange(niter):
         # To linear - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (linear)
         logging.info('Convert to linear...')
         for ms in mss:
-            s.add('/home/fdg/scripts/mslin2circ.py -s -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+            s.add('/home/fdg/scripts/mslin2circ.py -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
         
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logging.info('Faraday rotation correction...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corFR.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr', log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
@@ -188,19 +194,19 @@ for c in xrange(niter):
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logging.info('Cross-delay correction...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corCD.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logging.info('Slow amp correction...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corG.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
  
-        # To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
-        logging.info('Convert to circular...')
-        for ms in mss:
-            s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        ## To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
+        #logging.info('Convert to circular...')
+        #for ms in mss:
+        #    s.add('/home/fdg/scripts/mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+        #s.run(check=True)
 
    ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
