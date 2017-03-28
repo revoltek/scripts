@@ -177,7 +177,7 @@ for c in xrange(niter):
         logging.info('Solving G...')
         for ms in mss:
             check_rm(ms+'/instrument-g')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=10 sol.nchan=8', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=30 sol.nchan=8', \
                     log=ms+'_sol-g2-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -186,10 +186,10 @@ for c in xrange(niter):
         os.system('mv plots-cd self/solutions/')
         os.system('mv cal-cd.h5 self/solutions/')
 
-        run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
-            outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
-        os.system('mv plots-amp self/solutions/')
-        os.system('mv cal-amp.h5 self/solutions/')
+        #run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+        #    outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
+        #os.system('mv plots-amp self/solutions/')
+        #os.system('mv cal-amp.h5 self/solutions/')
 
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logging.info('Cross-delay correction...')
@@ -197,10 +197,10 @@ for c in xrange(niter):
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
-        logging.info('Slow amp correction...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
+        #logging.info('Slow amp correction...')
+        #for ms in mss:
+        #    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        #s.run(check=True)
  
         ## To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
         #logging.info('Convert to circular...')

@@ -96,10 +96,10 @@ s.run(check=True)
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
 logging.info('Creating fake parmdb...')
-for ms in mss:
-    if os.path.exists(ms+'/instrument-clock'): continue
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-s.run(check=True)
+#for ms in mss:
+#    if os.path.exists(ms+'/instrument-clock'): continue
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+#s.run(check=True)
 for ms in mss:
     if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
@@ -210,16 +210,16 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
 s.run(check=True)
 
+run_losoto('final', mss, [parset_dir+'losoto-flag.parset',parset_dir+'losoto-amp.parset',parset_dir+'losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
 # TODO: add smooth clock
-#run_losoto('final', mss, [parset_dir+'losoto-flag.parset',parset_dir+'losoto-amp.parset',parset_dir+'losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-#    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
-run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
-    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+#run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+#    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 if 'LBAsurvey' in os.getcwd():
-    check_rm('globaldb-clock/instrument*') # keep only filled instrument tables
-    newglobaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
-    logging.info('Copy: globaldb-clock -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
-    os.system('scp -r globaldb-clock dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
+    check_rm('globaldb/instrument*') # keep only filled instrument tables
+    newglobaldb = 'globaldb_'+os.getcwd().split('/')[-2]
+    logging.info('Copy: globaldb -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
+    os.system('scp -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 logging.info("Done.")
