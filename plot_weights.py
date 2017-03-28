@@ -2,15 +2,16 @@
 # usage: plot_weights.py xxx.MS
 
 import os, sys
-#sys.path = ['/home/dijkema/opt/python-casacore/lib/python2.7/site-packages/']
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+#sys.path = ['/home/dijkema/opt/python-casacore/lib/python2.7/site-packages/']
 from casacore.tables import taql
 
 ms = sys.argv[1]
 
 print "selecting on chan"
+#t=taql('select ANTENNA, gmeans(DATA) as DATA, gmeans(WEIGHT_SPECTRUM) as WEIGHT from [[ SELECT ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM from '+ms+'], [SELECT ANTENNA2 AS ANTENNA, DATA, WEIGHT_SPECTRUM from '+ms+']] group by ANTENNA')
 t=taql('select ANTENNA, gmeans(DATA[FLAG]) as DATA, gmeans(WEIGHT_SPECTRUM[FLAG]) as WEIGHT from [[ SELECT ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG from '+ms+'], [SELECT ANTENNA2 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG from '+ms+']] group by ANTENNA')
 #weights = np.average(np.average(t.getcol('WEIGHT'),axis=0),axis=1)
 weights = t.getcol('WEIGHT')[:,:,0]

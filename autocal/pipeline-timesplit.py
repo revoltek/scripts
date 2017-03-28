@@ -17,12 +17,12 @@ initc = 0 # initial tc num (useful for multiple observation of same target) - to
 if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-    globaldb = 'globaldb-clock_'+os.getcwd().split('/')[-2]
+    globaldb = 'globaldb_'+os.getcwd().split('/')[-2]
     logging.info('Copy: dsk:/disks/paradata/fdg/LBAsurvey/%s -> .' % globaldb)
     os.system('scp dsk:/disks/paradata/fdg/LBAsurvey/%s .' % globaldb) # TODO: move only _tXXX files
 else:
     ngroups = 2
-    globaldb = '../cals/globaldb-clock'
+    globaldb = '../cals/globaldb'
     datadir = '../tgts-bkp/' 
 
 ##################################################################################################
@@ -180,5 +180,6 @@ else:
         check_rm(groupname)
         os.makedirs(groupname)
         os.system('mv mss_t*-%02i/*MS %s' % (group, groupname))
+    check_rm('mss_t*')
 
 logging.info("Done.")
