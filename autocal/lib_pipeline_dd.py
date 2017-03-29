@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, itertools
 import logging
 import numpy as np
 import matplotlib
@@ -9,17 +9,20 @@ from astropy.io import fits as pyfits
 from astropy import wcs
 import astropy.units as u
 import pyregion
+from lofar import bdsm
 from pyregion.parser_helper import Shape
 from autocal.lib_pipeline_img import *
+from autocal.lib_pipeline import *
 try:
     from scipy.spatial import Voronoi
 except:
     logging.error("Load latest scipy with 'use Pythonlibs'")
     sys.exit(1)
 
-def table_to_circ_region(table, outfile, racol='RA', deccol='DEC', sizecol='dd_size', color='red', label=True):
+def table_to_circ_region(table, outfile, racol='RA', deccol='DEC', sizecol='size', color='red', label=True):
     """
     Get a table with ra, dec, size and generate a circular ds9 region 
+    if cat is given, add a small circle around all sources on the edge
     """
 
     regions = []
@@ -35,6 +38,7 @@ def table_to_circ_region(table, outfile, racol='RA', deccol='DEC', sizecol='dd_s
         regions.append(s)
 
     regions = pyregion.ShapeList(regions)
+    check_rm(outfile)
     regions.write(outfile)
 
 
@@ -153,13 +157,242 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
 
     # save source by source (size is converted in a radius, this is conservative)
     for i, s in enumerate(t):
-        table_to_circ_region(t[i:i+1], outdir+'/ddcal%02i.reg' % i)
+        table_to_circ_region(t[i:i+1], outdir+'/ddcal%02i.reg' % i )
 
     t['name'] = ['ddcal%02i' % i for i in xrange(len(t))]
 
     t.remove_column('Comb_flux')
     return t
 
+
+def make_directions(imagename, outdir='regions/', target_flux_jy=10, bright_source_jy=5., size_max_arcmin=3., trials=None):
+    """
+    fitsfile = selfcal model, used for coordinates
+    outdir = Directory where to save the ds9 regions
+    target_flux_jy = target flux per facet, Jy
+    bright_source_jy = these sources are centered on their facet
+    size_max_arcmin = Maximum size for a source to be considered, arcmin
+    trials = number of sources to use as possible region center, if None, use all
+    """
+
+    # Run pybdsm
+    logging.info('Finding directions...')
+    if not os.path.exists('regions/DIEcatalog.fits'):
+        bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
+            thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
+            adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
+            quiet=True)
+        check_rm('regions')
+        os.makedirs('regions')
+        bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
+
+    t = Table.read('regions/DIEcatalog.fits', format='fits')['RA','DEC','Maj','Peak_flux','Total_flux'] # restrict to some cols
+    t.rename_column('Maj', 'size') # use Maj as proxy for region size
+    # exclude sources that are too extended
+    t = t[ (t['size'] < size_max_arcmin*u.arcmin) ]
+    t['size'] *= 3 # enlarge all sizes
+    logging.info('# sources after cut on size: %i' % len(t))
+    total_flux = np.sum(t['Total_flux'])
+    logging.info('# sources initial: %i -- total flux = %.2f Jy' % (len(t),total_flux) )
+    if trials is None: trials = len(t)
+
+    t.sort('Peak_flux')
+    t.reverse()
+
+    # make ddcal table 
+    ddcal = Table()
+    ddcal['RA'] = np.zeros(trials)
+    ddcal['DEC'] = np.zeros(trials)
+    ddcal['dd_size'] = np.zeros(trials)
+    ddcal['facet_size'] = np.zeros(trials)
+    ddcal['Peak_flux'] = np.zeros(trials)
+    ddcal['Total_flux'] = np.zeros(trials)
+    ddcal['RA'].unit = u.degree
+    ddcal['DEC'].unit = u.degree
+    ddcal['dd_size'].unit = u.degree
+    ddcal['facet_size'].unit = u.degree
+    ddcal['Total_flux'].unit = u.Jy
+    ddcal['Peak_flux'].unit = 'Jy/beam'
+
+    # find ddcal as regions of enough flux around bright sources
+    idx_sources = []
+    for idx_ddcal, dd in enumerate(ddcal):
+        #print "### source number %i" % idx_ddcal
+        #idx_ddcal = [i for i in xrange(len(t)) if not (i in idx_good_cals or i in idx_bad_cals)][0] # first usable source
+        s = t[idx_ddcal] # use this source as a center for new ddcal region
+        dd['RA'] = s['RA']
+        dd['DEC'] = s['DEC']
+        dd['dd_size'] = s['size']
+        dd['Total_flux'] = 0.
+        dd['Peak_flux'] = 0.
+        dists = SkyCoord(ra=dd['RA']*u.degree, dec=dd['DEC']*u.degree).separation(SkyCoord(ra=t['RA'], dec=t['DEC'])).degree
+        idx_closests = [idx for (dist,idx) in sorted(zip(dists,xrange(len(dists))))] # idx list from closest to farthest
+        idx_sources.append([])
+        for idx_closest in idx_closests:
+
+            # first cycle matches at distance=0 the calibrator
+            s = t[idx_closest]
+            dd['Total_flux'] += s['Total_flux']
+            dd['Peak_flux'] = max(dd['Peak_flux'], s['Peak_flux'])
+
+            idx_sources[idx_ddcal].append(idx_closest) # keep track of all sources in this region
+            if dd['Total_flux'] > target_flux_jy: break
+
+        if len(idx_sources[idx_ddcal]) > 1:
+            dd['dd_size'] = max(SkyCoord(ra=dd['RA']*u.degree, dec=dd['DEC']*u.degree).separation(SkyCoord(ra=t[idx_sources[idx_ddcal]]['RA'], dec=t[idx_sources[idx_ddcal]]['DEC'])).degree)
+
+    # some cleaning up:
+    # remove large regions
+    toremove = np.where(ddcal['dd_size'] > .8)[0]
+    ddcal.remove_rows(toremove)
+    for r in sorted(toremove, reverse=True):
+        del idx_sources[r]
+    logging.info('Number of ddcal after size cut: %i' % len(ddcal))
+
+    # for bright sources keep only centered regions
+    idx_brights = np.where(t['Total_flux'] > bright_source_jy)[0]
+    toremove = []
+    for i in xrange(len(idx_sources)):
+        for idx_bright in idx_brights:
+            if idx_bright in idx_sources[i][1:]:
+                toremove.append(i)
+    ddcal.remove_rows(toremove)
+    for r in sorted(toremove, reverse=True):
+        del idx_sources[r]
+    logging.info('Number of ddcal after bright cal cut: %i' % len(ddcal))
+
+    # sort in size
+    idx_sources = [idx for (size,idx) in sorted(zip(ddcal['dd_size'],idx_sources))]
+    ddcal.sort('dd_size')
+        
+    # finally retain only independent regions
+    toremove = []
+    for i, dd in enumerate(ddcal):
+        for j, dd2 in enumerate(ddcal[:i]):
+            if j in toremove: continue
+            n_match = len([s for s in idx_sources[i] if s in idx_sources[j]])
+            if n_match > 0.25*len(idx_sources[i]):
+                toremove.append(i)
+                break
+    ddcal.remove_rows(toremove)
+    for r in sorted(toremove, reverse=True):
+        del idx_sources[r]
+    logging.info('Number of ddcal after cut on overlaps: %i' % len(ddcal))
+
+    ddcal['name'] = ['ddcal%02i' % i for i in xrange(len(ddcal))]
+
+    # save ddcal regions
+    for i, s in enumerate(ddcal):
+        table_to_circ_region(t[idx_sources[i]], outdir+'/ddcal%02i.reg' % i, color='green')
+    # save all regions in one file for inspection
+    table_to_circ_region(ddcal, outdir+'/all.reg', sizecol='dd_size')
+    return ddcal
+
+def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
+    """
+    t : table with directions
+    firsfile : model fits file to tassellate
+    outdir : dir where to save regions
+    beam_reg : a ds9 region showing the the primary beam
+    """
+
+    logging.debug("Image used for tasselation reference: "+fitsfile)
+    fits = pyfits.open(fitsfile)
+    hdr, data = flatten(fits)
+    w = wcs.WCS(hdr)
+    pixsize = np.abs(hdr['CDELT1'])
+
+    # Add facet size column
+    t['facet_size'] = np.zeros(len(t))
+    t['facet_size'].unit = u.degree
+    t['x'], t['y'] = w.all_world2pix(t['RA'],t['DEC'], 0, ra_dec_order=True)
+
+    x_c = data.shape[0]/2.
+    y_c = data.shape[1]/2.
+
+    if beam_reg == '':
+        # no beam, use all directions for facets
+        idx_for_facet = range(len(t))
+    else:
+        r = pyregion.open(beam_reg)
+        beam_mask = r.get_mask(header=hdr, shape=data.shape)
+        beamradius_pix = r[0].coord_list[2]/pixsize
+        idx_for_facet = []
+        for i, dd in enumerate(t):
+            if beam_mask[t['x'][i],t['y'][i]] == True:
+                idx_for_facet.append(i)
+
+    # convert to pixel space (voronoi must be in eucledian space)
+    x1 = 0
+    y1 = 0
+    x2 = data.shape[0]
+    y2 = data.shape[1]
+
+    # do tasselization
+    vor = Voronoi(np.array((t['x'][idx_for_facet], t['y'][idx_for_facet])).transpose())
+    box = np.array([[x1,y1],[x2,y2]])
+    impoly = voronoi_finite_polygons_2d_box(vor, box)
+
+    # save regions
+    for i, poly in enumerate(impoly):
+        ra, dec = w.all_pix2world(poly[:,0],poly[:,1], 0, ra_dec_order=True)
+        coords = np.array([ra,dec]).T.flatten()
+
+        s = Shape('Polygon', None)
+        s.coord_format = 'fk5'
+        s.coord_list = coords # ra, dec, radius
+        s.coord_format = 'fk5'
+        s.attr = ([], {'width': '2', 'point': 'cross',
+                       'font': '"helvetica 16 normal roman"'})
+        s.comment = 'color=red'
+
+        regions = pyregion.ShapeList([s])
+        regionfile = outdir+t['name'][idx_for_facet[i]]+'-facet.reg'
+        regions.write(regionfile)
+
+        if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
+        else: npix = size_from_reg(fitsfile, [regionfile], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
+
+        t['facet_size'][idx_for_facet[i]] = pixsize * npix
+        #print t['facet_size'][idx_for_facet[i]]
+        #print '###'
+
+    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(t) - len(idx_for_facet)))
+
+    # plot tasselization
+    import matplotlib.pyplot as pl
+    pl.figure(figsize=(8,8))
+    ax1 = pl.gca()
+    ax1.plot(t['x'],t['y'],'*',color='red')
+    for i, d in enumerate(t): ax1.text(d['x'], d['y'], str(i), fontsize=15)
+    if beam_reg != '':
+        c1 = pl.Circle((x_c, y_c), beamradius_pix, color='g', fill=False)
+        ax1.add_artist(c1)
+    ax1.plot([x1,x1,x2,x2,x1],[y1,y2,y2,y1,y1])
+    for p in impoly:
+        pp = p.transpose()
+        ax1.plot(pp[0],pp[1])
+    ax1.set_xlabel('RA (pixel)')
+    ax1.set_ylabel('Dec (pixel)')
+    logging.debug('Save plot: voronoi_facets.png')
+    pl.savefig('voronoi_facets.png')
+
+    t.remove_columns(['x','y'])
+
+    return t
+
+
+def make_beam_reg(ra_c, dec_c, pb_cut, outfile):
+    """
+    Create a ds9 region of the beam
+    """
+    logging.debug('Making PB region: '+outfile)
+    t = Table()
+    t['RA'] = [ra_c]
+    t['DEC'] = [dec_c]
+    t['size'] = [pb_cut/2.]
+    table_to_circ_region(t, outfile, racol='RA', deccol='DEC', sizecol='size', color='blue', label=False)
+   
 
 def voronoi_finite_polygons_2d_box(vor, box):
     """
@@ -269,225 +502,6 @@ def voronoi_finite_polygons_2d_box(vor, box):
     return np.asarray(newpoly)
 
 
-def make_facets(imagename, beam_reg='', outdir='regions/', target_flux_jy=20, min_flux_brightcal_jy=7, size_max_arcmin=3.0, directions_separation_max_arcmin=3.0):
-    """
-    fitsfile = selfcal model, used for coordinates
-    target_flux_jy = target flux per facet, Jy
-    min_flux_brightcal = minimum flux for a calibrator to be considered bright, Jy
-    """
-
-    from autocal._tessellate import *
-
-    # Run pybdsm
-    logging.info('Finding directions...')
-    if not os.path.exists('regions/DIEcatalog.fits'):
-        bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
-            thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
-            adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
-            quiet=True)
-        check_rm('regions')
-        os.makedirs('regions')
-        bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
-
-    t = Table.read(filename, format='fits')['RA','DEC','Maj','Peak_flux','Total_flux'] # restrict to some cols
-    t.rename_column('Maj', 'dd_size') # use Maj as proxy for region size
-    total_flux = np.sum(t['Total_flux'])
-    logging.info('# sources initial: %i -- total flux = %.2f Jy' % (len(t),total_flux) )
-
-    # Merge nearby sources
-    for s in t:
-        # if ra/dec changes, continue finding nearby sources until no-sources are found
-        updated = True
-        while updated:
-            dists = SkyCoord(ra=s['RA']*u.degree, dec=s['DEC']*u.degree).separation(SkyCoord(ra=t['RA'], dec=t['DEC']))
-            updated = False
-            for i, dist in enumerate(dists):
-                if dist < directions_separation_max_arcmin*u.arcmin and dist != 0.*u.degree:
-                    updated = True
-                    # weighted mean
-                    s['RA'] = (s['RA']*s['Peak_flux'] + t['RA'][i]*t['Peak_flux'][i])/(s['Peak_flux']+t['Peak_flux'][i])
-                    s['DEC'] = (s['DEC']*s['Peak_flux'] + t['DEC'][i]*t['Peak_flux'][i])/(s['Peak_flux']+t['Peak_flux'][i])
-                    s['dd_size'] = max(s['dd_size'], t['dd_size'][i]) + dist.degree
-                    s['Total_flux'] += t['Total_flux'][i]
-                    s['Peak_flux'] = max(s['Peak_flux'], t['Peak_flux'][i])
-                    t.remove_rows(i)
-    logging.info('# sources after combining close-by sources: %i' % len(t))
-
-    # Restrict to sources above 0.1 Jy
-    t = t[np.where(t['Total_flux']>0.1)]
-
-    # Find bright sources in catalogue
-    idx_bright = np.where( t['Peak_flux'] > min_flux_brightcal_jy )
-    logging.info('Bright calibrators (Jy):')
-    print t['Total_flux'][idx_bright]
-
-    # Voronoi
-    with pyfits.open(imagename) as fits:
-        hdr, data = flatten(fits)
-    w = wcs.WCS(hdr)
-    pixsize = np.abs(hdr['CDELT1'])
-
-    # keep only source inside beam
-    if beam_reg != '':
-        r = pyregion.open(beam_reg)
-        beam_mask = r.get_mask(header=hdr, shape=data.shape)
-        beamradius_pix = r[0].coord_list[2]/pixsize
-        idx_toremove = []
-        for i, dd in enumerate(t):
-            if beam_mask[t['x'][i],t['y'][i]] == False:
-                idx_toremove.append(i)
-        t.remove_rows(idx_toremove)
-
-    t['x'], t['y'] = w.all_world2pix(t['RA'],t['DEC'], 0, ra_dec_order=True)
-    vor = Voronoi(np.array((t['x'], t['y'])).transpose())
-    x1 = 0
-    y1 = 0
-    x2 = data.shape[0]
-    y2 = data.shape[1]
-    box = np.array([[x1,y1],[x2,y2]])
-    impoly = voronoi_finite_polygons_2d_box(vor, box)
-
-    # TODO: grow regions around bright sources up to 0.5deg, exclude bright sources and for them create a small, separate patch
-
-    # cluster sources
-    vobin = bin2D(t['x'], t['y'], t['Total_flux'], target_flux=target_flux_jy)
-    vobin.bin_voronoi()
-    vobin.show_voronoibin()
-    v_x, v_y, v_total_flux = vobin.bin_data()
-    logging.info('Facet fluxes:')
-    print v_total_flux
-
-    # save regions
-    vor = Voronoi((v_x, v_y)).transpose()
-    impoly = voronoi_finite_polygons_2d_box(vor, box)
-    # save regions
-    for i, poly in enumerate(impoly):
-        ra, dec = w.all_pix2world(poly[:,0],poly[:,1], 0, ra_dec_order=True)
-        coords = np.array([ra,dec]).T.flatten()
-
-        s = Shape('Polygon', None)
-        s.coord_format = 'fk5'
-        s.coord_list = coords # ra, dec, radius
-        s.coord_format = 'fk5'
-        s.attr = ([], {'width': '2', 'point': 'cross',
-                       'font': '"helvetica 16 normal roman"'})
-        s.comment = 'color=red'
-
-        regions = pyregion.ShapeList([s])
-        regionfile = '%s/ddcal%02i.reg' % (outdir, i)
-        regions.write(regionfile)
-
-        if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
-        else: npix = size_from_reg(fitsfile, [regionfile], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
-
- 
-
-    # TODO: exclude regions on border Example: -circle(100,100,20) when they are on a known source
-
-def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
-    """
-    t : table with directions
-    firsfile : model fits file to tassellate
-    outdir : dir where to save regions
-    beam_reg : a ds9 region showing the the primary beam
-    """
-
-    logging.debug("Image used for tasselation reference: "+fitsfile)
-    fits = pyfits.open(fitsfile)
-    hdr, data = flatten(fits)
-    w = wcs.WCS(hdr)
-    pixsize = np.abs(hdr['CDELT1'])
-
-    # Add facet size column
-    t['facet_size'] = np.zeros(len(t))
-    t['facet_size'].unit = u.degree
-    t['x'], t['y'] = w.all_world2pix(t['RA'],t['DEC'], 0, ra_dec_order=True)
-
-    x_c = data.shape[0]/2.
-    y_c = data.shape[1]/2.
-
-    if beam_reg == '':
-        # no beam, use all directions for facets
-        idx_for_facet = range(len(t))
-    else:
-        r = pyregion.open(beam_reg)
-        beam_mask = r.get_mask(header=hdr, shape=data.shape)
-        beamradius_pix = r[0].coord_list[2]/pixsize
-        idx_for_facet = []
-        for i, dd in enumerate(t):
-            if beam_mask[t['x'][i],t['y'][i]] == True:
-                idx_for_facet.append(i)
-
-    # convert to pixel space (voronoi must be in eucledian space)
-    x1 = 0
-    y1 = 0
-    x2 = data.shape[0]
-    y2 = data.shape[1]
-
-    # do tasselization
-    vor = Voronoi(np.array((t['x'][idx_for_facet], t['y'][idx_for_facet])).transpose())
-    box = np.array([[x1,y1],[x2,y2]])
-    impoly = voronoi_finite_polygons_2d_box(vor, box)
-
-    # save regions
-    for i, poly in enumerate(impoly):
-        ra, dec = w.all_pix2world(poly[:,0],poly[:,1], 0, ra_dec_order=True)
-        coords = np.array([ra,dec]).T.flatten()
-
-        s = Shape('Polygon', None)
-        s.coord_format = 'fk5'
-        s.coord_list = coords # ra, dec, radius
-        s.coord_format = 'fk5'
-        s.attr = ([], {'width': '2', 'point': 'cross',
-                       'font': '"helvetica 16 normal roman"'})
-        s.comment = 'color=red'
-
-        regions = pyregion.ShapeList([s])
-        regionfile = outdir+t['name'][idx_for_facet[i]]+'-facet.reg'
-        regions.write(regionfile)
-
-        if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
-        else: npix = size_from_reg(fitsfile, [regionfile], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
-
-        t['facet_size'][idx_for_facet[i]] = pixsize * npix
-        #print t['facet_size'][idx_for_facet[i]]
-        #print '###'
-
-    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(t) - len(idx_for_facet)))
-
-    # plot tasselization
-    import matplotlib.pyplot as pl
-    pl.figure(figsize=(8,8))
-    ax1 = pl.gca()
-    ax1.plot(t['x'],t['y'],'*',color='red')
-    for i, d in enumerate(t): ax1.text(d['x'], d['y'], str(i), fontsize=15)
-    if beam_reg != '':
-        c1 = pl.Circle((x_c, y_c), beamradius_pix, color='g', fill=False)
-        ax1.add_artist(c1)
-    ax1.plot([x1,x1,x2,x2,x1],[y1,y2,y2,y1,y1])
-    for p in impoly:
-        pp = p.transpose()
-        ax1.plot(pp[0],pp[1])
-    ax1.set_xlabel('RA (pixel)')
-    ax1.set_ylabel('Dec (pixel)')
-    logging.debug('Save plot: voronoi_facets.png')
-    pl.savefig('voronoi_facets.png')
-
-    t.remove_columns(['x','y'])
-
-    return t
-
-
-def make_beam_reg(ra_c, dec_c, pb_cut, outfile):
-    """
-    Create a ds9 region of the beam
-    """
-    logging.debug('Making PB region: '+outfile)
-    t = Table()
-    t['RA'] = [ra_c]
-    t['DEC'] = [dec_c]
-    t['size'] = [pb_cut/2.]
-    table_to_circ_region(t, outfile, racol='RA', deccol='DEC', sizecol='size', color='blue', label=False)
 
 
 #def patch_skymodel_from_ref(skymodel, fitsfile, regionfiles=[]):
