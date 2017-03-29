@@ -22,7 +22,7 @@ from autocal.lib_pipeline import *
 from autocal.lib_pipeline_dd import *
 from autocal.lib_pipeline_img import *
 from make_mask import make_mask
-from lofar import bdsm
+#from lofar import bdsm
 import pyrap.tables as pt
 
 set_logger('pipeline-peel.logging')
@@ -499,17 +499,19 @@ s.run(check=True)
 # Run pyBDSM to create a model used to find good DD-calibrator and tassellate the sky
 logging.info('Finding directions...')
 imagename = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
-if not os.path.exists('regions/DIEcatalog.fits'):
-    bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
-        thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
-        adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
-        quiet=True)
-    check_rm('regions')
-    os.makedirs('regions')
-    bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
+#if not os.path.exists('regions/DIEcatalog.fits'):
+#    bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
+#        thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
+#        adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
+#        quiet=True)
+#    check_rm('regions')
+#    os.makedirs('regions')
+#    bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
+#
+#ddset = make_directions_from_skymodel('regions/DIEcatalog.fits', outdir='regions', flux_min_Jy=1.0, size_max_arcmin=3.0,
+#        directions_separation_max_arcmin=5.0, directions_max_num=20, flux_min_for_merging_Jy=0.2)
 
-ddset = make_directions_from_skymodel('regions/DIEcatalog.fits', outdir='regions', flux_min_Jy=1.0, size_max_arcmin=3.0,
-        directions_separation_max_arcmin=5.0, directions_max_num=20, flux_min_for_merging_Jy=0.2)
+ddset = make_directions(imagename, outdir='regions/', target_flux_jy=10, bright_source_jy=5., size_max_arcmin=3., trials=None)
 
 logging.info('Voronoi tassellation...')
 make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')

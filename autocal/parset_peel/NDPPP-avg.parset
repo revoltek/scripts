@@ -3,7 +3,7 @@ msin.datacolumn = CORRECTED_DATA
 msout = 
 msout.datacolumn = DATA
 msout.writefullresflag = False
-msout.storagemanager = dysco
+#msout.storagemanager = dysco
 
 numthreads = 1 # bug fix
 
