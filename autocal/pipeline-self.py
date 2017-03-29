@@ -23,13 +23,15 @@ skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 2
 
 if 'tooth' in os.getcwd():
-    # for this model remove beam in parset_self/NDPPP-predict.parset
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
+    apparent = True # no beam correction
 elif 'bootes' in os.getcwd():
     sourcedb = '/home/fdg/scripts/model/Bootes_HBA.corr.skydb'
+    apparent = False
 else:
     # Survey
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+    apparent = False
 
 #######################################################################################
 
@@ -72,7 +74,10 @@ for ms in mss:
     os.system('cp -r '+sourcedb+' '+ms)
 logging.info('Add model to MODEL_DATA...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+    if apparent:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+    else:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=true pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
 s.run(check=True)
 
 ###################################################################################
