@@ -102,7 +102,7 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 6)
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -199,7 +199,7 @@ def peel(dd):
             outfile = modeldir+'/'+os.path.basename(model).replace('coadd','large_peel_facet')
             blank_image_reg(model, ['regions/'+dd['name']+'-facet.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
 
-    # TEST: use entire facet - do it after facet model creation
+    # NOTE TEST: use entire facet - do it after facet model creation
     if dd['Total_flux']<5 and dd['facet_size']!=0:
         dd['dd_size'] = dd['facet_size']
         dd['facet_size'] = 0.
@@ -469,9 +469,9 @@ def peel(dd):
     # backup logs
     os.system('mv logs peel/'+dd['name']+'/')
     # save images
-    os.system('mv img/*MFS-image.fits peel/'+dd['name']+'/images/')
+    os.system('mv img/ddcalM*MFS-image.fits img/facetM*MFS-image.fits peel/'+dd['name']+'/images/')
     # save masks
-    os.system('mv img/*mask.fits peel/'+dd['name']+'/masks/')
+    os.system('mv img/ddcalM*mask.fits img/facetM*mask.fits peel/'+dd['name']+'/masks/')
     # direction completed, write status
     with open('pipeline-peel.status', 'a') as status_file:
         status_file.write(dd['name']+'\n')
@@ -561,10 +561,10 @@ for dd in ddset:
     globaldb_amp = sorted(glob.glob('peel/'+dd['name']+'/h5/globaldb*amp'))[-1]
     for num, ms in enumerate(peelmss):
         check_rm(ms+'/instrument-tec')
-        os.system('mv '+globaldb_tec+'/sol000_instrument-'+str(num)+' '+ms+'/instrument-tec')
+        os.system('mv '+globaldb_tec+'/instrument-'+str(num)+' '+ms+'/instrument-tec') # unmodified by losoto, not sol000
         if dd['Peak_flux'] > 3:
             check_rm(ms+'/instrument-amp')
-            os.system('mv '+globaldb_amp+'/sol000_instrument-'+str(num)+' '+ms+'/instrument-amp')
+            os.system('cp -r '+globaldb_amp+'/sol000_instrument-'+str(num)+' '+ms+'/instrument-amp')
  
     logging.info('Correcting facet amplitude+phase...')
     for ms in peelmss:
