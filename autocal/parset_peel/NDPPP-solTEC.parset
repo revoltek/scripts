@@ -6,8 +6,7 @@ msout.datacolumn = CORRECTED_DATA
 
 #numthreads = 1 # this is parallel, keep max
 
-steps = [sol]
-#steps = [filter, sol]
+steps = [filter, sol]
 
 filter.blrange = [1000,1e30]
 
