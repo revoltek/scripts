@@ -31,7 +31,7 @@ s = Scheduler(dry=False)
 allmss = sorted(glob.glob('mss/TC*.MS'))
 phasecentre = get_phase_centre(allmss[0])
 
-def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
+def clean(c, mss, dd, avgfreq=2, avgtime=8, facet=False):
     """
     c = cycle/name
     mss = list of mss to avg/clean
@@ -102,7 +102,11 @@ def clean(c, mss, dd, avgfreq=4, avgtime=10, facet=False):
 
     # remove CC not in mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 6)
+    if facet:
+        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
+    else:
+        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 7)
+
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
@@ -200,12 +204,12 @@ def peel(dd):
             blank_image_reg(model, ['regions/'+dd['name']+'-facet.reg', 'regions/beam.reg'], outfile, inverse=True, op='AND')
 
     # NOTE TEST: use entire facet - do it after facet model creation
-    if dd['Total_flux']<5 and dd['facet_size']!=0:
-        dd['dd_size'] = dd['facet_size']
-        dd['facet_size'] = 0.
-        os.system('cp regions/'+dd['name']+'-facet.reg regions/'+dd['name']+'.reg')
-        for model in sorted(glob.glob(modeldir+'/*facet*')):
-            os.system('cp '+model+' '+model.replace('facet','dd'))
+    #if dd['Total_flux']<5 and dd['facet_size']!=0:
+    #    dd['dd_size'] = dd['facet_size']
+    #    dd['facet_size'] = 0.
+    #    os.system('cp regions/'+dd['name']+'-facet.reg regions/'+dd['name']+'.reg')
+    #    for model in sorted(glob.glob(modeldir+'/*facet*')):
+    #        os.system('cp '+model+' '+model.replace('facet','dd'))
 
     ##############################################################
     # reproject + cut model image to speed up prediction
@@ -271,15 +275,18 @@ def peel(dd):
         s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA -i DATA', log=ms+'_init-addcol.log', cmd_type='python', log_append=True)
     s.run(check=True)
     # do a first clean to get the starting model
-    # TODO: remove avg is using all facet
     model = clean('init', peelmss, dd)
     rms_noise = get_noise_img(model+'-MFS-residual.fits')
 
     # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
     # NOTE: if new flags are added, BLsmooth should be re-run
+    if dd['Total_flux'] > 20: ionfactor = 0.2
+    elif dd['Total_flux'] > 10: ionfactor = 0.5
+    else: ionfactor = 1.0
+ 
     logging.info('BL-based smoothing...')
     for ms in peelmss:
-        s.add('BLsmooth.py -f 1 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+        s.add('BLsmooth.py -f '+str(ionfactor)+' -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
     s.run(check=True)
 
     ###################################################################################################################
@@ -296,14 +303,6 @@ def peel(dd):
    
         ####################################
         # solve+correct TEC - mss_peel/TC*.MS:DATA (only solve)
-
-        # sol.solint depends on peak flux
-        # TODO: change with different smoothing
-        #if dd['Peak_flux'] > 5: solint = 1
-        #elif dd['Peak_flux'] > 2: solint = 2
-        #else: solint = 3
-        solint = 1
-
         logging.info('Solving TEC (solint=%i)...' % solint)
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
@@ -349,7 +348,6 @@ def peel(dd):
             s.run(check=True)
 
         # clean
-        # TODO: remove avg is using all facet
         model = clean(c, peelmss, dd)
 
         # get noise, if larger than 95% of prev cycle: break
@@ -497,6 +495,7 @@ for ms in allmss:
     s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA -i DATA', log=ms.split('/')[-1]+'_init-addcol.log', cmd_type='python', log_append=True)
 s.run(check=True)
 
+##############################################################
 # Run pyBDSM to create a model used to find good DD-calibrator and tassellate the sky
 logging.info('Finding directions...')
 imagename = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
