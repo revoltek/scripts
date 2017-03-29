@@ -101,10 +101,10 @@ s.run(check=True)
 
 # Re-set weights of flagged data to 0 - this is necessary if we want to use dysco
 # due to NDPPP leaving flagged weight at super-high values compared to unflagged ones
-logging.info('Set weight of flagged data to 0...')
-for ms in mss:
-    s.add('flag_weight_to_zero.py '+ms, log=ms+'_resetweight.log', cmd_type='python')
-s.run(check=True)
+#logging.info('Set weight of flagged data to 0...')
+#for ms in mss:
+#    s.add('flag_weight_to_zero.py '+ms, log=ms+'_resetweight.log', cmd_type='python')
+#s.run(check=True)
 
 ###################################################################################################
 # Create groups

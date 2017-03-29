@@ -5,7 +5,7 @@ msin.missingdata = True
 msin.orderms = False
 
 msout = 
-msout.storagemanager = dysco
+#msout.storagemanager = dysco
 msout.writefullresflag = False
 
 numthreads = 1 # bug fix
