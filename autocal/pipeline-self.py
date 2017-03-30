@@ -98,9 +98,10 @@ for c in xrange(niter):
 
     # Smooth DATA -> SMOOTHED_DATA
     # Re-done in case of new flags
+    # TEST: higher ionfactor
     logging.info('BL-based smoothing...')
     for ms in mss:
-        s.add('BLsmooth.py -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        s.add('BLsmooth.py -r -f 0.5 -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     if c == 0:
@@ -151,7 +152,7 @@ for c in xrange(niter):
         logging.info('Solving G...')
         for ms in mss:
             check_rm(ms+'/instrument-g')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=10 sol.nchan=8', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=30 sol.nchan=8', \
                     log=ms+'_sol-g1-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
