@@ -265,6 +265,7 @@ def make_directions(imagename, outdir='regions/', target_flux_jy=10, bright_sour
     idx_sources = [idx for (size,idx) in sorted(zip(ddcal['dd_size'],idx_sources))]
     ddcal.sort('dd_size')
         
+    # TODO: wrong, regions must be independent or calibration is messed up
     # finally retain only independent regions
     toremove = []
     for i, dd in enumerate(ddcal):

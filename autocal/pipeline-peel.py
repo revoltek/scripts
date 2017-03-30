@@ -280,8 +280,8 @@ def peel(dd):
 
     # Smooth peel_mss/TC*.MS:DATA -> peel_mss/TC*.MS:CORRECTED_DATA (smoothed data)
     # NOTE: if new flags are added, BLsmooth should be re-run
-    if dd['Total_flux'] > 20: ionfactor = 0.2
-    elif dd['Total_flux'] > 10: ionfactor = 0.5
+    if dd['Peak_flux'] > 10: ionfactor = 0.2
+    elif dd['Peak_flux'] > 5: ionfactor = 0.5
     else: ionfactor = 1.0
  
     logging.info('BL-based smoothing...')
@@ -303,10 +303,10 @@ def peel(dd):
    
         ####################################
         # solve+correct TEC - mss_peel/TC*.MS:DATA (only solve)
-        logging.info('Solving TEC (solint=%i)...' % solint)
+        logging.info('Solving TEC...')
         for ms in peelmss:
             check_rm(ms+'/instrument-tec')
-            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA sol.parmdb='+ms+'/instrument-tec sol.solint='+str(solint), \
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' msin.datacolumn=SMOOTHED_DATA sol.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         
