@@ -67,18 +67,18 @@ s.run(check=True)
 ####################################################################################################
 # Add model to MODEL_DATA
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
-#sourcedb_basename = sourcedb.split('/')[-1]
-#for ms in mss:
-#    check_rm(ms+'/'+sourcedb_basename)
-#    logging.debug('Copy: '+sourcedb+' -> '+ms)
-#    os.system('cp -r '+sourcedb+' '+ms)
-#logging.info('Add model to MODEL_DATA...')
-#for ms in mss:
-#    if apparent:
-#        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-#    else:
-#        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=true pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-#s.run(check=True)
+sourcedb_basename = sourcedb.split('/')[-1]
+for ms in mss:
+    check_rm(ms+'/'+sourcedb_basename)
+    logging.debug('Copy: '+sourcedb+' -> '+ms)
+    os.system('cp -r '+sourcedb+' '+ms)
+logging.info('Add model to MODEL_DATA...')
+for ms in mss:
+    if apparent:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+    else:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=true pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+s.run(check=True)
 
 ###################################################################################
 # Preapre fake FR parmdb
@@ -303,7 +303,7 @@ for c in xrange(niter):
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
     # remove CC not in mask
-    for modelname in glob.glob(imagename+'*model.fits'):
+    for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
 
     # resample at high res to avoid FFT problem on long baselines and predict
