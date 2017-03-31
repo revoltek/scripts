@@ -13,7 +13,7 @@ LoSoTo.Steps.duplicateBkp.Operation = DUPLICATE
 LoSoTo.Steps.duplicateBkp.InTable = sol000/phase000
 LoSoTo.Steps.duplicateBkp.OutTable = sol000/phaseOrig000
 
-# plot initials
+r plot initials
 LoSoTo.Steps.plotPi.Operation = PLOT
 LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPi.Axes = [time,freq]
@@ -33,7 +33,6 @@ LoSoTo.Steps.plotFR.Soltab = [sol000/rotationmeasure000]
 LoSoTo.Steps.plotFR.Axes = [time]
 LoSoTo.Steps.plotFR.TableAxis = ant
 LoSoTo.Steps.plotFR.Prefix = plots/fr
-LoSoTo.Steps.plotFR.PlotFlag = False
 
 # calculate residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS
