@@ -532,8 +532,8 @@ os.makedirs('img')
 for dd in ddset:
     if dd['facet_size'] == 0: continue
     check_rm('mss_peel')
-    os.makedirs('logs/mss_peel')
     os.makedirs('mss_peel')
+    os.makedirs('logs/mss_peel')
     modeldir = 'peel/'+dd['name']+'/models/'
     
     # ph-shift (to 4 chan/SB, 4 sec) -  mss/TC*.MS:SUBTRACTED_DATA -> mss_peel/TC*.MS:DATA
@@ -581,5 +581,6 @@ for dd in ddset:
         
     # Cleaning facet
     clean(dd['name'], peelmss, dd, avgfreq=1, avgtime=5, facet=True)
+    os.system('mv logs peel/'+dd['name']+'/final')
 
 logging.info("Done.")

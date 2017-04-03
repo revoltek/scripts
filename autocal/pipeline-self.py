@@ -64,9 +64,9 @@ make_beam_reg(phasecentre[0], phasecentre[1], 5, 'self/beam.reg')
 ###############################################################################################
 # Create columns (non compressed)
 # TODO: remove when moving to NDPPP DFT
-logging.info('Creating MODEL_DATA_HIGHRES...')
+logging.info('Creating MODEL_DATA_HIGHRES and SUBTRACTED_DATA...')
 for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES', log=ms+'_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
 
 ####################################################################################################
