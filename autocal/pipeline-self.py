@@ -114,11 +114,9 @@ for c in xrange(niter):
         s.add('BLsmooth.py -r -f 0.5 -i '+incol+' -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
-    if c == 0:
-        # on first cycle concat (need to be done after smoothing)
-        logging.info('Concatenating TCs...')
-        check_rm(concat_ms+'*')
-        pt.msutil.msconcat(mss, concat_ms, concatTime=False)
+    logging.info('Concatenating TCs...')
+    check_rm(concat_ms+'*')
+    pt.msutil.msconcat(mss, concat_ms, concatTime=False)
 
     # solve TEC - group*_TC.MS:SMOOTHED_DATA
     logging.info('Solving TEC...')
@@ -287,33 +285,33 @@ for c in xrange(niter):
     if c == 0:
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(c)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql1-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         # reclean low-resolution
         logging.info('Cleaning low resolution...')
-        imagename = 'img/wide-lr'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+        imagename_lr = 'img/wide-lr'
+        s.add('wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 1 '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
     
         # make mask
-        maskname = imagename+'-mask.fits'
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+        maskname = imagename_lr+'-mask.fits'
+        make_mask(image_name = imagename_lr+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
         # remove CC not in mask and do not remove anything in the beam
-        for modelname in glob.glob(imagename+'*model.fits'):
+        for modelname in glob.glob(imagename_lr+'*model.fits'):
             blank_image_fits(modelname, maskname, inverse=True)
             blank_image_reg(modelname, 'self/beam.reg', inverse=False)
     
         # resample at high res to avoid FFT problem on long baselines and predict
         logging.info('Predict...')
-        for model in sorted(glob.glob(imagename+'*model.fits')):
-            model_out = model.replace(imagename,imagename+'-resamp')
+        for model in sorted(glob.glob(imagename_lr+'*model.fits')):
+            model_out = model.replace(imagename_lr, imagename_lr+'-resamp')
             s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
         s.run(check=True)
-        s.add('wsclean -predict -name ' + imagename + '-resamp -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
+        s.add('wsclean -predict -name ' + imagename_lr + '-resamp -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
                 log='wscleanPRE-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
@@ -326,7 +324,13 @@ for c in xrange(niter):
     
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
         logging.info('Subtracting low-res model (SUBTRACTED_DATA = DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = DATA - MODEL_DATA"', log='taql4-c'+str(c)+'.log', cmd_type='general')
+        s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = DATA - MODEL_DATA"', log='taql2-c'+str(c)+'.log', cmd_type='general')
+        s.run(check=True)
+
+        # put in MODEL_DATA the best available model
+        logging.info('Predict...')
+        s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
+                log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
     ###############################################################################################################
