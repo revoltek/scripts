@@ -5,10 +5,13 @@ from threading import Thread
 from Queue import Queue
 from scipy.interpolate import interp1d
 import numpy as np
+import matplotlib as mpl
+mpl.use("Agg")
 import lofar.parmdb as parmdb
 
 from lib_pipeline_ms import *
 from lib_pipeline_img import *
+from lib_pipeline_dd import *
 
 def get_cluster():
     """

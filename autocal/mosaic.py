@@ -13,7 +13,6 @@ from astropy.table import Table
 from astropy.wcs import WCS
 import numpy as np
 from autocal.lib_pipeline import *
-from autocal.lib_pipeline_img import *
 
 parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
 #parser.add_argument('--directories', metavar='D', nargs='+',

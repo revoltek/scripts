@@ -1,18 +1,14 @@
 import os, sys, itertools
 import logging
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 from astropy.table import Table
 from astropy.coordinates import Angle, SkyCoord, match_coordinates_sky
 from astropy.io import fits as pyfits
-from astropy import wcs
+from astropy import wcs as pywcs
 import astropy.units as u
 import pyregion
 from lofar import bdsm
 from pyregion.parser_helper import Shape
-from autocal.lib_pipeline_img import *
-from autocal.lib_pipeline import *
 try:
     from scipy.spatial import Voronoi
 except:
@@ -300,7 +296,7 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
     logging.debug("Image used for tasselation reference: "+fitsfile)
     fits = pyfits.open(fitsfile)
     hdr, data = flatten(fits)
-    w = wcs.WCS(hdr)
+    w = pywcs.WCS(hdr)
     pixsize = np.abs(hdr['CDELT1'])
 
     # Add facet size column

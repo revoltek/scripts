@@ -16,7 +16,6 @@ import numpy as np
 import lofar.bdsm # import it befose casacore, bugfix
 import casacore.tables as pt
 from autocal.lib_pipeline import *
-from autocal.lib_pipeline_dd import *
 from make_mask import make_mask
 
 parset_dir = '/home/fdg/scripts/autocal/parset_self/'
