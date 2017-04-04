@@ -19,8 +19,6 @@ pb_cut = 5 # degree to cut faceting
 import sys, os, glob, re
 import numpy as np
 from autocal.lib_pipeline import *
-from autocal.lib_pipeline_dd import *
-from autocal.lib_pipeline_img import *
 from make_mask import make_mask
 #from lofar import bdsm
 import pyrap.tables as pt
