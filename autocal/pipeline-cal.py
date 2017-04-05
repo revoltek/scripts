@@ -2,9 +2,9 @@
 # initial calibration of the calibrator in circular, get and corr FR, back to linear, sol flag + effects separation
 import sys, os, glob, re
 import numpy as np
-import pyrap.tables as pt
 from astropy.time import Time
 from autocal.lib_pipeline import *
+import pyrap.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
@@ -97,10 +97,10 @@ mss = sorted(glob.glob('*.MS'))
 ## Prepare output parmdb
 ## TODO: remove as soon as losoto has the proper exporter
 #logging.info('Creating fake parmdb...')
-##for ms in mss:
-##    if os.path.exists(ms+'/instrument-clock'): continue
-##    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-##s.run(check=True)
+#for ms in mss:
+#    if os.path.exists(ms+'/instrument-clock'): continue
+#    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+#s.run(check=True)
 #for ms in mss:
 #    if os.path.exists(ms+'/instrument-fr'): continue
 #    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
@@ -210,12 +210,12 @@ mss = sorted(glob.glob('*.MS'))
 #    check_rm(ms+'/instrument')
 #    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
 #s.run(check=True)
-
-run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+#
+#run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+#    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
 # TODO: add smooth clock
-#run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
-#    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 if 'LBAsurvey' in os.getcwd():
     check_rm('globaldb/instrument*') # keep only filled instrument tables
