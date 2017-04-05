@@ -7,7 +7,6 @@ from astropy.io import fits as pyfits
 from astropy import wcs as pywcs
 import astropy.units as u
 import pyregion
-from lofar import bdsm
 from pyregion.parser_helper import Shape
 try:
     from scipy.spatial import Voronoi

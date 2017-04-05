@@ -1,17 +1,13 @@
-import os, sys, re, time, pickle, random, shutil
-import subprocess
+import os, sys, re, pickle, random, shutil
 import logging
-from threading import Thread
-from Queue import Queue
-from scipy.interpolate import interp1d
 import numpy as np
 import matplotlib as mpl
 mpl.use("Agg")
-import lofar.parmdb as parmdb
 
+from lib_pipeline_dd import *
 from lib_pipeline_ms import *
 from lib_pipeline_img import *
-from lib_pipeline_dd import *
+
 
 def get_cluster():
     """
@@ -282,6 +278,10 @@ class Scheduler():
         If check=True then a check is done on every log in the log_list
         if max_thread != None, then it overrides the global values, useful for special commands that need a lower number of threads
         """
+        from threading import Thread
+        from Queue import Queue
+        import subprocess
+
         def worker(queue):
             for cmd in iter(queue.get, None):
                 if self.qsub and self.cluster == 'Hamburg':
@@ -325,6 +325,7 @@ class Scheduler():
         Produce a warning if a command didn't close the log properly i.e. it crashed
         NOTE: grep, -L inverse match, -l return only filename
         """
+        import subprocess
 
         if not os.path.exists(log):
             logging.warning('No log file found to check results: '+log)

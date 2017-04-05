@@ -13,9 +13,8 @@
 
 import sys, os, glob, re
 import numpy as np
-import lofar.bdsm # import it befose casacore, bugfix
-import casacore.tables as pt
 from autocal.lib_pipeline import *
+import pyrap.tables as pt
 from make_mask import make_mask
 
 parset_dir = '/home/fdg/scripts/autocal/parset_self/'
@@ -58,7 +57,7 @@ concat_ms = 'mss/concat.MS'
 
 # make beam
 phasecentre = get_phase_centre(mss[0])
-make_beam_reg(phasecentre[0], phasecentre[1], 5, 'self/beam.reg')
+make_beam_reg(phasecentre[0], phasecentre[1], 8, 'self/beam.reg') # go to 7 deg, first null
 
 ###############################################################################################
 # Create columns (non compressed)
@@ -110,7 +109,7 @@ for c in xrange(niter):
 
     logging.info('BL-based smoothing...')
     for ms in mss:
-        s.add('BLsmooth.py -r -f 0.5 -i '+incol+' -o SMOOTHED_DATA '+ms, log=ms+'_smooth-c'+str(c)+'.log', cmd_type='python')
+        s.add('BLsmooth.py -r -f 0.2 -i '+incol+' -o SMOOTHED_DATA '+ms, log=ms+'_smooth1-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     logging.info('Concatenating TCs...')
@@ -122,7 +121,7 @@ for c in xrange(niter):
     for ms in mss:
         check_rm(ms+'/instrument-tec')
         s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
-                log=ms+'_sol-tec-c'+str(c)+'.log', cmd_type='NDPPP')
+                log=ms+'_solTEC-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     # LoSoTo plot
@@ -134,7 +133,7 @@ for c in xrange(niter):
     logging.info('Correcting TEC...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn='+incol+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
-                log=ms+'_cor-tec-c'+str(c)+'.log', cmd_type='NDPPP')
+                log=ms+'_corTEC-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     #####################################################################################################
@@ -150,7 +149,7 @@ for c in xrange(niter):
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logging.info('BL-based smoothing...')
         for ms in mss:
-            s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLsmooth.py -r -f 0.5 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         # Solve G SB.MS:SMOOTHED_DATA (only solve)
@@ -181,7 +180,7 @@ for c in xrange(niter):
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logging.info('BL-based smoothing...')
         for ms in mss:
-            s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
+            s.add('BLsmooth.py -r -f 0.5 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
 
         # Solve G SB.MS:SMOOTHED_DATA (only solve)
@@ -202,22 +201,49 @@ for c in xrange(niter):
         #os.system('mv plots-amp self/solutions/')
         #os.system('mv cal-amp.h5 self/solutions/')
 
-        # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
+        logging.info('Faraday rotation correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
+                    log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+       # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logging.info('Cross-delay correction...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
         #logging.info('Slow amp correction...')
         #for ms in mss:
         #    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
         #s.run(check=True)
- 
-        ## To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
-        #logging.info('Convert to circular...')
-        #for ms in mss:
-        #    s.add('/home/fdg/scripts/mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        #s.run(check=True)
+
+        # Finally re-calculate TEC
+
+        logging.info('BL-based smoothing...')
+        for ms in mss:
+            s.add('BLsmooth.py -r -f 0.2 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
+        s.run(check=True)
+
+        # solve TEC - group*_TC.MS:SMOOTHED_DATA
+        logging.info('Solving TEC...')
+        for ms in mss:
+            check_rm(ms+'/instrument-tec')
+            s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
+                    log=ms+'_solTEC-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+
+        # LoSoTo plot
+        run_losoto(s, str(c)+'b', mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+        os.system('mv plots-'+str(c)+'b self/solutions/plots-c'+str(c))
+        os.system('mv cal-'+str(c)+'b.h5 self/solutions/')
+
+        # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
+        logging.info('Correcting TEC...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin=CORRECTED_DATA msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                    log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
    ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
@@ -253,7 +279,7 @@ for c in xrange(niter):
 
     # make mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4, atrous_do=True)
     # remove CC not in mask
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
@@ -268,7 +294,7 @@ for c in xrange(niter):
 
     # make mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4,  atrous_do=True)
     # remove CC not in mask
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
