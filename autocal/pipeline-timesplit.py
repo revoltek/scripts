@@ -7,9 +7,9 @@
 
 import sys, os, glob, re
 import numpy as np
-import pyrap.tables as pt
 from astropy.time import Time
 from autocal.lib_pipeline import *
+import casacore.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
@@ -90,7 +90,6 @@ for ms in mss:
     tnum = re.findall(r't\d+', ms)[0][1:]
     sbnum = re.findall(r'SB\d+', ms)[0][2:]
     check_rm(ms+'/instrument')
-    #logging.debug('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
     os.system('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
 
 # Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)

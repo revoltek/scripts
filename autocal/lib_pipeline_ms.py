@@ -3,7 +3,7 @@
 import os, sys, shutil
 import logging
 import numpy as np
-import lofar.parmdb as parmdb
+import pyrap.tables as tb
 
 def merge_parmdb(parmdb_p, parmdb_a, parmdb_out, clobber=False):
     """
@@ -22,6 +22,7 @@ def merge_parmdb(parmdb_p, parmdb_a, parmdb_out, clobber=False):
         If True, overwrite existing output file
 
     """
+    import lofar.parmdb as parmdb
     if type(clobber) is str:
         if clobber.lower() == 'true':
             clobber = True
@@ -55,7 +56,6 @@ def find_nchan(ms):
     """
     Find number of channel in this ms
     """
-    import pyrap.tables as tb
     with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
         nchan = t.getcol('NUM_CHAN')
     assert (nchan[0] == nchan).all() # all spw have same channels?
@@ -67,7 +67,6 @@ def find_chanband(ms):
     """
     Find bandwidth of a channel
     """
-    import pyrap.tables as tb
     with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
         chan_w = t.getcol('CHAN_WIDTH')[0]
     assert all(x==chan_w[0] for x in chan_w) # all chans have same width
@@ -79,7 +78,6 @@ def find_timeint(ms):
     """
     Get time interval in seconds
     """
-    import pyrap.tables as tb
     with tb.table(ms, ack=False) as t:
         Ntimes = len(set(t.getcol('TIME')))
     with tb.table(ms+'/OBSERVATION', ack=False) as t:
@@ -92,10 +90,9 @@ def get_phase_centre(ms):
     """
     Get the phase centre of the first source (is it a problem?) of an MS
     """
-    import pyrap.tables as pt
     field_no = 0
     ant_no = 0
-    with pt.table(ms + '/FIELD', ack=False) as field_table:
+    with tb.table(ms + '/FIELD', ack=False) as field_table:
         direction = field_table.getcol('PHASE_DIR')
         ra = direction[ ant_no, field_no, 0 ]
         dec = direction[ ant_no, field_no, 1 ]

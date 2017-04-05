@@ -10,8 +10,8 @@ parset_dir = '/home/fdg/scripts/autocal/parset_download'
 
 import sys, os, re, glob, time
 import numpy as np
-import pyrap.tables as pt
 from autocal.lib_pipeline import *
+import pyrap.tables as pt
 from astropy.time import Time
 
 if os.path.exists('html.txt'):
