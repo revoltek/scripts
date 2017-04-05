@@ -9,10 +9,6 @@ import matplotlib as mpl
 mpl.use("Agg")
 import lofar.parmdb as parmdb
 
-from lib_pipeline_ms import *
-from lib_pipeline_img import *
-from lib_pipeline_dd import *
-
 def get_cluster():
     """
     Find in which computing cluster the pipeline is running       
@@ -378,3 +374,7 @@ class Scheduler():
             return 1
 
         return 0
+
+from lib_pipeline_ms import *
+from lib_pipeline_img import *
+from lib_pipeline_dd import *
