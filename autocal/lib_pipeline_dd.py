@@ -498,35 +498,4 @@ def voronoi_finite_polygons_2d_box(vor, box):
 
     return np.asarray(newpoly)
 
-
-
-
-#def patch_skymodel_from_ref(skymodel, fitsfile, regionfiles=[]):
-#    """
-#    group sources in a BBS skymodel based on a set of regions
-#    skymodel : a BBS skymodel
-#    fitsfile : an image to use for reference
-#    regionfiles : a list of region files
-#    """
-#    t = Table.read(skymodel)
-#    logging.debug('Read %i regions' % len(regionfiles))
-#    t['Patch'] = 'None'
-#
-#    for regionfile in regionfiles
-#        total_flux = 0
-#        for source in t:
-#
-#            # open region
-#
-#            # check if source in region
-#            if source['RA'] in region and source['DEC'] in region:
-#                source['Patch'] = regionfile
-#                total_flux += source['Total_flux']
-#
-#        logging.info("Total flux in patch %s: %.3f Jy" % (regionfile, total_flux )
-#
-#    # remove None patches
-#    t.remove_rows( np.where( t['Patch'] == 'None' ) )
-#
-#    # write new skymodel
-#    t.write()
+from autocal.lib_pipeline import *
