@@ -557,11 +557,12 @@ for dd in ddset:
 
     # restore last instrument table
     globaldb_tec = sorted(glob.glob('peel/'+dd['name']+'/h5/globaldb*tec'))[-1]
-    globaldb_amp = sorted(glob.glob('peel/'+dd['name']+'/h5/globaldb*amp'))[-1]
     for num, ms in enumerate(peelmss):
         check_rm(ms+'/instrument-tec')
         os.system('cp -r '+globaldb_tec+'/instrument-'+str(num)+' '+ms+'/instrument-tec') # unmodified by losoto, not sol000
-        if dd['Peak_flux'] > 3:
+    if dd['Peak_flux'] > 3: 
+        globaldb_amp = sorted(glob.glob('peel/'+dd['name']+'/h5/globaldb*amp'))[-1]
+        for num, ms in enumerate(peelmss):
             check_rm(ms+'/instrument-amp')
             os.system('cp -r '+globaldb_amp+'/sol000_instrument-'+str(num)+' '+ms+'/instrument-amp')
  
