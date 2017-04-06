@@ -125,9 +125,9 @@ for c in xrange(niter):
     s.run(check=True)
 
     # LoSoTo plot
-    run_losoto(s, str(c), mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
-    os.system('mv plots-'+str(c)+' self/solutions/plots-c'+str(c))
-    os.system('mv cal-'+str(c)+'.h5 self/solutions/')
+    run_losoto(s, 'tec'+str(c), mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+    os.system('mv plots-tec'+str(c)+' self/solutions')
+    os.system('mv cal-tec'+str(c)+'.h5 self/solutions/')
 
     # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
     logging.info('Correcting TEC...')
@@ -160,10 +160,10 @@ for c in xrange(niter):
                     log=ms+'_sol-g1-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+        run_losoto(s, 'fr'+str(c), mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
             outinstrument='instrument-fr', outglobaldb='globaldb-fr', outtab='rotationmeasure000', putback=True)
-        os.system('mv plots-fr self/solutions/')
-        os.system('mv cal-fr.h5 self/solutions/')
+        os.system('mv plots-fr'+str(c)+' self/solutions/')
+        os.system('mv cal-fr'+str(c)+'.h5 self/solutions/')
        
         # To linear - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (linear)
         logging.info('Convert to linear...')
@@ -191,10 +191,10 @@ for c in xrange(niter):
                     log=ms+'_sol-g2-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        run_losoto(s, 'cd', mss, [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+        run_losoto(s, 'cd'+str(c), mss, [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
             outinstrument='instrument-cd', outglobaldb='globaldb', outtab='amplitude000,crossdelay', putback=True)
-        os.system('mv plots-cd self/solutions/')
-        os.system('mv cal-cd.h5 self/solutions/')
+        os.system('mv plots-cd'+str(c)+' self/solutions/')
+        os.system('mv cal-cd'(str(c))'.h5 self/solutions/')
 
         #run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
         #    outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
@@ -234,14 +234,14 @@ for c in xrange(niter):
         s.run(check=True)
 
         # LoSoTo plot
-        run_losoto(s, str(c)+'b', mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
-        os.system('mv plots-'+str(c)+'b self/solutions/plots-c'+str(c))
-        os.system('mv cal-'+str(c)+'b.h5 self/solutions/')
+        run_losoto(s, 'tec'+str(c)+'b', mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+        os.system('mv plots-tec'+str(c)+'b self/solutions')
+        os.system('mv cal-tec'+str(c)+'b.h5 self/solutions')
 
         # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
         logging.info('Correcting TEC...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin=CORRECTED_DATA msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -294,7 +294,7 @@ for c in xrange(niter):
 
     # make mask
     maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4,  atrous_do=True)
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 4, atrous_do=True)
     # remove CC not in mask
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
