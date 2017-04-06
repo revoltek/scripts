@@ -241,7 +241,7 @@ for c in xrange(niter):
         # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
         logging.info('Correcting TEC...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin=CORRECTED_DATA msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
