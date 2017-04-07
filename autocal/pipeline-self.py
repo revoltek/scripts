@@ -194,7 +194,7 @@ for c in xrange(niter):
         run_losoto(s, 'cd'+str(c), mss, [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
             outinstrument='instrument-cd', outglobaldb='globaldb', outtab='amplitude000,crossdelay', putback=True)
         os.system('mv plots-cd'+str(c)+' self/solutions/')
-        os.system('mv cal-cd'(str(c))'.h5 self/solutions/')
+        os.system('mv cal-cd'+(str(c))+'.h5 self/solutions/')
 
         #run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
         #    outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
