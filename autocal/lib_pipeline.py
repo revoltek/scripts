@@ -1,9 +1,9 @@
 import os, sys, re, pickle, random, shutil
 import logging
 import numpy as np
-from lofar import bdsm
 import matplotlib as mpl
 mpl.use("Agg")
+from lofar import bdsm
 
 def get_cluster():
     """
