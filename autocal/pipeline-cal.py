@@ -86,7 +86,7 @@ else:
 
 mss = sorted(glob.glob('*.MS'))
 
-############################################################   
+#############################################################   
 ## flag below elev 20 and bad stations, flags will propagate
 #logging.info('Flagging...')
 #for ms in mss:
@@ -211,8 +211,8 @@ mss = sorted(glob.glob('*.MS'))
 #    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms+' sol.sourcedb='+sourcedb+' sol.sources='+patch, log=ms+'_sol3.log', cmd_type='NDPPP')
 #s.run(check=True)
 #
-run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+#run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+#    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
 # TODO: add smooth clock
 #run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
 #    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
@@ -222,5 +222,41 @@ if 'LBAsurvey' in os.getcwd():
     newglobaldb = 'globaldb_'+os.getcwd().split('/')[-2]
     logging.info('Copy: globaldb -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
     os.system('scp -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
+
+# a debug image
+imaging = True
+if imaging:
+    # Correct all CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
+    logging.info('TEC correction...')
+    for ms in mss:
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corTEC.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    mss = mss[int(len(mss)/2.):] # keep only upper band
+
+    logging.info('Cleaning')
+    check_rm('img')
+    os.makedirs('img')
+    imagename = 'img/wide'
+    s.add('wsclean -reorder -name ' + imagename + ' -size 6000 6000 -trim 5000 5000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 20 '+' '.join(mss), \
+            log='wscleanA.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+
+    # make mask
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
+    # remove CC not in mask
+    for modelname in sorted(glob.glob(imagename+'*model.fits')):
+        blank_image_fits(modelname, maskname, inverse=True)
+
+    logging.info('Cleaning w/ mask')
+    imagename = 'img/wideM'
+    s.add('wsclean -reorder -name ' + imagename + ' -size 6000 6000 -trim 5000 5000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
+            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
 
 logging.info("Done.")
