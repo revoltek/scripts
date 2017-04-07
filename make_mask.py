@@ -2,7 +2,7 @@
 
 # create a mask using bdsm of an image
 
-def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(70,12), mask_combine=None):
+def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(100,30), mask_combine=None):
 
     import sys, os
     import numpy as np
@@ -16,7 +16,7 @@ def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(
     # DO THE SOURCE DETECTION
     img = bdsm.process_image(image_name, rms_box=rmsbox, \
         thresh_isl=int(threshisl), atrous_do=atrous_do, atrous_jmax=3, \
-        adaptive_rms_box=True, rms_box_bright=(30,12), stop_at=stop_at, quiet=True)
+        adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), stop_at=stop_at, quiet=True)
 
     # WRITE THE MASK FITS
     if mask_name == None: mask_name = image_name+'.newmask'
