@@ -514,9 +514,10 @@ def voronoi_skymodel(lsm):
     dirs_decs = [d[1] for name, d in dirs.iteritems()]
     dirs_names = [name for name, d in dirs.iteritems()]
 
+    logging.debug('Voronoi tessellate skymodel...')
     for t in lsm.table:
         dists = SkyCoord(t['Ra']*u.degree, t['Dec']*u.degree).separation(SkyCoord(dirs_ras*u.degree,dirs_decs*u.degree))
-        print t['Patch'], "->", dirs_names[np.argmin(dists)]
+        #print t['Patch'], "->", dirs_names[np.argmin(dists)]
         t['Patch'] = dirs_names[np.argmin(dists)]
 
     return lsm
