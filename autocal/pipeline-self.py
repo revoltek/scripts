@@ -342,7 +342,7 @@ for c in xrange(niter):
 
         # corrupt model with TEC solutions ms:MODEL_DATA -> ms:MODEL_DATA
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=MODEL_DATA msout.datacolumn=MODEL_DATA \
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=MODEL_DATA msout.datacolumn=MODEL_DATA  \
                 cor1.parmdb='+ms+'/instrument-tec cor1.invert=false cor2.parmdb='+ms+'/instrument-tec cor2.invert=false', \
                 log=ms+'_corrupt.log', cmd_type='NDPPP')
         s.run(check=True)

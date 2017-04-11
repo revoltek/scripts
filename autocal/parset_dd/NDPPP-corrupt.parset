@@ -1,0 +1,14 @@
+msin =
+msin.datacolumn = MODEL_DATA
+msout = .
+msout.datacolumn = MODEL_DATA
+#msout.storagemanager = dysco
+
+numthreads = 1 # bug fix
+
+steps = [cor1]
+
+cor.type = applycal
+cor.parmdb =
+cor.correction = tec
+cor.invert = False

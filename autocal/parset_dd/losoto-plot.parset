@@ -1,0 +1,21 @@
+# losoto parset
+LoSoTo.Steps = [plot]
+LoSoTo.Solset = [sol000]
+LoSoTo.Soltab = []
+LoSoTo.SolType = []
+LoSoTo.ant = []
+LoSoTo.pol = [XX, YY]
+LoSoTo.dir = []
+LoSoTo.Ncpu = 10
+
+LoSoTo.Steps.tecjump.Operation = TECJUMP
+LoSoTo.Steps.plot.Soltab = [sol000/tec000]
+
+LoSoTo.Steps.plot.Operation = PLOT
+LoSoTo.Steps.plot.Soltab = [sol000/tec000]
+LoSoTo.Steps.plot.Axes = time
+LoSoTo.Steps.plot.TableAxis = ant
+LoSoTo.Steps.plot.PlotFlag = True
+LoSoTo.Steps.plot.MinMax = [-0.1,0.1]
+LoSoTo.Steps.plot.Prefix = plots/tec_
+LoSoTo.Steps.plot.Reference = 'CS001LBA'
