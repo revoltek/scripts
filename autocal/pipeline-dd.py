@@ -110,9 +110,9 @@ s.run(check=True)
 
 ##############################################################
 logging.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-s.run(check=True)
+#for ms in mss:
+#    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+#s.run(check=True)
 
 mosaic_image = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
 rms_noise_pre = np.inf
@@ -134,18 +134,19 @@ for c in xrange(maxniter):
     bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
         thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
         adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
-    bdsm_img.write_catalog(outfile=cat, catalog_type='srl', format='ascii', clobber=True)
+    bdsm_img.write_catalog(outfile=cat, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
 
     lsm = lsmtool.load(cat)
     lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean')
     patches = lsm.getPatchNames()
     directions = lsm.getPatchPositions()
+    logging.info("Created %i directions." % len(patches))
 
     cat_cl = 'ddcal/cat%02i_cluster.txt' % c
     lsm.write(cat_cl, format='makesourcedb', clobber=True)
 
     # voronoi tessellation of skymodel for imaging
-    lsm = voronoi_skymodel(lsm, directions) # TODO
+    lsm = voronoi_skymodel(lsm)
     sizes = lsm.getPatchSizes(units='degree')
 
     cat_voro = 'ddcal/cat%02i_voro.txt' % c
@@ -156,20 +157,20 @@ for c in xrange(maxniter):
     check_rm(cat_cl_skydb)
     os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_cl, cat_cl_skydb) )
 
-    cat_skydb_voro = cat_voro.replace('.txt','.skydb')
+    cat_voro_skydb = cat_voro.replace('.txt','.skydb')
     check_rm(cat_voro_skydb)
     os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_voro, cat_voro_skydb) )
 
     ################################################################
     # Calibration
     patches_str = '['
-    [patches_str+'['+p+'],' for p in patches]
+    for p in patches: patches_str+='['+p+'],'
     patches_str = patches_str[:-1]+']'
 
     logging.info('Calibrating...')
     for ms in mss:
         check_rm(ms+'/cal-c'+str(c)+'.h5')
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddcal.parmdb='+ms+'/cal-c'+str(c)+'.h5 ddcal.sourcedb='+cat_cl_skydb+' ddcal.directions='+patches_str, \
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb+' ddecal.directions='+patches_str, \
             log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
