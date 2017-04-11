@@ -7,8 +7,8 @@
 
 import sys, os, glob, re
 import numpy as np
-from astropy.time import Time
 from autocal.lib_pipeline import *
+from astropy.time import Time
 import casacore.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
