@@ -1,31 +1,37 @@
 #!/usr/bin/python
-# apply tec+csp of one direction to DATA, write CORRECTED_DATA
-# usage: applycal.py ms h5parm
+# apply tec in one direction
 
-import os, sys
+import os, sys, optparse
 from numpy import sin, cos
 import tables
 import casacore.tables as pt
 import numpy as np
 
-direction = 0
+opt = optparse.OptionParser()
+opt.add_option('-i','--inms',help='Input MS',default='')
+opt.add_option('--incol',help='Input column',default='DATA')
+opt.add_option('--outcol',help='Output column',default='CORRECTED_DATA')
+opt.add_option('--inh5',help='Input H5parm',default='')
+opt.add_option('-d','--dir',help='Direction (int)',default=0)
+opt.add_option('-c','--corrupt',action="store_true",default=False,help='Corrupt')
+o, args = opt.parse_args()
 
-t = pt.table(sys.argv[1], readonly=False)
-h5 = tables.open_file(sys.argv[2])
+t = pt.table(o.inms, readonly=False)
+h5 = tables.open_file(o.inh5)
+direction = o.dir
 soltab_tec = h5.root.sol000.tec000
-soltab_csp = h5.root.sol000.scalarphase000
+#soltab_csp = h5.root.sol000.scalarphase000
 
 print "Applying dir %s" % h5.root.sol000.tec000.dir[direction]
-print "CSP HAVE A MINUS TO COMPENSATE NDPPP BUG"
+#print "CSP HAVE A MINUS TO COMPENSATE NDPPP BUG"
 
 sols_tec = soltab_tec.val
 wgts_tec = soltab_tec.weight
-sols_csp = soltab_csp.val
-sols_csp = -1.*np.array(sols_csp)
-wgts_csp = soltab_csp.weight
+#sols_csp = soltab_csp.val
+#sols_csp = -1.*np.array(sols_csp)
+#wgts_csp = soltab_csp.weight
 
 times = soltab_tec.time
-
 freqs = pt.table(sys.argv[1]+"/SPECTRAL_WINDOW",ack=False)[0]["CHAN_FREQ"]
 
 for timestep, buf in enumerate(t.iter("TIME")):
@@ -33,7 +39,7 @@ for timestep, buf in enumerate(t.iter("TIME")):
 
     assert buf.getcell("TIME",0) == times[timestep]
 
-    data = buf.getcol("CORRECTED_DATA")
+    data = buf.getcol(o.incol)
     flag = buf.getcol("FLAG")
 
     for rownr, row in enumerate(buf):
@@ -44,14 +50,19 @@ for timestep, buf in enumerate(t.iter("TIME")):
             flag[rownr,:,:] = True
             continue
 
-        g1 = sols_csp[ant1,direction,0,timestep] - sols_tec[ant1,direction,0,timestep] * 8.44797245e9 / freqs
+        #g1 = sols_csp[ant1,direction,0,timestep] - sols_tec[ant1,direction,0,timestep] * 8.44797245e9 / freqs
+        g1 = -1. * sols_tec[ant1,direction,0,timestep] * 8.44797245e9 / freqs
         g1 = cos(g1) + 1j*sin(g1)
-        g2 = sols_csp[ant2,direction,0,timestep] - sols_tec[ant2,direction,0,timestep] * 8.44797245e9 / freqs
+        #g2 = sols_csp[ant2,direction,0,timestep] - sols_tec[ant2,direction,0,timestep] * 8.44797245e9 / freqs
+        g2 = -1. * sols_tec[ant2,direction,0,timestep] * 8.44797245e9 / freqs
         g2 = cos(g2) + 1j*sin(g2)
         for pol in range(4):
-            data[rownr,:,pol] /= ( g1 * np.conj(g2) )
+            if corrupt:
+                data[rownr,:,pol] *= ( g1 * np.conj(g2) )
+            else:
+                data[rownr,:,pol] /= ( g1 * np.conj(g2) )
 
-    buf.putcol("CORRECTED_DATA", data)
+    buf.putcol(o.outcol, data)
     buf.putcol("FLAG", flag) 
 
 h5.close()
