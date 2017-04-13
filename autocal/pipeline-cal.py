@@ -33,7 +33,7 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
 #calname = mss[0].split('/')[-1].split('_')[0].lower()
-calname = '3c196' # TEST
+calname = '3c196' # NOTE: TEST
 logging.info("Calibrator name: %s." % calname)
 
 if calname == '3c196':
@@ -216,14 +216,15 @@ s.run(check=True)
 logging.info('Calibrating...')
 for ms in mss:
     check_rm(ms+'/instrument')
-    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP')
+    #s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset sol.solint=2 sol.nchan=4 msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP') # NOTE:TEST
 s.run(check=True)
 
-run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+#run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+#    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
 # TODO: add smooth clock
-run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
-    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+#run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+#    inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 
 if 'LBAsurvey' in os.getcwd():
     check_rm('globaldb/instrument*') # keep only filled instrument tables
@@ -235,9 +236,9 @@ if 'LBAsurvey' in os.getcwd():
 if imaging:
     from make_mask import make_mask
     # Correct all CORRECTED_DATA (beam, CD, FR corrected) -> CORRECTED_DATA
-    logging.info('TEC correction...')
+    logging.info('Amp/ph correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corTEC.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
 
     mss = mss[int(len(mss)/2.):] # keep only upper band
@@ -251,7 +252,7 @@ if imaging:
     check_rm('img')
     os.makedirs('img')
     imagename = 'img/wide'
-    s.add('wsclean -reorder -name ' + imagename + ' -size 6000 6000 -trim 5000 5000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 20 '+' '.join(mss), \
             log='wscleanA.log', cmd_type='wsclean', processors='max')
@@ -266,7 +267,7 @@ if imaging:
 
     logging.info('Cleaning w/ mask')
     imagename = 'img/wideM'
-    s.add('wsclean -reorder -name ' + imagename + ' -size 6000 6000 -trim 5000 5000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanB.log', cmd_type='wsclean', processors='max')

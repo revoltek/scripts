@@ -1,47 +1,37 @@
 #!/usr/bin/env python
 
-# Mosaic final images
+# Mosaic images
 
-# arguments are directories with final images
-# we use the .smooth.int.restored.fits and .fluxscale.fits files
+# Input:
+# - images
+# - beam (optional)
+# - masks (optional)
+# - header/image (optional) - if not provided use first image
+# Output:
+# - regridded, beam-corrected image
 
-#from reproject import reproject_interp,reproject_exact
-#from reproj_test import reproject_interp_chunk_2d
-import os.path, sys, pickle, glob, argparse, re
-from astropy.io import fits
-from astropy.table import Table
-from astropy.wcs import WCS
+import os.path, sys, pickle, glob, argparse, re, logging
 import numpy as np
-from autocal.lib_pipeline import *
+from astropy.io import fits as pyfits
+from astropy.wcs import WCS as pywcs
+from astropy.table import Table
 
 parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
-#parser.add_argument('--directories', metavar='D', nargs='+',
-#                    help='directory name')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
-parser.add_argument('--regions', dest='regions', nargs='+', help='List of regions to blank images')
+parser.add_argument('--maskss', dest='masks', nargs='+', help='List of masks/regions to blank images')
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
-parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at')
-#parser.add_argument('--exact', dest='exact', action='store_true', help='Do exact reprojection (slow)')
-#parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate images')
-#parser.add_argument('--load', dest='load', action='store_true', help='Load existing intermediate images')
+parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3)')
+parser.add_argument('--header', dest='header', help='An image/header to use for the output mosaic')
 parser.add_argument('--noise', dest='noise', type=float, nargs='+', help='UNSCALED Central noise level for weighting: must match numbers of maps')
 parser.add_argument('--scale', dest='scale', type=float, nargs='+', help='Scale factors by which maps should be multiplied: must match numbers of maps')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before mosaicing')
-#parser.add_argument('--no_write', dest='no_write', action='store_true', help='Do not write final mosaic')
-parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image')
-parser.add_argument('--load_layout', dest='load_layout', help='Name of a previously defined mosaic layout rather than determining from the images')
-parser.add_argument('--pipe', dest='pipe', action='store_true', help='Run in the directiory of PiLL-peel to mosaic facets')
+parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image (default: assume equal weights)')
+parser.add_argument('--output', dest='output', default='mosaic.fits' help='Name of output mosaic (default: mosaic.fits)')
 
 args = parser.parse_args()
 
-# if pipe then find images, regions and pb automatically
-if args.pipe == True:
-    args.images = sorted(glob.glob('peel/ddcal*/images/facetM-facet-MFS-image.fits'))
-    args.regions = []
-    for image in args.images:
-        args.regions.append('regions/%s-facet.reg' % image[4:12])
-    # TODO: beam are not per facet in pipe case... how to do?
-    args.beams = [makeBeam('self/images/beam')]*len(args.images) # all facets have same beam
+#######################################################
+# input check
 
 if args.scale is not None:
     if len(args.scale) != len(args.images):
@@ -53,16 +43,28 @@ if args.noise is not None:
         logging.error('Noises provided must match images')
         sys.exit(1)
 
-# TODO: copy all files in working directory
+# prepare header for final gridding
+if args.header is None:
+    logging.warning('Regridding on coordinate of %s' % args.images[0])
+    args.header = args.images[0]
+try:
+    with pyfits.open(args.header) as img_head:
+        logging.debug("Save header %s." % args.header+'.hdr')
+        with file.open(args.header+'.hdr') as file_head:
+            img_head[0].header.tofile(file_head, overwrite=True, sep='\\n')
+        args.header = args.header+'.hdr'
+except:
+    # header is an header file (e.g. created with mHdr)
+    logging.info("Using %s as header for final gridding." % args.header)
+
+#############################################################
 
 class Direction(object):
-    def __init__(self, imagefile, beamfile=None, regionfile=None):
+    def __init__(self, imagefile):
         self.imagefile = imagefile
-        self.beamfile = beamfile
-        self.regionfile = regionfile
+        self.beamfile = None
+        self.mask = None
         self.noise = None
-        if self.regionfile is not None: self.apply_mask()
-        if self.beamfile is not None: self.apply_beam()
 
     def apply_mask(self):
 
@@ -70,8 +72,22 @@ class Direction(object):
 
     def reproject(self):
 
-    def calc_noise(self):
-        self.noise = get_noise_img(self.imagefile, boxsize=None, niter=20, eps=1e-5)
+    def calc_noise(self, niter=20, eps=1e-5):
+        """
+        Return the rms of all the pixels in an image
+        niter : robust rms estimation
+        eps : convergency
+        """
+        with pyfits.open(self.imagefile) as fits:
+            data = fits[0].data
+            oldrms = 1.
+            for i in range(niter):
+                rms = np.nanstd(data)
+                if np.abs(oldrms-rms)/rms < eps:
+                    return rms
+                subim=subim[np.abs(subim)<5*rms]
+                oldrms=rms
+            raise Exception('Failed to converge')
 
 ############
 threshold = float(args.beamcut)
@@ -79,15 +95,12 @@ threshold = float(args.beamcut)
 logging.info('Reading files...')
 directions = []
 for i, image in enumerate(args.images):
-    if args.beams is not None: beam = args.beams[i]
-    if args.regions is not None: region = args.regions[i]
-    directions.append(Direction(image, beam, region))
-
-for i, d in enumerate(directions):
-    if args.noise is not None:
-        d.noise = args.noise[i]
-    elif args.find_noise:
-        d.calc_noise()
+    d = Direction(image)
+    if args.beams is not None: d.beamfile = args.beams[i]
+    if args.masks is not None: d.maskfile = args.masks[i]
+    if args.noise is not None: d.noise = args.noise[i]
+    elif args.find_noise: d.calc_noise()
+    directions.append(d)
 
 logging.info('Computing noise/beam factors...')
 for i in range(len(app)):

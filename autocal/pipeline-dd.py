@@ -34,7 +34,7 @@ def clean(c, mss, size=2.):
     """
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
-    imsize = int(size/(pixscale/3600.))
+    imsize = int(size/(pixscale/3600.)*1.5)
 
     if imsize < 512:
         imsize = 512
@@ -48,8 +48,7 @@ def clean(c, mss, size=2.):
 
     # clean 1
     logging.info('Cleaning (cycle: '+str(c)+')...')
-    if facet: imagename = 'img/facet-'+str(c)
-    else: imagename = 'img/ddcal-'+str(c)
+    imagename = 'img/ddcal-'+str(c)
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
@@ -65,8 +64,7 @@ def clean(c, mss, size=2.):
 
     # clean 2
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
-    if facet: imagename = 'img/facetM-'+str(c)
-    else: imagename = 'img/ddcalM-'+str(c)
+    imagename = 'img/ddcalM-'+str(c)
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
@@ -76,17 +74,6 @@ def clean(c, mss, size=2.):
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
 
-    # remove CC not in mask
-    maskname = imagename+'-mask.fits'
-    if facet:
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
-    else:
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 7)
-
-    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-        blank_image_fits(modelname, maskname, inverse=True)
-
-    check_rm('mss_imgavg')
     return imagename
 
 ############################################################
@@ -105,14 +92,14 @@ if avg_factor_f > 1:
 mss = sorted(glob.glob('mss/TC*-avg.MS'))
         
 for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+    s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
 
 ##############################################################
 logging.info('BL-based smoothing...')
-#for ms in mss:
-#    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#s.run(check=True)
+for ms in mss:
+    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+s.run(check=True)
 
 mosaic_image = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
 rms_noise_pre = np.inf
@@ -120,8 +107,6 @@ rms_noise_pre = np.inf
 for c in xrange(maxniter):
     logging.info('Starting cycle: %i' % c)
 
-    check_rm('mss_dd')
-    os.makedirs('mss_dd')
     check_rm('img')
     os.makedirs('img')
     os.makedirs('ddcal/images/c'+str(c))
@@ -144,6 +129,8 @@ for c in xrange(maxniter):
 
     cat_cl = 'ddcal/cat%02i_cluster.txt' % c
     lsm.write(cat_cl, format='makesourcedb', clobber=True)
+    cat_cl_plot = 'ddcal/cat%02i_cluster.png' % c
+    lsm.plot(fileName=cat_cl_plot, labelBy='patch')
 
     # voronoi tessellation of skymodel for imaging
     lsm = voronoi_skymodel(lsm)
@@ -151,6 +138,8 @@ for c in xrange(maxniter):
 
     cat_voro = 'ddcal/cat%02i_voro.txt' % c
     lsm.write(cat_voro, format='makesourcedb', clobber=True)
+    cat_voro_plot = 'ddcal/cat%02i_voro.png' % c
+    lsm.plot(fileName=cat_voro_plot, labelBy='patch')
     del lsm
 
     cat_cl_skydb = cat_cl.replace('.txt','.skydb')
@@ -176,7 +165,7 @@ for c in xrange(maxniter):
 
     # Plot solutions TODO: concat h5parm into a single file
     for i, ms in enumerate(mss):
-        s.add('losoto -v '+ms+'/cal.h5 '+parset_dir+'/losoto-plot.py', log='losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
         s.run(check=True)
         os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
 
@@ -190,24 +179,31 @@ for c in xrange(maxniter):
     for i, p in enumerate(patches):
         logging.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': corrupt...')
-        for ms in mss:
-            os.system('applycal.py -inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c')
-            # TODO: NDPPP need to support h5parm for correction
-#            s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
-#                log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
+#        logging.info('Patch '+p+': corrupt...')
+#        for ms in mss:
+#            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
+#           # TODO: NDPPP need to support h5parm for correction
+#            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
+#            #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+#        s.run(check=True)
 
         logging.info('Patch '+p+': subtract...')
         for ms in mss:
-            s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
+            s.add('taql "update '+ms+' set SUBTRACTED_DATA = SUBTRACTED_DATA - MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
         s.run(check=True)
 
     ##############################################################
     # Imaging
+    logging.info('Empty imaging')
+    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name img/empty-c'+str(c)+' -datacolumn SUBTRACTED_DATA -size 3000 3000 \
+            -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 10arcsec -weight briggs 0.0 -niter 0 -no-update-model-required -mgain 1 -pol I '+' '.join(mss), \
+            log='wscleanEmpty-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+ 
     for i, p in enumerate(patches):
         logging.info('Patch '+p+': predict...')
         for ms in mss:
@@ -221,17 +217,19 @@ for c in xrange(maxniter):
 
         logging.info('Patch '+p+': correct...')
         for ms in mss:
-            os.system('applycal.py -inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA')
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', log=ms+'_cor2-c'+str(c)+'.log', cmd_type='python')
             # TODO: NDPPP need to support h5parm for correction
-#            s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
-#                log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
+            #     log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         logging.info('Patch '+p+': phase shift and avg...')
+        check_rm('mss_dd')
+        os.makedirs('mss_dd')
         for ms in mss:
             msout = 'mss_dd/'+os.path.basename(ms)
             phasecentre = directions[p]
-            s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0])+'deg,'+str(phasecentre[1])+'deg\]', \
+            s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
                 log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
