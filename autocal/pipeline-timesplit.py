@@ -13,6 +13,7 @@ import casacore.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
+clock = False
 
 if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
@@ -22,7 +23,10 @@ if 'LBAsurvey' in os.getcwd():
     os.system('scp dsk:/disks/paradata/fdg/LBAsurvey/%s .' % globaldb) # TODO: move only _tXXX files
 else:
     ngroups = 2
-    globaldb = '../cals/globaldb'
+    if clock:
+        globaldb = '../cals/globaldb-clock'
+    else:
+        globaldb = '../cals/globaldb'
     datadir = '../tgts-bkp/' 
 
 ##################################################################################################
@@ -95,7 +99,10 @@ for ms in mss:
 # Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
 logging.info('Apply solutions...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+    if clock:
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' steps=[cor1,cor2] cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+    else:
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' steps=[cor1] cor1.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Re-set weights of flagged data to 0 - this is necessary if we want to use dysco
