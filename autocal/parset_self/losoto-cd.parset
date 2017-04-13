@@ -39,6 +39,7 @@ LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
 LoSoTo.Steps.crossdelay.Soltab = [sol000/phase000]
 LoSoTo.Steps.crossdelay.Operation = CROSSDELAY
 LoSoTo.Steps.crossdelay.OutTable = crossdelay
+LoSoTo.Steps.crossdelay.MaxResidual = 2.
 
 # plot cross delay
 LoSoTo.Steps.plotCD.Operation = PLOT
