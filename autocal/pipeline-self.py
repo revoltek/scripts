@@ -366,18 +366,18 @@ for c in xrange(niter):
     #s.run(check=True
     
 # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
-logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(c)+'.log', cmd_type='general')
-s.run(check=True)
+#logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
+#s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(c)+'.log', cmd_type='general')
+#s.run(check=True)
  
 # Perform a final clean to create an inspection image of CORRECTED_DATA which should be empty
-logging.info('Empty cleaning...')
-imagename = 'img/empty'
-s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 -j '+str(s.max_processors)+' \
-        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 \
-        -pol I -cleanborder 0 -datacolumn CORRECTED_DATA '+concat_ms, \
-        log='wsclean-empty.log', cmd_type='wsclean', processors='max')
-s.run(check=True)
+#logging.info('Empty cleaning...')
+#imagename = 'img/empty'
+#s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 -j '+str(s.max_processors)+' \
+#        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 \
+#        -pol I -cleanborder 0 -datacolumn CORRECTED_DATA '+concat_ms, \
+#        log='wsclean-empty.log', cmd_type='wsclean', processors='max')
+#s.run(check=True)
 
 # Copy last *model
 logging.info('Coadd+copy models...')
