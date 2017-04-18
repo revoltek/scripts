@@ -12,10 +12,12 @@ filter.blrange = [1000,1e30]
 
 sol.type = gaincal
 sol.parmdb = 
-#sol.caltype = tec
-sol.caltype = tecandphase
+sol.caltype = tec
+#sol.caltype = tecandphase
 sol.maxiter = 500
 sol.usemodelcolumn = True
 sol.solint = 1
 sol.nchan = 1
 sol.propagatesolutions = False
+
+sol.stepsize = 0.02

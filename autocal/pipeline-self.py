@@ -141,6 +141,7 @@ for c in xrange(niter):
     if c >= 1:
 
         # To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
+        # TODO: check -w, is it ok?
         logging.info('Convert to circular...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
@@ -219,7 +220,6 @@ for c in xrange(niter):
         #s.run(check=True)
 
         # Finally re-calculate TEC
-
         logging.info('BL-based smoothing...')
         for ms in mss:
             s.add('BLsmooth.py -r -f 0.2 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
@@ -238,7 +238,7 @@ for c in xrange(niter):
         os.system('mv plots-tec'+str(c)+'b self/solutions')
         os.system('mv cal-tec'+str(c)+'b.h5 self/solutions')
 
-        # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
+        # correct TEC - group*_TC.MS:CORRECTED_DATA -> group*_TC.MS:CORRECTED_DATA
         logging.info('Correcting TEC...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
@@ -305,6 +305,25 @@ for c in xrange(niter):
     s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+
+    if c >= 1:
+        # TODO: TESTESTEST
+        s.add('wsclean -reorder -name ' + imagename + '-lr-test -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+                -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 1 '+' '.join(mss), \
+                log='wsclean-lr.log', cmd_type='wsclean', processors='max')
+        s.run(check=True)
+        # TODO: TESTTESTTEST correct TEC - group*_TC.MS:SUBTRACTED_DATA -> group*_TC.MS:CORRECTED_DATA
+        logging.info('Correcting TEC...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+                log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+        s.add('wsclean -reorder -name ' + imagename + '-test -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 20 '+' '.join(mss), \
+            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+        s.run(check=True)
 
     # do low-res first cycle and remove it from the data
     if c == 0:
