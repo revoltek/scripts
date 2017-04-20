@@ -4,7 +4,7 @@ msin.baseline = [CR]S*&
 msout = .
 msout.datacolumn = MODEL_DATA
 
-numthreads = 1
+#numthreads = 1
 
 steps = [pre]
 

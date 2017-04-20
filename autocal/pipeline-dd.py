@@ -19,10 +19,11 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('mss/TC*.MS'))
 phasecentre = get_phase_centre(mss[0])
-check_rm('ddcal')
-os.makedirs('ddcal')
+check_rm('ddcal/regions')
 os.makedirs('ddcal/regions')
+check_rm('ddcal/plots')
 os.makedirs('ddcal/plots')
+check_rm('ddcal/images')
 os.makedirs('ddcal/images')
 os.makedirs('logs/mss')
 
@@ -90,7 +91,18 @@ if avg_factor_f > 1:
                 log=msout.split('/')[-1]+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
 mss = sorted(glob.glob('mss/TC*-avg.MS'))
-        
+       
+# TODO: test
+#logging.info('Initial imaging...')
+#check_rm('img')
+#os.makedirs('img')
+#s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name img/init -datacolumn DATA -size 3000 3000 \
+#            -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+#            -scale 10arcsec -weight briggs 0.0 -niter 0 -no-update-model-required -mgain 1 -pol I '+' '.join(mss), \
+#            log='wscleanEmpty.log', cmd_type='wsclean', processors='max')
+#s.run(check=True)
+
+logging.info('Add columns...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
@@ -113,13 +125,14 @@ for c in xrange(maxniter):
 
     ##############################################################
     # Run pyBDSM to create a model used for DD-calibrator
-    # TODO: set atrous = True
+
     logging.info('creating DD skymodel...')
     cat = 'ddcal/cat%02i.txt' % c
-    bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
-        thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
-        adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
-    bdsm_img.write_catalog(outfile=cat, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
+    if not os.path.exists(cat):
+        bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
+            thresh_pix=5, thresh_isl=3, atrous_do=True, atrous_jmax=3, \
+            adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
+        bdsm_img.write_catalog(outfile=cat, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
 
     lsm = lsmtool.load(cat)
     lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean')
@@ -152,18 +165,20 @@ for c in xrange(maxniter):
 
     ################################################################
     # Calibration
-    patches_str = '['
-    for p in patches: patches_str+='['+p+'],'
-    patches_str = patches_str[:-1]+']'
+    #patches_str = '['
+    #for p in patches: patches_str+='['+p+'],'
+    #patches_str = patches_str[:-1]+']'
 
     logging.info('Calibrating...')
     for ms in mss:
         check_rm(ms+'/cal-c'+str(c)+'.h5')
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb+' ddecal.directions='+patches_str, \
-            log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+        #+' ddecal.directions='+patches_str, \
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
+                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    # Plot solutions TODO: concat h5parm into a single file
+    # Plot solutions
+    # TODO: concat h5parm into a single file
     for i, ms in enumerate(mss):
         s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
         s.run(check=True)
@@ -182,13 +197,13 @@ for c in xrange(maxniter):
             s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-#        logging.info('Patch '+p+': corrupt...')
-#        for ms in mss:
-#            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
-#           # TODO: NDPPP need to support h5parm for correction
-#            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
-#            #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-#        s.run(check=True)
+        logging.info('Patch '+p+': corrupt...')
+        for ms in mss:
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
+           # TODO: NDPPP need to support h5parm for correction
+            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
+            #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
         logging.info('Patch '+p+': subtract...')
         for ms in mss:
@@ -197,6 +212,7 @@ for c in xrange(maxniter):
 
     ##############################################################
     # Imaging
+    # TODO: test
     logging.info('Empty imaging')
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name img/empty-c'+str(c)+' -datacolumn SUBTRACTED_DATA -size 3000 3000 \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
@@ -253,5 +269,3 @@ for c in xrange(maxniter):
     logging.info('RMS noise: %f' % rms_noise)
     if rms_noise > 0.95 * rms_noise_pre: break
     rms_noise_pre = rms_noise
-
-logging.info("Done.")

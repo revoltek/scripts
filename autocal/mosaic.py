@@ -50,7 +50,7 @@ if args.header is None:
 try:
     with pyfits.open(args.header) as img_head:
         logging.debug("Save header %s." % args.header+'.hdr')
-        with file.open(args.header+'.hdr') as file_head:
+        with file.open(args.header+'.hdr', 'w') as file_head:
             img_head[0].header.tofile(file_head, overwrite=True, sep='\\n')
         args.header = args.header+'.hdr'
 except:
@@ -64,13 +64,19 @@ class Direction(object):
         self.imagefile = imagefile
         self.beamfile = None
         self.mask = None
-        self.noise = None
+        self.noise = 1.
+        self.shift = 0.
+        self.img_data, self.img_hdr = pyfits.getdata(self.beamfile, header=True)
 
     def apply_mask(self):
+        pass
 
-    def apply_beam(self):
+    def apply_beam(self, beamcut=0.3):
+        beam_data, beam_hdr = pyfits.getdata(self.beamfile, header=True)
+        self.img_data[beam_data < beamcut] = 0.
 
     def reproject(self):
+        pass
 
     def calc_noise(self, niter=20, eps=1e-5):
         """
@@ -89,14 +95,13 @@ class Direction(object):
                 oldrms=rms
             raise Exception('Failed to converge')
 
-############
-threshold = float(args.beamcut)
-
 logging.info('Reading files...')
 directions = []
 for i, image in enumerate(args.images):
     d = Direction(image)
-    if args.beams is not None: d.beamfile = args.beams[i]
+    if args.beams is not None:
+        d.beamfile = args.beams[i]
+        d.apply_beam(beamcut = args.beamcut)
     if args.masks is not None: d.maskfile = args.masks[i]
     if args.noise is not None: d.noise = args.noise[i]
     elif args.find_noise: d.calc_noise()

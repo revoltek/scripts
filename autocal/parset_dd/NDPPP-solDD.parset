@@ -8,12 +8,12 @@ numthreads = 6
 steps=[ddecal]
 
 ddecal.type = ddecal
-#ddecal.sourcedb = 
-#ddecal.h5parm = 
-ddecal.directions = [[Patch_0],[Patch_1],[Patch_2],[Patch_3],[Patch_4],[Patch_5],[Patch_6],[Patch_7],[Patch_8],[Patch_9]] # List of lists of Patches
+ddecal.sourcedb = 
+ddecal.h5parm = 
+#ddecal.directions = 
 ddecal.maxiter = 500
 ddecal.tolerance = 1.e-5 # Is default
-ddecal.stepsize = 0.02
+ddecal.stepsize = 0.1
 ddecal.mode = tec # phaseonly, complexgain, tec, tecandphase
 ddecal.solint = 1
 ddecal.coreconstraint = 1500 # in meters
