@@ -20,10 +20,12 @@ from make_mask import make_mask
 parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 3
+user_mask = None
 
 if 'tooth' in os.getcwd():
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
     apparent = True # no beam correction
+    user_mask = '/home/fdg/scripts/autocal/regions/tooth.reg'
 elif 'bootes' in os.getcwd():
     sourcedb = '/home/fdg/scripts/model/Bootes_HBA.corr.skydb'
     apparent = False
@@ -280,9 +282,8 @@ for c in xrange(niter):
     # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
-    # remove CC not in mask
-    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-        blank_image_fits(modelname, maskname, inverse=True)
+    if user_mask is not None: 
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
 
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
@@ -295,10 +296,13 @@ for c in xrange(niter):
     # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
+    if user_mask is not None: 
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
     # remove CC not in mask
     for modelname in sorted(glob.glob(imagename+'*model.fits')):
         blank_image_fits(modelname, maskname, inverse=True)
-    
+        blank_image_reg(modelname, 'self/beam.reg', inverse=True)
+
     # TODO: move to DFT with NDPPP
     # update-model cannot be done in wsclean because of baseline-averaging
     logging.info('Predict...')
@@ -306,24 +310,24 @@ for c in xrange(niter):
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    if c >= 1:
-        # TODO: TESTESTEST
-        s.add('wsclean -reorder -name ' + imagename + '-lr-test -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-                -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 1 '+' '.join(mss), \
-                log='wsclean-lr.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
-        # TODO: TESTTESTTEST correct TEC - group*_TC.MS:SUBTRACTED_DATA -> group*_TC.MS:CORRECTED_DATA
-        logging.info('Correcting TEC...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
-                log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-        s.add('wsclean -reorder -name ' + imagename + '-test -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 20 '+' '.join(mss), \
-            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
+#    if c >= 1:
+#        # TODO: TESTESTEST
+#        s.add('wsclean -reorder -name ' + imagename + '-lr-test -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+#                -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+#                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 1 '+' '.join(mss), \
+#                log='wsclean-lr.log', cmd_type='wsclean', processors='max')
+#        s.run(check=True)
+#        # TODO: TESTTESTTEST correct TEC - group*_TC.MS:SUBTRACTED_DATA -> group*_TC.MS:CORRECTED_DATA
+#        logging.info('Correcting TEC...')
+#        for ms in mss:
+#            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
+#                log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
+#        s.run(check=True)
+#        s.add('wsclean -reorder -name ' + imagename + '-test -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+#            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+#            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 -auto-threshold 20 '+' '.join(mss), \
+#            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#        s.run(check=True)
 
     # do low-res first cycle and remove it from the data
     if c == 0:
@@ -384,37 +388,23 @@ for c in xrange(niter):
     #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
     #s.run(check=True
     
-# Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
-#logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-#s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql3-c'+str(c)+'.log', cmd_type='general')
-#s.run(check=True)
- 
-# Perform a final clean to create an inspection image of CORRECTED_DATA which should be empty
-#logging.info('Empty cleaning...')
-#imagename = 'img/empty'
-#s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -mem 90 -j '+str(s.max_processors)+' \
-#        -scale 5arcsec -weight briggs 0.0 -niter 1 -no-update-model-required -maxuv-l 8000 -mgain 0.6 \
-#        -pol I -cleanborder 0 -datacolumn CORRECTED_DATA '+concat_ms, \
-#        log='wsclean-empty.log', cmd_type='wsclean', processors='max')
-#s.run(check=True)
-
-# Copy last *model
-logging.info('Coadd+copy models...')
-# resample at high res to avoid FFT problem on long baselines
-for model in glob.glob('img/wide-'+str(c)+'*-model.fits'):
-    if "MFS" in model: continue
-    model_lr = model.replace('wide-'+str(c),'wide-lr-'+str(c)+'-resamp')
-    model_out = model.replace('img/wide-'+str(c),'self/models/coadd')
-    # if this pixel scale is changed, change also the resampling in the peel pipeline
-    s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
-s.run(check=True) 
+## Copy last *model
+#logging.info('Coadd+copy models...')
+## resample at high res to avoid FFT problem on long baselines
+#for model in glob.glob('img/wide-'+str(c)+'*-model.fits'):
+#    if "MFS" in model: continue
+#    model_lr = model.replace('wide-'+str(c),'wide-lr-resamp')
+#    model_out = model.replace('img/wide-'+str(c),'self/models/coadd')
+#    # if this pixel scale is changed, change also the resampling in the peel pipeline
+#    s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
+#s.run(check=True) 
 
 # Copy images
 os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
-[ os.system('mv img/wide-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wide-lr-MFS-image.fits self/images') for c in xrange(niter) ]
-os.system('mv img/empty-image.fits self/images')
+[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+os.system('mv img/wideM-'+str(niter-1)+'-*-model.fits self/models')
+os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv logs self')
 
 logging.info("Done.")

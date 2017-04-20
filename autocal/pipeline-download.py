@@ -110,6 +110,8 @@ if flag_elev:
         s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
     s.run(check=True)
 
+# Avg to 4 chan and 4 sec
+# Remove internationals
 if rename:
     logging.info('Renaming...')
     nchan = find_nchan(mss[0])
