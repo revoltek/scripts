@@ -15,17 +15,21 @@ import numpy as np
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.table import Table
+import pyregion
+
+tgss_catalog = '/home/fdg/script/autocal/TGSSADR1_5sigma_catalog_v3.fits'
 
 parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
-parser.add_argument('--maskss', dest='masks', nargs='+', help='List of masks/regions to blank images')
+parser.add_argument('--masks', dest='masks', nargs='+', help='List of masks/regions to blank images')
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
-parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3)')
-parser.add_argument('--header', dest='header', help='An image/header to use for the output mosaic')
-parser.add_argument('--noise', dest='noise', type=float, nargs='+', help='UNSCALED Central noise level for weighting: must match numbers of maps')
-parser.add_argument('--scale', dest='scale', type=float, nargs='+', help='Scale factors by which maps should be multiplied: must match numbers of maps')
+parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
+parser.add_argument('--beamcorr', dest='beamcorr', action='store_true', help='Pre-correct for beam before combining (default: do not apply)')
+parser.add_argument('--header', dest='header', help='An image/header to use for the output mosaic coordinates')
+parser.add_argument('--noises', dest='noise', type=float, nargs='+', help='UNSCALED Central noise level for weighting: must match numbers of maps')
+parser.add_argument('--scales', dest='scale', type=float, nargs='+', help='Scale factors by which maps should be multiplied: must match numbers of maps')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before mosaicing')
-parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image (default: assume equal weights)')
+parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image (default: assume equal weights, ignored if noises are given)')
 parser.add_argument('--output', dest='output', default='mosaic.fits' help='Name of output mosaic (default: mosaic.fits)')
 
 args = parser.parse_args()
@@ -43,37 +47,51 @@ if args.noise is not None:
         logging.error('Noises provided must match images')
         sys.exit(1)
 
-# prepare header for final gridding
-if args.header is None:
-    logging.warning('Regridding on coordinate of %s' % args.images[0])
-    args.header = args.images[0]
-try:
-    with pyfits.open(args.header) as img_head:
-        logging.debug("Save header %s." % args.header+'.hdr')
-        with file.open(args.header+'.hdr', 'w') as file_head:
-            img_head[0].header.tofile(file_head, overwrite=True, sep='\\n')
-        args.header = args.header+'.hdr'
-except:
-    # header is an header file (e.g. created with mHdr)
-    logging.info("Using %s as header for final gridding." % args.header)
-
 #############################################################
 
 class Direction(object):
     def __init__(self, imagefile):
+        logging.debug('Create direction for %s' % imagefile)
         self.imagefile = imagefile
         self.beamfile = None
-        self.mask = None
+        self.maskfile = None
         self.noise = 1.
+        self.scale = 1.
         self.shift = 0.
-        self.img_data, self.img_hdr = pyfits.getdata(self.beamfile, header=True)
+        self.img_data, self.img_hdr = pyfits.getdata(self.imagefile, header=True)
+
+    def set_mask(self, maskfile):
+        if not os.path.exists(maskfile):
+            logging.error('Mask file %s not found.' % maskfile)
+            sys.exit(1)
+        self.maskfile = maskfile
 
     def apply_mask(self):
-        pass
+        """
+        Set to 0 all pixels outside the given mask (ds9 region)
+        """
+        if self.maskfile is None: return
+        r = pyregion.open(self.maskfile)
+        mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
+        self.img_data[~mask] = 0.
 
-    def apply_beam(self, beamcut=0.3):
-        beam_data, beam_hdr = pyfits.getdata(self.beamfile, header=True)
-        self.img_data[beam_data < beamcut] = 0.
+    def set_beam(self, beamfile):
+        if not os.path.exists(beamfile):
+            logging.error('Beam file %s not found.' % beamfile)
+            sys.exit(1)
+        self.beamfile = beamfile
+        self.beam_data, self.beam_hdr = pyfits.getdata(self.beamfile, header=True)
+        if beam_data.shape != self.img_data.shape:
+            logging.error('Beam and image shape are different.')
+            sys.exit(1)
+
+    def apply_beam_cut(self, beamcut=0.3):
+        if self.beamfile is None: return
+        self.img_data[self.beam_data < self.beamcut] = 0.
+
+    def apply_beam_corr(self):
+        if self.beamfile is None: return
+        self.img_data /= self.beam_data
 
     def reproject(self):
         pass
@@ -90,169 +108,185 @@ class Direction(object):
             for i in range(niter):
                 rms = np.nanstd(data)
                 if np.abs(oldrms-rms)/rms < eps:
-                    return rms
-                subim=subim[np.abs(subim)<5*rms]
+                    self.noise = rms
+                    break
+                subim = subim[np.abs(subim)<5*rms]
                 oldrms=rms
             raise Exception('Failed to converge')
+
+    def calc_weight(self):
+        self.weight_data = np.ones_like(self.img_data)
+        if self.beamfile is not None:
+            self.weight_data *= self.beam_data
+        # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
+        self.weight_data /= self.noise * self.scale
+        self.weight_data = self.weight_data**2.0
+
+    def get_wcs(self):
+        return pywcs(self.img_hdr)
+
+    def calc_shift(self, ref_cat):
+        """
+        Find a shift cross-matching source extracted from the image and a given catalog
+        """
+        from lofar import bdsm
+        from astropy.coordinates import match_coordinates_sky
+
+        img_cat = self.imagefile+'-.cat'
+        bdsm_img = bdsm.process_image(self.imagefile, rms_box=(100,30), \
+            thresh_pix=5, thresh_isl=3, atrous_do=False, \
+            adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
+        bdsm_img.write_catalog(img_cat, catalog_type='srl', format='fits', clobber=True)
+
+        # read catlogue
+        ref_t = Table.read(ref_cat)
+        img_t = Table.read(img_cat)
+
+        # cross match
+        idx_match, sep, _ = match_coordinates_sky(SkyCoord(ref_t['RA'], ref_t['DEC']),\
+                                                  SkyCoord(img_t['RA'], img_t['DEC']))
+        idx_match = idx_match[sep<5*u.arcsec]
+        
+        # find & apply shift
+        dra = np.mean(ref_t['RA'][idx_match] - img_t['RA'][idx_match])
+        ddec = np.mean(ref_t['DEC'][idx_match] - img_t['DEC'][idx_match])
+        ra = self.img_hdr['CRVAL1']
+        dec = self.img_hdr['CRVAL2']
+        self.hdr['CRVAL1'] -= dra/(3600.*np.cos(np.pi*dec/180.))
+        self.hdr['CRVAL2'] -= ddec/3600.
+
+        # clean up
+        os.system('rm '+img_cat)
 
 logging.info('Reading files...')
 directions = []
 for i, image in enumerate(args.images):
     d = Direction(image)
+
     if args.beams is not None:
-        d.beamfile = args.beams[i]
-        d.apply_beam(beamcut = args.beamcut)
-    if args.masks is not None: d.maskfile = args.masks[i]
+        d.set_beam(args.beams[i])
+        d.apply_beam_cut(beamcut = args.beamcut)
+
+    if args.masks is not None:
+        d.set_mask(args.masks[i])
+        d.apply_mask()
+
     if args.noise is not None: d.noise = args.noise[i]
-    elif args.find_noise: d.calc_noise()
+    elif args.find_noise: d.calc_noise() # after beam cut
+
+    if args.scales is not None: d.scale = args.scales[i]
+
+    if args.beamcorr: d.apply_beam_corr() # after noise calculation
+
+    d.calc_weight() # after setting: beam, noise, scale
+
+    if args.shift:
+        d.calc_shift(tgss_catalog)
+
     directions.append(d)
 
-logging.info('Computing noise/beam factors...')
-for i in range(len(app)):
-    app[i].data/=hdus[i].data # probabilmente qui app e' beam corrected image dal quale estra il beam dividendo l'image
-    app[i].data[app[i].data<threshold]=0
-    # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
-    if args.noise is not None:
-        if args.scale is not None:
-            app[i].data/=args.noise[i]*args.scale[i]
-        else:
-            app[i].data/=args.noise[i]
+# prepare header for final gridding
+if args.header is None:
+    logging.warning('Calculate output headers...')
+    mra = np.mean( np.array([d.get_wcs().crval[0] for d in directions]) )
+    mdec = np.mean( np.array([d.get_wcs().crval[1] for d in directions]) )
 
-    app[i].data=app[i].data**2.0
-
-    if args.scale is not None:
-        hdus[i].data*=args.scale[i]
-
-if args.shift:
-    logging.info('Finding shifts...')
-    # shift according to the FIRST delta ra/dec from quality pipeline
-    dras=[]
-    ddecs=[]
-    for d in args.directories:
-        t=Table.read(d+'/image_full_ampphase1m.cat.fits_FIRST_match_filtered.fits')
-        dras.append(np.mean(t['FIRST_dRA']))
-        ddecs.append(np.mean(t['FIRST_dDEC']))
-    print 'Applying shifts:',dras,ddecs
-    for i in range(len(app)):
-        for hdu in [hdus[i],app[i]]:
-            ra=hdu.header['CRVAL1']
-            dec=hdu.header['CRVAL2']
-            hdu.header['CRVAL1']-=dras[i]/(3600.0*np.cos(np.pi*dec/180.0))
-            hdu.header['CRVAL2']-=ddecs[i]/3600.0
-
-logging.info('WCS values are:')
-for i in range(len(app)):
-    wcs.append(WCS(hdus[i].header))
-    print wcs[-1]
-
-if args.load_layout:
-    with open('mosaic-header.pickle') as f:
-        header=pickle.load(f)
-    xsize=header['NAXIS1']
-    ysize=header['NAXIS2']
-    print 'Mosaic using loaded header:'
-    print header
-else:
-
-    ras=np.array([w.wcs.crval[0] for w in wcs])
-    decs=np.array([w.wcs.crval[1] for w in wcs])
-
-    mra=np.mean(ras)
-    mdec=np.mean(decs)
     logging.info('Will make mosaic at %f %f' % (mra,mdec))
     
     # we make a reference WCS and use it to find the extent in pixels
     # needed for the combined image
 
-    rwcs=WCS(naxis=2)
-    rwcs.wcs.ctype=wcs[0].wcs.ctype
-    rwcs.wcs.cdelt=wcs[0].wcs.cdelt
-    rwcs.wcs.crval=[mra,mdec]
-    rwcs.wcs.crpix=[1,1]
+    rwcs = pywcs(naxis=2)
+    rwcs.wcs.ctype = directions[0].get_wcs().ctype
+    rwcs.wcs.cdelt = directions[0].get_wcs().cdelt
+    rwcs.wcs.crval = [mra,mdec]
+    rwcs.wcs.crpix = [1,1]
 
     xmin=0
     xmax=0
     ymin=0
     ymax=0
-    for a,w in zip(app,wcs):
-        ys,xs=np.where(a.data)
-        axmin=xs.min()
-        aymin=ys.min()
-        axmax=xs.max()
-        aymax=ys.max()
+    for d in directions:
+        w = d.get_wcs()
+        ys, xs = np.where(d.img_data)
+        axmin = xs.min()
+        aymin = ys.min()
+        axmax = xs.max()
+        aymax = ys.max()
         del(xs)
         del(ys)
         print 'non-zero',axmin,aymin,axmax,aymax
         for x,y in ((axmin,aymin),(axmax,aymin),(axmin,aymax),(axmax,aymax)):
-            ra,dec=[float(f) for f in w.wcs_pix2world(x,y,0)]
+            ra, dec = [float(f) for f in w.wcs_pix2world(x,y,0)]
             #print ra,dec
-            nx,ny=[float (f) for f in rwcs.wcs_world2pix(ra,dec,0)]
-            print nx,ny
-            if nx<xmin: xmin=nx
-            if nx>xmax: xmax=nx
-            if ny<ymin: ymin=ny
-            if ny>ymax: ymax=ny
+            nx, ny = [float (f) for f in rwcs.wcs_world2pix(ra,dec,0)]
+            #print nx,ny
+            if nx < xmin: xmin=nx
+            if nx > xmax: xmax=nx
+            if ny < ymin: ymin=ny
+            if ny > ymax: ymax=ny
 
     print 'co-ord range:', xmin, xmax, ymin, ymax
 
-    xsize=int(xmax-xmin)
-    ysize=int(ymax-ymin)
+    xsize = int(xmax-xmin)
+    ysize = int(ymax-ymin)
 
-    rwcs.wcs.crpix=[-int(xmin)+1,-int(ymin)+1]
+    rwcs.wcs.crpix = [-int(xmin)+1,-int(ymin)+1]
     print 'checking:', rwcs.wcs_world2pix(mra,mdec,0)
     print rwcs
 
-    header=rwcs.to_header()
-    header['NAXIS']=2
-    header['NAXIS1']=xsize
-    header['NAXIS2']=ysize
+    regrid_hdr = rwcs.to_header()
+    regrid_hdr['NAXIS'] = 2
+    regrid_hdr['NAXIS1'] = xsize
+    regrid_hdr['NAXIS2'] = ysize
 
-    with open('mosaic-header.pickle','w') as f:
-        pickle.dump(header,f)
+else:
+    try:
+        logging.info("Using %s header for final gridding." % args.header)
+        regrid_hrd = pyfits.open(args.header)[0].header
+    except:
+        logging.error("--header must be a fits file.")
+        sys.exit(1)
 
-isum=np.zeros([ysize,xsize])
-wsum=np.zeros_like(isum)
-mask=np.zeros_like(isum,dtype=np.bool)
-print 'now making the mosaic'
-for i in range(len(hdus)):
-    print 'image',i,'(',name[i],')'
-    outname='reproject-'+name[i]+'.fits'
+logging.info('Now making the mosaic...')
+isum = np.zeros([ysize,xsize])
+wsum = np.zeros_like(isum)
+mask = np.zeros_like(isum,dtype=np.bool)
+for d in directions:
+    logging.info('Working on: %s' % d.imagefile)
+    outname = 'reproject-'+d.imagename
     if args.load and os.path.exists(outname):
-        print 'loading...'
-        hdu=fits.open(outname)
-        r=hdu[0].data
+        logging.debug('Loading...')
+        r = fits.open(outname)[0].data
     else:
-        print 'reprojecting...'
-        r, footprint = reproj(hdus[i], header, hdu_in=0, parallel=False)
-        r[np.isnan(r)]=0
-        hdu = fits.PrimaryHDU(header=header,data=r)
-        if args.save: hdu.writeto(outname,clobber=True)
-    print 'weights',i,'(',name[i],')'
-    outname='weight-'+name[i]+'.fits'
+        logging.debug('Reprojecting...')
+        r, footprint = reproj(d.img_data, regrid_hdr, hdu_in=0, parallel=False)
+        r[ np.isnan(r) ] = 0
+        hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
+        hdu.writeto(outname, clobber=True)
+    outname='weight-'+d.imagename
     if args.load and os.path.exists(outname):
-        print 'loading...'
-        hdu=fits.open(outname)
-        w=hdu[0].data
-        mask|=(w>0)
+        logging.debug('Loading...')
+        w = fits.open(outname)[0].data
+        mask |= (w>0)
     else:
-        print 'reprojecting...'
-        w, footprint = reproj(app[i], header, hdu_in=0, parallel=False)
-        mask|=~np.isnan(w)
-        w[np.isnan(w)]=0
-        hdu = fits.PrimaryHDU(header=header,data=w)
-        if args.save: hdu.writeto(outname,clobber=True)
-    print 'add to mosaic...'
+        logging.debug('Reprojecting...')
+        w, footprint = reproj(d.beam_data, regrid_hdr, hdu_in=0, parallel=False)
+        mask |= ~np.isnan(w)
+        w[ np.isnan(w) ] = 0
+        hdu = fits.PrimaryHDU(header=regrid_hdr, data=w)
+        hdu.writeto(outname, clobber=True)
+    logging.debug('Add to mosaic...')
     isum+=r*w
     wsum+=w
 
-if not(args.no_write):
-    isum/=wsum
-    # mask now contains True where a non-nan region was present in either map
-    isum[~mask]=np.nan
-    for ch in ('BMAJ', 'BMIN', 'BPA', 'RESTFRQ', 'TELESCOP', 'OBSERVER'):
-        header[ch]=hdus[0].header[ch]
-    header['ORIGIN']='ddf-pipeline-mosaic'
-    header['UNITS']='Jy/beam'
+isum/=wsum
+# mask now contains True where a non-nan region was present in either map
+isum[~mask]=np.nan
+for ch in ('BMAJ', 'BMIN', 'BPA', 'RESTFRQ', 'TELESCOP', 'OBSERVER'):
+    regrid_hdr[ch] = directions[0].img_hdr[ch]
+    regrid_hdr['ORIGIN'] = 'ddf-pipeline-mosaic'
+    regrid_hdr['UNITS'] = 'Jy/beam'
 
-    hdu = fits.PrimaryHDU(header=header,data=isum)
-    hdu.writeto('mosaic.fits',clobber=True)
+    hdu = fits.PrimaryHDU(header=regrid_hdr, data=isum)
+    hdu.writeto(args.output, clobber=True)
