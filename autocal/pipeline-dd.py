@@ -35,12 +35,12 @@ def clean(c, mss, size=2.):
     """
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
-    imsize = int(size/(pixscale/3600.)*1.5)
+    imsize = int(size/(pixscale/3600.)*1.2)
 
     if imsize < 512:
         imsize = 512
 
-    trim = int(imsize*0.7)
+    trim = int(imsize*0.9)
 
     if imsize % 2 == 1: imsize += 1 # make even
     if trim % 2 == 1: trim += 1 # make even
@@ -48,12 +48,12 @@ def clean(c, mss, size=2.):
     logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
     # clean 1
-    logging.info('Cleaning (cycle: '+str(c)+')...')
+    logging.info('Cleaning ('+str(c)+')...')
     imagename = 'img/ddcal-'+str(c)
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
-            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 20 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -64,12 +64,12 @@ def clean(c, mss, size=2.):
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
 
     # clean 2
-    logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
+    logging.info('Cleaning w/ mask ('+str(c)+')...')
     imagename = 'img/ddcalM-'+str(c)
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
-            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -107,11 +107,11 @@ for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
 
-##############################################################
-logging.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-s.run(check=True)
+###############################################################
+#logging.info('BL-based smoothing...')
+#for ms in mss:
+#    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+#s.run(check=True)
 
 mosaic_image = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
 rms_noise_pre = np.inf
@@ -147,6 +147,7 @@ for c in xrange(maxniter):
 
     # voronoi tessellation of skymodel for imaging
     lsm = voronoi_skymodel(lsm)
+    lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
     sizes = lsm.getPatchSizes(units='degree')
 
     cat_voro = 'ddcal/cat%02i_voro.txt' % c
@@ -163,38 +164,64 @@ for c in xrange(maxniter):
     check_rm(cat_voro_skydb)
     os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_voro, cat_voro_skydb) )
 
-    ################################################################
-    # Calibration
-    #patches_str = '['
-    #for p in patches: patches_str+='['+p+'],'
-    #patches_str = patches_str[:-1]+']'
-
-    logging.info('Calibrating...')
-    for ms in mss:
-        check_rm(ms+'/cal-c'+str(c)+'.h5')
-        #+' ddecal.directions='+patches_str, \
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
-                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
-
-    # Plot solutions
-    # TODO: concat h5parm into a single file
-    for i, ms in enumerate(mss):
-        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
-        s.run(check=True)
-        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
-
-    ############################################################
-    # Empty the dataset
-    logging.info('Set SUBTRACTED_DATA = DATA...')
-    for ms in mss:
-        s.add('taql "update '+ms+' set SUBTRACTED_DATA = DATA"', log=ms+'_taql1-c'+str(c)+'.log', cmd_type='general')
-    s.run(check=True)
-
+#    ################################################################
+#    # Calibration
+#    logging.info('Calibrating...')
+#    for ms in mss:
+#        check_rm(ms+'/cal-c'+str(c)+'.h5')
+#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
+#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+#    s.run(check=True)
+#
+#    # Plot solutions
+#    # TODO: concat h5parm into a single file
+#    for i, ms in enumerate(mss):
+#        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+#        s.run(check=True)
+#        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
+#
+#    ############################################################
+#    # Empty the dataset
+#    logging.info('Set SUBTRACTED_DATA = DATA...')
+#    for ms in mss:
+#        s.add('taql "update '+ms+' set SUBTRACTED_DATA = DATA"', log=ms+'_taql1-c'+str(c)+'.log', cmd_type='general')
+#    s.run(check=True)
+#
+#    logging.info('Subtraction...')
+#    for i, p in enumerate(patches):
+#        logging.info('Patch '+p+': predict...')
+#        for ms in mss:
+#            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+#        s.run(check=True)
+#
+#        logging.info('Patch '+p+': corrupt...')
+#        for ms in mss:
+#            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
+#           # TODO: NDPPP need to support h5parm for correction
+#            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
+#            #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+#        s.run(check=True)
+#
+#        logging.info('Patch '+p+': subtract...')
+#        for ms in mss:
+#            s.add('taql "update '+ms+' set SUBTRACTED_DATA = SUBTRACTED_DATA - MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
+#        s.run(check=True)
+#
+#    ##############################################################
+#    # Imaging
+#    # TODO: test
+#    logging.info('Empty imaging')
+#    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name img/empty-c'+str(c)+' -datacolumn SUBTRACTED_DATA -size 3000 3000 \
+#            -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+#            -scale 10arcsec -weight briggs 0.0 -niter 0 -no-update-model-required -mgain 1 -pol I '+' '.join(mss), \
+#            log='wscleanEmpty-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#    s.run(check=True)
+ 
+    logging.info('Imaging...')
     for i, p in enumerate(patches):
         logging.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_voro_skydb+' pre.sources='+p, log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         logging.info('Patch '+p+': corrupt...')
@@ -205,31 +232,24 @@ for c in xrange(maxniter):
             #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': subtract...')
-        for ms in mss:
-            s.add('taql "update '+ms+' set SUBTRACTED_DATA = SUBTRACTED_DATA - MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
-        s.run(check=True)
-
-    ##############################################################
-    # Imaging
-    # TODO: test
-    logging.info('Empty imaging')
-    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name img/empty-c'+str(c)+' -datacolumn SUBTRACTED_DATA -size 3000 3000 \
-            -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -niter 0 -no-update-model-required -mgain 1 -pol I '+' '.join(mss), \
-            log='wscleanEmpty-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
- 
-    for i, p in enumerate(patches):
-        logging.info('Patch '+p+': predict...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_voro_skydb+' pre.sources='+p, log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-
         logging.info('Patch '+p+': add...')
         for ms in mss:
             s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
         s.run(check=True)
+
+        # TEST
+        logging.info('Patch '+p+': phase shift and avg...')
+        check_rm('mss_dd')
+        os.makedirs('mss_dd')
+        for ms in mss:
+            msout = 'mss_dd/'+os.path.basename(ms)
+            phasecentre = directions[p]
+            s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
+                log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+        logging.info('Patch '+p+': corrupted image...')
+        clean('uncor_'+p, glob.glob('mss_dd/*MS'), size=sizes[i]) # TEST
+        # end TEST
 
         logging.info('Patch '+p+': correct...')
         for ms in mss:
@@ -248,7 +268,6 @@ for c in xrange(maxniter):
             s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
                 log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-
         logging.info('Patch '+p+': image...')
         clean(p, glob.glob('mss_dd/*MS'), size=sizes[i])
 

@@ -75,7 +75,7 @@ def clean(c, mss, dd, avgfreq=2, avgtime=8, facet=False):
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
-            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 20 '+' '.join(mssavg), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -92,7 +92,7 @@ def clean(c, mss, dd, avgfreq=2, avgtime=8, facet=False):
     s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 -pol I \
-            -joinchannels -fit-spectral-pol 2 -channelsout 10 -deconvolution-channels 5 \
+            -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mssavg), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
