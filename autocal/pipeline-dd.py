@@ -254,6 +254,8 @@ for c in xrange(maxniter):
 
     ##############################################################
     # TODO: Mosaiching
+    make_tessellation(directions, mosaic_image, outdir='ddcal/regions', beam_reg='', png='ddcal/voronoi.png')
+
     logging.info('Mosaic: image...')
     mosaic_image = 'img/mos_image.fits'
     mosaic(glob.glob('img/*MFS-image.fits'), output=mosaic_image)

@@ -513,7 +513,7 @@ ddset = make_directions(imagename, outdir='regions/', target_flux_jy=10, bright_
 
 logging.info('Voronoi tassellation...')
 make_beam_reg(phasecentre[0], phasecentre[1], pb_cut, 'regions/beam.reg')
-ddset = make_tassellation(ddset, imagename, beam_reg='regions/beam.reg')
+ddset = make_tessellation(ddset, imagename, beam_reg='regions/beam.reg')
 
 print ddset
 ddset.write('ddset.txt', format='ascii')
