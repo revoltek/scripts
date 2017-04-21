@@ -333,6 +333,7 @@ def make_tessellation(directions, fitsfile, outdir='regions/', beam_reg='', png=
     impoly = voronoi_finite_polygons_2d_box(vor, box)
 
     # save regions
+    all_s = []
     for i, poly in enumerate(impoly):
         ra, dec = w.all_pix2world(poly[:,0],poly[:,1], 0, ra_dec_order=True)
         coords = np.array([ra,dec]).T.flatten()
@@ -344,14 +345,19 @@ def make_tessellation(directions, fitsfile, outdir='regions/', beam_reg='', png=
         s.attr = ([], {'width': '2', 'point': 'cross',
                        'font': '"helvetica 16 normal roman"'})
         s.comment = 'color=red'
+        s.comment = 'color=white text="%s"' % directions.keys()[idx_for_facet[i]]
+        all_s.append(s)
 
         regions = pyregion.ShapeList([s])
-        regionfile = outdir+directions.keys()[idx_for_facet[i]]+'-facet.reg'
+        regionfile = outdir+directions.keys()[idx_for_facet[i]]+'.reg'
         regions.write(regionfile)
 
-        if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
-        else: npix = size_from_reg(fitsfile, [regionfile], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
+        #if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
+        #else: npix = size_from_reg(fitsfile, [regionfile], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
 
+    regions = pyregion.ShapeList(all_s)
+    regionfile = outdir+'all.reg'
+    regions.write(regionfile)
     logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(directions) - len(idx_for_facet)))
 
     # plot tesselization

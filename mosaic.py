@@ -23,7 +23,7 @@ reproj = reproject_exact
 tgss_catalog = '/home/fdg/scripts/autocal/TGSSADR1_5sigma_catalog_v3.fits'
 
 parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
-parser.add_argument(dest='images', nargs='+', help='List of images to combine')
+parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
 parser.add_argument('--masks', dest='masks', nargs='+', help='List of masks/regions to blank images')
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
 parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
@@ -162,6 +162,7 @@ class Direction(object):
 
     def calc_weight(self):
         self.weight_data = np.ones_like(self.img_data)
+        self.weight_data[self.img_data == 0] = 0
         if self.beamfile is not None:
             self.weight_data *= self.beam_data
         # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
@@ -224,7 +225,7 @@ for i, image in enumerate(args.images):
         d.apply_mask()
 
     if args.noises is not None: d.noise = args.noises[i]
-    elif args.find_noise: d.calc_noise() # after beam cut
+    elif args.find_noise: d.calc_noise() # after beam cut/mask
 
     if args.scales is not None: d.scale = args.scales[i]
 
@@ -278,13 +279,13 @@ if args.header is None:
             if ny < ymin: ymin=ny
             if ny > ymax: ymax=ny
 
-    print 'co-ord range:', xmin, xmax, ymin, ymax
+    #print 'co-ord range:', xmin, xmax, ymin, ymax
 
     xsize = int(xmax-xmin)
     ysize = int(ymax-ymin)
 
     rwcs.wcs.crpix = [-int(xmin)+1,-int(ymin)+1]
-    print 'checking:', rwcs.wcs_world2pix(mra,mdec,0)
+    #print 'checking:', rwcs.wcs_world2pix(mra,mdec,0)
 
     regrid_hdr = rwcs.to_header()
     regrid_hdr['NAXIS'] = 2
@@ -305,24 +306,24 @@ wsum = np.zeros_like(isum)
 mask = np.zeros_like(isum,dtype=np.bool)
 for d in directions:
     logging.info('Working on: %s' % d.imagefile)
-    outname = 'reproject-'+d.imagefile
+    outname = d.imagefile.replace('.fits','-reproj.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
         r = pyfits.open(outname)[0].data
     else:
         logging.debug('Reprojecting data...')
-        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr, parallel=False)
+        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr, parallel=6)
         r[ np.isnan(r) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
         hdu.writeto(outname, clobber=True)
-    outname='weight-'+d.imagefile
+    outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
         w = pyfits.open(outname)[0].data
         mask |= (w>0)
     else:
         logging.debug('Reprojecting weights...')
-        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr, parallel=False)
+        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr, parallel=6)
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
@@ -333,8 +334,8 @@ for d in directions:
 
 logging.debug('Write mosaic: %s...' % args.output)
 # mask now contains True where a non-nan region was present in either map
-isum/=wsum
-isum[~mask]=np.nan
+isum /= wsum
+isum[~mask] = np.nan
 
 for ch in ('BMAJ', 'BMIN', 'BPA'):
     regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]

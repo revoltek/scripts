@@ -114,7 +114,6 @@ def scale_from_ms(ms):
 
     t = table(ms, ack=False).query('not all(FLAG)')
     col = t.getcol('UVW')
-    maxdist = 0
 
     t = table(ms+'/SPECTRAL_WINDOW', ack=False)
     wavelenght = c/t.getcol('REF_FREQUENCY')[0]
@@ -123,6 +122,7 @@ def scale_from_ms(ms):
     maxdist = np.max( np.sqrt(col[:,0]**2 + col[:,1]**2) )
 
     return int(round(wavelenght/maxdist*(180/np.pi)*3600/3.)) # arcsec
+
 
 def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0.):
     """
