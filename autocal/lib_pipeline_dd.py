@@ -17,7 +17,7 @@ except:
 def table_to_circ_region(table, outfile, racol='RA', deccol='DEC', sizecol='size', color='red', label=True):
     """
     Get a table with ra, dec, size and generate a circular ds9 region 
-    if cat is given, add a small circle around all sources on the edge
+    TODO: if cat is given, add a small circle around all sources on the edge
     """
 
     regions = []
@@ -160,7 +160,7 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
     return t
 
 
-def make_directions(imagename, outdir='regions/', target_flux_jy=10, bright_source_jy=5., size_max_arcmin=3., trials=None):
+def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, bright_source_jy=5., size_max_arcmin=3., trials=None):
     """
     fitsfile = selfcal model, used for coordinates
     outdir = Directory where to save the ds9 regions
@@ -284,12 +284,15 @@ def make_directions(imagename, outdir='regions/', target_flux_jy=10, bright_sour
     table_to_circ_region(ddcal, outdir+'/all.reg', sizecol='dd_size')
     return ddcal
 
-def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
+def make_tessellation(directions, fitsfile, outdir='regions/', beam_reg='', png=None):
     """
-    t : table with directions
-    firsfile : model fits file to tassellate
+    Take a list of coordinates and an image and voronoi tesselate the sky.
+    It saves ds9 regions of the facets and and return facet sizes
+
+    directions : dict with {'dir0':[ra,dec], 'dir1':[ra,dec]...}
+    firsfile : model fits file to tassellate (used for coordinates)
     outdir : dir where to save regions
-    beam_reg : a ds9 region showing the the primary beam
+    beam_reg : a ds9 region showing the the primary beam, exclude directions outside it
     """
 
     logging.debug("Image used for tasselation reference: "+fitsfile)
@@ -299,16 +302,16 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
     pixsize = np.abs(hdr['CDELT1'])
 
     # Add facet size column
-    t['facet_size'] = np.zeros(len(t))
-    t['facet_size'].unit = u.degree
-    t['x'], t['y'] = w.all_world2pix(t['RA'],t['DEC'], 0, ra_dec_order=True)
+    ras = np.array([directions[d][0].degree for d in directions])
+    decs = np.array([directions[d][1].degree for d in directions])
+    x, y = w.all_world2pix(ras, decs, 0, ra_dec_order=True)
 
     x_c = data.shape[0]/2.
     y_c = data.shape[1]/2.
 
     if beam_reg == '':
         # no beam, use all directions for facets
-        idx_for_facet = range(len(t))
+        idx_for_facet = range(len(directions))
     else:
         r = pyregion.open(beam_reg)
         beam_mask = r.get_mask(header=hdr, shape=data.shape)
@@ -325,7 +328,7 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
     y2 = data.shape[1]
 
     # do tasselization
-    vor = Voronoi(np.array((t['x'][idx_for_facet], t['y'][idx_for_facet])).transpose())
+    vor = Voronoi(np.array((x[idx_for_facet], y[idx_for_facet])).transpose())
     box = np.array([[x1,y1],[x2,y2]])
     impoly = voronoi_finite_polygons_2d_box(vor, box)
 
@@ -343,39 +346,32 @@ def make_tassellation(t, fitsfile, outdir='regions/', beam_reg=''):
         s.comment = 'color=red'
 
         regions = pyregion.ShapeList([s])
-        regionfile = outdir+t['name'][idx_for_facet[i]]+'-facet.reg'
+        regionfile = outdir+directions.keys()[idx_for_facet[i]]+'-facet.reg'
         regions.write(regionfile)
 
-        if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
-        else: npix = size_from_reg(fitsfile, [regionfile], [t['RA'][idx_for_facet[i]], t['DEC'][idx_for_facet[i]]])
+        if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
+        else: npix = size_from_reg(fitsfile, [regionfile], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
 
-        t['facet_size'][idx_for_facet[i]] = pixsize * npix
-        #print t['facet_size'][idx_for_facet[i]]
-        #print '###'
+    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(directions) - len(idx_for_facet)))
 
-    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(t) - len(idx_for_facet)))
-
-    # plot tasselization
-    import matplotlib.pyplot as pl
-    pl.figure(figsize=(8,8))
-    ax1 = pl.gca()
-    ax1.plot(t['x'],t['y'],'*',color='red')
-    for i, d in enumerate(t): ax1.text(d['x'], d['y'], str(i), fontsize=15)
-    if beam_reg != '':
-        c1 = pl.Circle((x_c, y_c), beamradius_pix, color='g', fill=False)
-        ax1.add_artist(c1)
-    ax1.plot([x1,x1,x2,x2,x1],[y1,y2,y2,y1,y1])
-    for p in impoly:
-        pp = p.transpose()
-        ax1.plot(pp[0],pp[1])
-    ax1.set_xlabel('RA (pixel)')
-    ax1.set_ylabel('Dec (pixel)')
-    logging.debug('Save plot: voronoi_facets.png')
-    pl.savefig('voronoi_facets.png')
-
-    t.remove_columns(['x','y'])
-
-    return t
+    # plot tesselization
+    if png is not None:
+        import matplotlib.pyplot as pl
+        pl.figure(figsize=(8,8))
+        ax1 = pl.gca()
+        ax1.plot(x,y,'*',color='red')
+        for i, d in enumerate(directions): ax1.text(x[i], y[i], d, fontsize=15)
+        if beam_reg != '':
+            c1 = pl.Circle((x_c, y_c), beamradius_pix, color='g', fill=False)
+            ax1.add_artist(c1)
+        ax1.plot([x1,x1,x2,x2,x1],[y1,y2,y2,y1,y1])
+        for p in impoly:
+            pp = p.transpose()
+            ax1.plot(pp[0],pp[1])
+        ax1.set_xlabel('RA (pixel)')
+        ax1.set_ylabel('Dec (pixel)')
+        logging.debug('Save plot: %s' % png)
+        pl.savefig(png)
 
 
 def make_beam_reg(ra_c, dec_c, pb_cut, outfile):
