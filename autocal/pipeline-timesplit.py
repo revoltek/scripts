@@ -13,7 +13,7 @@ import casacore.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_timesplit'
 initc = 0 # initial tc num (useful for multiple observation of same target) - tooth10==12
-clock = False
+clock = True
 
 if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)

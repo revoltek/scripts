@@ -19,5 +19,3 @@ sol.usemodelcolumn = True
 sol.solint = 1
 sol.nchan = 1
 sol.propagatesolutions = False
-
-sol.stepsize = 0.02
