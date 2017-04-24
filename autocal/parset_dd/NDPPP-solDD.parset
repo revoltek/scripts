@@ -17,3 +17,4 @@ ddecal.stepsize = 0.1
 ddecal.mode = tec # phaseonly, complexgain, tec, tecandphase
 ddecal.solint = 1
 ddecal.coreconstraint = 1500 # in meters
+ddecal.propagatesolutions = False
