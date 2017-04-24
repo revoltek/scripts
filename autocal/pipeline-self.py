@@ -274,7 +274,7 @@ for c in xrange(niter):
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -341,7 +341,7 @@ for c in xrange(niter):
         imagename_lr = 'img/wide-lr'
         s.add('wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 '+' '.join(mss), \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -save-component-list -auto-threshold 1 '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
     
