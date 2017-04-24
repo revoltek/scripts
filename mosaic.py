@@ -312,7 +312,7 @@ for d in directions:
         r = pyfits.open(outname)[0].data
     else:
         logging.debug('Reprojecting data...')
-        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr, parallel=6)
+        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr, parallel=True)
         r[ np.isnan(r) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
         hdu.writeto(outname, clobber=True)
@@ -323,7 +323,7 @@ for d in directions:
         mask |= (w>0)
     else:
         logging.debug('Reprojecting weights...')
-        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr, parallel=6)
+        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr, parallel=True)
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
