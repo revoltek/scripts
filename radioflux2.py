@@ -7,7 +7,7 @@ from astropy import wcs
 import numpy as np
 import sys
 import warnings
-from linearfit import *
+from lib_linearfit import *
 
 def flatten(f,channel=0,freqaxis=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
