@@ -1,17 +1,27 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2017 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # Mosaic images
 
-# Input:
-# - images
-# - beam (optional)
-# - masks (optional)
-# - header/image (optional) - if not provided use first image
-# Output:
-# - regridded, beam-corrected image
-
 import os.path, sys, pickle, glob, argparse, re, logging
 import numpy as np
+from lib_fits import flatten
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.table import Table
@@ -57,46 +67,6 @@ if len(args.images) < 2:
 
 #############################################################
 
-def flatten(f, channel=0, freqaxis=0):
-    """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
-
-    naxis=f[0].header['NAXIS']
-    if naxis<2:
-        raise RadioError('Can\'t make map from this')
-    if naxis==2:
-        return f[0].header,f[0].data
-
-    w = pywcs(f[0].header)
-    wn = pywcs(naxis=2)
-
-    wn.wcs.crpix[0]=w.wcs.crpix[0]
-    wn.wcs.crpix[1]=w.wcs.crpix[1]
-    wn.wcs.cdelt=w.wcs.cdelt[0:2]
-    wn.wcs.crval=w.wcs.crval[0:2]
-    wn.wcs.ctype[0]=w.wcs.ctype[0]
-    wn.wcs.ctype[1]=w.wcs.ctype[1]
-
-    header = wn.to_header()
-    header["NAXIS"]=2
-    copy=('EQUINOX','EPOCH')
-    for k in copy:
-        r=f[0].header.get(k)
-        if r:
-            header[k]=r
-
-    slice=[]
-    for i in range(naxis,0,-1):
-        if i<=2:
-            slice.append(np.s_[:],)
-        elif i==freqaxis:
-            slice.append(channel)
-        else:
-            slice.append(0)
-
-    # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header,f[0].data[slice]
-
-
 class Direction(object):
     def __init__(self, imagefile):
         logging.debug('Create direction for %s' % imagefile)
@@ -106,7 +76,7 @@ class Direction(object):
         self.noise = 1.
         self.scale = 1.
         self.shift = 0.
-        self.img_hdr, self.img_data = flatten(pyfits.open(self.imagefile))
+        self.img_hdr, self.img_data = flatten(self.imagefile)
 
     def set_mask(self, maskfile):
         if not os.path.exists(maskfile):
@@ -315,7 +285,7 @@ for d in directions:
         r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr, parallel=True)
         r[ np.isnan(r) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
-        hdu.writeto(outname, clobber=True)
+        hdu.writeto(outname, overwrite=True)
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
@@ -327,7 +297,7 @@ for d in directions:
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
-        hdu.writeto(outname, clobber=True)
+        hdu.writeto(outname, overwrite=True)
     logging.debug('Add to mosaic...')
     isum += r*w
     wsum += w
@@ -343,6 +313,6 @@ for ch in ('BMAJ', 'BMIN', 'BPA'):
     regrid_hdr['UNITS'] = 'Jy/beam'
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
-hdu.writeto(args.output, clobber=True)
+hdu.writeto(args.output, overwrite=True)
 
 logging.debug('Done.')
