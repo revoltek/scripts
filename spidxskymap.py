@@ -14,7 +14,7 @@ from astropy.coordinates import match_coordinates_sky
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from linearfit import twopoint_spidx_bootstrap
+from lib_linearfit import twopoint_spidx_bootstrap
 
 import warnings
 warnings.filterwarnings("ignore") 
