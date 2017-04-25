@@ -26,7 +26,7 @@ import numpy as np
 import pyrap.images
 import pyrap.tables
 
-import linearfit
+import lib_linearfit
 
 def getValues(imglist):
     """Read image pixel values
@@ -223,9 +223,9 @@ if __name__ == "__main__":
         data = {'flux':np.array(fluxvalues),'freq':np.array(freqs),'rms':np.array(rmsvalues)}
         print data
         if log:
-            linearfit.plotlinax(data, outplot)
+            lib_linearfit.plotlinax(data, outplot)
         else:
-            linearfit.plotlogax(data, outplot)
+            lib_linearfit.plotlogax(data, outplot)
 
     if effmask != None:
         print "Writing effective mask:"
