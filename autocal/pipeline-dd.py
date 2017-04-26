@@ -103,7 +103,7 @@ for ms in mss:
     s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
-mosaic_image = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
+mosaic_image = sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1]
 rms_noise_pre = np.inf
 
 for c in xrange(maxniter):
@@ -125,7 +125,7 @@ for c in xrange(maxniter):
         bdsm_img.write_catalog(outfile=cat, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
 
     lsm = lsmtool.load(cat)
-    lsm.group('tessellate', targetFlux='25Jy', root='Dir', applyBeam=False, method = 'wmean')
+    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean')
     patches = lsm.getPatchNames()
     logging.info("Created %i directions." % len(patches))
 
