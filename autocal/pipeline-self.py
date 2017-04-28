@@ -264,7 +264,7 @@ for c in xrange(niter):
         logging.info('Cleaning beam-low (cycle: '+str(c)+')...')
         imagename = 'img/wideBeamLow'
         s.add('wsclean -reorder -name ' + imagename + ' -size 1000 1000 -trim 512 512 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 1arcmin -weight natural -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
+                -scale 1arcmin -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
@@ -274,9 +274,9 @@ for c in xrange(niter):
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
-            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+            log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     # make mask
@@ -288,9 +288,10 @@ for c in xrange(niter):
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 1000000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+            -multiscale -multiscale-scale-bias 0.5 -save-component-list \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
-            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+            log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
     # make mask
@@ -341,6 +342,7 @@ for c in xrange(niter):
         imagename_lr = 'img/wide-lr'
         s.add('wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+                -multiscale -multiscale-scale-bias 0.5 -save-component-list \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
@@ -388,17 +390,6 @@ for c in xrange(niter):
     #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
     #s.run(check=True
     
-## Copy last *model
-#logging.info('Coadd+copy models...')
-## resample at high res to avoid FFT problem on long baselines
-#for model in glob.glob('img/wide-'+str(c)+'*-model.fits'):
-#    if "MFS" in model: continue
-#    model_lr = model.replace('wide-'+str(c),'wide-lr-resamp')
-#    model_out = model.replace('img/wide-'+str(c),'self/models/coadd')
-#    # if this pixel scale is changed, change also the resampling in the peel pipeline
-#    s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model+' '+model_lr, log='final_resamp.log', log_append=True, cmd_type='general')
-#s.run(check=True) 
-
 # Copy images
 os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')

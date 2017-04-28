@@ -284,7 +284,8 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     table_to_circ_region(ddcal, outdir+'/all.reg', sizecol='dd_size')
     return ddcal
 
-def make_tessellation(directions, fitsfile, outdir='regions/', beam_reg='', png=None):
+
+def make_voronoi_reg(directions, fitsfile, outdir='regions/', beam_reg='', png=None):
     """
     Take a list of coordinates and an image and voronoi tesselate the sky.
     It saves ds9 regions of the facets and and return facet sizes
@@ -345,7 +346,6 @@ def make_tessellation(directions, fitsfile, outdir='regions/', beam_reg='', png=
         s.attr = ([], {'width': '2', 'point': 'cross',
                        'font': '"helvetica 16 normal roman"'})
         s.comment = 'color=red'
-        s.comment = 'color=white text="%s"' % directions.keys()[idx_for_facet[i]]
         all_s.append(s)
 
         regions = pyregion.ShapeList([s])
@@ -354,6 +354,17 @@ def make_tessellation(directions, fitsfile, outdir='regions/', beam_reg='', png=
 
         #if beam_reg != '': npix = size_from_reg(fitsfile, [regionfile, beam_reg], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
         #else: npix = size_from_reg(fitsfile, [regionfile], [ras[idx_for_facet[i]], decs[idx_for_facet[i]]])
+    
+    # add names for all.reg
+    for d_name, d_coord in directions.iteritems():
+        s = Shape('circle', None)
+        s.coord_format = 'fk5'
+        s.coord_list = [ d_coord[0].degree, d_coord[1].degree, 0.01 ] # ra, dec, radius
+        s.coord_format = 'fk5'
+        s.attr = ([], {'width': '1', 'point': 'cross',
+                       'font': '"helvetica 16 normal roman"'})
+        s.comment = 'color=white text="%s"' % d_name
+        all_s.append(s)
 
     regions = pyregion.ShapeList(all_s)
     regionfile = outdir+'all.reg'
@@ -500,29 +511,29 @@ def voronoi_finite_polygons_2d_box(vor, box):
     return np.asarray(newpoly)
 
 
-def voronoi_skymodel(lsm):
-    """
-    Re-write patches of an lsmtool object on closest patch center
-    equivalent of voronoi tassellate a skymodel
-
-    lsm : lsmtool object
-    """
-    import lsmtool
-    from astropy.coordinates import SkyCoord
-    import astropy.units as u
-
-    dirs = lsm.getPatchPositions()
-    dirs_ras = [d[0] for name, d in dirs.iteritems()]
-    dirs_decs = [d[1] for name, d in dirs.iteritems()]
-    dirs_names = [name for name, d in dirs.iteritems()]
-
-    logging.debug('Voronoi tessellate skymodel...')
-    for t in lsm.table:
-        dists = SkyCoord(t['Ra']*u.degree, t['Dec']*u.degree).separation(SkyCoord(dirs_ras*u.degree,dirs_decs*u.degree))
-        #print t['Patch'], "->", dirs_names[np.argmin(dists)]
-        t['Patch'] = dirs_names[np.argmin(dists)]
-
-    return lsm
+#def voronoi_skymodel(lsm):
+#    """
+#    Re-write patches of an lsmtool object on closest patch center
+#    equivalent of voronoi tassellate a skymodel
+#
+#    lsm : lsmtool object
+#    """
+#    import lsmtool
+#    from astropy.coordinates import SkyCoord
+#    import astropy.units as u
+#
+#    dirs = lsm.getPatchPositions()
+#    dirs_ras = [d[0] for name, d in dirs.iteritems()]
+#    dirs_decs = [d[1] for name, d in dirs.iteritems()]
+#    dirs_names = [name for name, d in dirs.iteritems()]
+#
+#    logging.debug('Voronoi tessellate skymodel...')
+#    for t in lsm.table:
+#        dists = SkyCoord(t['Ra']*u.degree, t['Dec']*u.degree).separation(SkyCoord(dirs_ras*u.degree,dirs_decs*u.degree))
+#        #print t['Patch'], "->", dirs_names[np.argmin(dists)]
+#        t['Patch'] = dirs_names[np.argmin(dists)]
+#
+#    return lsm
 
 
 from autocal.lib_pipeline import *

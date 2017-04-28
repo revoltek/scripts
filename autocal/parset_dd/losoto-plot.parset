@@ -8,9 +8,6 @@ LoSoTo.pol = [XX, YY]
 LoSoTo.dir = []
 LoSoTo.Ncpu = 10
 
-LoSoTo.Steps.tecjump.Operation = TECJUMP
-LoSoTo.Steps.plot.Soltab = [sol000/tec000]
-
 LoSoTo.Steps.plot.Operation = PLOT
 LoSoTo.Steps.plot.Soltab = [sol000/tec000]
 LoSoTo.Steps.plot.Axes = time
