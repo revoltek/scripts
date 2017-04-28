@@ -142,12 +142,12 @@ for ms in mss:
     logging.debug('Copy: '+sourcedb+' -> '+ms)
     os.system('cp -r '+sourcedb+' '+ms)
 logging.info('Add model to MODEL_DATA...')
-#for ms in mss:
-#    if apparent:
-#        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-#    else:
-#        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=true pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
-#s.run(check=True)
+for ms in mss:
+    if apparent:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+    else:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=true pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
+s.run(check=True)
 
 ###################################################################################
 # Preapre fake FR parmdb
@@ -357,8 +357,8 @@ for c in xrange(niter):
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    ft_model_wsclean(concat_ms, imagename, c, user_mask = user_mask)
-    #ft_model_cc(ms, imagename, c, user_mask = user_mask, keep_in_beam=True)
+    #ft_model_wsclean(concat_ms, imagename, c, user_mask = user_mask)
+    ft_model_cc(ms, imagename, c, user_mask = user_mask, keep_in_beam=True)
 
 #    if c >= 1:
 #        # TODO: TESTESTEST
@@ -396,8 +396,8 @@ for c in xrange(niter):
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
-        ft_model_wsclean(concat_ms, imagename_lr+'-resamp', 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
-        #ft_model_cc(ms, imagename_lr, c, keep_in_beam=False)
+        #ft_model_wsclean(concat_ms, imagename_lr+'-resamp', 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
+        ft_model_cc(ms, imagename_lr, c, keep_in_beam=False)
 
         # corrupt model with TEC solutions ms:MODEL_DATA -> ms:MODEL_DATA
         for ms in mss:
