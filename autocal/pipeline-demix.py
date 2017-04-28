@@ -10,7 +10,7 @@ import sys, os, glob
 import numpy as np
 from autocal.lib_pipeline import *
 
-set_logger()
+logging = set_logger('pipeline-demix.logging')
 check_rm('logs')
 s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))

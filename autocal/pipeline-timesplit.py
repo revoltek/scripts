@@ -30,7 +30,7 @@ else:
     datadir = '../tgts-bkp/' 
 
 ##################################################################################################
-set_logger('pipeline-timesplit.logging')
+logging = set_logger('pipeline-timesplit.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 assert os.path.isdir(globaldb)

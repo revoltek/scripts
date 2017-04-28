@@ -28,7 +28,7 @@ from astropy.table import Table
 import pyregion
 # https://github.com/astrofrog/reproject
 from reproject import reproject_interp, reproject_exact
-reproj = reproject_exact
+reproj = reproject_interp
 
 tgss_catalog = '/home/fdg/scripts/autocal/TGSSADR1_5sigma_catalog_v3.fits'
 
@@ -248,10 +248,10 @@ for d in directions:
         r = pyfits.open(outname)[0].data
     else:
         logging.debug('Reprojecting data...')
-        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr, parallel=True)
+        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
         r[ np.isnan(r) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
-        hdu.writeto(outname, overwrite=True)
+        hdu.writeto(outname, clobber=True)
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
@@ -259,11 +259,11 @@ for d in directions:
         mask |= (w>0)
     else:
         logging.debug('Reprojecting weights...')
-        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr, parallel=True)
+        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr)#, parallel=True)
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
-        hdu.writeto(outname, overwrite=True)
+        hdu.writeto(outname, clobber=True)
     logging.debug('Add to mosaic...')
     isum += r*w
     wsum += w
@@ -279,6 +279,6 @@ for ch in ('BMAJ', 'BMIN', 'BPA'):
     regrid_hdr['UNITS'] = 'Jy/beam'
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
-hdu.writeto(args.output, overwrite=True)
+hdu.writeto(args.output, clobber=True)
 
 logging.debug('Done.')

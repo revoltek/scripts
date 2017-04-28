@@ -64,7 +64,7 @@ def getName(ms):
         return code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
  
 
-set_logger('pipeline-download.logging')
+logging = set_logger('pipeline-download.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 
