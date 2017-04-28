@@ -8,7 +8,7 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, sol]
 
-filter.blrange = [1500,1e30]
+filter.blrange = [1000,1e30]
 
 sol.type = gaincal
 sol.parmdb = 

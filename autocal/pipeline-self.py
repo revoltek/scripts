@@ -34,9 +34,74 @@ else:
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
     apparent = False
 
-#######################################################################################
+#############################################################################
 
-set_logger('pipeline-self.logging')
+def ft_model_wsclean(ms, imagename, c, user_mask = None, resamp = None, keep_in_beam=True):
+    """
+    ms : string or vector of mss
+    imagename : root name for wsclean model images
+    resamp : must be '10asec' or another pixels size to resample models
+    keep_in_beam : if True remove everything outside primary beam, otherwise everything inside
+    """
+    logging.info('Predict...')
+
+    # remove CC not in mask
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
+    if user_mask is not None: 
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
+    blank_image_reg(maskname, 'self/beam.reg', inverse=keep_in_beam)
+    for modelname in sorted(glob.glob(imagename+'*model.fits')):
+        blank_image_fits(modelname, maskname, inverse=True)
+
+    if resamp is not None:
+        for model in sorted(glob.glob(imagename+'*model.fits')):
+            model_out = model.replace(imagename, imagename+'-resamp')
+            s.add('~/opt/src/nnradd/build/nnradd '+resamp+' '+model_out+' '+model, log='resamp-c'+str(c)+'.log', log_append=True, cmd_type='general')
+        s.run(check=True)
+        imagename = imagename+'-resamp'
+ 
+    if ms is list: ms = ' '.join(ms) # convert to string for wsclean
+    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+ms, \
+            log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+
+
+def ft_model_cc(ms, imagename, c, user_mask = None, keep_in_beam=True):
+    """
+    skymodel : cc-list made by wsclean
+    keep_in_beam : if True remove everything outside primary beam, otherwise everything inside
+    """
+    import lsmtool
+    maskname = imagename+'-mask.fits'
+    skymodel = imagename+'-sources.txt'
+    skydb = imagename+'-sources.skydb'
+
+    # prepare mask
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
+    if user_mask is not None:
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1) # set to 1 pixels into user_mask
+    blank_image_reg(maskname, 'self/beam.reg', inverse=keep_in_beam, blankval=0) # if keep_in_beam set to 0 everything outside beam.reg
+    
+    # apply mask
+    lsm = lsmtool.load(skymodel)
+    lsm.remove('%s == True' % maskname)
+    lsm.write(skymodel, format='makesourcedb', clobber=True)
+    del lsm
+
+    # convert to skydb
+    s.add('run_env.sh makesourcedb outtype="blob" format="<" in="'+skymodel+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
+    s.run(check=True)
+
+    # predict
+    for ms in mss:
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+skydb, log=ms+'_pre-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+
+#############################################################################
+
+logging = set_logger('pipeline-self.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 
@@ -51,7 +116,6 @@ os.makedirs('logs/mss')
 # here images, models, solutions for each group will be saved
 check_rm('self')
 if not os.path.exists('self/images'): os.makedirs('self/images')
-if not os.path.exists('self/models'): os.makedirs('self/models')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
 
 mss = sorted(glob.glob('mss/TC*[0-9].MS'))
@@ -269,7 +333,7 @@ for c in xrange(niter):
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
-    # clean mask clean (cut at 5k lambda)
+    # clean mask clean (cut at 6k lambda)
     # no MODEL_DATA update with -baseline-averaging
     logging.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
@@ -279,7 +343,6 @@ for c in xrange(niter):
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
     if user_mask is not None: 
@@ -287,29 +350,15 @@ for c in xrange(niter):
 
     logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('/home/dijkema/opt/wsclean/bin/wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 1000000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
-            -multiscale -multiscale-scale-bias 0.5 -save-component-list \
+            -multiscale -multiscale-scale-bias 0.5 -save-source-list \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    # make mask
-    maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
-    if user_mask is not None: 
-        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
-    # remove CC not in mask
-    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-        blank_image_fits(modelname, maskname, inverse=True)
-        blank_image_reg(modelname, 'self/beam.reg', inverse=True)
-
-    # TODO: move to DFT with NDPPP
-    # update-model cannot be done in wsclean because of baseline-averaging
-    logging.info('Predict...')
-    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
-            log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
+    #ft_model_wsclean(concat_ms, imagename, c, user_mask = user_mask)
+    ft_model_cc(ms, imagename, c, user_mask = user_mask, keep_in_beam=True)
 
 #    if c >= 1:
 #        # TODO: TESTESTEST
@@ -340,30 +389,15 @@ for c in xrange(niter):
         # reclean low-resolution
         logging.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
-        s.add('wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+        s.add('/home/dijkema/opt/wsclean/bin/wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-                -multiscale -multiscale-scale-bias 0.5 -save-component-list \
+                -multiscale -multiscale-scale-bias 0.5 -save-source-list \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-    
-        # make mask
-        maskname = imagename_lr+'-mask.fits'
-        make_mask(image_name = imagename_lr+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
-        # remove CC not in mask and do not remove anything in the beam
-        for modelname in glob.glob(imagename_lr+'*model.fits'):
-            blank_image_fits(modelname, maskname, inverse=True)
-            blank_image_reg(modelname, 'self/beam.reg', inverse=False)
-    
-        # resample at high res to avoid FFT problem on long baselines and predict
-        logging.info('Predict...')
-        for model in sorted(glob.glob(imagename_lr+'*model.fits')):
-            model_out = model.replace(imagename_lr, imagename_lr+'-resamp')
-            s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
-        s.run(check=True)
-        s.add('wsclean -predict -name ' + imagename_lr + '-resamp -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
-                log='wscleanPRE-lr.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
+       
+        #ft_model_wsclean(concat_ms, imagename_lr+'-resamp', 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
+        ft_model_cc(ms, imagename_lr, c, keep_in_beam=False)
 
         # corrupt model with TEC solutions ms:MODEL_DATA -> ms:MODEL_DATA
         for ms in mss:
@@ -391,11 +425,11 @@ for c in xrange(niter):
     #s.run(check=True
     
 # Copy images
+[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
-[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-os.system('mv img/wideM-'+str(niter-1)+'-*-model.fits self/models')
-os.system('mv img/wide-lr-MFS-image.fits self/images')
+os.system('mv img/wideM-'+str(niter-1)+'-sources.txt self/skymodel.txt')
 os.system('mv logs self')
 
 logging.info("Done.")
