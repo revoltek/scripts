@@ -23,7 +23,7 @@ from make_mask import make_mask
 #from lofar import bdsm
 import pyrap.tables as pt
 
-set_logger('pipeline-peel.logging')
+logging = set_logger('pipeline-peel.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 allmss = sorted(glob.glob('mss/TC*.MS'))
@@ -188,8 +188,6 @@ def peel(dd):
     logging.info('Indexing...')
     modeldir = 'peel/'+dd['name']+'/models/'
    
-    #clean('emptybefore', allmss, dd, avgfreq=1, avgtime=5, facet=True) # DEBUG
-
     #################################################################################################
     # Blank unwanted part of models + intersect with beam
     logging.info('Splitting skymodels...')

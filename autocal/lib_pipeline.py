@@ -40,7 +40,7 @@ def add_coloring_to_emit_ansi(fn):
 
 
 def set_logger(filename='pipeline.logging'):
-    logger = logging.getLogger()
+    logger = logging.getLogger('PiLL')
     logger.setLevel(logging.DEBUG)
     # get rid of all other loggers imported by modules
     for l in logger.handlers: l.setLevel('CRITICAL')

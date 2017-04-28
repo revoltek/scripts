@@ -27,7 +27,7 @@ else:
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA'
 
 ########################################################
-set_logger('pipeline-cal.logging')
+logging = set_logger('pipeline-cal.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
