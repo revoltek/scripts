@@ -511,31 +511,4 @@ def voronoi_finite_polygons_2d_box(vor, box):
     return np.asarray(newpoly)
 
 
-#def voronoi_skymodel(lsm):
-#    """
-#    Re-write patches of an lsmtool object on closest patch center
-#    equivalent of voronoi tassellate a skymodel
-#
-#    lsm : lsmtool object
-#    """
-#    import lsmtool
-#    from astropy.coordinates import SkyCoord
-#    import astropy.units as u
-#
-#    dirs = lsm.getPatchPositions()
-#    dirs_ras = [d[0] for name, d in dirs.iteritems()]
-#    dirs_decs = [d[1] for name, d in dirs.iteritems()]
-#    dirs_names = [name for name, d in dirs.iteritems()]
-#
-#    logging.debug('Voronoi tessellate skymodel...')
-#    for t in lsm.table:
-#        dists = SkyCoord(t['Ra']*u.degree, t['Dec']*u.degree).separation(SkyCoord(dirs_ras*u.degree,dirs_decs*u.degree))
-#        #print t['Patch'], "->", dirs_names[np.argmin(dists)]
-#        t['Patch'] = dirs_names[np.argmin(dists)]
-#
-#    return lsm
-
-
 from autocal.lib_pipeline import *
-
-

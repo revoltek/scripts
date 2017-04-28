@@ -3,9 +3,9 @@
 # integrity-check.py dir1 dir2
 
 import sys, os, glob, re
-from lib_pipeline import *
+from autocal.lib_pipeline import *
 
-set_logger()
+logging = set_logger()
 
 dir1 = sys.argv[1]
 dir2 = sys.argv[2]

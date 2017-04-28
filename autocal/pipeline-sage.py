@@ -23,7 +23,7 @@ import os, sys, glob, re
 import numpy as np
 from lib_pipeline import *
 
-set_logger()
+logging = set_logger('pipeline-sage.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 

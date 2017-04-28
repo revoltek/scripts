@@ -14,7 +14,7 @@ from make_mask import make_mask
 import pyrap.tables as pt
 import lsmtool
 
-set_logger('pipeline-dd.logging')
+logging = set_logger('pipeline-dd.logging')
 check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('mss/TC*.MS'))
@@ -35,7 +35,7 @@ def clean(c, mss, size=2.):
     """
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
-    imsize = int(size/(pixscale/3600.)*1.2)
+    imsize = int(size/(pixscale/3600.)*1.3)
 
     if imsize < 512:
         imsize = 512
@@ -50,7 +50,7 @@ def clean(c, mss, size=2.):
     # clean 1
     logging.info('Cleaning ('+str(c)+')...')
     imagename = 'img/ddcal-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
@@ -66,10 +66,11 @@ def clean(c, mss, size=2.):
     # clean 2
     logging.info('Cleaning w/ mask ('+str(c)+')...')
     imagename = 'img/ddcalM-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('/home/dijkema/opt/wsclean/bin/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
+            -multiscale -multiscale-scale-bias 0.5 -save-source-list \
             -auto-threshold 0.2 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -104,6 +105,7 @@ for ms in mss:
 s.run(check=True)
 
 mosaic_image = sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1]
+os.system('cp self/skymodel.txt ddcal/cat00.txt')
 rms_noise_pre = np.inf
 
 for c in xrange(maxniter):
@@ -113,11 +115,13 @@ for c in xrange(maxniter):
     os.makedirs('img')
     os.makedirs('ddcal/images/c'+str(c))
 
-    ##############################################################
+    #############################################################
     # Run pyBDSM to create a model used for DD-calibrator
 
     logging.info('creating DD skymodel...')
     cat = 'ddcal/cat%02i.txt' % c
+
+    # TODO: remove when fully moved to skymodel
     if not os.path.exists(cat):
         bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
             thresh_pix=5, thresh_isl=3, atrous_do=True, atrous_jmax=3, \
@@ -150,31 +154,31 @@ for c in xrange(maxniter):
 
     cat_cl_skydb = cat_cl.replace('.txt','.skydb')
     check_rm(cat_cl_skydb)
-    os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_cl, cat_cl_skydb) )
+    os.system( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_cl, cat_cl_skydb) )
 
     cat_voro_skydb = cat_voro.replace('.txt','.skydb')
     check_rm(cat_voro_skydb)
-    os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_voro, cat_voro_skydb) )
+    os.system( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_voro, cat_voro_skydb) )
 
     # create masks
     make_voronoi_reg(directions_shifts, mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
 
-    ################################################################
-    # Calibration
-    logging.info('Calibrating...')
-    for ms in mss:
-        check_rm(ms+'/cal-c'+str(c)+'.h5')
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
-                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
-
-    # Plot solutions
-    # TODO: concat h5parm into a single file
-    logging.info('Running losoto...')
-    for i, ms in enumerate(mss):
-        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
-        s.run(check=True)
-        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
+#    ################################################################
+#    # Calibration
+#    logging.info('Calibrating...')
+#    for ms in mss:
+#        check_rm(ms+'/cal-c'+str(c)+'.h5')
+#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
+#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+#    s.run(check=True)
+#
+#    # Plot solutions
+#    # TODO: concat h5parm into a single file
+#    logging.info('Running losoto...')
+#    for i, ms in enumerate(mss):
+#        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+#        s.run(check=True)
+#        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
 
     ############################################################
     # Empty the dataset
@@ -187,7 +191,7 @@ for c in xrange(maxniter):
     for i, p in enumerate(patches):
         logging.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_voro_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         logging.info('Patch '+p+': corrupt...')
@@ -235,17 +239,17 @@ for c in xrange(maxniter):
         s.run(check=True)
 
         # TEST
-        logging.info('Patch '+p+': phase shift and avg...')
-        check_rm('mss_dd')
-        os.makedirs('mss_dd')
-        for ms in mss:
-            msout = 'mss_dd/'+os.path.basename(ms)
-            phasecentre = directions_shifts[p]
-            s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
-                log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-        logging.info('Patch '+p+': corrupted image...')
-        clean('uncor_'+p, glob.glob('mss_dd/*MS'), size=sizes[i]) # TEST
+        #logging.info('Patch '+p+': phase shift and avg...')
+        #check_rm('mss_dd')
+        #os.makedirs('mss_dd')
+        #for ms in mss:
+        #    msout = 'mss_dd/'+os.path.basename(ms)
+        #    phasecentre = directions_shifts[p]
+        #    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
+        #        log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+        #s.run(check=True)
+        #logging.info('Patch '+p+': corrupted image...')
+        #clean('uncor-'+p, glob.glob('mss_dd/*MS'), size=sizes[i]) # TEST
         # end TEST
 
         logging.info('Patch '+p+': correct...')
@@ -265,24 +269,37 @@ for c in xrange(maxniter):
             s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
                 log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        logging.info('Patch '+p+': image...')
+
+        logging.info('Patch '+p+': imageing...')
         clean(p, glob.glob('mss_dd/*MS'), size=sizes[i])
 
     ##############################################################
     # Mosaiching
     logging.info('Mosaic: image...')
     mosaic_image = 'img/mos_image.fits'
-    images = ' '.join(sorted(glob.glob('img/*M*MFS-image.fits')))
-    masks = ' '.join(sorted(glob.glob('ddcal/regions/*reg')))
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-c'+str(c)+'.log', cmd_type='python')
+    images = ' '.join(sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')))
+    masks = ' '.join(sorted(glob.glob('ddcal/regions/Dir*reg')))
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-img-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
 
     logging.info('Mosaic: residuals...')
-    images = ' '.join(sorted(glob.glob('img/*M*MFS-residual.fits')))
-    masks = ' '.join(sorted(glob.glob('ddcal/regions/*reg')))
-    mosaic_residual = 'img/mos_image.fits'
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-c'+str(c)+'.log', cmd_type='python')
+    images = ' '.join(sorted(glob.glob('img/ddcalM-Dir*MFS-residual.fits')))
+    masks = ' '.join(sorted(glob.glob('ddcal/regions/Dir*reg')))
+    mosaic_residual = 'img/mos_residual.fits'
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
 
-    os.system('cp img/*M*MFS-image.fits img/mos_image.fits img/mos_image.fits ddcal/images/c'+str(c))
+    os.system('cp img/*M*MFS-image.fits img/mos_image.fits img/mos_residual.fits ddcal/images/c'+str(c))
+
+    # prepare new skymodel
+    skymodels = glob.glob('img/ddcalM-*-sources.txt')
+    lsm = lsmtool.load(skymodels[0])
+    lsm.ungroup() # necessary remove old patches? are there any of them?
+    for skymodel in skymodels[1:]:
+        lsm2 = lsmtool.load(skymodel)
+        lsm2.ungroup() # necessary remove old patches? are there any of them?
+        lsm.concatenate(lsm2)
+    lsm.write('ddcal/cat%02i.txt' % c+1, format='makesourcedb', clobber=True)
 
     # get noise, if larger than 95% of prev cycle: break
     rms_noise = get_noise_img(mosaic_residual)
