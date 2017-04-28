@@ -74,7 +74,7 @@ def clean(c, mss, size=2.):
             -auto-threshold 0.2 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "Estimated standard deviation"')
 
     return imagename
 
