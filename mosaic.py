@@ -61,37 +61,24 @@ if args.noises is not None:
         logging.error('Noises provided must match images')
         sys.exit(1)
 
-if len(args.images) < 2:
+if args.images is None or len(args.images) < 2:
     logging.error('Requires at lest 2 images.')
     sys.exit(1)
 
 #############################################################
 
-class Direction(object):
+from lib_fits import Image
+class Direction(Image):
+
     def __init__(self, imagefile):
         logging.debug('Create direction for %s' % imagefile)
-        self.imagefile = imagefile
-        self.beamfile = None
-        self.maskfile = None
-        self.noise = 1.
+        Image.__init__(self, imagefile)
         self.scale = 1.
         self.shift = 0.
+        self.beamfile = None
+        self.noise = 1.
+
         self.img_hdr, self.img_data = flatten(self.imagefile)
-
-    def set_mask(self, maskfile):
-        if not os.path.exists(maskfile):
-            logging.error('Mask file %s not found.' % maskfile)
-            sys.exit(1)
-        self.maskfile = maskfile
-
-    def apply_mask(self):
-        """
-        Set to 0 all pixels outside the given mask (ds9 region)
-        """
-        if self.maskfile is None: return
-        r = pyregion.open(self.maskfile)
-        mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
-        self.img_data[~mask] = 0.
 
     def set_beam(self, beamfile):
         if not os.path.exists(beamfile):
@@ -111,25 +98,6 @@ class Direction(object):
         if self.beamfile is None: return
         self.img_data /= self.beam_data
 
-    def calc_noise(self, niter=20, eps=1e-5):
-        """
-        Return the rms of all the pixels in an image
-        niter : robust rms estimation
-        eps : convergency
-        """
-        with pyfits.open(self.imagefile) as fits:
-            data = fits[0].data
-            oldrms = 1.
-            for i in range(niter):
-                rms = np.nanstd(data)
-                if np.abs(oldrms-rms)/rms < eps:
-                    self.noise = rms
-                    logging.debug('Noise for %s: %f' % (self.imagefile, self.noise))
-                    return
-                data = data[np.abs(data)<5*rms]
-                oldrms = rms
-            raise Exception('Failed to converge')
-
     def calc_weight(self):
         self.weight_data = np.ones_like(self.img_data)
         self.weight_data[self.img_data == 0] = 0
@@ -138,9 +106,6 @@ class Direction(object):
         # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
         self.weight_data /= self.noise * self.scale
         self.weight_data = self.weight_data**2.0
-
-    def get_wcs(self):
-        return pywcs(self.img_hdr)
 
     def calc_shift(self, ref_cat):
         """
@@ -191,8 +156,7 @@ for i, image in enumerate(args.images):
         d.apply_beam_cut(beamcut = args.beamcut)
 
     if args.masks is not None:
-        d.set_mask(args.masks[i])
-        d.apply_mask()
+        d.apply_region(args.masks[i], blankvalue=0, invert=True)
 
     if args.noises is not None: d.noise = args.noises[i]
     elif args.find_noise: d.calc_noise() # after beam cut/mask
@@ -265,7 +229,9 @@ if args.header is None:
 else:
     try:
         logging.info("Using %s header for final gridding." % args.header)
-        regrid_hrd = pyfits.open(args.header)[0].header
+        regrid_hdr = pyfits.open(args.header)[0].header
+        xsize = regrid_hdr['NAXIS1']
+        ysize = regrid_hdr['NAXIS2']
     except:
         logging.error("--header must be a fits file.")
         sys.exit(1)
