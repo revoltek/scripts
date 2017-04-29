@@ -78,6 +78,7 @@ def ft_model_cc(ms, imagename, c, user_mask = None, keep_in_beam=True):
     skydb = imagename+'-sources.skydb'
 
     # prepare mask
+    logging.info('Predict (mask)...')
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
     if user_mask is not None:
         blank_image_reg(maskname, user_mask, inverse=False, blankval=1) # set to 1 pixels into user_mask
@@ -90,10 +91,12 @@ def ft_model_cc(ms, imagename, c, user_mask = None, keep_in_beam=True):
     del lsm
 
     # convert to skydb
+    logging.info('Predict (makesourcedb)...')
     s.add('run_env.sh makesourcedb outtype="blob" format="<" in="'+skymodel+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
     # predict
+    logging.info('Predict (ft)...')
     for ms in mss:
         s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+skydb, log=ms+'_pre-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -352,7 +355,7 @@ for c in xrange(niter):
     imagename = 'img/wideM-'+str(c)
     s.add('/home/dijkema/opt/wsclean/bin/wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 1000000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
-            -multiscale -multiscale-scale-bias 0.5 -save-source-list \
+            -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 -save-source-list \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -396,7 +399,7 @@ for c in xrange(niter):
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
-        #ft_model_wsclean(concat_ms, imagename_lr+'-resamp', 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
+        #ft_model_wsclean(concat_ms, imagename_lr, 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
         ft_model_cc(ms, imagename_lr, c, keep_in_beam=False)
 
         # corrupt model with TEC solutions ms:MODEL_DATA -> ms:MODEL_DATA
