@@ -1,5 +1,4 @@
 import os, sys, itertools
-import logging
 import numpy as np
 from astropy.table import Table
 from astropy.coordinates import Angle, SkyCoord, match_coordinates_sky
@@ -11,8 +10,11 @@ from pyregion.parser_helper import Shape
 try:
     from scipy.spatial import Voronoi
 except:
-    logging.error("Load latest scipy with 'use Pythonlibs'")
+    logger.error("Load latest scipy with 'use Pythonlibs'")
     sys.exit(1)
+
+import logging
+logger = logging.getLogger('PiLL')
 
 def table_to_circ_region(table, outfile, racol='RA', deccol='DEC', sizecol='size', color='red', label=True):
     """
@@ -66,15 +68,15 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
     # open astropy table
     t = Table.read(filename, format='fits')['RA','DEC','Maj','Peak_flux','Total_flux'] # restrict to some cols
     t.rename_column('Maj', 'dd_size') # use Maj as proxy for region size
-    logging.info('# sources initial: %i' % len(t))
+    logger.info('# sources initial: %i' % len(t))
 
     # exclude sources that are too extended
     t_large = t[ (t['dd_size'] >= size_max_arcmin*u.arcmin) ]
     t = t[ (t['dd_size'] < size_max_arcmin*u.arcmin) ]
-    logging.info('# sources after cut on size: %i' % len(t))
-    logging.info('# large sources: %i' % len(t_large))
+    logger.info('# sources after cut on size: %i' % len(t))
+    logger.info('# large sources: %i' % len(t_large))
     if len(t) == 0:
-        logging.critical("No sources found that meet the specified max size criterion.")
+        logger.critical("No sources found that meet the specified max size criterion.")
         sys.exit(1)
 
     t['dd_size'] *= 3. # now that we cut on size, enlarge all the regions to peak up artifacts and sidelobes around dd calibrators
@@ -84,9 +86,9 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
     # exclude sources that are too faint
     t_large = t_large[ (t_large['Peak_flux'] > flux_min_for_merging_Jy) ]
     t = t[ (t['Peak_flux'] > flux_min_for_merging_Jy) ]
-    logging.info('# sources after cut min flux for merging: %i' % len(t))
+    logger.info('# sources after cut min flux for merging: %i' % len(t))
     if len(t) == 0:
-        logging.critical("No sources found above %f Jy." % flux_min_for_merging_Jy )
+        logger.critical("No sources found above %f Jy." % flux_min_for_merging_Jy )
         sys.exit(1)
 
     t.sort('Peak_flux')
@@ -118,13 +120,13 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
                     s['Peak_flux'] = max(s['Peak_flux'], t['Peak_flux'][i])
 
                     t.remove_rows(i)
-    logging.info('# sources after combining close-by sources: %i' % len(t))
+    logger.info('# sources after combining close-by sources: %i' % len(t))
 
     # Filter patches on total flux density limit
     t = t[ (t['Total_flux'] > flux_min_Jy) ]
-    logging.info('# sources after cut min flux: %i' % len(t))
+    logger.info('# sources after cut min flux: %i' % len(t))
     if len(t) == 0:
-        logging.critical("No sources or merged groups found that meet the specified "
+        logger.critical("No sources or merged groups found that meet the specified "
             "min total flux density criterion.")
         sys.exit(1)
 
@@ -133,7 +135,7 @@ def make_directions_from_skymodel(filename, outdir='regions/', flux_min_Jy=1.0, 
     t.reverse()
     if directions_max_num is not None:
         t = t[:directions_max_num]
-        logging.info('# sources after cut on max directions: %i' % len(t))
+        logger.info('# sources after cut on max directions: %i' % len(t))
 
     for s in t_large:
         dists = SkyCoord(ra=s['RA']*u.degree, dec=s['DEC']*u.degree).separation(SkyCoord(ra=t['RA'], dec=t['DEC']))
@@ -171,7 +173,7 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     """
 
     # Run pybdsm
-    logging.info('Finding directions...')
+    logger.info('Finding directions...')
     if not os.path.exists('regions/DIEcatalog.fits'):
         bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
             thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
@@ -186,9 +188,9 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     # exclude sources that are too extended
     t = t[ (t['size'] < size_max_arcmin*u.arcmin) ]
     t['size'] *= 3 # enlarge all sizes
-    logging.info('# sources after cut on size: %i' % len(t))
+    logger.info('# sources after cut on size: %i' % len(t))
     total_flux = np.sum(t['Total_flux'])
-    logging.info('# sources initial: %i -- total flux = %.2f Jy' % (len(t),total_flux) )
+    logger.info('# sources initial: %i -- total flux = %.2f Jy' % (len(t),total_flux) )
     if trials is None: trials = len(t)
 
     t.sort('Peak_flux')
@@ -242,7 +244,7 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     ddcal.remove_rows(toremove)
     for r in sorted(toremove, reverse=True):
         del idx_sources[r]
-    logging.info('Number of ddcal after size cut: %i' % len(ddcal))
+    logger.info('Number of ddcal after size cut: %i' % len(ddcal))
 
     # for bright sources keep only centered regions
     idx_brights = np.where(t['Total_flux'] > bright_source_jy)[0]
@@ -254,7 +256,7 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     ddcal.remove_rows(toremove)
     for r in sorted(toremove, reverse=True):
         del idx_sources[r]
-    logging.info('Number of ddcal after bright cal cut: %i' % len(ddcal))
+    logger.info('Number of ddcal after bright cal cut: %i' % len(ddcal))
 
     # sort in size
     idx_sources = [idx for (size,idx) in sorted(zip(ddcal['dd_size'],idx_sources))]
@@ -273,7 +275,7 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     ddcal.remove_rows(toremove)
     for r in sorted(toremove, reverse=True):
         del idx_sources[r]
-    logging.info('Number of ddcal after cut on overlaps: %i' % len(ddcal))
+    logger.info('Number of ddcal after cut on overlaps: %i' % len(ddcal))
 
     ddcal['name'] = ['ddcal%02i' % i for i in xrange(len(ddcal))]
 
@@ -296,7 +298,7 @@ def make_voronoi_reg(directions, fitsfile, outdir='regions/', beam_reg='', png=N
     beam_reg : a ds9 region showing the the primary beam, exclude directions outside it
     """
 
-    logging.debug("Image used for tasselation reference: "+fitsfile)
+    logger.debug("Image used for tasselation reference: "+fitsfile)
     fits = pyfits.open(fitsfile)
     hdr, data = flatten(fits)
     w = pywcs.WCS(hdr)
@@ -369,7 +371,7 @@ def make_voronoi_reg(directions, fitsfile, outdir='regions/', beam_reg='', png=N
     regions = pyregion.ShapeList(all_s)
     regionfile = outdir+'all.reg'
     regions.write(regionfile)
-    logging.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(directions) - len(idx_for_facet)))
+    logger.debug('There are %i calibrator within the PB and %i outside (no facet).' % (len(idx_for_facet), len(directions) - len(idx_for_facet)))
 
     # plot tesselization
     if png is not None:
@@ -387,7 +389,7 @@ def make_voronoi_reg(directions, fitsfile, outdir='regions/', beam_reg='', png=N
             ax1.plot(pp[0],pp[1])
         ax1.set_xlabel('RA (pixel)')
         ax1.set_ylabel('Dec (pixel)')
-        logging.debug('Save plot: %s' % png)
+        logger.debug('Save plot: %s' % png)
         pl.savefig(png)
 
 
@@ -395,7 +397,7 @@ def make_beam_reg(ra_c, dec_c, pb_cut, outfile):
     """
     Create a ds9 region of the beam
     """
-    logging.debug('Making PB region: '+outfile)
+    logger.debug('Making PB region: '+outfile)
     t = Table()
     t['RA'] = [ra_c]
     t['DEC'] = [dec_c]

@@ -64,14 +64,14 @@ def getName(ms):
         return code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
  
 
-logging = set_logger('pipeline-download.logging')
+logger = set_logger('pipeline-download.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
 
 if download_file is not None:
     df = open(download_file,'r')
 
-    logging.info('Downloading...')
+    logger.info('Downloading...')
     downloaded = glob.glob('*MS')
     # add renamed files
     if os.path.exists('renamed.txt'):
@@ -83,13 +83,13 @@ if download_file is not None:
         if ms in downloaded: continue
         s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
     #    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
-        logging.debug('Queue download of: '+ms)
+        logger.debug('Queue download of: '+ms)
     s.run(check=True, max_threads=4)
 
 mss = sorted(glob.glob('*MS'))
 
 if fix_tables:
-    logging.info('Fix MS table...')
+    logger.info('Fix MS table...')
     for ms in mss:
         s.add('fixMS_TabRef.py '+ms, log=ms+'_fixms.log')
     s.run(check=False)
@@ -99,13 +99,13 @@ if fix_tables:
         t = Time(obs.getcell('TIME_RANGE',0)[0]/(24*3600.), format='mjd')
         time = np.int(t.iso.replace('-','')[0:8])
     if time > 20130200 and time < 20140300:
-        logging.info('Fix beam table...')
+        logger.info('Fix beam table...')
         for ms in mss:
             s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
         s.run(check=False)
 
 if flag_elev:
-    logging.info('Flagging elevation...')
+    logger.info('Flagging elevation...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -113,11 +113,11 @@ if flag_elev:
 # Avg to 4 chan and 4 sec
 # Remove internationals
 if rename:
-    logging.info('Renaming...')
+    logger.info('Renaming...')
     nchan = find_nchan(mss[0])
     timeint = find_timeint(mss[0])
     if nchan % 4 != 0 and nchan != 1:
-        logging.error('Channels should be a multiple of 4.')
+        logger.error('Channels should be a multiple of 4.')
         sys.exit(1)
 
     avg_factor_f = nchan / 4 # to 4 ch/SB
@@ -130,14 +130,14 @@ if rename:
         if os.path.exists(msout): continue
 
         if avg_factor_f != 1 or avg_factor_t != 1:
-            logging.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
+            logger.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
             s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA \
                 avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
                 log=ms+'_avg.log', cmd_type='NDPPP')
         else:
-            logging.info('Move data - no averaging...')
-            logging.debug('Rename: '+ms+' -> '+msout)
+            logger.info('Move data - no averaging...')
+            logger.debug('Rename: '+ms+' -> '+msout)
             os.system('mv '+ms+' '+msout)
     s.run(check=True)
 
-logging.info("Done.")
+logger.info("Done.")
