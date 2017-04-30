@@ -1,6 +1,8 @@
 import os, sys
-import logging
 import numpy as np
+
+import logging
+logger = logging.getLogger('PiLL')
 
 def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
@@ -152,7 +154,7 @@ def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0
 
         sum_before = np.sum(data)
         data[mask] = blankval
-        logging.debug("Sum of values for %s: %f -> %f" % (filename, sum_before, np.sum(data)))
+        logger.debug("Sum of values for %s: %f -> %f" % (filename, sum_before, np.sum(data)))
         fits.writeto(outfile, clobber=True)
 
  
