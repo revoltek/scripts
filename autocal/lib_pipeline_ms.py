@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
 import os, sys, shutil
-import logging
 import numpy as np
 import pyrap.tables as tb
+
+import logging
+logger = logging.getLogger('PiLL')
 
 def merge_parmdb(parmdb_p, parmdb_a, parmdb_out, clobber=False):
     """
@@ -59,7 +61,7 @@ def find_nchan(ms):
     with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
         nchan = t.getcol('NUM_CHAN')
     assert (nchan[0] == nchan).all() # all spw have same channels?
-    logging.debug('Channel in '+ms+': '+str(nchan[0]))
+    logger.debug('Channel in '+ms+': '+str(nchan[0]))
     return nchan[0]
 
 
@@ -70,7 +72,7 @@ def find_chanband(ms):
     with tb.table(ms+'/SPECTRAL_WINDOW', ack=False) as t:
         chan_w = t.getcol('CHAN_WIDTH')[0]
     assert all(x==chan_w[0] for x in chan_w) # all chans have same width
-    logging.debug('Channel width in '+ms+': '+str(chan_w[0]/1e6)+' MHz')
+    logger.debug('Channel width in '+ms+': '+str(chan_w[0]/1e6)+' MHz')
     return chan_w[0]
 
 
@@ -82,7 +84,7 @@ def find_timeint(ms):
         Ntimes = len(set(t.getcol('TIME')))
     with tb.table(ms+'/OBSERVATION', ack=False) as t:
         deltat = (t.getcol('TIME_RANGE')[0][1]-t.getcol('TIME_RANGE')[0][0])/Ntimes
-    logging.debug('Time interval for '+ms+': '+str(deltat))
+    logger.debug('Time interval for '+ms+': '+str(deltat))
     return deltat
 
 
