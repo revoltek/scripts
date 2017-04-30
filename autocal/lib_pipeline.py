@@ -41,6 +41,7 @@ def add_coloring_to_emit_ansi(fn):
 
 def set_logger(filename='pipeline.logging'):
     logger = logging.getLogger('PiLL')
+    for l in logger.handlers: l.setLevel('CRITICAL')
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
@@ -56,7 +57,6 @@ def set_logger(filename='pipeline.logging'):
     fh.setFormatter(formatter)
     ch.setFormatter(formatter)
     # add the handlers to the logger
-    #for l in logger.handlers: l.setLevel('CRITICAL')
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger

@@ -10,8 +10,8 @@ maxniter = 10 # max iteration if not converged
 import sys, os, glob, re
 import numpy as np
 from autocal.lib_pipeline import *
-from make_mask import make_mask
 import pyrap.tables as pt
+from make_mask import make_mask
 import lsmtool
 
 logging = set_logger('pipeline-dd.logging')
@@ -68,13 +68,13 @@ def clean(c, mss, size=2.):
     imagename = 'img/ddcalM-'+str(c)
     s.add('/home/dijkema/opt/wsclean/bin/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -multiscale -multiscale-scale-bias 0.5 -save-source-list \
-            -auto-threshold 0.2 -fitsmask '+maskname+' '+' '.join(mss), \
+            -auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min -auto-threshold 0.5 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "Estimated standard deviation"')
 
     return imagename
 
@@ -123,6 +123,7 @@ for c in xrange(maxniter):
 
     # TODO: remove when fully moved to skymodel
     if not os.path.exists(cat):
+        logging.warning('CC catalogue not found, make one with PyBDSM')
         bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
             thresh_pix=5, thresh_isl=3, atrous_do=True, atrous_jmax=3, \
             adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
@@ -139,7 +140,6 @@ for c in xrange(maxniter):
     lsm.plot(fileName=cat_cl_plot, labelBy='patch')
 
     # voronoi tessellation of skymodel for imaging
-    #lsm = voronoi_skymodel(lsm)
     lsm.group('voronoi', root='Dir', applyBeam=False)
     lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
 
@@ -163,22 +163,22 @@ for c in xrange(maxniter):
     # create masks
     make_voronoi_reg(directions_shifts, mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
 
-#    ################################################################
-#    # Calibration
-#    logging.info('Calibrating...')
-#    for ms in mss:
-#        check_rm(ms+'/cal-c'+str(c)+'.h5')
-#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
-#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
-#    s.run(check=True)
-#
-#    # Plot solutions
-#    # TODO: concat h5parm into a single file
-#    logging.info('Running losoto...')
-#    for i, ms in enumerate(mss):
-#        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
-#        s.run(check=True)
-#        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
+    ################################################################
+    # Calibration
+    logging.info('Calibrating...')
+    for ms in mss:
+        check_rm(ms+'/cal-c'+str(c)+'.h5')
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
+                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    # Plot solutions
+    # TODO: concat h5parm into a single file
+    logging.info('Running losoto...')
+    for i, ms in enumerate(mss):
+        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.run(check=True)
+        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
 
     ############################################################
     # Empty the dataset
