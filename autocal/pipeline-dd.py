@@ -57,24 +57,24 @@ def clean(c, mss, size=2.):
             -auto-threshold 20 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wsclean-c'+str(c)+'.log | grep Jy')
 
     # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
 
     # clean 2
+    #-multiscale -multiscale-scale-bias 0.5 \
     logger.info('Cleaning w/ mask ('+str(c)+')...')
     imagename = 'img/ddcalM-'+str(c)
     s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
-            -multiscale -multiscale-scale-bias 0.5 -save-source-list \
-            -auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min -auto-threshold 0.5 -fitsmask '+maskname+' '+' '.join(mss), \
+            -auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min -auto-threshold 0.1 \
+            -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "Estimated standard deviation"')
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
 
     return imagename
 
