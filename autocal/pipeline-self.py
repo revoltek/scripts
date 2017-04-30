@@ -320,8 +320,8 @@ for c in xrange(niter):
         # beam corrected: -use-differential-lofar-beam' - no baseline avg!
         logger.info('Cleaning beam (cycle: '+str(c)+')...')
         imagename = 'img/wideBeam'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 10arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -trim 3500 3500 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 8arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
@@ -338,7 +338,7 @@ for c in xrange(niter):
     # no MODEL_DATA update with -baseline-averaging
     logger.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 10arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -351,13 +351,13 @@ for c in xrange(niter):
 
     logger.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
-    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
-            -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 -save-source-list \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.5 -fitsmask '+maskname+' '+' '.join(mss), \
+    #-multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
+    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "Estimated standard deviation"')
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
 
     #ft_model_wsclean(concat_ms, imagename, c, user_mask = user_mask)
     ft_model_cc(ms, imagename, c, user_mask = user_mask, keep_in_beam=True)
@@ -392,10 +392,10 @@ for c in xrange(niter):
         # reclean low-resolution
         logger.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
-        s.add('run_envw.sh wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+        #-multiscale -multiscale-scale-bias 0.5 \
+        s.add('run_envw.sh wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-                -multiscale -multiscale-scale-bias 0.5 -save-source-list \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 '+' '.join(mss), \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -save-source-list '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
