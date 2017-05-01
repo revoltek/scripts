@@ -141,8 +141,11 @@ for c in xrange(maxniter):
 
     # voronoi tessellation of skymodel for imaging
     lsm.group('voronoi', root='Dir', applyBeam=False)
-    lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
 
+    # create masks (before changing patch positions)
+    make_voronoi_reg(lsm.getPatchPositions(), mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
+
+    lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
     directions_shifts = lsm.getPatchPositions()
     sizes = lsm.getPatchSizes(units='degree')
 
@@ -161,9 +164,6 @@ for c in xrange(maxniter):
     check_rm(cat_voro_skydb)
     s.add( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_voro, cat_voro_skydb), log='mskesourcedb_voro.log', cmd_type='general')
     s.run(check=True)
-
-    # create masks
-    make_voronoi_reg(directions_shifts, mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
 
     ################################################################
     # Calibration
