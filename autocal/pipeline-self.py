@@ -46,6 +46,7 @@ def ft_model_wsclean(ms, imagename, c, user_mask = None, resamp = None, keep_in_
     logger.info('Predict with model image...')
 
     # remove CC not in mask
+    logger.info('Predict (mask)...')
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
     if user_mask is not None: 
@@ -55,12 +56,14 @@ def ft_model_wsclean(ms, imagename, c, user_mask = None, resamp = None, keep_in_
         blank_image_fits(modelname, maskname, inverse=True)
 
     if resamp is not None:
+        logger.info('Predict (resamp)...')
         for model in sorted(glob.glob(imagename+'*model.fits')):
             model_out = model.replace(imagename, imagename+'-resamp')
-            s.add('~/opt/src/nnradd/build/nnradd '+resamp+' '+model_out+' '+model, log='resamp-c'+str(c)+'.log', log_append=True, cmd_type='general')
+            s.add('/home/fdg/opt/src/nnradd/build/nnradd '+resamp+' '+model_out+' '+model, log='resamp-c'+str(c)+'.log', log_append=True, cmd_type='general')
         s.run(check=True)
         imagename = imagename+'-resamp'
  
+    logger.info('Predict (ft)...')
     if ms is list: ms = ' '.join(ms) # convert to string for wsclean
     s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+ms, \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -139,7 +142,6 @@ s.run(check=True)
 
 ###################################################################################################
 # Add model to MODEL_DATA
-# copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
 sourcedb_basename = sourcedb.split('/')[-1]
 for ms in mss:
     check_rm(ms+'/'+sourcedb_basename)
@@ -315,9 +317,8 @@ for c in xrange(niter):
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-   ###################################################################################################################
+    ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
-
     # do beam-corrected+deeper image at last cycle
     if c == niter-1:
         # beam corrected: -use-differential-lofar-beam' - no baseline avg!
@@ -364,7 +365,6 @@ for c in xrange(niter):
 
     #ft_model_wsclean(concat_ms, imagename, c, user_mask = user_mask)
     ft_model_cc(ms, imagename, c, user_mask = user_mask, keep_in_beam=True)
-    sys.exit()
 
 #    if c >= 1:
 #        # TODO: TESTESTEST
