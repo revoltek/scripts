@@ -4,7 +4,7 @@
 
 def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(100,30), mask_combine=None):
 
-    import sys, os, logging
+    import sys, os
     import numpy as np
     from astropy.io import fits as pyfits
     import lofar.bdsm as bdsf
