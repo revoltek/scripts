@@ -254,7 +254,7 @@ class Scheduler():
                 subprocess.call(cmd, shell=True)
     
         # limit threads only when qsub doesn't do it
-        if max_threads != None and not self.qsub: max_threads_run = max_threads
+        if max_threads != None and not self.qsub: max_threads_run = min(max_threads, self.max_threads)
         else: max_threads_run = self.max_threads
 
         q = Queue()
