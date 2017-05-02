@@ -2,8 +2,8 @@
 # download from LTA using WGET
 
 rename = True
-fix_tables = False
-flag_elev = False
+fix_tables = True
+flag_elev = True
 parset_dir = '/home/fdg/scripts/autocal/parset_download'
 
 ###################################################
@@ -63,7 +63,6 @@ def getName(ms):
     else:
         return code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
  
-
 logger = set_logger('pipeline-download.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
@@ -79,14 +78,17 @@ if download_file is not None:
             downloaded += [line.rstrip('\n') for line in flog]
 
     for i, line in enumerate(df):
-        ms = re.findall(r'L[0-9]*_SB[0-9]*_uv\.dppp\.MS', line)[0]
-        if ms in downloaded: continue
-        s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=str(i)+'.log', cmd_type='general')
+        ms = re.findall(r'L[0-9]*_SB[0-9]*_uv', line)[0]
+        if ms+'.MS' in downloaded: continue
+        s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log='%04i.log' % i, cmd_type='general')
     #    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
-        logger.debug('Queue download of: '+ms)
+        logger.debug('Queue download of: '+line[:-1])
     s.run(check=True, max_threads=4)
 
 mss = sorted(glob.glob('*MS'))
+if len(mss) == 0:
+    logger.info('Done.')
+    sys.exit(0)
 
 if fix_tables:
     logger.info('Fix MS table...')
@@ -125,19 +127,23 @@ if rename:
     avg_factor_t = int(np.round(4/timeint)) # to 4 sec
     if avg_factor_t < 1: avg_factor_t = 1
 
-    for ms in mss:
-        msout = getName(ms)
-        if os.path.exists(msout): continue
+    if avg_factor_f != 1 or avg_factor_t != 1:
+        logger.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
 
-        if avg_factor_f != 1 or avg_factor_t != 1:
-            logger.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
-            s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA \
-                avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
-                log=ms+'_avg.log', cmd_type='NDPPP')
-        else:
-            logger.info('Move data - no averaging...')
-            logger.debug('Rename: '+ms+' -> '+msout)
-            os.system('mv '+ms+' '+msout)
-    s.run(check=True)
+    with open('renamed.txt','a') as flog:
+        for ms in mss:
+            flog.write(ms+'\n')
+            msout = getName(ms)
+            if os.path.exists(msout): continue
+            if avg_factor_f != 1 or avg_factor_t != 1:
+                s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA \
+                    avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
+                    log=ms+'_avg.log', cmd_type='NDPPP')
+            else:
+                logger.info('Move data - no averaging...')
+                logger.debug('Rename: '+ms+' -> '+msout)
+                os.system('mv '+ms+' '+msout)
+        s.run(check=True, max_threads=20) # limit threads to prevent I/O isssues
+        check_rm('*MS')
 
 logger.info("Done.")
