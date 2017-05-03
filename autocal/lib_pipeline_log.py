@@ -23,10 +23,13 @@ def add_coloring_to_emit_ansi(fn):
 
 
 def set_logger(filename='pipeline.logging'):
-    logger = logging.getLogger('PiLL')
-    #for l in logger.handlers: l.setLevel('CRITICAL')
-    logger.setLevel(logging.DEBUG)
+    # hopefully kill other loggers
+    logger = logging.getLogger()
     logger.propagate = False
+    for l in logger.handlers: l.setLevel('CRITICAL')
+
+    logger = logging.getLogger('PiLL')
+    logger.setLevel(logging.DEBUG)
     logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
     # create file handler which logs even debug messages
     check_rm(filename)
