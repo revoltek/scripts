@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # download from LTA using WGET
 
-rename = True
 fix_tables = True
 flag_elev = True
+rename = True
 parset_dir = '/home/fdg/scripts/autocal/parset_download'
 
 ###################################################
@@ -115,7 +115,7 @@ if flag_elev:
 # Avg to 4 chan and 4 sec
 # Remove internationals
 if rename:
-    logger.info('Renaming...')
+    logger.info('Renaming/averaging...')
     nchan = find_nchan(mss[0])
     timeint = find_timeint(mss[0])
     if nchan % 4 != 0 and nchan != 1:
@@ -144,6 +144,8 @@ if rename:
                 logger.debug('Rename: '+ms+' -> '+msout)
                 os.system('mv '+ms+' '+msout)
         s.run(check=True, max_threads=20) # limit threads to prevent I/O isssues
-        check_rm('*MS')
+
+    logger.info('Cleaning up...')
+    check_rm('*MS')
 
 logger.info("Done.")
