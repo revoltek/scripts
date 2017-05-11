@@ -96,7 +96,7 @@ def quadratic2elliptic(A,B,C,D=0,E=0,F=-np.log(2)):
         #A-C = A0 cos^2 phi + c0 sin^2 phi - a0 sin^2 phi - c0 cos^2 phi
         #A-C = A0 (cos^2 phi - sin^2 phi)- c0 (-sin^2 phi  + c0 cos^2 phi) = (A0 - C0) cos 2phi
         #(cos^2 phi - sin^2 phi) = cos 2 phi        
-        phi = np.arctan(B/(A-C))/2.#choose your own modulus
+        phi = np.arctan2(B,(A-C))/2.#choose your own modulus
     else:#circle
         phi = np.pi/4.#arbitrary, nonzero cos and sin for the rest
         phi = 0.
@@ -173,7 +173,7 @@ def deconvolve(A1,B1,C1,A2,B2,C2):
     '''Solves analytically G(A1,B1,C1) = convolution(G(A2,B2,C2), G(Ak,Bk,Ck))
     Returns Ak,Bk,Ck
     A,B,C are quadratic parametrization.
-    If you have bmaj,bmin,bpa, then get A,B,C = ecliptic2quadratic(0,0,bmaj,bmin,bpa)
+    If you have bmaj,bmin,bpa, then get A,B,C = elliptic2quadratic(0,0,bmaj,bmin,bpa)
     
     Returns (None,None,None) if solution is delta function'''
     D = B1**2 - 2*B1*B2 + B2**2 - 4*A1*C1 + 4* A2* C1 + 4* A1* C2 - 4* A2* C2
@@ -196,8 +196,8 @@ def deconvolve_ell(t_bmaj,t_bmin,t_bpa,bmaj,bmin,bpa):
     """
     wrapper for deconvolve() to work in elliptical coordinates
     """
-    a,b,c = elliptic2quadratic(bmaj,bmin,pa)
-    t_a,t_b,t_c = elliptic2quadratic(t_bmaj,t_bmin,t_pa)
+    a,b,c = elliptic2quadratic(bmaj,bmin,bpa)
+    t_a,t_b,t_c = elliptic2quadratic(t_bmaj,t_bmin,t_bpa)
     c_a,c_b,c_c = deconvolve(t_a,t_b,t_c,a,b,c)
     return quadratic2elliptic(c_a,c_b,c_c)
 
@@ -245,12 +245,12 @@ def findCommonBeam(beams):
     cb = beams_array[idxMaxArea,:].flatten()
     i = 0
     while i < np.size(Areas):
-        print np.size(Areas),i
+        #print np.size(Areas),i
         if i != idxMaxArea:
             #deconlove
-            A2,B2,C2 = ecliptic2quadratic(beams_array[i,0],beams_array[i,1],beams_array[i,2])
+            A2,B2,C2 = elliptic2quadratic(beams_array[i,0],beams_array[i,1],beams_array[i,2])
             Ak,Bk,Ck = deconvolve(A1,B1,C1,A2,B2,C2)
-            print Ak,Bk,Ck
+            #print Ak,Bk,Ck
             try:
                 b = quadratic2elliptic(Ak,Bk,Ck)
                 if b is None:
@@ -282,7 +282,7 @@ def findCommonBeam(beams):
                         #deconlove
                         A2,B2,C2 = elliptic2quadratic(beams_array[i,0],beams_array[i,1],beams_array[i,2])
                         Ak,Bk,Ck = deconvolve(A1,B1,C1,A2,B2,C2)
-                        print Ak,Bk,Ck
+                        #print Ak,Bk,Ck
                         if Ak is None:
                             print "Failed convolve"
                             cb = None

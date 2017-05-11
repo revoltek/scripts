@@ -17,11 +17,14 @@ if 'tooth' in os.getcwd(): # tooth 2013
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
-elif 'c07' in os.getcwd(): # daytest
-    datadir = '/data/scratch/COMMISSIONING2017/c07-o01/%s' % calname
+elif 'survey' in os.getcwd():
+    obs = os.getcwd().split('/')[-2] # assumes .../c??-o??/3c196
+    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
+    datadir = '../../download/%s/%s' % (obs, calname)
     bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA'
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
+    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
     #bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA'
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA'
@@ -32,7 +35,6 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
 calname = mss[0].split('/')[-1].split('_')[0].lower()
-#calname = '3c196' # NOTE: TEST
 logger.info("Calibrator name: %s." % calname)
 
 if calname == '3c196':
@@ -88,7 +90,7 @@ else:
 mss = sorted(glob.glob('*.MS'))
 
 ############################################################   
-# flag below elev 20 and bad stations, flags will propagate
+# flag bad stations, flags will propagate
 logger.info('Flagging...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms+' msout=. flag1.baseline='+bl2flag+' msin.datacolumn=DATA', \
@@ -128,7 +130,7 @@ s.run(check=True)
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 logger.info('Converting to circular...')
 for ms in mss:
-    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 s.run(check=True)
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
@@ -143,6 +145,8 @@ for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol1.log', cmd_type='NDPPP')
 s.run(check=True)
+
+sys.exit(1)
 
 run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
     inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)

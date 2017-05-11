@@ -47,12 +47,12 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
     if flux.shape == (2,): flux = np.expand_dims(flux, axis=1)
     if flux_err.shape == (2,): flux_err = np.expand_dims(flux_err, axis=1)
     flux = flux.T
-    freq_err = flux_err.T
+    flux_err = flux_err.T
     nsource = flux.shape[0]
 
     results = np.zeros(shape=(niter,nsource))
     random_flux = np.resize(flux, (niter, nsource, 2)) + np.resize(flux_err, (niter, nsource, 2)) * np.random.randn(niter, nsource, 2)
-    random_flux[random_flux <= 0] = np.nan # remove nevative, this create a bias
+    random_flux[random_flux <= 0] = np.nan # remove negative, this create a bias
     freq = np.resize(freq, (niter, nsource, 2))
     results = spidx(freq, random_flux)
 
@@ -89,7 +89,7 @@ def linear_fit_bootstrap(x, y, yerr=None, niter=1000):
     from scipy import optimize
     errfunc = lambda B, x, y: f(x, B[0], B[1]) - y
 
-    pfit, pcov, infodict, errmsg, success = optimize.leastsq( errfunc, [0, -1], args=(x, y), full_output=1)
+    pfit, pcov, infodict, errmsg, success = optimize.leastsq( errfunc, [-1, 0], args=(x, y), full_output=1)
 
     # 2 vals without error, cannot estimate sigmas
     if len(y) == 2 and yerr is None: return (pfit[0], pfit[1], 0, 0)

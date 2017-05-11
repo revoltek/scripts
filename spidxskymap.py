@@ -5,8 +5,6 @@ import numpy as np
 from scipy.ndimage.measurements import label
 from scipy.ndimage.measurements import center_of_mass
 
-from lofar import bdsm
-
 import astropy.io.fits as pyfits
 from astropy import wcs
 from astropy.table import Table, vstack
@@ -152,6 +150,7 @@ for image_nvss in images_nvss:
     image_isl_nvss = image_nvss.replace('.fits','-isl.fits').replace('NVSS','NVSS/isl',1)
     cat_srl_nvss = image_nvss.replace('.fits','-srl.fits').replace('NVSS','NVSS/catalog',1)
     if not os.path.exists(cat_srl_nvss) or not os.path.exists(image_isl_nvss) or not os.path.exists(image_rms_nvss):# or not os.path.exists(image_gaus_nvss):
+        from lofar import bdsm
         c = bdsm.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_nvss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
@@ -166,6 +165,7 @@ for image_nvss in images_nvss:
     image_isl_tgss = image_tgss.replace('.fits','-isl.fits').replace('TGSS','TGSS/isl',1)
     cat_srl_tgss = image_tgss.replace('.fits','-srl.fits').replace('TGSS','TGSS/catalog',1)
     if not os.path.exists(cat_srl_tgss) or not os.path.exists(image_isl_tgss) or not os.path.exists(image_rms_tgss):# or not os.path.exists(image_gaus_tgss):
+        from lofar import bdsm
         c = bdsm.process_image(image_tgss, frequency=147e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_tgss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_tgss, img_type='gaus_model', clobber=True)
@@ -354,7 +354,8 @@ for image_nvss in images_nvss:
         else:
             t.write('spidx-cat.fits')
 
-remove_duplicates()
+if not os.path.exists('spidx-cat-nodup.fits'):
+    remove_duplicates()
 
 for image_nvss in images_nvss:
     image_tgss = image_nvss.replace('NVSS','TGSS')
@@ -369,10 +370,8 @@ for image_nvss in images_nvss:
     image_rms_tgss = image_tgss.replace('.fits','-rms.fits').replace('TGSS','TGSS/rms',1)
     # new names
     image_spidx = wdir+'spidx/'+os.path.basename(image_nvss).replace('NVSS_','spidx_')
-    image_spidx_u = wdir+'spidx_u/'+os.path.basename(image_nvss).replace('NVSS_','spidxU_')
-    image_spidx_l = wdir+'spidx_l/'+os.path.basename(image_nvss).replace('NVSS_','spidxL_')
     image_spidx_err = wdir+'spidx_err/'+os.path.basename(image_nvss).replace('NVSS_','spidx_').replace('.fits','-err.fits')
-    if not os.path.exists(image_spidx) or not os.path.exists(image_spidx_err) or not os.path.exists(image_spidx_u) or not os.path.exists(image_spidx_l):
+    if not os.path.exists(image_spidx) or not os.path.exists(image_spidx_err):
         print "Makign spidx map..."
 
         data_nvss = np.array( pyfits.getdata(image_nvss, 0) ).squeeze()
@@ -394,10 +393,9 @@ for image_nvss in images_nvss:
 
         data_spidx_g, data_spidx_g_err = twopoint_spidx_bootstrap([147.,1400.], [data_tgss[idx_g],data_nvss[idx_g]], \
                     [data_rms_tgss[idx_g],data_rms_nvss[idx_g]], niter=1000)
-        # upper limits
-        data_spidx_u = np.log10(data_tgss[idx_u]/(3*data_rms_nvss[idx_u]))/np.log10(147./1400.)
-        # lower limits
-        data_spidx_l = np.log10((3*data_rms_tgss[idx_l])/data_nvss[idx_l])/np.log10(147./1400.)
+        print data_tgss[idx_g][::2], data_nvss[idx_g][::2], data_rms_tgss[idx_g][::2], data_rms_nvss[idx_g][::2]
+        print data_spidx_g[::2]
+        print data_spidx_g_err[::2]
 
         # write spidx, spidx+upper/lower limits and spidx error map
         with pyfits.open(image_nvss) as fits_nvss:
@@ -410,17 +408,6 @@ for image_nvss in images_nvss:
             data[idx_g] = data_spidx_g
             new_fh = pyfits.PrimaryHDU(data=data, header=new_header)
             new_fh.writeto(image_spidx, clobber=True)
-
-            data[:] = np.nan
-            data[idx_u] = data_spidx_u
-            new_fh = pyfits.PrimaryHDU(data=data, header=new_header)
-            new_fh.writeto(image_spidx_u, clobber=True)
-
-
-            data[:] = np.nan
-            data[idx_l] = data_spidx_l
-            new_fh = pyfits.PrimaryHDU(data=data, header=new_header)
-            new_fh.writeto(image_spidx_l, clobber=True)
 
             data[:] = np.nan
             data[idx_g] = data_spidx_g_err
