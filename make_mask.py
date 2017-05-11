@@ -7,16 +7,16 @@ def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(
     import sys, os
     import numpy as np
     from astropy.io import fits as pyfits
-    import lofar.bdsm as bdsm
+    import lofar.bdsm as bdsf
 
     # wavelets are required to fit gaussians
     if atrous_do: stop_at = None
     else: stop_at = 'isl'
 
     # DO THE SOURCE DETECTION
-    img = bdsm.process_image(image_name, rms_box=rmsbox, \
+    img = bdsf.process_image(image_name, rms_box=rmsbox, \
         thresh_isl=int(threshisl), atrous_do=atrous_do, atrous_jmax=3, \
-        adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), stop_at=stop_at, quiet=True)
+        adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), stop_at=stop_at, quiet=True, debug=False)
 
     # WRITE THE MASK FITS
     if mask_name == None: mask_name = image_name+'.newmask'
