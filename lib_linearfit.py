@@ -47,7 +47,7 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
     if flux.shape == (2,): flux = np.expand_dims(flux, axis=1)
     if flux_err.shape == (2,): flux_err = np.expand_dims(flux_err, axis=1)
     flux = flux.T
-    freq_err = flux_err.T
+    flux_err = flux_err.T
     nsource = flux.shape[0]
 
     results = np.zeros(shape=(niter,nsource))

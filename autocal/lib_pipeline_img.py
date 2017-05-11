@@ -1,6 +1,8 @@
 import os, sys
-import logging
 import numpy as np
+
+import logging
+logger = logging.getLogger('PiLL')
 
 def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
     """Returns angular separation between two coordinates (all in degrees)"""
@@ -136,7 +138,6 @@ def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0
     blankval: pixel value to set
     """
     import astropy.io.fits as pyfits
-    import pyregion
 
     if outfile == None: outfile = filename
 
@@ -152,7 +153,7 @@ def blank_image_fits(filename, maskname, outfile=None, inverse=False, blankval=0
 
         sum_before = np.sum(data)
         data[mask] = blankval
-        logging.debug("Sum of values for %s: %f -> %f" % (filename, sum_before, np.sum(data)))
+        logger.debug("%s: Blanking (%s): sum of values: %f -> %f" % (filename, maskname, sum_before, np.sum(data)))
         fits.writeto(outfile, clobber=True)
 
  
@@ -179,6 +180,7 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0., 
     with pyfits.open(filename) as fits:
         origshape = fits[0].data.shape
         header, data = flatten(fits)
+        sum_before = np.sum(data)
         if op=='AND': total_mask = np.ones(shape=data.shape).astype(bool)
         if op=='OR': total_mask = np.zeros(shape=data.shape).astype(bool)
         for this_region in region:
@@ -192,6 +194,8 @@ def blank_image_reg(filename, region, outfile=None, inverse=False, blankval=0., 
         # save fits
         fits[0].data = data.reshape(origshape)
         fits.writeto(outfile, clobber=True)
+
+    logger.debug("%s: Blanking (%s): sum of values: %f -> %f" % (filename, region, sum_before, np.sum(data)))
 
 
 def get_noise_img(filename, boxsize=None, niter=20, eps=1e-5):

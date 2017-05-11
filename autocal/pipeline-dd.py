@@ -10,11 +10,11 @@ maxniter = 10 # max iteration if not converged
 import sys, os, glob, re
 import numpy as np
 from autocal.lib_pipeline import *
-from make_mask import make_mask
 import pyrap.tables as pt
+from make_mask import make_mask
 import lsmtool
 
-set_logger('pipeline-dd.logging')
+logger = set_logger('pipeline-dd.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('mss/TC*.MS'))
@@ -35,7 +35,7 @@ def clean(c, mss, size=2.):
     """
     # set pixscale and imsize
     pixscale = scale_from_ms(mss[0])
-    imsize = int(size/(pixscale/3600.)*1.2)
+    imsize = int(size/(pixscale/3600.)*1.3)
 
     if imsize < 512:
         imsize = 512
@@ -45,37 +45,66 @@ def clean(c, mss, size=2.):
     if imsize % 2 == 1: imsize += 1 # make even
     if trim % 2 == 1: trim += 1 # make even
 
-    logging.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
+    logger.debug('Image size: '+str(imsize)+' - Pixel scale: '+str(pixscale))
 
     # clean 1
-    logging.info('Cleaning ('+str(c)+')...')
+    logger.info('Cleaning ('+str(c)+')...')
     imagename = 'img/ddcal-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 20 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wsclean-c'+str(c)+'.log | grep Jy')
 
     # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
 
     # clean 2
-    logging.info('Cleaning w/ mask ('+str(c)+')...')
+    #-multiscale -multiscale-scale-bias 0.5 \
+    logger.info('Cleaning w/ mask ('+str(c)+')...')
     imagename = 'img/ddcalM-'+str(c)
-    s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
-            -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
+            -auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min -auto-threshold 0.1 \
+            -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep Jy')
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
     return imagename
+
+def mask_cc(imagename, facet_mask=None):
+    """
+    remove less-important cc from a skymodel
+    """
+    logger.info('Masking skymodel...')
+    maskname = imagename+'-mask.fits'
+    skymodel = imagename+'-sources.txt'
+    skymodel_cut = imagename+'-sources-cut.txt'
+
+    # prepare mask
+    if not os.path.exists(maskname):
+        logger.info('Predict (make mask)...')
+        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
+    if facet_mask is not None:
+        blank_image_reg(maskname, user_mask, inverse=True, blankval=0) # set to 0 pixels outside facet mask
+
+    # apply mask
+    logger.info('Predict (apply mask)...')
+    lsm = lsmtool.load(skymodel)
+    lsm.select('%s == True' % maskname)
+    fluxes = lsm.getColValues('I')
+    lsm.remove(np.abs(fluxes) < 5e-4) # TEST
+    lsm.write(skymodel_cut, format='makesourcedb', clobber=True)
+    del lsm
+
+    return skymodel_cut
+
 
 ############################################################
 # Avg to 1 chan/sb
@@ -83,7 +112,7 @@ chanband = find_chanband(mss[0])
 avg_factor_f = int(np.round(0.2e6/chanband)) # to 1 ch/SB
 
 if avg_factor_f > 1:
-    logging.info('Average in freq (factor of %i)...' % avg_factor_f)
+    logger.info('Average in freq (factor of %i)...' % avg_factor_f)
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS')
         if os.path.exists(msout): continue
@@ -92,85 +121,90 @@ if avg_factor_f > 1:
     s.run(check=True)
 mss = sorted(glob.glob('mss/TC*-avg.MS'))
        
-logging.info('Add columns...')
+logger.info('Add columns...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
 
 ###############################################################
-logging.info('BL-based smoothing...')
+logger.info('BL-based smoothing...')
 for ms in mss:
     s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
-mosaic_image = sorted(glob.glob('self/images/wide-[0-9]-MFS-image.fits'))[-1]
+mosaic_image = sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1]
+skymodel = mask_cc(mosaic_image.replace('MFS-image.fits', ''))
 rms_noise_pre = np.inf
 
 for c in xrange(maxniter):
-    logging.info('Starting cycle: %i' % c)
+    logger.info('Starting cycle: %i' % c)
 
     check_rm('img')
     os.makedirs('img')
     os.makedirs('ddcal/images/c'+str(c))
 
-    ##############################################################
+    #############################################################
     # Run pyBDSM to create a model used for DD-calibrator
 
-    logging.info('creating DD skymodel...')
-    cat = 'ddcal/cat%02i.txt' % c
-    if not os.path.exists(cat):
-        bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
-            thresh_pix=5, thresh_isl=3, atrous_do=True, atrous_jmax=3, \
-            adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
-        bdsm_img.write_catalog(outfile=cat, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
+    #logger.info('creating DD skymodel...')
+    #skymodel = 'ddcal/skymodel%02i.txt' % c
 
-    lsm = lsmtool.load(cat)
-    lsm.group('tessellate', targetFlux='25Jy', root='Dir', applyBeam=False, method = 'wmean')
+    # TODO: remove when fully moved to skymodel
+    #if not os.path.exists(skymodel):
+    #    logger.warning('CC catalogue not found, make one with PyBDSM')
+    #    bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
+    #        thresh_pix=5, thresh_isl=3, atrous_do=True, atrous_jmax=3, \
+    #        adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
+    #    bdsm_img.write_catalog(outfile=skymodel, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
+
+    lsm = lsmtool.load(skymodel)
+    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean')
     patches = lsm.getPatchNames()
-    logging.info("Created %i directions." % len(patches))
+    logger.info("Created %i directions." % len(patches))
 
-    cat_cl = 'ddcal/cat%02i_cluster.txt' % c
-    lsm.write(cat_cl, format='makesourcedb', clobber=True)
-    cat_cl_plot = 'ddcal/cat%02i_cluster.png' % c
-    lsm.plot(fileName=cat_cl_plot, labelBy='patch')
+    skymodel_cl = 'ddcal/skymodel%02i_cluster.txt' % c
+    lsm.write(skymodel_cl, format='makesourcedb', clobber=True)
+    skymodel_cl_plot = 'ddcal/skymodel%02i_cluster.png' % c
+    lsm.plot(fileName=skymodel_cl_plot, labelBy='patch')
 
     # voronoi tessellation of skymodel for imaging
-    #lsm = voronoi_skymodel(lsm)
     lsm.group('voronoi', root='Dir', applyBeam=False)
-    lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
 
+    # create masks (before changing patch positions)
+    make_voronoi_reg(lsm.getPatchPositions(), mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
+
+    lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
     directions_shifts = lsm.getPatchPositions()
     sizes = lsm.getPatchSizes(units='degree')
 
-    cat_voro = 'ddcal/cat%02i_voro.txt' % c
-    lsm.write(cat_voro, format='makesourcedb', clobber=True)
-    cat_voro_plot = 'ddcal/cat%02i_voro.png' % c
-    lsm.plot(fileName=cat_voro_plot, labelBy='patch')
+    skymodel_voro = 'ddcal/skymodel%02i_voro.txt' % c
+    lsm.write(slymodel_voro, format='makesourcedb', clobber=True)
+    skymodel_voro_plot = 'ddcal/skymodel%02i_voro.png' % c
+    lsm.plot(fileName=skymodel_voro_plot, labelBy='patch')
     del lsm
 
-    cat_cl_skydb = cat_cl.replace('.txt','.skydb')
-    check_rm(cat_cl_skydb)
-    os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_cl, cat_cl_skydb) )
+    skymodel_cl_skydb = skymodel_cl.replace('.txt','.skydb')
+    check_rm(skymodel_cl_skydb)
+    s.add( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_cl, skymodel_cl_skydb), log='makesourcedb_cl.log', cmd_type='general' )
+    s.run(check=True)
 
-    cat_voro_skydb = cat_voro.replace('.txt','.skydb')
-    check_rm(cat_voro_skydb)
-    os.system( 'makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (cat_voro, cat_voro_skydb) )
-
-    # create masks
-    make_voronoi_reg(directions_shifts, mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
+    skymodel_voro_skydb = skymodel_voro.replace('.txt','.skydb')
+    check_rm(skymodel_voro_skydb)
+    s.add( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_voro, skymodel_voro_skydb), log='makesourcedb_voro.log', cmd_type='general')
+    s.run(check=True)
 
     ################################################################
     # Calibration
-    logging.info('Calibrating...')
+    logger.info('Calibrating...')
     for ms in mss:
         check_rm(ms+'/cal-c'+str(c)+'.h5')
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+cat_cl_skydb, \
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
                 log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
     # Plot solutions
     # TODO: concat h5parm into a single file
-    logging.info('Running losoto...')
+    logger.info('Running losoto...')
     for i, ms in enumerate(mss):
         s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
         s.run(check=True)
@@ -178,19 +212,19 @@ for c in xrange(maxniter):
 
     ############################################################
     # Empty the dataset
-    logging.info('Set SUBTRACTED_DATA = DATA...')
+    logger.info('Set SUBTRACTED_DATA = DATA...')
     for ms in mss:
         s.add('taql "update '+ms+' set SUBTRACTED_DATA = DATA"', log=ms+'_taql1-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
-    logging.info('Subtraction...')
+    logger.info('Subtraction...')
     for i, p in enumerate(patches):
-        logging.info('Patch '+p+': predict...')
+        logger.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_cl_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': corrupt...')
+        logger.info('Patch '+p+': corrupt...')
         for ms in mss:
             s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
            # TODO: NDPPP need to support h5parm for correction
@@ -198,30 +232,30 @@ for c in xrange(maxniter):
             #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': subtract...')
+        logger.info('Patch '+p+': subtract...')
         for ms in mss:
             s.add('taql "update '+ms+' set SUBTRACTED_DATA = SUBTRACTED_DATA - MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
         s.run(check=True)
 
     ##############################################################
     # Imaging
-    logging.info('Imaging...')
+    logger.info('Imaging...')
 
     ## TODO: test
-    #logging.info('Empty imaging')
-    #s.add('/home/fdg/opt/src/wsclean-2.2.9/build/wsclean -reorder -name img/empty-c'+str(c)+' -datacolumn SUBTRACTED_DATA -size 3000 3000 \
+    #logger.info('Empty imaging')
+    #s.add('wsclean -reorder -name img/empty-c'+str(c)+' -datacolumn SUBTRACTED_DATA -size 3000 3000 \
     #        -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
     #        -scale 10arcsec -weight briggs 0.0 -niter 0 -no-update-model-required -mgain 1 -pol I '+' '.join(mss), \
     #        log='wscleanEmpty-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     #s.run(check=True)
 
     for i, p in enumerate(patches):
-        logging.info('Patch '+p+': predict...')
+        logger.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+cat_voro_skydb+' pre.sources='+p, log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p, log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': corrupt...')
+        logger.info('Patch '+p+': corrupt...')
         for ms in mss:
             s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
            # TODO: NDPPP need to support h5parm for correction
@@ -229,26 +263,26 @@ for c in xrange(maxniter):
             #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': add...')
+        logger.info('Patch '+p+': add...')
         for ms in mss:
             s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
         s.run(check=True)
 
         # TEST
-        logging.info('Patch '+p+': phase shift and avg...')
-        check_rm('mss_dd')
-        os.makedirs('mss_dd')
-        for ms in mss:
-            msout = 'mss_dd/'+os.path.basename(ms)
-            phasecentre = directions_shifts[p]
-            s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
-                log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-        logging.info('Patch '+p+': corrupted image...')
-        clean('uncor_'+p, glob.glob('mss_dd/*MS'), size=sizes[i]) # TEST
+        #logger.info('Patch '+p+': phase shift and avg...')
+        #check_rm('mss_dd')
+        #os.makedirs('mss_dd')
+        #for ms in mss:
+        #    msout = 'mss_dd/'+os.path.basename(ms)
+        #    phasecentre = directions_shifts[p]
+        #    s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
+        #        log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+        #s.run(check=True)
+        #logger.info('Patch '+p+': corrupted image...')
+        #clean('uncor-'+p, glob.glob('mss_dd/*MS'), size=sizes[i]) # TEST
         # end TEST
 
-        logging.info('Patch '+p+': correct...')
+        logger.info('Patch '+p+': correct...')
         for ms in mss:
             s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', log=ms+'_cor2-c'+str(c)+'.log', cmd_type='python')
             # TODO: NDPPP need to support h5parm for correction
@@ -256,7 +290,7 @@ for c in xrange(maxniter):
             #     log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logging.info('Patch '+p+': phase shift and avg...')
+        logger.info('Patch '+p+': phase shift and avg...')
         check_rm('mss_dd')
         os.makedirs('mss_dd')
         for ms in mss:
@@ -265,27 +299,42 @@ for c in xrange(maxniter):
             s.add('NDPPP '+parset_dir+'/NDPPP-shiftavg.parset msin='+ms+' msout='+msout+' shift.phasecenter=['+str(phasecentre[0].degree)+'deg,'+str(phasecentre[1].degree)+'deg\]', \
                 log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        logging.info('Patch '+p+': image...')
+
+        logger.info('Patch '+p+': imageing...')
         clean(p, glob.glob('mss_dd/*MS'), size=sizes[i])
 
     ##############################################################
     # Mosaiching
-    logging.info('Mosaic: image...')
+    logger.info('Mosaic: residuals...')
+    images = ' '.join(sorted(glob.glob('img/ddcalM-Dir*MFS-residual.fits')))
+    masks = ' '.join(sorted(glob.glob('ddcal/regions/Dir*reg')))
+    mosaic_residual = 'img/mos_residual.fits'
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
+
+    logger.info('Mosaic: image...')
     mosaic_image = 'img/mos_image.fits'
-    images = ' '.join(sorted(glob.glob('img/*M*MFS-image.fits')))
-    masks = ' '.join(sorted(glob.glob('ddcal/regions/*reg')))
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-c'+str(c)+'.log', cmd_type='python')
+    images = ' '.join(sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')))
+    masks = ' '.join(sorted(glob.glob('ddcal/regions/Dir*reg')))
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-img-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
 
-    logging.info('Mosaic: residuals...')
-    images = ' '.join(sorted(glob.glob('img/*M*MFS-residual.fits')))
-    masks = ' '.join(sorted(glob.glob('ddcal/regions/*reg')))
-    mosaic_residual = 'img/mos_image.fits'
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-c'+str(c)+'.log', cmd_type='python')
+    # prepare new skymodel
+    skymodels = []
+    for i, image in enumerate(images):
+        imagename = image.replace('-MFS-image.fits','')
+        skymodel = mask_cc(imagename, facet_mask=masks[i])
+        skymodels.append(skymodel)
+    lsm = lsmtool.load(skymodels[0])
+    for skymodel in skymodels[1:]:
+        lsm2 = lsmtool.load(skymodel)
+        lsm.concatenate(lsm2)
+    lsm.write('ddcal/skymodel%02i.txt' % c+1, format='makesourcedb', clobber=True)
 
-    os.system('cp img/*M*MFS-image.fits img/mos_image.fits img/mos_image.fits ddcal/images/c'+str(c))
+    os.system('cp img/*M*MFS-image.fits img/mos_image.fits img/mos_residual.fits ddcal/images/c'+str(c))
 
     # get noise, if larger than 95% of prev cycle: break
     rms_noise = get_noise_img(mosaic_residual)
-    logging.info('RMS noise: %f' % rms_noise)
+    logger.info('RMS noise: %f' % rms_noise)
     if rms_noise > 0.95 * rms_noise_pre: break
     rms_noise_pre = rms_noise

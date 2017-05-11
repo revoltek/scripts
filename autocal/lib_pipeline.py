@@ -1,66 +1,12 @@
 import os, sys, re, pickle, random, shutil
-import logging
 import numpy as np
 import matplotlib as mpl
 mpl.use("Agg")
 from lofar import bdsm
+import lsmtool
 
-def get_cluster():
-    """
-    Find in which computing cluster the pipeline is running       
-    """
-    import socket
-    hostname = socket.gethostname()
-    if hostname == 'lgc1' or hostname == 'lgc2': return 'Hamburg'
-    elif 'leidenuniv' in hostname: return 'Leiden'
-    elif hostname[0:3] == 'lof': return 'CEP3'
-    else: 
-        logging.error('Hostname %s unknown.' % hostname)
-        return 'Unknown'
-
-def add_coloring_to_emit_ansi(fn):
-    # add methods we need to the class
-    def new(*args):
-        levelno = args[1].levelno
-        if(levelno>=50):
-            color = '\x1b[31m' # red
-        elif(levelno>=40):
-            color = '\x1b[31m' # red
-        elif(levelno>=30):
-            color = '\x1b[33m' # yellow
-        elif(levelno>=20):
-            color = '\x1b[32m' # green 
-        elif(levelno>=10):
-            color = '\x1b[35m' # pink
-        else:
-            color = '\x1b[0m' # normal
-        args[1].msg = color + args[1].msg +  '\x1b[0m'  # normal
-        return fn(*args)
-    return new
-
-
-def set_logger(filename='pipeline.logging'):
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    # get rid of all other loggers imported by modules
-    for l in logger.handlers: l.setLevel('CRITICAL')
-    logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
-    # create file handler which logs even debug messages
-    check_rm(filename)
-    fh = logging.FileHandler(filename)
-    fh.setLevel(logging.DEBUG)
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-    return logger
-
+import logging
+logger = logging.getLogger('PiLL')
 
 def check_rm(regexp):
     """
@@ -85,7 +31,7 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
     putback : put back in MS the instrument tables
     """
 
-    logging.info('Running LoSoTo...')
+    logger.info('Running LoSoTo...')
 
     # prepare globaldbs
     check_rm('plots-'+c)
@@ -120,7 +66,7 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
     s.run(check=True)
     
     for parset in parsets:
-        logging.debug('-- executing '+parset+'...')
+        logger.debug('-- executing '+parset+'...')
         s.add('losoto -v cal-'+c+'.h5 '+parset, log='losoto-'+c+'.log', log_append=True, cmd_type='python', processors='max')
         s.run(check=True)
 
@@ -152,7 +98,7 @@ class Scheduler():
         dry: don't schedule job
         max_processors: max number of processors in a node (ignored if qsub=False)
         """
-        self.cluster = get_cluster()
+        self.cluster = self.get_cluster()
         self.qsub = qsub
         # if qsub/max_thread/max_processors not set, guess from the cluster
         # if they are set, double check number are reasonable
@@ -162,7 +108,7 @@ class Scheduler():
         else:
             if (self.qsub == False and self.cluster == 'Hamburg') or \
                (self.qsub == True and (self.cluster == 'Leiden' or self.cluster == 'CEP3')):
-                logging.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
+                logger.critical('Qsub set to %s and cluster is %s.' % (str(qsub), self.cluster))
                 sys.exit(1)
 
         if max_threads == None:
@@ -182,15 +128,30 @@ class Scheduler():
             self.max_processors = max_processors
 
         self.dry = dry
-        logging.info("Scheduler initialized for cluster "+self.cluster+" (Nproc: "+str(self.max_threads)+", multinode: "+str(self.qsub)+", max_processors: "+str(self.max_processors)+").")
+        logger.info("Scheduler initialized for cluster "+self.cluster+" (Nproc: "+str(self.max_threads)+", multinode: "+str(self.qsub)+", max_processors: "+str(self.max_processors)+").")
 
         self.action_list = []
         self.log_list = [] # list of 2-lenght tuple of the type: (log filename, type of action)
 
         if not os.path.isdir(log_dir):
-            logging.info('Creating log dir "'+log_dir+'".')
+            logger.info('Creating log dir "'+log_dir+'".')
             os.makedirs(log_dir)
         self.log_dir = log_dir
+
+
+    def get_cluster(self):
+        """
+        Find in which computing cluster the pipeline is running       
+        """
+        import socket
+        hostname = socket.gethostname()
+        if hostname == 'lgc1' or hostname == 'lgc2': return 'Hamburg'
+        elif 'leidenuniv' in hostname: return 'Leiden'
+        elif hostname[0:3] == 'lof': return 'CEP3'
+        else: 
+            logger.error('Hostname %s unknown.' % hostname)
+            return 'Unknown'
+
 
     def add(self, cmd='', log='', log_append=False, cmd_type='', processors=None):
         """
@@ -223,6 +184,7 @@ class Scheduler():
         if log != '':
             self.log_list.append((log,cmd_type))
 
+
     def add_casa(self, cmd='', params={}, wkd=None, log='', log_append=False, processors=None):
         """
         Run a casa command pickling the parameters passed in params
@@ -245,7 +207,7 @@ class Scheduler():
         elif os.path.isdir(wkd):
             casacmd = 'cd '+wkd+'; casa --nogui --log2term --nologger -c '+cmd+' '+pfile
         else:
-            logging.error('Cannot find CASA working dir: '+wkd)
+            logger.error('Cannot find CASA working dir: '+wkd)
             sys.exit(1)
 
         if self.qsub:
@@ -257,7 +219,7 @@ class Scheduler():
             if self.cluster == 'Hamburg':
                 self.action_list.append(casacmd+'; killall -9 -r dbus-daemon Xvfb python casa\*\'')
                 if processors != self.max_processors:
-                    logging.error('To clean annoying CASA remnants no more than 1 CASA per node is allowed.')
+                    logger.error('To clean annoying CASA remnants no more than 1 CASA per node is allowed.')
                     sys.exit(1)
             else:
                 self.action_list.append(casacmd+'\'')
@@ -268,6 +230,7 @@ class Scheduler():
 
         if log != '':
             self.log_list.append((log,'CASA'))
+
 
     def run(self, check=False, max_threads=None):
         """
@@ -291,7 +254,7 @@ class Scheduler():
                 subprocess.call(cmd, shell=True)
     
         # limit threads only when qsub doesn't do it
-        if max_threads != None and not self.qsub: max_threads_run = max_threads
+        if max_threads != None and not self.qsub: max_threads_run = min(max_threads, self.max_threads)
         else: max_threads_run = self.max_threads
 
         q = Queue()
@@ -316,6 +279,7 @@ class Scheduler():
         self.action_list = []
         self.log_list = []
 
+
     def check_run(self, log='', cmd_type=''):
         """
         Produce a warning if a command didn't close the log properly i.e. it crashed
@@ -324,13 +288,13 @@ class Scheduler():
         import subprocess
 
         if not os.path.exists(log):
-            logging.warning('No log file found to check results: '+log)
+            logger.warning('No log file found to check results: '+log)
             return 1
 
         if cmd_type == 'BBS':
             out = subprocess.check_output('grep -L success '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('BBS run problem on:\n'+out)
+                logger.error('BBS run problem on:\n'+out)
                 return 1
 
         elif cmd_type == 'NDPPP':
@@ -338,7 +302,7 @@ class Scheduler():
             out += subprocess.check_output('grep -l "Exception" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "**** uncaught exception ****" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('NDPPP run problem on:\n'+out)
+                logger.error('NDPPP run problem on:\n'+out)
                 return 1
 
         elif cmd_type == 'CASA':
@@ -346,14 +310,14 @@ class Scheduler():
             out += subprocess.check_output('grep -l "An error occurred running" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "\*\*\* Error \*\*\*" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('CASA run problem on:\n'+out)
+                logger.error('CASA run problem on:\n'+out)
                 return 1
 
         elif cmd_type == 'wsclean':
             out = subprocess.check_output('grep -l "exception occurred" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -L "Cleaning up temporary files..." '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('WSClean run problem on:\n'+out)
+                logger.error('WSClean run problem on:\n'+out)
                 return 1
 
         elif cmd_type == 'python':
@@ -361,21 +325,23 @@ class Scheduler():
             out += subprocess.check_output('grep -i -l "[a-z]*Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -i -l "[a-z]*Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('Python run problem on:\n'+out)
+                logger.error('Python run problem on:\n'+out)
                 return 1
 
         elif cmd_type == 'general':
             out = subprocess.check_output('grep -l -i "error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logging.error('Run problem on:\n'+out)
+                logger.error('Run problem on:\n'+out)
                 return 1
 
         else:
-            logging.warning('Unknown command type for log checking: "'+cmd_type+'"')
+            logger.warning('Unknown command type for log checking: "'+cmd_type+'"')
             return 1
 
         return 0
 
+
 from lib_pipeline_ms import *
 from lib_pipeline_img import *
 from lib_pipeline_dd import *
+from lib_pipeline_log import *

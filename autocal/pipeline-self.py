@@ -16,6 +16,7 @@ import numpy as np
 from autocal.lib_pipeline import *
 import pyrap.tables as pt
 from make_mask import make_mask
+import lsmtool
 
 parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
@@ -34,15 +35,93 @@ else:
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
     apparent = False
 
-#######################################################################################
+#############################################################################
 
-set_logger('pipeline-self.logging')
+def ft_model_wsclean(ms, imagename, c, user_mask = None, resamp = None, keep_in_beam=True):
+    """
+    ms : string or vector of mss
+    imagename : root name for wsclean model images
+    resamp : must be '10asec' or another pixels size to resample models
+    keep_in_beam : if True remove everything outside primary beam, otherwise everything inside
+    """
+    logger.info('Predict with model image...')
+
+    # remove CC not in mask
+    logger.info('Predict (mask)...')
+    maskname = imagename+'-mask.fits'
+    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
+    if user_mask is not None: 
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
+    blank_image_reg(maskname, 'self/beam.reg', inverse=keep_in_beam)
+    for modelname in sorted(glob.glob(imagename+'*model.fits')):
+        blank_image_fits(modelname, maskname, inverse=True)
+
+    if resamp is not None:
+        logger.info('Predict (resamp)...')
+        for model in sorted(glob.glob(imagename+'*model.fits')):
+            model_out = model.replace(imagename, imagename+'-resamp')
+            s.add('/home/fdg/opt/src/nnradd/build/nnradd '+resamp+' '+model_out+' '+model, log='resamp-c'+str(c)+'.log', log_append=True, cmd_type='general')
+        s.run(check=True)
+        imagename = imagename+'-resamp'
+ 
+    logger.info('Predict (ft)...')
+    if ms is list: ms = ' '.join(ms) # convert to string for wsclean
+    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+ms, \
+            log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    s.run(check=True)
+
+
+def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_column='MODEL_DATA'):
+    """
+    skymodel : cc-list made by wsclean
+    keep_in_beam : if True remove everything outside primary beam, otherwise everything inside
+    """
+    logger.info('Predict with CC...')
+    maskname = imagename+'-mask.fits'
+    skymodel = imagename+'-sources.txt'
+    skymodel_cut = imagename+'-sources-cut.txt'
+    skydb = imagename+'-sources.skydb'
+
+    # prepare mask
+    if not os.path.exists(maskname):
+        logger.info('Predict (make mask)...')
+        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
+    if user_mask is not None:
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1) # set to 1 pixels into user_mask
+    blank_image_reg(maskname, 'self/beam.reg', inverse=keep_in_beam, blankval=0) # if keep_in_beam set to 0 everything outside beam.reg
+
+    # apply mask
+    logger.info('Predict (apply mask)...')
+    lsm = lsmtool.load(skymodel)
+    lsm.select('%s == True' % maskname)
+    fluxes = lsm.getColValues('I')
+    lsm.remove(np.abs(fluxes) < 5e-4) # TEST
+    lsm.write(skymodel_cut, format='makesourcedb', clobber=True)
+    del lsm
+
+    # convert to skydb
+    logger.info('Predict (makesourcedb)...')
+    check_rm(skydb)
+    s.add('run_env.sh makesourcedb outtype="blob" format="<" in="'+skymodel_cut+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
+    s.run(check=True)
+
+    # predict
+    logger.info('Predict (ft)...')
+    for ms in mss:
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' msout.datacolumn='+model_column+' pre.usebeammodel=false pre.sourcedb='+skydb, \
+                log=ms+'_pre-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+
+#############################################################################
+
+logger = set_logger('pipeline-self.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
 
 ##################################################
 # Clear
-logging.info('Cleaning...')
+logger.info('Cleaning...')
 
 check_rm('img')
 os.makedirs('img')
@@ -51,8 +130,8 @@ os.makedirs('logs/mss')
 # here images, models, solutions for each group will be saved
 check_rm('self')
 if not os.path.exists('self/images'): os.makedirs('self/images')
-if not os.path.exists('self/models'): os.makedirs('self/models')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
+if not os.path.exists('self/skymodels'): os.makedirs('self/skymodels')
 
 mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 concat_ms = 'mss/concat.MS'
@@ -63,21 +142,20 @@ make_beam_reg(phasecentre[0], phasecentre[1], 8, 'self/beam.reg') # go to 7 deg,
 
 ###############################################################################################
 # Create columns (non compressed)
-# TODO: remove when moving to NDPPP DFT
-logging.info('Creating MODEL_DATA_HIGHRES and SUBTRACTED_DATA...')
+logger.info('Creating MODEL_DATA_HIGHRES and SUBTRACTED_DATA...')
 for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
 
-####################################################################################################
+###################################################################################################
 # Add model to MODEL_DATA
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
 sourcedb_basename = sourcedb.split('/')[-1]
 for ms in mss:
     check_rm(ms+'/'+sourcedb_basename)
-    logging.debug('Copy: '+sourcedb+' -> '+ms)
+    logger.debug('Copy: '+sourcedb+' -> '+ms)
     os.system('cp -r '+sourcedb+' '+ms)
-logging.info('Add model to MODEL_DATA...')
+logger.info('Add model to MODEL_DATA...')
 for ms in mss:
     if apparent:
         s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.usebeammodel=false pre.sourcedb='+ms+'/'+sourcedb_basename, log=ms+'_pre.log', cmd_type='NDPPP')
@@ -87,7 +165,7 @@ s.run(check=True)
 
 ###################################################################################
 # Preapre fake FR parmdb
-logging.info('Prepare fake FR parmdb...')
+logger.info('Prepare fake FR parmdb...')
 for ms in mss:
     if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
@@ -99,7 +177,7 @@ s.run(check=True)
 #####################################################################################################
 # Self-cal cycle
 for c in xrange(niter):
-    logging.info('Start selfcal cycle: '+str(c))
+    logger.info('Start selfcal cycle: '+str(c))
 
     # Smooth DATA -> SMOOTHED_DATA
     # Re-done in case of new flags
@@ -109,17 +187,17 @@ for c in xrange(niter):
     else:
         incol = 'SUBTRACTED_DATA'
 
-    logging.info('BL-based smoothing...')
+    logger.info('BL-based smoothing...')
     for ms in mss:
         s.add('BLsmooth.py -r -f 0.2 -i '+incol+' -o SMOOTHED_DATA '+ms, log=ms+'_smooth1-c'+str(c)+'.log', cmd_type='python')
-    s.run(check=True)
+    s.run(check=True, max_threads=6)
 
-    logging.info('Concatenating TCs...')
+    logger.info('Concatenating TCs...')
     check_rm(concat_ms+'*')
     pt.msutil.msconcat(mss, concat_ms, concatTime=False)
 
     # solve TEC - group*_TC.MS:SMOOTHED_DATA
-    logging.info('Solving TEC...')
+    logger.info('Solving TEC...')
     for ms in mss:
         check_rm(ms+'/instrument-tec')
         s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
@@ -132,7 +210,7 @@ for c in xrange(niter):
     os.system('mv cal-tec'+str(c)+'.h5 self/solutions/')
 
     # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
-    logging.info('Correcting TEC...')
+    logger.info('Correcting TEC...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn='+incol+' cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                 log=ms+'_corTEC-c'+str(c)+'.log', cmd_type='NDPPP')
@@ -144,19 +222,19 @@ for c in xrange(niter):
 
         # To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (circular)
         # TODO: check -w, is it ok?
-        logging.info('Convert to circular...')
+        logger.info('Convert to circular...')
         for ms in mss:
-            s.add('/home/fdg/scripts/mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+            s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
  
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
-        logging.info('BL-based smoothing...')
+        logger.info('BL-based smoothing...')
         for ms in mss:
             s.add('BLsmooth.py -r -f 0.5 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth2-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=6)
 
         # Solve G SB.MS:SMOOTHED_DATA (only solve)
-        logging.info('Solving G...')
+        logger.info('Solving G...')
         for ms in mss:
             check_rm(ms+'/instrument-g')
             s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=30 sol.nchan=8', \
@@ -169,25 +247,25 @@ for c in xrange(niter):
         os.system('mv cal-fr'+str(c)+'.h5 self/solutions/')
        
         # To linear - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (linear)
-        logging.info('Convert to linear...')
+        logger.info('Convert to linear...')
         for ms in mss:
-            s.add('/home/fdg/scripts/mslin2circ.py -w -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
+            s.add('/home/fdg/scripts/mslin2circ.py -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
         s.run(check=True)
         
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
-        logging.info('Faraday rotation correction...')
+        logger.info('Faraday rotation correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
-        logging.info('BL-based smoothing...')
+        logger.info('BL-based smoothing...')
         for ms in mss:
             s.add('BLsmooth.py -r -f 0.5 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=6)
 
         # Solve G SB.MS:SMOOTHED_DATA (only solve)
-        logging.info('Solving G...')
+        logger.info('Solving G...')
         for ms in mss:
             check_rm(ms+'/instrument-g')
             s.add('NDPPP '+parset_dir+'/NDPPP-solG.parset msin='+ms+' sol.parmdb='+ms+'/instrument-g sol.solint=30 sol.nchan=8', \
@@ -205,30 +283,30 @@ for c in xrange(niter):
         #os.system('mv cal-amp.h5 self/solutions/')
 
         # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
-        logging.info('Faraday rotation correction...')
+        logger.info('Faraday rotation correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
                     log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
        # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
-        logging.info('Cross-delay correction...')
+        logger.info('Cross-delay correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
         # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
-        #logging.info('Slow amp correction...')
+        #logger.info('Slow amp correction...')
         #for ms in mss:
-        #    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        #    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
         #s.run(check=True)
 
         # Finally re-calculate TEC
-        logging.info('BL-based smoothing...')
+        logger.info('BL-based smoothing...')
         for ms in mss:
             s.add('BLsmooth.py -r -f 0.2 -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth3-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=6)
 
         # solve TEC - group*_TC.MS:SMOOTHED_DATA
-        logging.info('Solving TEC...')
+        logger.info('Solving TEC...')
         for ms in mss:
             check_rm(ms+'/instrument-tec')
             s.add('NDPPP '+parset_dir+'/NDPPP-solTEC.parset msin='+ms+' sol.parmdb='+ms+'/instrument-tec', \
@@ -241,7 +319,7 @@ for c in xrange(niter):
         os.system('mv cal-tec'+str(c)+'b.h5 self/solutions')
 
         # correct TEC - group*_TC.MS:CORRECTED_DATA -> group*_TC.MS:CORRECTED_DATA
-        logging.info('Correcting TEC...')
+        logger.info('Correcting TEC...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
@@ -253,17 +331,17 @@ for c in xrange(niter):
     # do beam-corrected+deeper image at last cycle
     if c == niter-1:
         # beam corrected: -use-differential-lofar-beam' - no baseline avg!
-        logging.info('Cleaning beam (cycle: '+str(c)+')...')
+        logger.info('Cleaning beam (cycle: '+str(c)+')...')
         imagename = 'img/wideBeam'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 10arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -trim 3500 3500 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 8arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         # super low resolution to catch extended emission
-        logging.info('Cleaning beam-low (cycle: '+str(c)+')...')
+        logger.info('Cleaning beam-low (cycle: '+str(c)+')...')
         imagename = 'img/wideBeamLow'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 1000 1000 -trim 512 512 -mem 90 -j '+str(s.max_processors)+' \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 700 700 -trim 512 512 -mem 90 -j '+str(s.max_processors)+' \
                 -scale 1arcmin -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -271,97 +349,72 @@ for c in xrange(niter):
 
     # clean mask clean (cut at 5k lambda)
     # no MODEL_DATA update with -baseline-averaging
-    logging.info('Cleaning (cycle: '+str(c)+')...')
+    logger.info('Cleaning (cycle: '+str(c)+')...')
     imagename = 'img/wide-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.9 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 12arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
-            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+            log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
-    # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
     if user_mask is not None: 
         blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
 
-    logging.info('Cleaning w/ mask (cycle: '+str(c)+')...')
+    logger.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-component-list -fitsmask '+maskname+' '+' '.join(mss), \
-            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    #-multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
+    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
+            log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-
-    # make mask
-    maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
-    if user_mask is not None: 
-        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
-    # remove CC not in mask
-    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-        blank_image_fits(modelname, maskname, inverse=True)
-        blank_image_reg(modelname, 'self/beam.reg', inverse=True)
-
-    # TODO: move to DFT with NDPPP
-    # update-model cannot be done in wsclean because of baseline-averaging
-    logging.info('Predict...')
-    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
-            log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
+    os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
 #    if c >= 1:
 #        # TODO: TESTESTEST
 #        s.add('wsclean -reorder -name ' + imagename + '-lr-test -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-#                -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+#                -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
 #                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 '+' '.join(mss), \
 #                log='wsclean-lr.log', cmd_type='wsclean', processors='max')
 #        s.run(check=True)
 #        # TODO: TESTTESTTEST correct TEC - group*_TC.MS:SUBTRACTED_DATA -> group*_TC.MS:CORRECTED_DATA
-#        logging.info('Correcting TEC...')
+#        logger.info('Correcting TEC...')
 #        for ms in mss:
 #            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
 #                log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
 #        s.run(check=True)
 #        s.add('wsclean -reorder -name ' + imagename + '-test -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-#            -scale 10arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
+#            -scale 10arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
 #            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
 #            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
 #        s.run(check=True)
 
     # do low-res first cycle and remove it from the data
+    if c > 0:
+        ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA')
+
     if c == 0:
+        ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA_HIGHRES')
+
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
-        logging.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA)...')
-        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log='taql1-c'+str(c)+'.log', cmd_type='general')
+        logger.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA_HIGHRES)...')
+        s.add('taql "update '+concat_ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA_HIGHRES"', log='taql1-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
     
         # reclean low-resolution
-        logging.info('Cleaning low resolution...')
+        logger.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
-        s.add('wsclean -reorder -name ' + imagename_lr + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-                -scale 20arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -save-component-list '+' '.join(mss), \
+        #-multiscale -multiscale-scale-bias 0.5 \
+        s.add('run_envw.sh wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+                -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -save-source-list '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-    
-        # make mask
-        maskname = imagename_lr+'-mask.fits'
-        make_mask(image_name = imagename_lr+'-MFS-image.fits', mask_name = maskname, threshisl = 5)
-        # remove CC not in mask and do not remove anything in the beam
-        for modelname in glob.glob(imagename_lr+'*model.fits'):
-            blank_image_fits(modelname, maskname, inverse=True)
-            blank_image_reg(modelname, 'self/beam.reg', inverse=False)
-    
-        # resample at high res to avoid FFT problem on long baselines and predict
-        logging.info('Predict...')
-        for model in sorted(glob.glob(imagename_lr+'*model.fits')):
-            model_out = model.replace(imagename_lr, imagename_lr+'-resamp')
-            s.add('~/opt/src/nnradd/build/nnradd 10asec '+model_out+' '+model, log='resamp-lr-'+str(c)+'.log', log_append=True, cmd_type='general')
-        s.run(check=True)
-        s.add('wsclean -predict -name ' + imagename_lr + '-resamp -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
-                log='wscleanPRE-lr.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
+       
+        #ft_model_wsclean(concat_ms, imagename_lr, 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
+        ft_model_cc(mss, imagename_lr, 'lr', keep_in_beam=False, model_column='MODEL_DATA')
 
         # corrupt model with TEC solutions ms:MODEL_DATA -> ms:MODEL_DATA
         for ms in mss:
@@ -371,29 +424,29 @@ for c in xrange(niter):
         s.run(check=True)
     
         # Subtract low-res model - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (empty)
-        logging.info('Subtracting low-res model (SUBTRACTED_DATA = DATA - MODEL_DATA)...')
+        logger.info('Subtracting low-res model (SUBTRACTED_DATA = DATA - MODEL_DATA)...')
         s.add('taql "update '+concat_ms+' set SUBTRACTED_DATA = DATA - MODEL_DATA"', log='taql2-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
 
-        # put in MODEL_DATA the best available model
-        logging.info('Predict...')
-        s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+concat_ms, \
-                log='wscleanPRE2-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+        # Restore best model
+        logger.info('Restoring high-res model (MODEL_DATA = MODEL_DATA_HIGHRES)...')
+        s.add('taql "update '+concat_ms+' set MODEL_DATA = MODEL_DATA_HIGHRES"', log='taql3-c'+str(c)+'.log', cmd_type='general')
         s.run(check=True)
+
 
     ###############################################################################################################
     # Flag on residuals (CORRECTED_DATA)
-    #logging.info('Flagging residuals...')
+    #logger.info('Flagging residuals...')
     #for ms in mss:
     #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
     #s.run(check=True
     
 # Copy images
+[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
+[ os.system('mv img/wideM-'+str(c)+'-sources.txt self/skymodels') for c in xrange(niter) ]
+os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
-[ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-os.system('mv img/wideM-'+str(niter-1)+'-*-model.fits self/models')
-os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv logs self')
 
-logging.info("Done.")
+logger.info("Done.")

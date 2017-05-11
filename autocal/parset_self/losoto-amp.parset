@@ -48,7 +48,7 @@ LoSoTo.Steps.plotAi3.Prefix = plots/amp_
 LoSoTo.Steps.smoothA.Operation = SMOOTH
 LoSoTo.Steps.smoothA.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.smoothA.Axes = [freq,time]
-LoSoTo.Steps.smoothA.FWHM = [20,30]
+LoSoTo.Steps.smoothA.size = [20,30]
 LoSoTo.Steps.smoothA.Mode = runningmedian
 
 # plot amplitude smooth
