@@ -5,11 +5,7 @@ msout = .
 
 numthreads = 1 # bug fix
 
-steps = [flag1, flag2, count]
+steps = [flag1, count]
 
 flag1.type = preflagger
 flag1.baseline = 
-
-# just remove very very low elev
-flag2.type = preflagger
-flag2.elevation = 0deg..20deg
