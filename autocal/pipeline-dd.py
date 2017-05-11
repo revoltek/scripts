@@ -19,13 +19,18 @@ check_rm('logs')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob('mss/TC*.MS'))
 phasecentre = get_phase_centre(mss[0])
-check_rm('ddcal/regions')
+check_rm('ddcal')
 os.makedirs('ddcal/regions')
-check_rm('ddcal/plots')
 os.makedirs('ddcal/plots')
-check_rm('ddcal/images')
 os.makedirs('ddcal/images')
+os.makedirs('ddcal/skymodels')
 os.makedirs('logs/mss')
+
+# set user masks
+if 'tooth' in os.getcwd():
+    user_mask = '/home/fdg/scripts/autocal/regions/tooth.reg'
+else:
+    user_mask = None
 
 def clean(c, mss, size=2.):
     """
@@ -61,49 +66,58 @@ def clean(c, mss, size=2.):
     # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
+    if user_mask is not None:
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
 
     # clean 2
     #-multiscale -multiscale-scale-bias 0.5 \
+    #-auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min \
     logger.info('Cleaning w/ mask ('+str(c)+')...')
     imagename = 'img/ddcalM-'+str(c)
     s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
-            -auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min -auto-threshold 0.1 \
-            -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
+            -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
     return imagename
 
-def mask_cc(imagename, facet_mask=None):
+
+def mask_cc(image):
     """
     remove less-important cc from a skymodel
     """
-    logger.info('Masking skymodel...')
-    maskname = imagename+'-mask.fits'
-    skymodel = imagename+'-sources.txt'
-    skymodel_cut = imagename+'-sources-cut.txt'
+    logger.info('Masking skymodel on %s...' % image.imagename)
 
     # prepare mask
-    if not os.path.exists(maskname):
+    if not os.path.exists(image.maskname):
         logger.info('Predict (make mask)...')
-        make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 5, atrous_do=True)
-    if facet_mask is not None:
-        blank_image_reg(maskname, user_mask, inverse=True, blankval=0) # set to 0 pixels outside facet mask
+        make_mask(image_name=image.imagename, mask_name=image.maskname, threshisl=5, atrous_do=True)
+    if user_mask is not None:
+        blank_image_reg(image.maskname, user_mask, inverse=False, blankval=1)
+    if image.region_facet is not None:
+        logger.info('Predict (apply facet mask %s)...' % image.region_facet)
+        blank_image_reg(image.maskname, image.region_facet, inverse=True, blankval=0) # set to 0 pixels outside facet mask
 
     # apply mask
     logger.info('Predict (apply mask)...')
-    lsm = lsmtool.load(skymodel)
-    lsm.select('%s == True' % maskname)
+    lsm = lsmtool.load(image.skymodel)
+    lsm.select('%s == True' % image.maskname)
     fluxes = lsm.getColValues('I')
-    lsm.remove(np.abs(fluxes) < 5e-4) # TEST
-    lsm.write(skymodel_cut, format='makesourcedb', clobber=True)
+    lsm.write(image.skymodel_cut, format='makesourcedb', clobber=True)
     del lsm
 
-    return skymodel_cut
+
+class Image(object):
+    def __init__(self, imagename, region_facet = None):
+        self.imagename = imagename
+        self.maskname = imagename.replace('MFS-image.fits', 'mask.fits')
+        self.skymodel = imagename.replace('MFS-image.fits', 'sources.txt')
+        self.skymodel_cut = imagename.replace('MFS-image.fits', 'sources-cut.txt')
+        self.region_facet = region_facet
 
 
 ############################################################
@@ -132,8 +146,8 @@ for ms in mss:
     s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
-mosaic_image = sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1]
-skymodel = mask_cc(mosaic_image.replace('MFS-image.fits', ''))
+mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1])
+mask_cc(mosaic_image)
 rms_noise_pre = np.inf
 
 for c in xrange(maxniter):
@@ -141,47 +155,32 @@ for c in xrange(maxniter):
 
     check_rm('img')
     os.makedirs('img')
-    os.makedirs('ddcal/images/c'+str(c))
 
-    #############################################################
-    # Run pyBDSM to create a model used for DD-calibrator
-
-    #logger.info('creating DD skymodel...')
-    #skymodel = 'ddcal/skymodel%02i.txt' % c
-
-    # TODO: remove when fully moved to skymodel
-    #if not os.path.exists(skymodel):
-    #    logger.warning('CC catalogue not found, make one with PyBDSM')
-    #    bdsm_img = bdsm.process_image(mosaic_image, rms_box=(100,30), \
-    #        thresh_pix=5, thresh_isl=3, atrous_do=True, atrous_jmax=3, \
-    #        adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
-    #    bdsm_img.write_catalog(outfile=skymodel, catalog_type='gaul', bbs_patches='source', format='bbs', clobber=True)
-
-    lsm = lsmtool.load(skymodel)
-    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean')
+    lsm = lsmtool.load(mosaic_image.skymodel_cut)
+    #lsm.group('cluster', numClusters=10, root='Dir', applyBeam=False, method = 'wmean')
+    lsm.group('tessellate', targetFlux='40Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
+    directions_clusters = lsm.getPatchPositions()
     patches = lsm.getPatchNames()
     logger.info("Created %i directions." % len(patches))
 
-    skymodel_cl = 'ddcal/skymodel%02i_cluster.txt' % c
+    skymodel_cl = 'ddcal/skymodels/skymodel%02i_cluster.txt' % c
     lsm.write(skymodel_cl, format='makesourcedb', clobber=True)
-    skymodel_cl_plot = 'ddcal/skymodel%02i_cluster.png' % c
+    skymodel_cl_plot = 'ddcal/skymodels/skymodel%02i_cluster.png' % c
     lsm.plot(fileName=skymodel_cl_plot, labelBy='patch')
 
     # voronoi tessellation of skymodel for imaging
-    lsm.group('voronoi', root='Dir', applyBeam=False)
-
-    # create masks (before changing patch positions)
-    make_voronoi_reg(lsm.getPatchPositions(), mosaic_image, outdir='ddcal/regions/', beam_reg='', png='ddcal/voronoi%02i.png' % c)
-
-    lsm.setPatchPositions(method='mid') # reset patch center to mid, so phaseshift/imaging is best
+    lsm.group('voronoi', root='Dir', applyBeam=False, method='mid')
     directions_shifts = lsm.getPatchPositions()
     sizes = lsm.getPatchSizes(units='degree')
 
-    skymodel_voro = 'ddcal/skymodel%02i_voro.txt' % c
-    lsm.write(slymodel_voro, format='makesourcedb', clobber=True)
-    skymodel_voro_plot = 'ddcal/skymodel%02i_voro.png' % c
+    skymodel_voro = 'ddcal/skymodels/skymodel%02i_voro.txt' % c
+    lsm.write(skymodel_voro, format='makesourcedb', clobber=True)
+    skymodel_voro_plot = 'ddcal/skymodels/skymodel%02i_voro.png' % c
     lsm.plot(fileName=skymodel_voro_plot, labelBy='patch')
     del lsm
+
+    # create masks (using cluster directions)
+    make_voronoi_reg(directions_clusters, mosaic_image.imagename, outdir='ddcal/regions/', beam_reg='', png='ddcal/skymodels/voronoi%02i.png' % c)
 
     skymodel_cl_skydb = skymodel_cl.replace('.txt','.skydb')
     check_rm(skymodel_cl_skydb)
@@ -300,38 +299,44 @@ for c in xrange(maxniter):
                 log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logger.info('Patch '+p+': imageing...')
+        logger.info('Patch '+p+': imaging...')
         clean(p, glob.glob('mss_dd/*MS'), size=sizes[i])
 
     ##############################################################
     # Mosaiching
+
+    os.makedirs('ddcal/images/c'+str(c))
+    directions = []
+    for image, region in zip( sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')), sorted(glob.glob('ddcal/regions/Dir*')) ):
+        directions.append( Image(image, region_facet = region) )
+
     logger.info('Mosaic: residuals...')
-    images = ' '.join(sorted(glob.glob('img/ddcalM-Dir*MFS-residual.fits')))
-    masks = ' '.join(sorted(glob.glob('ddcal/regions/Dir*reg')))
-    mosaic_residual = 'img/mos_residual.fits'
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
+    images = ' '.join([image.imagename.replace('image', 'residual') for image in directions])
+    masks = ' '.join([image.region_facet for image in directions])
+    mosaic_residual = 'img/mos-MFS-residual.fits'
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_residual, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     logger.info('Mosaic: image...')
-    mosaic_image = 'img/mos_image.fits'
-    images = ' '.join(sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')))
-    masks = ' '.join(sorted(glob.glob('ddcal/regions/Dir*reg')))
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_image, log='mosaic-img-c'+str(c)+'.log', cmd_type='python')
+    images = ' '.join([image.imagename for image in directions])
+    masks = ' '.join([image.region_facet for image in directions])
+    mosaic_imagename = 'img/mos-MFS-image.fits'
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_imagename, log='mosaic-img-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     # prepare new skymodel
     skymodels = []
-    for i, image in enumerate(images):
-        imagename = image.replace('-MFS-image.fits','')
-        skymodel = mask_cc(imagename, facet_mask=masks[i])
-        skymodels.append(skymodel)
+    for image in directions:
+        mask_cc(image)
+        skymodels.append(image.skymodel_cut)
     lsm = lsmtool.load(skymodels[0])
     for skymodel in skymodels[1:]:
         lsm2 = lsmtool.load(skymodel)
         lsm.concatenate(lsm2)
-    lsm.write('ddcal/skymodel%02i.txt' % c+1, format='makesourcedb', clobber=True)
+    lsm.write('ddcal/images/c'+str(c)+'/mos_sources-cut.txt', format='makesourcedb', clobber=True)
 
-    os.system('cp img/*M*MFS-image.fits img/mos_image.fits img/mos_residual.fits ddcal/images/c'+str(c))
+    os.system('cp img/*M*MFS-image.fits img/mos-MFS-image.fits img/mos-MFS-residual.fits ddcal/images/c'+str(c))
+    mosaic_image = Image('ddcal/images/c'+str(c)+'/mos_MFS-image.fits')
 
     # get noise, if larger than 95% of prev cycle: break
     rms_noise = get_noise_img(mosaic_residual)

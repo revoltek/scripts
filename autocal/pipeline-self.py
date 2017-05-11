@@ -131,7 +131,6 @@ os.makedirs('logs/mss')
 check_rm('self')
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
-if not os.path.exists('self/skymodels'): os.makedirs('self/skymodels')
 
 mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 concat_ms = 'mss/concat.MS'
@@ -225,7 +224,7 @@ for c in xrange(niter):
         logger.info('Convert to circular...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=4)
  
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logger.info('BL-based smoothing...')
@@ -250,7 +249,7 @@ for c in xrange(niter):
         logger.info('Convert to linear...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=4)
         
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Faraday rotation correction...')
@@ -277,10 +276,10 @@ for c in xrange(niter):
         os.system('mv plots-cd'+str(c)+' self/solutions/')
         os.system('mv cal-cd'+(str(c))+'.h5 self/solutions/')
 
-        #run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
-        #    outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
-        #os.system('mv plots-amp self/solutions/')
-        #os.system('mv cal-amp.h5 self/solutions/')
+        run_losoto(s, 'amp'+str(c), mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+            outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
+        os.system('mv plots-amp'+str(c)+' self/solutions/')
+        os.system('mv cal-amp'+str(c)+'.h5 self/solutions/')
 
         # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
         logger.info('Faraday rotation correction...')
@@ -293,11 +292,11 @@ for c in xrange(niter):
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
-        #logger.info('Slow amp correction...')
-        #for ms in mss:
-        #    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
-        #s.run(check=True)
+        # Correct beam SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        logger.info('Beam amp correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
         # Finally re-calculate TEC
         logger.info('BL-based smoothing...')
@@ -443,7 +442,7 @@ for c in xrange(niter):
     
 # Copy images
 [ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wideM-'+str(c)+'-sources.txt self/skymodels') for c in xrange(niter) ]
+[ os.system('mv img/wideM-'+str(c)+'-sources.txt self/images') for c in xrange(niter) ]
 os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
