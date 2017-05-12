@@ -141,7 +141,7 @@ for timechunk in timechunks:
                     log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
     s.run(check=True)
 
-# Flagging on concatenated dataset
+# Flagging on concatenated dataset - also flag low-elevation
 logger.info('Flagging...')
 for groupname in groupnames:
     s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+groupname+'/'+groupname+'.MS', \
