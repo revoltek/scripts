@@ -246,7 +246,7 @@ if imaging:
     # Correct all CORRECTED_DATA (beam, CD, FR corrected) -> CORRECTED_DATA
     logger.info('Amp/ph correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
 
     logger.info('Subtract model...')
