@@ -220,16 +220,15 @@ for c in xrange(maxniter):
     for i, p in enumerate(patches):
         logger.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p, log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p+' \
+                    predict.applycal.parmdb='+ms+'/cal-c'+str(c)+'.h5 predict.applycal.direction='+p, \
+                    log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logger.info('Patch '+p+': corrupt...')
-        for ms in mss:
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
-           # TODO: NDPPP need to support h5parm for correction
-            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
-            #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
+        #logger.info('Patch '+p+': corrupt...')
+        #for ms in mss:
+        #    s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
+        #s.run(check=True)
 
         logger.info('Patch '+p+': subtract...')
         for ms in mss:
@@ -251,16 +250,15 @@ for c in xrange(maxniter):
     for i, p in enumerate(patches):
         logger.info('Patch '+p+': predict...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p, log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p+ '\
+                    predict.applycal.parmdb='+ms+'/cal-c'+str(c)+'.h5 predict.applycal.direction='+p, \
+                    log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        logger.info('Patch '+p+': corrupt...')
-        for ms in mss:
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
-           # TODO: NDPPP need to support h5parm for correction
-            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
-            #    log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
+        #logger.info('Patch '+p+': corrupt...')
+        #for ms in mss:
+        #    s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
+        #s.run(check=True)
 
         logger.info('Patch '+p+': add...')
         for ms in mss:
@@ -283,10 +281,9 @@ for c in xrange(maxniter):
 
         logger.info('Patch '+p+': correct...')
         for ms in mss:
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', log=ms+'_cor2-c'+str(c)+'.log', cmd_type='python')
-            # TODO: NDPPP need to support h5parm for correction
-            #s.add('NDPPP '+parset_dir+'/NDPPP-corupt.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.invert=false', \
-            #     log=ms+'_corrupt-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', log=ms+'_cor2-c'+str(c)+'.log', cmd_type='python')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor.direction='+p, \
+                 log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         logger.info('Patch '+p+': phase shift and avg...')

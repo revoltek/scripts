@@ -238,13 +238,14 @@ if 'LBAsurvey' in os.getcwd():
 # a debug image
 if imaging:
     from make_mask import make_mask
+    if not 'survey' in os.getcwd():
+        mss = mss[int(len(mss)/2.):] # keep only upper band
+
     # Correct all CORRECTED_DATA (beam, CD, FR corrected) -> CORRECTED_DATA
     logger.info('Amp/ph correction...')
     for ms in mss:
         s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
-
-    mss = mss[int(len(mss)/2.):] # keep only upper band
 
     logger.info('Subtract model...')
     for ms in mss:
@@ -256,7 +257,7 @@ if imaging:
     os.makedirs('img')
     imagename = 'img/wide'
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.9 \
+            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
             log='wscleanA.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -271,7 +272,7 @@ if imaging:
     logger.info('Cleaning w/ mask')
     imagename = 'img/wideM'
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanB.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
