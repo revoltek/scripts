@@ -1,0 +1,13 @@
+msin = 
+msin.datacolumn = CORRECTED_DATA
+msin.baseline = [CR]S*&
+msout = .
+msout.datacolumn = CORRECTED_DATA
+
+numthreads = 1
+
+steps=[cor]
+
+cor.parmdb=
+cor.correction=tec000
+cor.direction=

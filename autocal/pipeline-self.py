@@ -180,7 +180,6 @@ for c in xrange(niter):
 
     # Smooth DATA -> SMOOTHED_DATA
     # Re-done in case of new flags
-    # TEST: higher ionfactor
     if c == 0:
         incol = 'DATA'
     else:
