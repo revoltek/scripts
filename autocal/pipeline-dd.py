@@ -157,8 +157,7 @@ for c in xrange(maxniter):
     os.makedirs('img')
 
     lsm = lsmtool.load(mosaic_image.skymodel_cut)
-    #lsm.group('cluster', numClusters=10, root='Dir', applyBeam=False, method = 'wmean')
-    lsm.group('tessellate', targetFlux='40Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
+    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
     directions_clusters = lsm.getPatchPositions()
     patches = lsm.getPatchNames()
     logger.info("Created %i directions." % len(patches))
