@@ -21,7 +21,7 @@ elif 'survey' in os.getcwd():
     obs = os.getcwd().split('/')[-2] # assumes .../c??-o??/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
     datadir = '../../download/%s/%s' % (obs, calname)
-    bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA'
+    bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA'
 else:
     obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
@@ -204,7 +204,7 @@ s.run(check=True)
 # Convert to circular CORRECTED_DATA -> CORRECTED_DATA
 #logger.info('Converting to circular...')
 #for ms in mss:
-#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
+#    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
 #s.run(check=True)
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
@@ -229,7 +229,7 @@ else:
     inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
 
 
-if 'LBAsurvey' in os.getcwd():
+if 'survey' in os.getcwd():
     check_rm('globaldb/instrument*') # keep only filled instrument tables
     newglobaldb = 'globaldb_'+os.getcwd().split('/')[-2]
     logger.info('Copy: globaldb -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
