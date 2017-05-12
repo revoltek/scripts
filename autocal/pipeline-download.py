@@ -2,7 +2,6 @@
 # download from LTA using WGET
 
 fix_tables = True
-flag_elev = True
 rename = True
 parset_dir = '/home/fdg/scripts/autocal/parset_download'
 
@@ -106,11 +105,11 @@ if fix_tables:
             s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
         s.run(check=False)
 
-if flag_elev:
-    logger.info('Flagging elevation...')
-    for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
-    s.run(check=True)
+#if flag_elev:
+#    logger.info('Flagging elevation...')
+#    for ms in mss:
+#        s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
+#    s.run(check=True)
 
 # Avg to 4 chan and 4 sec
 # Remove internationals
