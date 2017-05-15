@@ -39,7 +39,7 @@ logger.info("Calibrator name: %s." % calname)
 
 if calname == '3c196':
     sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-    patch = '3C196'
+    patch = '3C196' #NOTE: TEST all field
 elif calname == '3c380':
     sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
     patch = '3C380'
@@ -183,10 +183,10 @@ run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-c
 #################################################
 # 3: recalibrate without FR
 
-# Beam correction DATA -> CORRECTED_DATA
+# Beam correction (and update weight in case of imaging) DATA -> CORRECTED_DATA
 logger.info('Beam correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' corrbeam.updateweight=True', log=ms+'_beam2.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
@@ -200,12 +200,6 @@ logger.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
 s.run(check=True)
-
-# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-#logger.info('Converting to circular...')
-#for ms in mss:
-#    s.add('mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logger.info('BL-smooth...')
@@ -221,12 +215,11 @@ for ms in mss:
 s.run(check=True)
 
 if clock:
-    # TODO: add smooth clock
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
-        inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+           inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 else:
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True) # NOTE: TESTtry putback
 
 
 if 'survey' in os.getcwd():
