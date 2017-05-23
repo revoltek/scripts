@@ -1,0 +1,19 @@
+msin=
+msin.datacolumn=DATA_BEAM
+msin.modelcolumn=MODEL_DATA
+msin.baseline = [CR]S*&
+msout = 
+msout.datacolumn=CORRECTED_DATA
+
+steps = [filter, cal, count]
+
+filter.blrange = [1000, 70000]
+
+cal.type = gaincal
+cal.parmdb = 
+cal.caltype = diagonal
+cal.usemodelcolumn = T
+cal.maxiter = 100
+cal.nchan = 1
+cal.solint = 1
+cal.propagatesolutions = F
