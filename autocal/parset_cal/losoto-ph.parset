@@ -53,8 +53,8 @@ LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
 LoSoTo.Steps.ct.CombinePol = True
 LoSoTo.Steps.ct.FlagBadChannels = False
-#LoSoTo.Steps.ct.Fit3rdOrder = False
-LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
+LoSoTo.Steps.ct.Fit3rdOrder = False
+#LoSoTo.Steps.ct.Fit3rdOrder = True # only for very low-freq dataset
 LoSoTo.Steps.ct.Circular = False
 
 LoSoTo.Steps.plotCLOCK.Operation = PLOT
@@ -70,7 +70,7 @@ LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
 LoSoTo.Steps.plotTEC.Axes = [time]
 LoSoTo.Steps.plotTEC.TableAxis = ant
 LoSoTo.Steps.plotTEC.Prefix = plots/tec
-#LoSoTo.Steps.plotTEC.MinMax = [-1,1]
+LoSoTo.Steps.plotTEC.MinMax = [-0.5,0.5]
 LoSoTo.Steps.plotTEC.PlotFlag = False
 
 LoSoTo.Steps.plotTEC3.Operation = PLOT
@@ -81,12 +81,11 @@ LoSoTo.Steps.plotTEC3.Prefix = plots/tec3rd
 LoSoTo.Steps.plotTEC3.MinMax = [-300,300]
 LoSoTo.Steps.plotTEC3.PlotFlag = False
 
-# calculate residuals
+# residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
 LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
 LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
-
 # NOTE: TEST
 #LoSoTo.Steps.residuals.Operation = RESIDUALS
 #LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
@@ -159,7 +158,7 @@ LoSoTo.Steps.plotPrf3.Prefix = plots/phResFlag_
 LoSoTo.Steps.plotPrf3.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
 
-# supersmooth phase residuals to be transferred
+# supersmooth phase residuals to be transferred in case of clock
 LoSoTo.Steps.smoothP.Operation = SMOOTH
 LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
 LoSoTo.Steps.smoothP.Axes = [time,freq]

@@ -8,7 +8,7 @@ import pyrap.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
-imaging = True
+imaging = False
 clock = False
 
 if 'tooth' in os.getcwd(): # tooth 2013
@@ -16,18 +16,15 @@ if 'tooth' in os.getcwd(): # tooth 2013
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
-    bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
+    #bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
+    bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA'
 elif 'survey' in os.getcwd():
     obs = os.getcwd().split('/')[-2] # assumes .../c??-o??/3c196
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
+    calname = os.getcwd().split('/')[-1] # assumes .../c??-o??/3c196
     datadir = '../../download/%s/%s' % (obs, calname)
     bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA'
-else:
-    obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
-    datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
-    #bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA'
-    bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA'
+    if 'c07-o00' in os.getcwd() or 'c07-o01' in os.getcwd() or 'c07-o02' in os.getcwd() or 'c07-o03' in os.getcwd() or 'c07-o04' in os.getcwd() or 'c07-o05' in os.getcwd() or 'c07-o06' in os.getcwd():
+        bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA\;RS407LBA'
 
 ########################################################
 logger = set_logger('pipeline-cal.logger')
@@ -39,7 +36,7 @@ logger.info("Calibrator name: %s." % calname)
 
 if calname == '3c196':
     sourcedb = '/home/fdg/scripts/model/3C196-allfield.skydb'
-    patch = '3C196' #NOTE: TEST all field
+    patch = '3C196'
 elif calname == '3c380':
     sourcedb = '/home/fdg/scripts/model/calib-simple.skydb'
     patch = '3C380'
@@ -218,15 +215,16 @@ if clock:
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
            inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 else:
+    #run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phase000', \
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True) # NOTE: TESTtry putback
+           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
 
 
 if 'survey' in os.getcwd():
     check_rm('globaldb/instrument*') # keep only filled instrument tables
     newglobaldb = 'globaldb_'+os.getcwd().split('/')[-2]
     logger.info('Copy: globaldb -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
-    os.system('scp -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
+    os.system('scp -q -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 # a debug image
 if imaging:

@@ -113,7 +113,7 @@ class Scheduler():
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 64
-            elif self.cluster == 'Leiden': self.max_threads = 64
+            elif self.cluster == 'Leiden': self.max_threads = 32 # TODO: put to 64 for full cluster
             elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
         else:
@@ -322,8 +322,8 @@ class Scheduler():
 
         elif cmd_type == 'python':
             out = subprocess.check_output('grep -l "Traceback (most recent call last):" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-            out += subprocess.check_output('grep -i -l "[a-z]*Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-            out += subprocess.check_output('grep -i -l "[a-z]*Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -i -l "Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -i -l "Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
                 logger.error('Python run problem on:\n'+out)
                 return 1

@@ -37,7 +37,7 @@ else:
 
 #############################################################################
 
-def ft_model_wsclean(ms, imagename, c, user_mask = None, resamp = None, keep_in_beam=True):
+def ft_model_wsclean(ms, imagename, c, user_mask = None, keep_in_beam=True, resamp = None):
     """
     ms : string or vector of mss
     imagename : root name for wsclean model images
@@ -102,13 +102,13 @@ def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_co
     # convert to skydb
     logger.info('Predict (makesourcedb)...')
     check_rm(skydb)
-    s.add('run_env.sh makesourcedb outtype="blob" format="<" in="'+skymodel_cut+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
+    s.add('makesourcedb outtype="blob" format="<" in="'+skymodel_cut+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
     # predict
     logger.info('Predict (ft)...')
     for ms in mss:
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' msout.datacolumn='+model_column+' pre.usebeammodel=false pre.sourcedb='+skydb, \
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' msout.datacolumn='+model_column+' pre.usebeammodel=false pre.sourcedb='+skydb, \
                 log=ms+'_pre-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -363,12 +363,14 @@ for c in xrange(niter):
     logger.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
     #-multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
-    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
+
+    sys.exit()
 
 #    if c >= 1:
 #        # TODO: TESTESTEST
@@ -405,7 +407,7 @@ for c in xrange(niter):
         logger.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
         #-multiscale -multiscale-scale-bias 0.5 \
-        s.add('run_envw.sh wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+        s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -save-source-list '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')

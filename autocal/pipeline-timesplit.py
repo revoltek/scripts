@@ -83,12 +83,6 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
-# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
-#logger.info('Convert to circular...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
-
 # Copy instrument tables
 for ms in mss:
     tnum = re.findall(r't\d+', ms)[0][1:]
@@ -135,7 +129,6 @@ for timechunk in timechunks:
         for j in range(num_init, num_fin+1):
             msg.append(ms_name_init.replace('SB%03i' % num_init, 'SB%03i' % j))
 
-        # NOTE: dysco is added here! After fixing high weight of flagged data and remove of autocorr
         # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
         s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
                     log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
@@ -149,7 +142,6 @@ for groupname in groupnames:
 s.run(check=True)
 
 # Create time-chunks
-tc = initc
 for groupname in groupnames:
     ms = groupname+'/'+groupname+'.MS'
     if not os.path.exists(ms): continue
@@ -163,6 +155,7 @@ for groupname in groupnames:
     # to re-concat:
     #   t = table(['T0','T1',...])
     #   t.sort('TIME').copy('output.MS', deep = True)
+    tc = initc
     for timerange in np.array_split(t.getcol('TIME'), round(hours)):
         logger.debug('%02i - Splitting timerange %f %f' % (tc, timerange[0], timerange[-1]))
         t1 = t.query('TIME >= ' + str(timerange[0]) + ' && TIME <= ' + str(timerange[-1]), sortlist='TIME,ANTENNA1,ANTENNA2')
