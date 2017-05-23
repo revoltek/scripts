@@ -1,0 +1,15 @@
+msin = 
+msin.datacolumn = CALCOR_DATA
+#msin.baseline=CS*&CS*
+msout = 
+msout.datacolumn = DATA
+msout.writefullresflag = False
+
+steps = [flag, avg]
+
+flag.type=preflag
+flag.baseline=[RS509LBA, RS210LBA, RS409LBA, RS310LBA, RS208LBA, RS508LBA, RS407LBA, RS307LBA]
+
+avg.type = averager
+avg.freqstep = 4
+avg.timestep = 1
