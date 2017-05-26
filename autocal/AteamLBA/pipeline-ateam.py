@@ -9,7 +9,7 @@ sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
 skymodel = '/home/fdg/scripts/model/A-team_4_CC.skymodel'
 patch = 'VirA'
 datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts-cycle1-bkp'
-bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA' # virgo
+bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA' # virgo
 parset_dir = '/home/fdg/scripts/autocal/AteamLBA/parset_ateam/'
 
 ########################################################
@@ -78,10 +78,10 @@ for ms in mss:
 s.run(check=True)
 
 # predict to save time ms:MODEL_DATA
-#logger.info('Predict...')
-#for ms in mss:
-#    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+sourcedb+' pre.sources='+patch, log=ms+'_pre.log', cmd_type='NDPPP')
-#s.run(check=True)
+logger.info('Predict...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+sourcedb+' pre.sources='+patch, log=ms+'_pre.log', cmd_type='NDPPP')
+s.run(check=True)
 
 for c in xrange(10):
 
@@ -113,7 +113,7 @@ for c in xrange(10):
         s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol1.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
+    run_losoto(s, 'fr-c'+str(c), mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
         inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)
     
     #####################################################
@@ -144,7 +144,7 @@ for c in xrange(10):
         s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol2.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitude000,crossdelay', \
+    run_losoto(s, 'cd-c'+str(c), mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitude000,crossdelay', \
         inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument-cd', putback=True)
     
     #################################################
@@ -181,7 +181,7 @@ for c in xrange(10):
         s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+    run_losoto(s, 'final-c'+str(c), mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
                inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
     
     from make_mask import make_mask
@@ -196,7 +196,7 @@ for c in xrange(10):
     check_rm('img')
     os.makedirs('img')
     imagename = 'img/wide-c'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
