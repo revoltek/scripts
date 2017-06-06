@@ -32,8 +32,17 @@ elif 'bootes' in os.getcwd():
     apparent = False
 else:
     # Survey
-    sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+    obs = os.getcwd().split('/')[-1]
+    sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s.skydb' % obs
     apparent = False
+    if not os.path.exists('mss'):
+        os.makedirs('mss')
+        for i, tc in enumerate(glob.glob('../../c*-o*/%s/mss/*' % obs)):
+            tc_ren = 'TC%02i.MS' % i
+            print 'cp -r %s mss/%s' % (tc,tc_ren)
+            os.system('cp -r %s mss/%s' % (tc,tc_ren))
+
+assert os.path.exists(sourcedb)
 
 #############################################################################
 
