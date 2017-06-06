@@ -58,7 +58,7 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     logger.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-        if os.path.exists(msout): continue
+        if os.path.exists(msout): check_rm(ms)
         s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
                 log=msout+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -68,7 +68,8 @@ else:
     logger.info('Copy data - no averaging...')
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-        if os.path.exists(msout): continue
+        # weights are changed here, so be sure to delete previous MSs
+        if os.path.exists(msout): check_rm(ms)
         os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
