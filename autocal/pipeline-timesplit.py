@@ -17,28 +17,25 @@ clock = False
 
 if 'LBAsurvey' in os.getcwd():
     ngroups = 1 # number of groups (totalSB/SBperFREQgroup)
-    datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1]) # assumes e.g. ~/data/LBAsurvey/c05-o07/P155+52
-    globaldb = 'globaldb_'+os.getcwd().split('/')[-2]
-    logger.info('Copy: dsk:/disks/paradata/fdg/LBAsurvey/%s -> .' % globaldb)
-    os.system('scp dsk:/disks/paradata/fdg/LBAsurvey/%s .' % globaldb) # TODO: move only _tXXX files
+    datadir = '../../download/%s/%s' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+    globaldb = 'dsk:/disks/paradata/fdg/LBAsurvey/globaldb_'+os.getcwd().split('/')[-2]
 else:
     ngroups = 2
+    datadir = '../tgts-bkp/' 
     if clock:
         globaldb = '../cals/globaldb-clock'
     else:
         globaldb = '../cals/globaldb'
-    datadir = '../tgts-bkp/' 
+    assert os.path.isdir(globaldb)
 
 ##################################################################################################
 logger = set_logger('pipeline-timesplit.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
-assert os.path.isdir(globaldb)
 
 #################################################
 # Clear
 logger.info('Cleaning...')
-
 check_rm('mss*')
 mss = sorted(glob.glob(datadir+'/*MS'))
 
@@ -61,7 +58,7 @@ if avg_factor_f != 1 or avg_factor_t != 1:
     logger.info('Average in freq (factor of %i) and time (factor of %i)...' % (avg_factor_f, avg_factor_t))
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-        if os.path.exists(msout): continue
+        if os.path.exists(msout): check_rm(ms)
         s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=DATA avg.timestep='+str(avg_factor_t)+' avg.freqstep='+str(avg_factor_f), \
                 log=msout+'_avg.log', cmd_type='NDPPP')
     s.run(check=True)
@@ -71,7 +68,8 @@ else:
     logger.info('Copy data - no averaging...')
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
-        if os.path.exists(msout): continue
+        # weights are changed here, so be sure to delete previous MSs
+        if os.path.exists(msout): check_rm(ms)
         os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))
@@ -83,18 +81,13 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
-# To circular - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (beam corrected, circular)
-#logger.info('Convert to circular...')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/mslin2circ.py -s -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
-
 # Copy instrument tables
 for ms in mss:
     tnum = re.findall(r't\d+', ms)[0][1:]
     sbnum = re.findall(r'SB\d+', ms)[0][2:]
+    #logger.info('Copy: '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
     check_rm(ms+'/instrument')
-    os.system('cp -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
+    os.system('scp -q -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
 
 # Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
 logger.info('Apply solutions...')
@@ -135,13 +128,12 @@ for timechunk in timechunks:
         for j in range(num_init, num_fin+1):
             msg.append(ms_name_init.replace('SB%03i' % num_init, 'SB%03i' % j))
 
-        # NOTE: dysco is added here! After fixing high weight of flagged data and remove of autocorr
         # prepare concatenated time chunks (TC) - SB.MS:CORRECTED_DATA -> group#.MS:DATA (cal corr data, beam corrected, circular)
         s.add('NDPPP '+parset_dir+'/NDPPP-concat.parset msin="['+','.join(msg)+']"  msout='+groupname+'/'+groupname+'.MS', \
                     log=groupname+'_NDPPP_concat.log', cmd_type='NDPPP')
     s.run(check=True)
 
-# Flagging on concatenated dataset
+# Flagging on concatenated dataset - also flag low-elevation
 logger.info('Flagging...')
 for groupname in groupnames:
     s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+groupname+'/'+groupname+'.MS', \
@@ -149,7 +141,6 @@ for groupname in groupnames:
 s.run(check=True)
 
 # Create time-chunks
-tc = initc
 for groupname in groupnames:
     ms = groupname+'/'+groupname+'.MS'
     if not os.path.exists(ms): continue
@@ -163,6 +154,7 @@ for groupname in groupnames:
     # to re-concat:
     #   t = table(['T0','T1',...])
     #   t.sort('TIME').copy('output.MS', deep = True)
+    tc = initc
     for timerange in np.array_split(t.getcol('TIME'), round(hours)):
         logger.debug('%02i - Splitting timerange %f %f' % (tc, timerange[0], timerange[-1]))
         t1 = t.query('TIME >= ' + str(timerange[0]) + ' && TIME <= ' + str(timerange[-1]), sortlist='TIME,ANTENNA1,ANTENNA2')
@@ -180,6 +172,7 @@ if ngroups == 1:
     check_rm('mss')
     os.makedirs('mss')
     os.system('mv mss_t*/*MS mss')
+    check_rm('mss_t*')
 else:
     for group in xrange(ngroups):
         groupname = 'mss-%02i' % group

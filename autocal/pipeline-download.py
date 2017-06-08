@@ -2,7 +2,6 @@
 # download from LTA using WGET
 
 fix_tables = True
-flag_elev = True
 rename = True
 parset_dir = '/home/fdg/scripts/autocal/parset_download'
 
@@ -80,7 +79,7 @@ if download_file is not None:
     for i, line in enumerate(df):
         ms = re.findall(r'L[0-9]*_SB[0-9]*_uv', line)[0]
         if ms+'.MS' in downloaded: continue
-        s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log='%04i.log' % i, cmd_type='general')
+        s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=ms+'_download.log', cmd_type='general')
     #    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
         logger.debug('Queue download of: '+line[:-1])
     s.run(check=True, max_threads=4)
@@ -106,11 +105,11 @@ if fix_tables:
             s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
         s.run(check=False)
 
-if flag_elev:
-    logger.info('Flagging elevation...')
-    for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
-    s.run(check=True)
+#if flag_elev:
+#    logger.info('Flagging elevation...')
+#    for ms in mss:
+#        s.add('NDPPP '+parset_dir+'/NDPPP-flag-elev.parset msin='+ms, log=ms+'_flag-elev.log', cmd_type='NDPPP')
+#    s.run(check=True)
 
 # Avg to 4 chan and 4 sec
 # Remove internationals

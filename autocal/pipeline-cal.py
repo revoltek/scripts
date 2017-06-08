@@ -8,7 +8,7 @@ import pyrap.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
-imaging = True
+imaging = False
 clock = False
 
 if 'tooth' in os.getcwd(): # tooth 2013
@@ -16,18 +16,15 @@ if 'tooth' in os.getcwd(): # tooth 2013
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
-    bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
+    #bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
+    bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA'
 elif 'survey' in os.getcwd():
     obs = os.getcwd().split('/')[-2] # assumes .../c??-o??/3c196
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
+    calname = os.getcwd().split('/')[-1] # assumes .../c??-o??/3c196
     datadir = '../../download/%s/%s' % (obs, calname)
-    bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA'
-else:
-    obs = os.getcwd().split('/')[-2] # assumes .../c05-o07/3c196
-    calname = os.getcwd().split('/')[-1] # assumes .../c05-o07/3c196
-    datadir = '/lofar5/stsf309/LBAsurvey/%s/%s' % (obs, calname)
-    #bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA\;RS407LBA'
-    bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA\;RS210LBA'
+    bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA'
+    if 'c07-o00' in os.getcwd() or 'c07-o01' in os.getcwd() or 'c07-o02' in os.getcwd() or 'c07-o03' in os.getcwd() or 'c07-o04' in os.getcwd() or 'c07-o05' in os.getcwd() or 'c07-o06' in os.getcwd():
+        bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA\;RS407LBA'
 
 ########################################################
 logger = set_logger('pipeline-cal.logger')
@@ -146,8 +143,6 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol1.log', cmd_type='NDPPP')
 s.run(check=True)
 
-sys.exit(1)
-
 run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
     inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)
 
@@ -185,10 +180,10 @@ run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-c
 #################################################
 # 3: recalibrate without FR
 
-# Beam correction DATA -> CORRECTED_DATA
+# Beam correction (and update weight in case of imaging) DATA -> CORRECTED_DATA
 logger.info('Beam correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam2.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' corrbeam.updateweight=True', log=ms+'_beam2.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
@@ -202,12 +197,6 @@ logger.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
 s.run(check=True)
-
-# Convert to circular CORRECTED_DATA -> CORRECTED_DATA
-#logger.info('Converting to circular...')
-#for ms in mss:
-#    s.add('mslin2circ.py -w -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin.log', cmd_type='python')
-#s.run(check=True)
 
 # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
 logger.info('BL-smooth...')
@@ -223,30 +212,31 @@ for ms in mss:
 s.run(check=True)
 
 if clock:
-    # TODO: add smooth clock
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
-        inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
+           inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 else:
+    #run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phase000', \
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
-    inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False)
+           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
 
 
-if 'LBAsurvey' in os.getcwd():
+if 'survey' in os.getcwd():
     check_rm('globaldb/instrument*') # keep only filled instrument tables
     newglobaldb = 'globaldb_'+os.getcwd().split('/')[-2]
     logger.info('Copy: globaldb -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
-    os.system('scp -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
+    os.system('scp -q -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 # a debug image
 if imaging:
     from make_mask import make_mask
+    if not 'survey' in os.getcwd():
+        mss = mss[int(len(mss)/2.):] # keep only upper band
+
     # Correct all CORRECTED_DATA (beam, CD, FR corrected) -> CORRECTED_DATA
     logger.info('Amp/ph correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
-
-    mss = mss[int(len(mss)/2.):] # keep only upper band
 
     logger.info('Subtract model...')
     for ms in mss:
@@ -258,7 +248,7 @@ if imaging:
     os.makedirs('img')
     imagename = 'img/wide'
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.9 \
+            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
             log='wscleanA.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
@@ -273,7 +263,7 @@ if imaging:
     logger.info('Cleaning w/ mask')
     imagename = 'img/wideM'
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanB.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
