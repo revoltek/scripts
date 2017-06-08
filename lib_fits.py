@@ -86,20 +86,12 @@ class Image(object):
         header = correct_beam_header(header)
 
         try:
-<<<<<<< HEAD
             beam = [header['BMAJ'], header['BMIN'], header['BPA']]
-=======
-            self.beam = [header['BMAJ'], header['BMIN'], header['BPA']]
->>>>>>> 4f1fcd6ef1804f70424e96ebd004f962f48e1e70
         except:
             logging.warning('%s: No beam information found.' % self.imagefile)
             sys.exit(1)
         logging.debug('%s: Beam: %.1f" %.1f" (pa %.1f deg)' % \
-<<<<<<< HEAD
-                (self.imagefile, beam[0]*3600., beam[1]*3600., beam[2]))
-=======
                 (self.imagefile, self.beam[0]*3600., self.beam[1]*3600., self.beam[2]))
->>>>>>> 4f1fcd6ef1804f70424e96ebd004f962f48e1e70
 
         self.freq = find_freq(header)
         if self.freq is None:
@@ -109,7 +101,6 @@ class Image(object):
         
 	self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile)
-<<<<<<< HEAD
         self.set_beam(beam)
 
     def set_beam(self, beam):
@@ -119,8 +110,6 @@ class Image(object):
 
     def get_beam(self):
         return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
-=======
->>>>>>> 4f1fcd6ef1804f70424e96ebd004f962f48e1e70
 
     def get_wcs(self):
         return pywcs(self.img_hdr)
