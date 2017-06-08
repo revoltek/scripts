@@ -32,12 +32,21 @@ elif 'bootes' in os.getcwd():
     apparent = False
 else:
     # Survey
-    sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s_%s.skydb' % (os.getcwd().split('/')[-2], os.getcwd().split('/')[-1])
+    obs = os.getcwd().split('/')[-1]
+    sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s.skydb' % obs
     apparent = False
+    if not os.path.exists('mss'):
+        os.makedirs('mss')
+        for i, tc in enumerate(glob.glob('../../c*-o*/%s/mss/*' % obs)):
+            tc_ren = 'TC%02i.MS' % i
+            print 'cp -r %s mss/%s' % (tc,tc_ren)
+            os.system('cp -r %s mss/%s' % (tc,tc_ren))
+
+assert os.path.exists(sourcedb)
 
 #############################################################################
 
-def ft_model_wsclean(ms, imagename, c, user_mask = None, resamp = None, keep_in_beam=True):
+def ft_model_wsclean(ms, imagename, c, user_mask = None, keep_in_beam=True, resamp = None):
     """
     ms : string or vector of mss
     imagename : root name for wsclean model images
@@ -102,13 +111,13 @@ def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_co
     # convert to skydb
     logger.info('Predict (makesourcedb)...')
     check_rm(skydb)
-    s.add('run_env.sh makesourcedb outtype="blob" format="<" in="'+skymodel_cut+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
+    s.add('makesourcedb outtype="blob" format="<" in="'+skymodel_cut+'" out="'+skydb+'"', log='makesourcedb-c'+str(c)+'.log', cmd_type='general')
     s.run(check=True)
 
     # predict
     logger.info('Predict (ft)...')
     for ms in mss:
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' msout.datacolumn='+model_column+' pre.usebeammodel=false pre.sourcedb='+skydb, \
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' msout.datacolumn='+model_column+' pre.usebeammodel=false pre.sourcedb='+skydb, \
                 log=ms+'_pre-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
@@ -131,7 +140,6 @@ os.makedirs('logs/mss')
 check_rm('self')
 if not os.path.exists('self/images'): os.makedirs('self/images')
 if not os.path.exists('self/solutions'): os.makedirs('self/solutions')
-if not os.path.exists('self/skymodels'): os.makedirs('self/skymodels')
 
 mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 concat_ms = 'mss/concat.MS'
@@ -181,7 +189,6 @@ for c in xrange(niter):
 
     # Smooth DATA -> SMOOTHED_DATA
     # Re-done in case of new flags
-    # TEST: higher ionfactor
     if c == 0:
         incol = 'DATA'
     else:
@@ -225,7 +232,7 @@ for c in xrange(niter):
         logger.info('Convert to circular...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=4)
  
         # Smooth CORRECTED_DATA -> SMOOTHED_DATA
         logger.info('BL-based smoothing...')
@@ -250,7 +257,7 @@ for c in xrange(niter):
         logger.info('Convert to linear...')
         for ms in mss:
             s.add('/home/fdg/scripts/mslin2circ.py -r -i '+ms+':CORRECTED_DATA -o '+ms+':CORRECTED_DATA', log=ms+'_circ2lin-c'+str(c)+'.log', cmd_type='python')
-        s.run(check=True)
+        s.run(check=True, max_threads=4)
         
         # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Faraday rotation correction...')
@@ -277,10 +284,10 @@ for c in xrange(niter):
         os.system('mv plots-cd'+str(c)+' self/solutions/')
         os.system('mv cal-cd'+(str(c))+'.h5 self/solutions/')
 
-        #run_losoto(s, 'amp', mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
-        #    outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
-        #os.system('mv plots-amp self/solutions/')
-        #os.system('mv cal-amp.h5 self/solutions/')
+        run_losoto(s, 'amp'+str(c), mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+            outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
+        os.system('mv plots-amp'+str(c)+' self/solutions/')
+        os.system('mv cal-amp'+str(c)+'.h5 self/solutions/')
 
         # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
         logger.info('Faraday rotation correction...')
@@ -293,11 +300,11 @@ for c in xrange(niter):
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        # Correct slow AMP SB.MS:CORRECTED_DATA->CORRECTED_DATA
-        #logger.info('Slow amp correction...')
-        #for ms in mss:
-        #    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
-        #s.run(check=True)
+        # Correct beam SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        logger.info('Beam amp correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
 
         # Finally re-calculate TEC
         logger.info('BL-based smoothing...')
@@ -365,12 +372,14 @@ for c in xrange(niter):
     logger.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
     #-multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
-    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
             -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
+
+    sys.exit()
 
 #    if c >= 1:
 #        # TODO: TESTESTEST
@@ -407,7 +416,7 @@ for c in xrange(niter):
         logger.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
         #-multiscale -multiscale-scale-bias 0.5 \
-        s.add('run_envw.sh wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+        s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -save-source-list '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
@@ -443,7 +452,7 @@ for c in xrange(niter):
     
 # Copy images
 [ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
-[ os.system('mv img/wideM-'+str(c)+'-sources.txt self/skymodels') for c in xrange(niter) ]
+[ os.system('mv img/wideM-'+str(c)+'-sources.txt self/images') for c in xrange(niter) ]
 os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')

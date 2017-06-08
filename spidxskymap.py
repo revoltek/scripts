@@ -393,9 +393,6 @@ for image_nvss in images_nvss:
 
         data_spidx_g, data_spidx_g_err = twopoint_spidx_bootstrap([147.,1400.], [data_tgss[idx_g],data_nvss[idx_g]], \
                     [data_rms_tgss[idx_g],data_rms_nvss[idx_g]], niter=1000)
-        print data_tgss[idx_g][::2], data_nvss[idx_g][::2], data_rms_tgss[idx_g][::2], data_rms_nvss[idx_g][::2]
-        print data_spidx_g[::2]
-        print data_spidx_g_err[::2]
 
         # write spidx, spidx+upper/lower limits and spidx error map
         with pyfits.open(image_nvss) as fits_nvss:

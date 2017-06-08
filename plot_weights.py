@@ -12,43 +12,47 @@ ms = sys.argv[1]
 
 print "selecting on chan"
 #t=taql('select ANTENNA, gmeans(DATA) as DATA, gmeans(WEIGHT_SPECTRUM) as WEIGHT from [[ SELECT ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM from '+ms+'], [SELECT ANTENNA2 AS ANTENNA, DATA, WEIGHT_SPECTRUM from '+ms+']] group by ANTENNA')
-t=taql('select ANTENNA, gmeans(DATA[FLAG]) as DATA, gmeans(WEIGHT_SPECTRUM[FLAG]) as WEIGHT from [[ SELECT ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG from '+ms+'], [SELECT ANTENNA2 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG from '+ms+']] group by ANTENNA')
-#weights = np.average(np.average(t.getcol('WEIGHT'),axis=0),axis=1)
+t1 = taql('select ANTENNA1, DATA, WEIGHT_SPECTRUM, TIME, FIELD_ID from '+ms+' where any(FLAG)==False')
+t = taql('select ANTENNA, MEANS(GAGGR(DATA), 0) as DATA, MEANS(GAGGR(WEIGHT_SPECTRUM), 0) as WEIGHT from [SELECT ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM from $t1] group by ANTENNA')
 weights = t.getcol('WEIGHT')[:,:,0]
 data = np.abs(t.getcol('DATA')[:,:,0])
+ants_n = t.getcol('ANTENNA')
+ants = taql('select NAME from '+ms+'/ANTENNA')
 
-fig, ax1 = plt.subplots()
+fig, ax1 = plt.subplots(figsize=(20,10))
 colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
 #ax1.set_yscale('log')
-for w, c in zip(weights, colors):
-    ax1.scatter(xrange(len(w)),w,color=c,marker='.')
+for w, c, a in zip(weights, colors, ants_n):
+    ax1.scatter(xrange(len(w)),w,color=c,marker='.',label=ants[a]['NAME'])
 ax1.set_xlim(xmin=0,xmax=len(w))
 ax1.set_ylim(ymin=np.min(weights),ymax=np.max(weights))
 ax1.set_xlabel('Channel')
 ax1.set_ylabel('Weights')
-plt.legend()
-plt.savefig('weightVSchan.png', bbox_inches='tight')
+handles, labels = ax1.get_legend_handles_labels()
+lgd = ax1.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.1,1))
+plt.savefig('weightVSchan.png', bbox_inches='tight', bbox_extra_artists=(lgd,))
 
-fig, ax1 = plt.subplots()
+fig, ax1 = plt.subplots(figsize=(20,10))
 colors = iter(cm.rainbow(np.linspace(0, 1, len(data))))
 #ax1.set_yscale('log')
-for d, c in zip(data, colors):
-    ax1.scatter(xrange(len(d)),d,color=c,marker='.')
+for d, c, a in zip(data, colors, ants_n):
+    ax1.scatter(xrange(len(d)),d,color=c,marker='.', label=ants[a]['NAME'])
 ax1.set_xlim(xmin=0,xmax=len(d))
 ax1.set_ylim(ymin=np.min(data),ymax=np.max(data))
 ax1.set_xlabel('Channels')
 ax1.set_ylabel('Data')
-plt.legend()
-plt.savefig('dataVSchan.png', bbox_inches='tight')
+handles, labels = ax1.get_legend_handles_labels()
+lgd = ax1.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.1,1))
+plt.savefig('dataVSchan.png', bbox_inches='tight', bbox_extra_artists=(lgd,))
 
 
 print "selecting on time"
-t=taql('select TIME, gmean(WEIGHT_SPECTRUM[FLAG]) as WEIGHT, mscal.azel1()[1] as ELEV from '+ms+' group by TIME')
+t=taql('select TIME, MEANS(GAGGR(WEIGHT_SPECTRUM), 0) as WEIGHT, mscal.azel1()[1] as ELEV from $t1 group by TIME')
 time=t.getcol('TIME')
 elev=t.getcol('ELEV')
-weights=t.getcol('WEIGHT')
+weights=t.getcol('WEIGHT')[:,0,0]
 
-fig, ax1 = plt.subplots()
+fig, ax1 = plt.subplots(figsize=(20,10))
 ax1.plot(time,weights,'k.')
 ax2 = ax1.twinx()
 ax2.plot(time,elev*180/np.pi,label='elevation')

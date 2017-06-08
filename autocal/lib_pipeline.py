@@ -113,7 +113,7 @@ class Scheduler():
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 64
-            elif self.cluster == 'Leiden': self.max_threads = 64
+            elif self.cluster == 'Leiden': self.max_threads = 32 # TODO: put to 64 for full cluster
             elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
         else:
@@ -245,11 +245,11 @@ class Scheduler():
             for cmd in iter(queue.get, None):
                 if self.qsub and self.cluster == 'Hamburg':
                     # run in priority nodes
-                    cmd = 'salloc --job-name LBApipe --reservation=important_science --time=24:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
-                            ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\''
-                    # run on all cluster
-                    #cmd = 'salloc --job-name LBApipe --time=24:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
+                    #cmd = 'salloc --job-name LBApipe --reservation=important_science --time=24:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
                     #        ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\''
+                    # run on all cluster
+                    cmd = 'salloc --job-name LBApipe --time=24:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
+                            ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\' | grep -v salloc'
                 #elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd[0]+' '+cmd[1]+' >> qsub.log'
                 subprocess.call(cmd, shell=True)
     
@@ -294,7 +294,7 @@ class Scheduler():
         if cmd_type == 'BBS':
             out = subprocess.check_output('grep -L success '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logger.error('BBS run problem on:\n'+out)
+                logger.error('BBS run problem on:\n'+out.split("\n")[0])
                 return 1
 
         elif cmd_type == 'NDPPP':
@@ -302,7 +302,7 @@ class Scheduler():
             out += subprocess.check_output('grep -l "Exception" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "**** uncaught exception ****" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logger.error('NDPPP run problem on:\n'+out)
+                logger.error('NDPPP run problem on:\n'+out.split("\n")[0])
                 return 1
 
         elif cmd_type == 'CASA':
@@ -310,28 +310,28 @@ class Scheduler():
             out += subprocess.check_output('grep -l "An error occurred running" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -l "\*\*\* Error \*\*\*" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logger.error('CASA run problem on:\n'+out)
+                logger.error('CASA run problem on:\n'+out.split("\n")[0])
                 return 1
 
         elif cmd_type == 'wsclean':
             out = subprocess.check_output('grep -l "exception occurred" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             out += subprocess.check_output('grep -L "Cleaning up temporary files..." '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logger.error('WSClean run problem on:\n'+out)
+                logger.error('WSClean run problem on:\n'+out.split("\n")[0])
                 return 1
 
         elif cmd_type == 'python':
             out = subprocess.check_output('grep -l "Traceback (most recent call last):" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-            out += subprocess.check_output('grep -i -l "[a-z]*Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
-            out += subprocess.check_output('grep -i -l "[a-z]*Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -i -l "Error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
+            out += subprocess.check_output('grep -i -l "Critical" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logger.error('Python run problem on:\n'+out)
+                logger.error('Python run problem on:\n'+out.split("\n")[0])
                 return 1
 
         elif cmd_type == 'general':
             out = subprocess.check_output('grep -l -i "error" '+log+' ; exit 0', shell=True, stderr=subprocess.STDOUT)
             if out != '':
-                logger.error('Run problem on:\n'+out)
+                logger.error('Run problem on:\n'+out.split("\n")[0])
                 return 1
 
         else:

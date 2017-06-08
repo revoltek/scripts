@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, smoothA, plotAs, plotAs2, plotPi, plotPi2, reset]
+LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, smoothA, plotAs, residualA, plotAr, resetP]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -24,7 +24,6 @@ LoSoTo.Steps.plotAi1.PlotFlag = True
 LoSoTo.Steps.plotAi1.Prefix = plots/amp_
 LoSoTo.Steps.plotAi1.Columns = 4
 LoSoTo.Steps.plotAi1.FigSize = [20,20]
-#LoSoTo.Steps.plotAi1.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotAi2.Operation = PLOT
 LoSoTo.Steps.plotAi2.Soltab = [sol000/amplitude000]
@@ -34,7 +33,6 @@ LoSoTo.Steps.plotAi2.TableAxis = ant
 LoSoTo.Steps.plotAi2.ColorAxis = pol
 LoSoTo.Steps.plotAi2.PlotFlag = True
 LoSoTo.Steps.plotAi2.Prefix = plots/amp_
-#LoSoTo.Steps.plotAi2.MinMax = [1e-4,3e-3]
 
 LoSoTo.Steps.plotAi3.Operation = PLOT
 LoSoTo.Steps.plotAi3.Soltab = [sol000/amplitude000]
@@ -42,14 +40,13 @@ LoSoTo.Steps.plotAi3.Axes = [time,freq]
 LoSoTo.Steps.plotAi3.TableAxis = ant
 LoSoTo.Steps.plotAi3.PlotFlag = True
 LoSoTo.Steps.plotAi3.Prefix = plots/amp_
-#LoSoTo.Steps.plotAi3.MinMax = [100,300]
+LoSoTo.Steps.plotAi3.MinMax = [0.8,1.2]
 
 # smooth
 LoSoTo.Steps.smoothA.Operation = SMOOTH
 LoSoTo.Steps.smoothA.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.smoothA.Axes = [freq,time]
-LoSoTo.Steps.smoothA.size = [20,30]
-LoSoTo.Steps.smoothA.Mode = runningmedian
+LoSoTo.Steps.smoothA.Axes = [ant]
+LoSoTo.Steps.smoothA.Mode = median
 
 # plot amplitude smooth
 LoSoTo.Steps.plotAs.Operation = PLOT
@@ -58,39 +55,23 @@ LoSoTo.Steps.plotAs.Axes = [time,freq]
 LoSoTo.Steps.plotAs.TableAxis = ant
 LoSoTo.Steps.plotAs.PlotFlag = True
 LoSoTo.Steps.plotAs.Prefix = plots/ampSmooth_
-#LoSoTo.Steps.plotAs.MinMax = [100,300]
+LoSoTo.Steps.plotAs.MinMax = [0.8,1.2]
 
-# plot amplitude smooth
-LoSoTo.Steps.plotAs2.Operation = PLOT
-LoSoTo.Steps.plotAs2.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotAs2.Axes = freq
-LoSoTo.Steps.plotAs2.time.minmax = [0,1e20,50000]
-LoSoTo.Steps.plotAs2.TableAxis = ant
-LoSoTo.Steps.plotAs2.ColorAxis = pol
-LoSoTo.Steps.plotAs2.PlotFlag = True
-LoSoTo.Steps.plotAs2.Prefix = plots/ampSmooth_
+# residual
+LoSoTo.Steps.residualA.Operation = RESIDUALS
+LoSoTo.Steps.residualA.Soltab = [sol000/amplitudeOrig000]
+LoSoTo.Steps.residualA.Sub = [sol000/amplitude000]
+LoSoTo.Steps.residualA.Ratio = True
 
-# plot initials
-LoSoTo.Steps.plotPi.Operation = PLOT
-LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPi.Axes = [time,freq]
-LoSoTo.Steps.plotPi.TableAxis = ant
-LoSoTo.Steps.plotPi.PlotFlag = True
-LoSoTo.Steps.plotPi.Prefix = plots/ph_
-LoSoTo.Steps.plotPi.Reference = 'CS001LBA'
-LoSoTo.Steps.plotPi.MinMax = [-3.14,3.14]
-
-LoSoTo.Steps.plotPi2.Operation = PLOT
-LoSoTo.Steps.plotPi2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPi2.time.minmax = [0,1e20,500]
-LoSoTo.Steps.plotPi2.Axes = freq
-LoSoTo.Steps.plotPi2.TableAxis = ant
-LoSoTo.Steps.plotPi2.ColorAxis = pol
-LoSoTo.Steps.plotPi2.PlotFlag = True
-LoSoTo.Steps.plotPi2.Prefix = plots/ph_
-LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
-LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
+# plot amplitude res
+LoSoTo.Steps.plotAr.Operation = PLOT
+LoSoTo.Steps.plotAr.Soltab = [sol000/amplitudeOrig000]
+LoSoTo.Steps.plotAr.Axes = [time,freq]
+LoSoTo.Steps.plotAr.TableAxis = ant
+LoSoTo.Steps.plotAr.PlotFlag = True
+LoSoTo.Steps.plotAr.Prefix = plots/ampRes_
+#LoSoTo.Steps.plotAr.MinMax = [0.8,1.2]
 
 # reset phases
-LoSoTo.Steps.reset.Operation = RESET
-LoSoTo.Steps.reset.Soltab = [sol000/phase000]
+LoSoTo.Steps.resetP.Operation = RESET
+LoSoTo.Steps.resetP.Soltab = [sol000/phase000]
