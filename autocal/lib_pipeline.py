@@ -62,7 +62,7 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
     os.makedirs('plots')
     check_rm('cal-'+c+'.h5')
     
-    s.add('H5parm_importer.py -v cal-'+c+'.h5 globaldb', log='losoto-'+c+'.log', cmd_type='python')
+    s.add('H5parm_importer.py -v cal-'+c+'.h5 globaldb', log='losoto-'+c+'.log', cmd_type='python', processors='max')
     s.run(check=True)
     
     for parset in parsets:
@@ -73,7 +73,7 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
     os.system('mv plots plots-'+c)
     
     if outtab != '':
-        s.add('H5parm_exporter.py -v -c --soltab '+outtab+' cal-'+c+'.h5 '+outglobaldb, log='losoto-'+c+'.log', log_append=True, cmd_type='python')
+        s.add('H5parm_exporter.py -v -c --soltab '+outtab+' cal-'+c+'.h5 '+outglobaldb, log='losoto-'+c+'.log', log_append=True, cmd_type='python', processors='max')
         s.run(check=True)
 
     if putback:
@@ -112,7 +112,7 @@ class Scheduler():
                 sys.exit(1)
 
         if max_threads == None:
-            if self.cluster == 'Hamburg': self.max_threads = 64
+            if self.cluster == 'Hamburg': self.max_threads = 32
             elif self.cluster == 'Leiden': self.max_threads = 32 # TODO: put to 64 for full cluster
             elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
@@ -249,8 +249,7 @@ class Scheduler():
                     #        ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\''
                     # run on all cluster
                     cmd = 'salloc --job-name LBApipe --time=24:00:00 --nodes=1 --tasks-per-node='+cmd[0]+\
-                            ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\' | grep -v salloc'
-                #elif self.qsub and self.cluster == 'Leiden': cmd = 'qsub_waiter_lei.sh '+cmd[0]+' '+cmd[1]+' >> qsub.log'
+                            ' /usr/bin/srun --ntasks=1 --nodes=1 --preserve-env \''+cmd[1]+'\''
                 subprocess.call(cmd, shell=True)
     
         # limit threads only when qsub doesn't do it

@@ -1,6 +1,6 @@
 # losoto parset
 #LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, merge]
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, smoothP, merge]
+LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -42,7 +42,6 @@ LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
 LoSoTo.Steps.plotPi3.Operation = PLOT
 LoSoTo.Steps.plotPi3.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPi3.Axes = [time,freq]
-LoSoTo.Steps.plotPi3.TableAxis = ant
 LoSoTo.Steps.plotPi3.PlotFlag = True
 LoSoTo.Steps.plotPi3.Prefix = plots/ph_
 LoSoTo.Steps.plotPi3.Reference = 'CS001LBA'
@@ -120,7 +119,6 @@ LoSoTo.Steps.plotPr2.MinMax = [-3.14,3.14]
 LoSoTo.Steps.plotPr3.Operation = PLOT
 LoSoTo.Steps.plotPr3.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPr3.Axes = [time,freq]
-LoSoTo.Steps.plotPr3.TableAxis = ant
 LoSoTo.Steps.plotPr3.PlotFlag = True
 LoSoTo.Steps.plotPr3.Prefix = plots/phRes_
 LoSoTo.Steps.plotPr3.Reference = 'CS001LBA'
@@ -153,19 +151,7 @@ LoSoTo.Steps.plotPrf2.FigSize = [20,20]
 LoSoTo.Steps.plotPrf3.Operation = PLOT
 LoSoTo.Steps.plotPrf3.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPrf3.Axes = [time,freq]
-LoSoTo.Steps.plotPrf3.TableAxis = ant
 LoSoTo.Steps.plotPrf3.PlotFlag = True
 LoSoTo.Steps.plotPrf3.Prefix = plots/phResFlag_
 LoSoTo.Steps.plotPrf3.Reference = 'CS001LBA'
 LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
-
-# supersmooth phase residuals to be transferred
-LoSoTo.Steps.smoothP.Operation = SMOOTH
-LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
-LoSoTo.Steps.smoothP.Axes = [time,freq]
-LoSoTo.Steps.smoothP.Mode = median
-
-# copy flags on amp
-LoSoTo.Steps.merge.Operation = REWEIGHT
-LoSoTo.Steps.merge.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.merge.MergeFromSoltab = sol000/phase000
