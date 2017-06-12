@@ -11,6 +11,7 @@ patch = 'VirA'
 datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts-cycle1-bkp'
 bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA' # virgo
 parset_dir = '/home/fdg/scripts/autocal/AteamLBA/parset_ateam/'
+user_mask = '/home/fdg/scripts/autocal/AteamLBA/VirA.reg'
 
 ########################################################
 logger = set_logger('pipeline-ateam.logger')
@@ -198,22 +199,22 @@ for c in xrange(10):
     imagename = 'img/wide-c'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
+            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
             log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
     # make mask
     maskname = imagename+'-mask.fits'
     make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
-    # remove CC not in mask
-    for modelname in sorted(glob.glob(imagename+'*model.fits')):
-        blank_image_fits(modelname, maskname, inverse=True)
+    if user_mask is not None:
+        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
     
     logger.info('Cleaning w/ mask')
     imagename = 'img/wideM-c'+str(c)
+    # -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,4,8,16,32 \
     s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.01 -fitsmask '+maskname+' '+' '.join(mss), \
+            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 \
+            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 10 -auto-threshold 0.001 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     
@@ -221,6 +222,5 @@ for c in xrange(10):
     s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(mss), \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-
 
 logger.info("Done.")

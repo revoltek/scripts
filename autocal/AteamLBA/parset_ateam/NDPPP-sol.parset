@@ -8,7 +8,7 @@ numthreads = 1 # bug fix
 
 steps = [filter, sol]
 
-filter.blrange = [500,30000]
+filter.blrange = [500,1e30]
 
 sol.type = gaincal
 sol.caltype = diagonal
