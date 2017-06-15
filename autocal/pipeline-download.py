@@ -60,7 +60,8 @@ def getName(ms):
         if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
         return cycle_obs+'/'+sou+'/'+sou+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
     else:
-        return code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+        if not os.path.exists('mss'): os.makedirs('mss')
+        return 'mss/'+code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
  
 logger = set_logger('pipeline-download.logger')
 check_rm('logs')
@@ -79,7 +80,7 @@ if download_file is not None:
     for i, line in enumerate(df):
         ms = re.findall(r'L[0-9]*_SB[0-9]*_uv', line)[0]
         if ms+'.MS' in downloaded: continue
-        s.add('wget -nv "'+line[:-1]+'" -O - | tar -x', log=ms+'_download.log', cmd_type='general')
+        s.add('wget -nv --limit-rate=15m "'+line[:-1]+'" -O - | tar -x', log=ms+'_download.log', cmd_type='general')
     #    print 'wget -nv "'+line[:-1]+'" -O - | tar -x'
         logger.debug('Queue download of: '+line[:-1])
     s.run(check=True, max_threads=4)
@@ -144,7 +145,7 @@ if rename:
                 os.system('mv '+ms+' '+msout)
         s.run(check=True, max_threads=20) # limit threads to prevent I/O isssues
 
-    logger.info('Cleaning up...')
-    check_rm('*MS')
+    #logger.info('Cleaning up...')
+    #check_rm('*MS')
 
 logger.info("Done.")
