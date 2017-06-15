@@ -349,7 +349,7 @@ for c in xrange(niter):
         # LoSoTo plot
         if multiepoch:
             for i, ms in enumerate(mss):
-                run_losoto(s, 'tec'+str(c)+'b-ms'+ste(i), [ms], [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+                run_losoto(s, 'tec'+str(c)+'b-ms'+str(i), [ms], [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
         else:
             run_losoto(s, 'tec'+str(c)+'b', mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
         os.system('mv plots-tec'+str(c)+'b* self/solutions')
@@ -378,8 +378,8 @@ for c in xrange(niter):
         # super low resolution to catch extended emission
         logger.info('Cleaning beam-low (cycle: '+str(c)+')...')
         imagename = 'img/wideBeamLow'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 700 700 -trim 512 512 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 1arcmin -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
+        s.add('wsclean -reorder -name ' + imagename + ' -size 1000 1000 -trim 700 700 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 45arcsec -weight briggs 0.5 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
@@ -482,7 +482,7 @@ for c in xrange(niter):
 [ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 [ os.system('mv img/wideM-'+str(c)+'-sources.txt self/images') for c in xrange(niter) ]
 os.system('mv img/wide-lr-MFS-image.fits self/images')
-os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
+os.system('mv img/wideBeam-MFS-image.fits  img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
 os.system('mv logs self')
 
