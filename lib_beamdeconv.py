@@ -231,7 +231,7 @@ def convolve(A1,B1,C1,A2,B2,C2):
     return A,B,C#,factor
 
 def findCommonBeam(beams):
-    '''Given a list of beams where each element of beams is a dictionary having standard casa format:
+    '''Given a list of beams where each element of beams is a list having standard casa format:
     [maj,min,bpa]
     return the beam parameters '''
     beams_array = []
