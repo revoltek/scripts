@@ -22,6 +22,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 3
 user_mask = None
+cc_predict = False
 
 if 'tooth' in os.getcwd():
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
@@ -32,6 +33,7 @@ elif 'bootes' in os.getcwd():
     apparent = False
 else:
     # Survey
+    multiepoch = True
     obs = os.getcwd().split('/')[-1]
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/skymodels/%s.skydb' % obs
     apparent = False
@@ -46,9 +48,9 @@ assert os.path.exists(sourcedb)
 
 #############################################################################
 
-def ft_model_wsclean(ms, imagename, c, user_mask = None, keep_in_beam=True, resamp = None):
+def ft_model_wsclean(mss, imagename, c, user_mask = None, keep_in_beam=True, resamp = None, model_column='MODEL_DATA'):
     """
-    ms : string or vector of mss
+    mss : vector of mss
     imagename : root name for wsclean model images
     resamp : must be '10asec' or another pixels size to resample models
     keep_in_beam : if True remove everything outside primary beam, otherwise everything inside
@@ -74,10 +76,15 @@ def ft_model_wsclean(ms, imagename, c, user_mask = None, keep_in_beam=True, resa
         imagename = imagename+'-resamp'
  
     logger.info('Predict (ft)...')
-    if ms is list: ms = ' '.join(ms) # convert to string for wsclean
-    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+ms, \
+    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(mss), \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
+
+    if model_column != 'MODEL_DATA':
+        logger.info('Predict (set %s = MODEL_DATA)...' % model_column)
+        for ms in mss:
+            s.add('taql "update '+ms+' set '+model_column+' = MODEL_DATA"', log=ms+'_taql0-c'+str(c)+'.log', cmd_type='general')
+        s.run(check=True)
 
 
 def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_column='MODEL_DATA'):
@@ -212,9 +219,13 @@ for c in xrange(niter):
     s.run(check=True)
 
     # LoSoTo plot
-    run_losoto(s, 'tec'+str(c), mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
-    os.system('mv plots-tec'+str(c)+' self/solutions')
-    os.system('mv cal-tec'+str(c)+'.h5 self/solutions/')
+    if multiepoch:
+        for i, ms in enumerate(mss):
+            run_losoto(s, 'tec'+str(c)+'-ms'+str(i), [ms], [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+    else:
+        run_losoto(s, 'tec'+str(c), mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+    os.system('mv plots-tec'+str(c)+'* self/solutions/')
+    os.system('mv cal-tec'+str(c)+'*.h5 self/solutions/')
 
     # correct TEC - group*_TC.MS:(SUBTRACTED_)DATA -> group*_TC.MS:CORRECTED_DATA
     logger.info('Correcting TEC...')
@@ -248,10 +259,15 @@ for c in xrange(niter):
                     log=ms+'_sol-g1-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        run_losoto(s, 'fr'+str(c), mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+        if multiepoch:
+            for i, ms in enumerate(mss):
+                run_losoto(s, 'fr'+str(c)+'-ms'+str(i), [ms], [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+                outinstrument='instrument-fr', outglobaldb='globaldb-fr', outtab='rotationmeasure000', putback=True)
+        else:
+            run_losoto(s, 'fr'+str(c), mss, [parset_dir+'/losoto-fr.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
             outinstrument='instrument-fr', outglobaldb='globaldb-fr', outtab='rotationmeasure000', putback=True)
-        os.system('mv plots-fr'+str(c)+' self/solutions/')
-        os.system('mv cal-fr'+str(c)+'.h5 self/solutions/')
+        os.system('mv plots-fr'+str(c)+'* self/solutions/')
+        os.system('mv cal-fr'+str(c)+'*.h5 self/solutions/')
        
         # To linear - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (linear)
         logger.info('Convert to linear...')
@@ -279,15 +295,25 @@ for c in xrange(niter):
                     log=ms+'_sol-g2-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        run_losoto(s, 'cd'+str(c), mss, [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
-            outinstrument='instrument-cd', outglobaldb='globaldb', outtab='amplitude000,crossdelay', putback=True)
-        os.system('mv plots-cd'+str(c)+' self/solutions/')
-        os.system('mv cal-cd'+(str(c))+'.h5 self/solutions/')
+        if multiepoch:
+            for i, ms in enumerate(mss):
+                run_losoto(s, 'cd'+str(c)+'-ms'+str(i), [ms], [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+                    outinstrument='instrument-cd', outglobaldb='globaldb', outtab='amplitude000,crossdelay', putback=True)
+        else:
+            run_losoto(s, 'cd'+str(c), mss, [parset_dir+'/losoto-cd.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+                outinstrument='instrument-cd', outglobaldb='globaldb', outtab='amplitude000,crossdelay', putback=True)
+        os.system('mv plots-cd'+str(c)+'* self/solutions/')
+        os.system('mv cal-cd'+(str(c))+'*.h5 self/solutions/')
 
-        run_losoto(s, 'amp'+str(c), mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
-            outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
-        os.system('mv plots-amp'+str(c)+' self/solutions/')
-        os.system('mv cal-amp'+str(c)+'.h5 self/solutions/')
+        if multiepoch:
+            for i, ms in enumerate(mss):
+                run_losoto(s, 'amp'+str(c)+'-ms'+str(i), [ms], [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+                    outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
+        else:
+            run_losoto(s, 'amp'+str(c), mss, [parset_dir+'/losoto-amp.parset'], ininstrument='instrument-g', inglobaldb='globaldb',
+                outinstrument='instrument-amp', outglobaldb='globaldb', outtab='amplitude000,phase000', putback=True)
+        os.system('mv plots-amp'+str(c)+'* self/solutions/')
+        os.system('mv cal-amp'+str(c)+'*.h5 self/solutions/')
 
         # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
         logger.info('Faraday rotation correction...')
@@ -321,9 +347,13 @@ for c in xrange(niter):
         s.run(check=True)
 
         # LoSoTo plot
-        run_losoto(s, 'tec'+str(c)+'b', mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
-        os.system('mv plots-tec'+str(c)+'b self/solutions')
-        os.system('mv cal-tec'+str(c)+'b.h5 self/solutions')
+        if multiepoch:
+            for i, ms in enumerate(mss):
+                run_losoto(s, 'tec'+str(c)+'b-ms'+str(i), [ms], [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+        else:
+            run_losoto(s, 'tec'+str(c)+'b', mss, [parset_dir+'/losoto-plot.parset'], ininstrument='instrument-tec', putback=False)
+        os.system('mv plots-tec'+str(c)+'b* self/solutions')
+        os.system('mv cal-tec'+str(c)+'b*.h5 self/solutions')
 
         # correct TEC - group*_TC.MS:CORRECTED_DATA -> group*_TC.MS:CORRECTED_DATA
         logger.info('Correcting TEC...')
@@ -342,15 +372,15 @@ for c in xrange(niter):
         imagename = 'img/wideBeam'
         s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -trim 3500 3500 -mem 90 -j '+str(s.max_processors)+' \
                 -scale 8arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
         # super low resolution to catch extended emission
         logger.info('Cleaning beam-low (cycle: '+str(c)+')...')
         imagename = 'img/wideBeamLow'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 700 700 -trim 512 512 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 1arcmin -weight briggs 0.0 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam '+' '.join(mss), \
+        s.add('wsclean -reorder -name ' + imagename + ' -size 1000 1000 -trim 700 700 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 45arcsec -weight briggs 0.5 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
                 log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
@@ -360,7 +390,7 @@ for c in xrange(niter):
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.9 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 -minuv-l 100 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -372,40 +402,30 @@ for c in xrange(niter):
     logger.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
     #-multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+    if cc_predict:
+        s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -minuv-l 100 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
+            log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+    else:
+        s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -minuv-l 100 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
-    sys.exit()
-
-#    if c >= 1:
-#        # TODO: TESTESTEST
-#        s.add('wsclean -reorder -name ' + imagename + '-lr-test -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-#                -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-#                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 '+' '.join(mss), \
-#                log='wsclean-lr.log', cmd_type='wsclean', processors='max')
-#        s.run(check=True)
-#        # TODO: TESTTESTTEST correct TEC - group*_TC.MS:SUBTRACTED_DATA -> group*_TC.MS:CORRECTED_DATA
-#        logger.info('Correcting TEC...')
-#        for ms in mss:
-#            s.add('NDPPP '+parset_dir+'/NDPPP-corTEC.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor1.parmdb='+ms+'/instrument-tec cor2.parmdb='+ms+'/instrument-tec', \
-#                log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
-#        s.run(check=True)
-#        s.add('wsclean -reorder -name ' + imagename + '-test -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-#            -scale 10arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 6000 -mgain 0.8 \
-#            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
-#            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-#        s.run(check=True)
-
     # do low-res first cycle and remove it from the data
     if c > 0:
-        ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA')
-
+        if cc_predict:
+            ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA')
+        else:
+            ft_model_wsclean(mss, imagename, c, user_mask=user_mask, resamp='10asec', keep_in_beam=True)
     if c == 0:
-        ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA_HIGHRES')
+        if cc_predict:
+            ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA_HIGHRES')
+        else:
+            ft_model_wsclean(mss, imagename, c, user_mask=user_mask, resamp='10asec', keep_in_beam=True, model_column='MODEL_DATA_HIGHRES')
 
         # Subtract model from all TCs - concat.MS:CORRECTED_DATA - MODEL_DATA -> concat.MS:CORRECTED_DATA (selfcal corrected, beam corrected, high-res model subtracted)
         logger.info('Subtracting high-res model (CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA_HIGHRES)...')
@@ -416,14 +436,22 @@ for c in xrange(niter):
         logger.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
         #-multiscale -multiscale-scale-bias 0.5 \
-        s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+        if cc_predict:
+            s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -save-source-list '+' '.join(mss), \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -minuv-l 100 -save-source-list '+' '.join(mss), \
+                log='wsclean-lr.log', cmd_type='wsclean', processors='max')
+        else:
+            s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+                -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -minuv-l 100 '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
        
-        #ft_model_wsclean(concat_ms, imagename_lr, 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
-        ft_model_cc(mss, imagename_lr, 'lr', keep_in_beam=False, model_column='MODEL_DATA')
+        if cc_predict:
+            ft_model_cc(mss, imagename_lr, 'lr', keep_in_beam=False, model_column='MODEL_DATA')
+        else:
+            ft_model_wsclean(mss, imagename_lr, 'lr', user_mask=None, resamp='10asec', keep_in_beam=False)
 
         # corrupt model with TEC solutions ms:MODEL_DATA -> ms:MODEL_DATA
         for ms in mss:
@@ -454,7 +482,7 @@ for c in xrange(niter):
 [ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 [ os.system('mv img/wideM-'+str(c)+'-sources.txt self/images') for c in xrange(niter) ]
 os.system('mv img/wide-lr-MFS-image.fits self/images')
-os.system('mv img/wideBeam-MFS-image.fits img/wideBeam-MFS-image-pb.fits self/images')
+os.system('mv img/wideBeam-MFS-image.fits  img/wideBeam-MFS-image-pb.fits self/images')
 os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
 os.system('mv logs self')
 
