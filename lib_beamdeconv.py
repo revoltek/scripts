@@ -83,15 +83,25 @@ class EllipticalGaussian2DKernel(Kernel2D):
         self._truncation = np.abs(1. - 1 / self._array.sum())
 
 
+def deconvolve_ell(t_bmaj,t_bmin,t_bpa,bmaj,bmin,bpa):
+    """
+    wrapper for deconvolve() to work in elliptical coordinates
+    """
+    a,b,c = elliptic2quadratic(bmaj,bmin,bpa)
+    t_a,t_b,t_c = elliptic2quadratic(t_bmaj,t_bmin,t_bpa)
+    c_a,c_b,c_c = deconvolve(t_a,t_b,t_c,a,b,c)
+    return quadratic2elliptic(c_a,c_b,c_c)
+
+
 def quadratic2elliptic(A,B,C,D=0,E=0,F=-np.log(2)):
     """Invert:
     (A0 cos^2 phi + c0 sin^2 phi)k = A
     (A0-C0)sin 2phi k = B
     (a0 sin^2 phi + c0 cos^2 phi) k = C
     returns bmaj,bmin,bpa[,xc,y if D,E != 0]"""
-    if (B**2 - 4*A*C) == 0:
-        print "It is parabolic,not elliptic or hyperbolic"
-        return None,None,None
+    if (np.isinf(A) and np.isinf(B) and np.isinf(C)):#delta function
+        return 0., 0., 0.
+    assert (B**2 - 4*A*C) != 0, "It is parabolic, not elliptic or hyperbolic"
     if A!=C:#not a circle so should be able to solve second equation
         #A-C = A0 cos^2 phi + c0 sin^2 phi - a0 sin^2 phi - c0 cos^2 phi
         #A-C = A0 (cos^2 phi - sin^2 phi)- c0 (-sin^2 phi  + c0 cos^2 phi) = (A0 - C0) cos 2phi
@@ -113,9 +123,7 @@ def quadratic2elliptic(A,B,C,D=0,E=0,F=-np.log(2)):
     C1 = A*s2 - B*c*s + C*c2
     D1 = D*c + E*s
     E1 = -D*s + E*c
-    if (A1 == 0) or C1 == 0:
-        print "degenerate between ellipse and hyperbola"
-        return None,None,None
+    assert (A1 != 0) and (C1 != 0), "degenerate between ellipse and hyperbola"
     #complete square for x's and y's
     #A1(x-xc)^2 + C1(y-yc)^2 + F = A1xx - 2A1xxc + A1xcxc + C1yy - 2C1yyc + C1ycyc = A1() + D1() + C1() + E1() + A1xcxc + C1ycyc + F =0 
     xc1 = D1/(-2.*A1)
@@ -132,9 +140,8 @@ def quadratic2elliptic(A,B,C,D=0,E=0,F=-np.log(2)):
     C0 = C1/rhs
     bmaj = np.sign(A0)*2.*np.sqrt(1./np.abs(A0))
     bmin = np.sign(C0)*2.*np.sqrt(1./np.abs(C0))
-    if bmaj*bmin < 0:
-        print "Hyperbolic solution ;) not what we want here though technically we just inverted properly."
-        return None,None,None
+    assert bmaj*bmin > 0, "Hyperbolic solution ;) inversion success but not physical."
+        #return None,None,None
     if bmin > bmaj:
         temp = bmin
         bmin = bmaj
@@ -142,10 +149,9 @@ def quadratic2elliptic(A,B,C,D=0,E=0,F=-np.log(2)):
     bpa = phi# - np.pi/2.#starts at y
     if E==0 and D==0:
         return bmaj,bmin,bpa*180./np.pi
-    
-    
     return bmaj,bmin,bpa*180./np.pi,xc,yc
         
+
 def elliptic2quadratic(bmaj,bmin,pa,xc=0,yc=0,k=np.log(2)):
     '''a*x**2 + b*x*y + c*y**2 + d*x + e*y + f = 0
     pa in deg
@@ -169,18 +175,17 @@ def elliptic2quadratic(bmaj,bmin,pa,xc=0,yc=0,k=np.log(2)):
         return A,B,C
     return A,B,C,D,E,F
 
+
 def deconvolve(A1,B1,C1,A2,B2,C2):
     '''Solves analytically G(A1,B1,C1) = convolution(G(A2,B2,C2), G(Ak,Bk,Ck))
     Returns Ak,Bk,Ck
     A,B,C are quadratic parametrization.
-    If you have bmaj,bmin,bpa, then get A,B,C = elliptic2quadratic(0,0,bmaj,bmin,bpa)
+    If you have bmaj,bmin,bpa, then get A,B,C = ecliptic2quadratic(0,0,bmaj,bmin,bpa)
     
-    Returns (None,None,None) if solution is delta function'''
+    Returns (np.inf,np.inf,np.inf) if solution is delta function'''
     D = B1**2 - 2*B1*B2 + B2**2 - 4*A1*C1 + 4* A2* C1 + 4* A1* C2 - 4* A2* C2
     if (np.abs(D) < 10*(1-2./3.-1./3.)):
-
-        #print "Indefinite... invertibles"
-        return np.nan,np.nan,np.nan#delta function
+        return np.inf,np.inf,np.inf#delta function
     if (D<0.):
         #print "Inverse Gaussian, discriminant D:",D
         #ie. hyperbolic solution, still valid but elliptic representation is impossible instead you get hyperbolic parameters: negative bmaj/bmin
@@ -188,18 +193,9 @@ def deconvolve(A1,B1,C1,A2,B2,C2):
     Ak = (-A2* B1**2 + A1* B2**2 + 4* A1* A2* C1 - 4* A1* A2* C2)/D
     Bk = (-B1**2 *B2 + B1* B2**2 + 4* A1* B2* C1 - 4* A2* B1* C2)/D
     Ck = (B2**2 *C1 - B1**2 *C2 + 4* A1* C1* C2 - 4* A2* C1* C2)/D
-    if (Bk*Bk - 4*Ak*Ck) == 0:
-        return None,None,None
+    assert (Bk*Bk - 4*Ak*Ck) != 0, "Indifinite deconvolution det = 0"
     return Ak,Bk,Ck
 
-def deconvolve_ell(t_bmaj,t_bmin,t_bpa,bmaj,bmin,bpa):
-    """
-    wrapper for deconvolve() to work in elliptical coordinates
-    """
-    a,b,c = elliptic2quadratic(bmaj,bmin,bpa)
-    t_a,t_b,t_c = elliptic2quadratic(t_bmaj,t_bmin,t_bpa)
-    c_a,c_b,c_c = deconvolve(t_a,t_b,t_c,a,b,c)
-    return quadratic2elliptic(c_a,c_b,c_c)
 
 def convolve(A1,B1,C1,A2,B2,C2):
     '''
@@ -214,14 +210,14 @@ def convolve(A1,B1,C1,A2,B2,C2):
     D4 = C2*D1+C1*D2
     #Non-solvable cases
     if (D1*D2*D3*D4 == 0):
-        print "Can't convolve..."
+        print ("Can't convolve...")
         return (None,None,None)
     if (D3 < 0):#always imaginary
-        print "D3 < 0, Imaginary solution",D3
+        print ("D3 < 0, Imaginary solution",D3)
         return (None,None,None)
     factor = 2.*np.pi*np.sqrt(D1 + 0j)*np.sqrt(D2 + 0j)/np.sqrt(D3/D4 + 0j)/np.sqrt(D4/(D1*D2) + 0j)
     if np.abs(np.imag(factor)) > 10.*(7./3 - 4./3 - 1.):
-        print "Imaginary result somehow..."
+        print ("Imaginary result somehow...")
         return (None,None,None)
     factor = np.real(factor)
     A = (A2*D1 + A1 * D2)/D3
@@ -230,81 +226,135 @@ def convolve(A1,B1,C1,A2,B2,C2):
     k = np.log(factor*2.)
     return A,B,C#,factor
 
-def findCommonBeam(beams):
-    '''Given a list of beams where each element of beams is a list having standard casa format:
-    [maj,min,bpa]
-    return the beam parameters '''
-    beams_array = []
-    for b in beams:
-        beams_array.append([b[0],b[1],b[2]])
-    beams_array = np.array(beams_array)
-    #Try convolving to max area one
-    Areas = beams_array[:,0]*beams_array[:,1]*np.pi/4./np.log(2.)
-    idxMaxArea = np.argsort(Areas)[-1]
-    A1,B1,C1 = elliptic2quadratic(beams_array[idxMaxArea,0],beams_array[idxMaxArea,1],beams_array[idxMaxArea,2])
-    cb = beams_array[idxMaxArea,:].flatten()
-    i = 0
-    while i < np.size(Areas):
-        #print np.size(Areas),i
-        if i != idxMaxArea:
-            #deconlove
-            A2,B2,C2 = elliptic2quadratic(beams_array[i,0],beams_array[i,1],beams_array[i,2])
-            Ak,Bk,Ck = deconvolve(A1,B1,C1,A2,B2,C2)
-            #print Ak,Bk,Ck
+def findCommonBeam(beams, debugplots=False, confidence=0.005):
+    '''Given a list `beams` where each element of beams is a list of elliptic beam parameters (bmaj_i,bmin_i, bpa_i)
+    with bpa in degrees
+    return the beam parameters of the common beam of minimal area.
+    
+    Common beam means that all beams can be convolved to the common beam.
+    
+    `confidence` parameter is basically how confident you want solution. So 0.01 is knowing solution to 1%.
+    Specifically it's how long to sample so that there are enough statistics to properly sample likelihood with required accuracy.
+    default is 0.005. Computation time scale inversely with it.'''
+    def beamArea(bmaj,bmin,bpa=None):
+        return bmaj*bmin*np.pi/4./np.log(2.)
+    def isCommonBeam(beamCandQuad,beamsQuad):
+        for beamQuad in beamsQuad:
             try:
-                b = quadratic2elliptic(Ak,Bk,Ck)
-                if b is None:
-                    pass
-                else:
-                    "convolve possible:",b
+                Ak,Bk,Ck = deconvolve(beamCandQuad[0],beamCandQuad[1],beamCandQuad[2],beamQuad[0],beamQuad[1],beamQuad[2])
+                bmaj,bmin,bpa = quadratic2elliptic(Ak,Bk,Ck)
             except:
-                "Failed convolve"
-                cb = None
-                break
+                return False
+        return True 
+    def samplePrior(beamLast, beamsQuad):
+        iter = 0
+        while True:
+            std = 1.5
+            beam = [beamLast[0]*np.exp(np.log(std)*np.random.uniform(low=-1,high=1.)),
+                     beamLast[1]*np.exp(np.log(std)*np.random.uniform(low=-1,high=1.)),
+                     beamLast[2] + np.random.uniform(low=-5,high=5)]
+            #beam[0] = np.abs(beam[0])
+            #beam[1] = np.abs(beam[1])
+            if beam[1] > beam[0]:
+                temp = beam[1]
+                beam[1] = beam[0]
+                beam[0] = temp
+            while beam[2] > 90.:
+                beam[2] -= 180.
+            while beam[2] < -90.:
+                beam[2] += 180.
+            A,B,C = elliptic2quadratic(*beam)
+            if isCommonBeam((A,B,C),beamsQuad):
+                return beam
+            iter += 1
+        
+    # TODO: is it OK to minimize only area? Or we should put a penalty on maj/min to avoid very long beams?
+    def misfit(beam,areaLargest):
+        area = beamArea(*beam)
+        L2 = (area - areaLargest)**2/2.
+        return L2
+    #Get beam areas
+    N = len(beams)
+    areas = []
+    beamsQuad = []
+    i = 0
+    while i < N:
+        areas.append(beamArea(*beams[i]))
+        beamsQuad.append(elliptic2quadratic(*beams[i]))
         i += 1
-    if cb is None:
-        Area_init = Areas[idxMaxArea]*1.05
-        inc = 1.05#15 iters in area
-        works = False
-        Area = Area_init
-        while Area < 2.*Area_init and not works:
-            bmaj_min = np.sqrt(Area*4.*np.log(2)/np.pi)
-            bmaj_max = np.sqrt(Area*4.*np.log(2)/np.pi*3.)
-            bmaj = np.linspace(bmaj_min,bmaj_max,10)
-            pa = np.linspace(-90.,90.,10)
-            for bj in bmaj:
-                bmin = Area*4.*np.log(2)/np.pi/bj
-                for p in pa:
-                    cb = (bj,bmin,p)
-                    A1,B1,C1 = elliptic2quadratic(cb[0],cb[1],cb[2])
-                    i = 0
-                    while i < np.size(Areas):
-                        #deconlove
-                        A2,B2,C2 = elliptic2quadratic(beams_array[i,0],beams_array[i,1],beams_array[i,2])
-                        Ak,Bk,Ck = deconvolve(A1,B1,C1,A2,B2,C2)
-                        #print Ak,Bk,Ck
-                        if Ak is None:
-                            print "Failed convolve"
-                            cb = None
-                            break
-
-                        try:
-                            b = quadratic2elliptic(Ak,Bk,Ck)
-                            if b is None:
-                                cb = None
-                                break
-                                
-                            else:
-                                print "Transform possible:",b
-                        except:
-                            "Transform impossible:"
-                            cb = None
-                            break
-                        i += 1
-                    if cb is not None:
-                        work = True
-            Area *= inc
-    return cb
+    beam0 = beams[np.argmax(areas)]
+    areaLargest = np.max(areas)
+    beam0Quad = elliptic2quadratic(*beam0)
+    if isCommonBeam(beam0Quad,beamsQuad):
+        return beam0
+    else:
+        bmajMax = np.max(beams,axis=0)[0]
+        beam0 = [bmajMax,bmajMax,0.]
+    #MC search, 1/binning = confidence
+    binning = int(1./confidence)
+    Nmax = 1e6
+    beamsMH = np.zeros([binning*binning,3],dtype=np.double)
+    beamsMul = np.zeros(binning*binning,dtype=np.double)
+    beamsMH[0,:] = beam0
+    beamsMul[0] = 1
+    accepted = 1
+    Si = misfit(beam0,areaLargest)
+    Li = np.exp(-Si)
+    maxL = Li
+    maxLBeam = beam0
+    iter = 0
+    while accepted < binning**2 and iter < Nmax:
+        beam_j = samplePrior(beamsMH[accepted-1], beamsQuad)
+        Sj = misfit(beam_j,areaLargest)
+        Lj = np.exp(-Sj)
+        #print("Sj = {}".format(Sj))
+        if Sj < Si or np.log(np.random.uniform()) < Si - Sj:
+            Si = Sj
+            beamsMH[accepted,:] = beam_j
+            beamsMul[accepted] += 1
+            #print("Accepted")
+            accepted += 1
+        else:
+            beamsMul[accepted-1] += 1
+        if Lj > maxL:
+            maxL = Lj
+            maxLBeam = beam_j
+        iter += 1
+    if accepted == binning**2:
+        pass
+        #print("Converged in {} steps with an acceptance rate of {}".format(iter,float(accepted)/iter))
+    else:
+        beamsMH = beamsMH[:iter,:]
+        beamsMul = beamsMul[:iter]
+    if debugplots:
+        import pylab as plt
+#         plt.hist(beamsMH[:,0],bins=binning)
+#         plt.show()
+#         plt.hist(beamsMH[:,1],bins=binning)
+#         plt.show()
+#         plt.hist(beamsMH[:,2],bins=binning)
+#         plt.show()
+        from matplotlib.patches import Ellipse
+        ax = plt.subplot(1,1,1)
+        ax.add_artist(Ellipse(xy=(0,0), width=maxLBeam[0], height=maxLBeam[1], angle=maxLBeam[2], facecolor="none",edgecolor='red',alpha=1,label='common beam'))
+        for beam in beams:
+            ax.add_artist(Ellipse(xy=(0,0), width=beam[0], height=beam[1], angle=beam[2], facecolor="none",edgecolor='black',ls='--',alpha=1))
+        ax.set_xlim(-0.5,0.5)
+        ax.set_ylim(-0.5,0.5)
+        plt.legend(frameon=False)
+        plt.show()
+        
+#     meanBeam = np.sum(beamsMH.T*beamsMul,axis=1)/np.sum(beamsMul)
+#     stdBeam = np.sqrt(np.sum(beamsMH.T**2*beamsMul,axis=1)/np.sum(beamsMul) - meanBeam**2)
+#     print ("(Gaussian) beam is {} +- {}".format(meanBeam,stdBeam))
+#     logmeanBmajBmin = np.sum(np.log(beamsMH[:,:2]).T*beamsMul,axis=1)/np.sum(beamsMul)
+#     logstdBmajBmin = np.sqrt(np.sum(np.log(beamsMH[:,:2]).T**2*beamsMul,axis=1)/np.sum(beamsMul) - logmeanBmajBmin**2)
+#     logstdBmajBminu = np.exp(logmeanBmajBmin + logstdBmajBmin) - np.exp(logmeanBmajBmin)
+#     logstdBmajBminl = np.exp(logmeanBmajBmin) - np.exp(logmeanBmajBmin - logstdBmajBmin)
+#     logmeanBmajBmin = np.exp(logmeanBmajBmin)
+#     print("(Lognormal) bmaj/bmin is {} + {} - {}".format(logmeanBmajBmin,logstdBmajBminu,logstdBmajBminl))
+#     print ("Max Likelihood beam is {}".format(maxLBeam))
+    return maxLBeam
     
 def fftGaussian(A,B,C,X,Y):
     D = 4*A*C-B**2
@@ -313,79 +363,93 @@ def fftGaussian(A,B,C,X,Y):
 def gaussian(A,B,C,X,Y):
     return np.exp(-A*X**2 - B*X*Y - C*Y**2)
 
-def testError():
-    import pylab as plt
-    dec = np.linspace(-90,20,40)
-    b = np.linspace(1e-10,25,40)
-    pa = np.linspace(-np.pi/2,np.pi/2,40)
-    p = 0
-    errors = []
-    while p < 30:
-        bmajP,bminP,bpaP = psfTGSS1(dec[p])
-        A2,B2,C2 = elliptic2quadratic(bmajP,bminP,bpaP)
-        i = 0
-        while i < 30:
-            bmaj2 = b[i]
-            j = 0
-            while j < 30:
-                bmin2 = b[j]
-                if bmin2 > bmaj2:
-                    j += 1
-                    continue
-                n = 0
-                while n < 30:    
-                    bpa2 = pa[n]
-                    Ak,Bk,Ck = elliptic2quadratic(bmaj2,bmin2,bpa2)
-                    A1,B1,C1 = convolve(A2,B2,C2,Ak,Bk,Ck)
-                    if (A1 == None):
-                        n += 1
-                        continue
-                    bmaj1,bmin1,bpa1 = quadratic2elliptic(A1,B1,C1)
-                    Ak_,Bk_,Ck_ = deconvolve(A1,B1,C1,A2,B2,C2)
-                    bmaj_,bmin_,bpa_ = quadratic2elliptic(Ak_,Bk_,Ck_)
-                    if not np.isnan(bmaj_-bmaj2):
-                        errors.append([bmaj_-bmaj2,bmin_-bmin2,bpa_-bpa2])
-                    n += 1
-                j += 1
-            i += 1
-        p += 1
-    errors = np.array(errors)
-  #  shape = errors.shape
- #   errors = errors[np.bitwise_not(np.isnan(errors))]
-    
-    f,(ax1,ax2,ax3) = plt.subplots(3,sharex=False,sharey=True)
-    ax1.hist(errors[:,0],bins=100)
-    ax2.hist(errors[:,1],bins=100)
-    ax3.hist(errors[:,2],bins=100)
+def psfTGSS1(dec):
+    '''input declination in degrees
+    return bmaj(arcsec), bmin(arcsec), bpa(degrees)'''
+    if dec > 19.0836824:
+        return 25.,25.,0.
+    else:
+        return 25.,25./np.cos(np.pi*(dec-19.0836824)/180.),0.
 
-    plt.show()
-if __name__ == '__main__':
-    testError()
-    #psf
-    bmaj = 1.
-    bmin = 0.5
-    bpa = 90.
-    print "Psf beam, elliptic:",bmaj,bmin,bpa
-    Apsf,Bpsf,Cpsf = elliptic2quadratic(bmaj,bmin,bpa)
-    print "test quadratic2elliptical"
-    print "psf elliptical check:",quadratic2elliptic(Apsf,Bpsf,Cpsf)
-    print "Quadratic:",Apsf,Bpsf,Cpsf
-    #blob to deconvolve
-    bmaj1 = 2.
-    bmin1 = 1.5
-    bpa1 = 0.
-    print "Source ,elliptic:",bmaj1,bmin1,bpa1
-    A1,B1,C1 = elliptic2quadratic(bmaj1,bmin1,bpa1)
-    print "Quadratic:",A1,B1,C1
-    A2,B2,C2,factor = convolve(A1,B1,C1,Apsf,Bpsf,Cpsf)
-    bmaj,bmin,bpa = quadratic2elliptic(A2,B2,C2)
-    print "Analytic Convolve, elliptic:",bmaj,bmin,bpa
-    print "Quadratic:",A2,B2,C2
-    Ak,Bk,Ck = deconvolve(A2,B2,C2,Apsf,Bpsf,Cpsf)
-    bmaj,bmin,bpa = quadratic2elliptic(Ak,Bk,Ck)
-    print "Deconvolve, elliptic:",bmaj,bmin,bpa
-    print "Quadratic:",Ak,Bk,Ck
-    print "Difference, elliptic:",bmaj-bmaj1,bmin-bmin1,bpa-bpa1
-    print "Difference, Quadratic:",Ak-A1,Bk-B1,Ck-C1
+def test_elliptic2quadratic():
     
+    for i in range(100):
+        bpa = np.random.uniform()*180.-90.#deg
+        bmaj = np.random.uniform()
+        bmin = np.random.uniform()*bmaj
+    
+        A,B,C = elliptic2quadratic(bmaj,bmin,bpa)   
+        bmaj2,bmin2,bpa2 = quadratic2elliptic(A,B,C)
+        assert np.isclose(bmaj,bmaj2) and np.isclose(bmin,bmin2) and np.isclose(bpa,bpa2), "Failed to pass {},{},{} != {},{},{}".format(bmaj,bmin,bpa,bmaj2,bmin2,bpa2)
+    return True
 
+def test_convolvedeconvolve(N=100):
+    for i in range(N):
+        bpa = np.random.uniform()*180.-90.#deg
+        bmaj = np.random.uniform()
+        bmin = np.random.uniform()*bmaj
+    
+        A1,B1,C1 = elliptic2quadratic(bmaj,bmin,bpa) 
+        
+        bpa2 = np.random.uniform()*180.-90.#deg
+        bmaj2 = np.random.uniform()
+        bmin2 = np.random.uniform()*bmaj2
+    
+        A2,B2,C2 = elliptic2quadratic(bmaj2,bmin2,bpa2)  
+        
+        Ac,Bc,Cc = convolve(A1,B1,C1,A2,B2,C2)
+        
+        Ak,Bk,Ck = deconvolve(Ac,Bc,Cc,A1,B1,C1)
+        
+        bmaj2_,bmin2_,bpa2_ = quadratic2elliptic(Ak,Bk,Ck)
+        
+        assert np.isclose(bmaj2_,bmaj2) and np.isclose(bmin2_,bmin2) and np.isclose(bpa2_,bpa2), "Failed to pass {},{},{} != {},{},{}".format(bmaj2_,bmin2_,bpa2_,bmaj2,bmin2,bpa2)
+    return True
+
+def test_deltaFunctionDeconvolve():
+    bpa = np.random.uniform()*180.-90.#deg
+    bmaj = np.random.uniform()
+    bmin = np.random.uniform()*bmaj
+
+    A1,B1,C1 = elliptic2quadratic(bmaj,bmin,bpa) 
+    #deconv same beam
+    Ak,Bk,Ck = deconvolve(A1,B1,C1,A1,B1,C1)
+    bmaj_d, bmin_d, bpa_d = quadratic2elliptic(Ak,Bk,Ck)
+    assert bmaj_d==0 and bmin_d==0 and bpa_d==0,"Supposed to be the delta"
+    return True
+
+def test_timing():
+    from time import clock
+    i = 0
+    t1 = clock()
+    for i in range(10000):
+        bpa = np.random.uniform()*180.-90.#deg
+        bmaj = np.random.uniform()
+        bmin = np.random.uniform()*bmaj
+    
+        A1,B1,C1 = elliptic2quadratic(bmaj,bmin,bpa) 
+        
+        bpa2 = np.random.uniform()*180.-90.#deg
+        bmaj2 = np.random.uniform()
+        bmin2 = np.random.uniform()*bmaj2
+    
+        A2,B2,C2 = elliptic2quadratic(bmaj2,bmin2,bpa2)  
+        
+        Ac,Bc,Cc = convolve(A1,B1,C1,A2,B2,C2)
+        
+        Ak,Bk,Ck = deconvolve(Ac,Bc,Cc,A1,B1,C1)
+        
+        bmaj2_,bmin2_,bpa2_ = quadratic2elliptic(Ak,Bk,Ck)
+    print("Time avg. ~ {} seconds".format((clock()-t1)/10000))
+        
+def test_findCommonBeam():
+    np.random.seed(1234)
+    for i in range(10):
+        beams = []
+        for i in range(3):
+            bpa = np.random.uniform()*180.-90.#deg
+            bmaj = np.random.uniform()
+            bmin = np.random.uniform()*bmaj
+            beams.append((bmaj,bmin,bpa))
+        commonBeam = findCommonBeam(beams,debugplots=True)
+        print("Common beam amongst {} is {}".format(beams,commonBeam))

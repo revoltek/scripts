@@ -18,9 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os, sys, argparse, logging
+import numpy as np
 from lib_linearfit import linear_fit_bootstrap as linearfit
 from lib_fits import flatten
-from lib_beamdeconv import *
+from lib_beamdeconv import findCommonBeam
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.coordinates import match_coordinates_sky
@@ -42,6 +43,7 @@ parser.add_argument('--shift', dest='shift', action='store_true', help='Shift im
 parser.add_argument('--noise', dest='noise', action='store_true', help='Calculate noise of each image')
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results')
 parser.add_argument('--sigma', dest='sigma', type=float, help='Restrict to pixels above this sigma in all images')
+parser.add_argument('--circbeam', dest='circbeam', action='store_true', help='Force final beam to be circular (default: False, use minimum common beam area)')
 parser.add_argument('--output', dest='output', default='spidx.fits', help='Name of output mosaic (default: mosaic.fits)')
 
 args = parser.parse_args()
@@ -116,7 +118,11 @@ for imagefile in args.images:
 #####################################################
 # find the smallest common beam
 if args.beam is None:
-    target_beam = findCommonBeam(all_beams)
+    if args.circbeam:
+        maxmaj = np.max([b[0] for b in all_beams])
+        target_beam = [maxmaj, maxmaj, 0.]
+    else:
+        target_beam = findCommonBeam(all_beams)
 else:
     target_beam = [args.beam[0]/3600., args.beam[1]/3600., args.beam[2]]
 

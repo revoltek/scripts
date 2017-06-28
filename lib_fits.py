@@ -138,7 +138,7 @@ class Image(object):
         if invert: self.img_data[~mask] = blankvalue
         else: self.img_data[mask] = blankvalue
 
-    def calc_noise(self, niter=50, eps=1e-5):
+    def calc_noise(self, niter=100, eps=1e-6):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
@@ -153,9 +153,9 @@ class Image(object):
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
-            data = data[np.abs(data)<5*rms]
+            data = data[np.abs(data)<3*rms]
             oldrms = rms
-        raise Exception('Failed to converge')
+        raise Exception('Noise estimation failed to converge.')
 
     def convolve(self, target_beam):
         """
@@ -167,7 +167,7 @@ class Image(object):
 
         # if difference between beam is negligible, skip - it mostly happens when beams are exactly the same
         beam = self.get_beam()
-        if ((target_beam[0] - beam[0]) < 1e-4) and ((target_beam[1] - beam[1]) < 1e-4) and ((target_beam[2] - beam[2]) < 1):
+        if ((target_beam[0] - beam[0]) < 1e-2) and ((target_beam[1] - beam[1]) < 1e-2) and ((target_beam[2] - beam[2]) < 1):
             return
         # first find beam to convolve with
         convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
