@@ -16,7 +16,6 @@ if 'tooth' in os.getcwd(): # tooth 2013
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
-    #bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA'
     bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA'
 elif 'survey' in os.getcwd():
     obs = os.getcwd().split('/')[-2] # assumes .../c??-o??/3c196
@@ -109,6 +108,7 @@ for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 
+# are we doing HBA?
 tab = pt.table(mss[0]+'/instrument-fr/NAMES/', ack=False)
 HBA = 'HBA' in tab.getcol('NAME')[0]
 tab.close()
@@ -226,7 +226,6 @@ if clock:
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-ph.parset',parset_dir+'/losoto-amp.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
            inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 else:
-    #run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phase000', \
     run_losoto(s, 'final', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
            inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
 

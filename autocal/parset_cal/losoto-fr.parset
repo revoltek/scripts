@@ -13,7 +13,7 @@ LoSoTo.Steps.duplicateBkp.Operation = DUPLICATE
 LoSoTo.Steps.duplicateBkp.InTable = sol000/phase000
 LoSoTo.Steps.duplicateBkp.OutTable = sol000/phaseOrig000
 
-r plot initials
+# plot initials
 LoSoTo.Steps.plotPi.Operation = PLOT
 LoSoTo.Steps.plotPi.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPi.Axes = [time,freq]
