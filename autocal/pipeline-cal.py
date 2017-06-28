@@ -25,6 +25,9 @@ elif 'survey' in os.getcwd():
     bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA'
     if 'c07-o00' in os.getcwd() or 'c07-o01' in os.getcwd() or 'c07-o02' in os.getcwd() or 'c07-o03' in os.getcwd() or 'c07-o04' in os.getcwd() or 'c07-o05' in os.getcwd() or 'c07-o06' in os.getcwd():
         bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA\;RS407LBA'
+else:
+    datadir = '../cals-bkp/'
+    bl2flag = 'RS310HBA'
 
 ########################################################
 logger = set_logger('pipeline-cal.logger')
@@ -105,8 +108,16 @@ for ms in mss:
     if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
+
+tab = pt.table(mss[0]+'/instrument-fr/NAMES/', ack=False)
+HBA = 'HBA' in tab.getcol('NAME')[0]
+tab.close()
+
 for ms in mss:
-    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+    if HBA:
+        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,25)"', log=ms+'_taql.log', cmd_type='general')
+    else:
+        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
 # predict to save time ms:MODEL_DATA
