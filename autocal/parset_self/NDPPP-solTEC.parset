@@ -17,9 +17,10 @@ sol.maxiter = 500
 sol.usemodelcolumn = True
 sol.solint = 1
 sol.nchan = 1
-sol.propagatesolutions = False
+
+#sol.propagatesolutions = False
 
 # TO TEST
-#sol.propagatesolutions = True
-#sol.stepsize=0.2 # can be set? ask tj
-#sol.caltype = tecandphase
+sol.propagatesolutions = True
+sol.stepsize = 0.2 # can be set? ask tj
+sol.tolerance = 1.e-6
