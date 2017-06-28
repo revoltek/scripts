@@ -16,6 +16,8 @@ user_mask = '/home/fdg/scripts/autocal/AteamLBA/VirA.reg'
 ########################################################
 logger = set_logger('pipeline-ateam.logger')
 check_rm('logs')
+check_rm('img')
+os.makedirs('img')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
 
@@ -182,7 +184,7 @@ for c in xrange(10):
         s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    run_losoto(s, 'final-c'+str(c), mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeSmooth000,phaseOrig000', \
+    run_losoto(s, 'final-c'+str(c), mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-ph.parset'], outtab='amplitudeOrig000,phaseOrig000', \
                inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
     
     from make_mask import make_mask
@@ -190,36 +192,39 @@ for c in xrange(10):
     # Correct all CORRECTED_DATA (beam, CD, FR corrected) -> CORRECTED_DATA
     logger.info('Amp/ph correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
+        if c == 0:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
+        else:
+            # update weight only first time, it should be at first order correct
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=False cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    logger.info('Cleaning...')
-    check_rm('img')
-    os.makedirs('img')
-    imagename = 'img/wide-c'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
-            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
-            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-    s.run(check=True)
-    
-    # make mask
-    maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
-    if user_mask is not None:
-        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
+#    logger.info('Cleaning...')
+#    imagename = 'img/wide-c'+str(c)
+#    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+#            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
+#            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
+#            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+#    s.run(check=True)
+#    
+#    # make mask
+#    maskname = imagename+'-mask.fits'
+#    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
+#    if user_mask is not None:
+#        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
     
     logger.info('Cleaning w/ mask')
     imagename = 'img/wideM-c'+str(c)
-    # -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,4,8,16,32 \
-    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.7 \
-            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 10 -auto-threshold 0.001 -fitsmask '+maskname+' '+' '.join(mss), \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 1200 1200 -trim 800 800 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 1.5 \
+            -scale 4arcsec -weight briggs -0.5 -niter 100000 -no-update-model-required -mgain 0.7 \
+            -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,4,8,16,32 -auto-mask 5\
+            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 15 -threshold 0.005 '+' '.join(mss), \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    
+    sys.exit(1)
+
     logger.info('Predict (ft)...')
-    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 10 '+' '.join(mss), \
+    s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 15 '+' '.join(mss), \
             log='wscleanPRE-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 

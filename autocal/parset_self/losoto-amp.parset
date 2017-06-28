@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, smoothA, plotAs, residualA, plotAr, resetP]
+LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, smoothA, plotAs, residualA, plotAr, resetP, norm]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -75,3 +75,9 @@ LoSoTo.Steps.plotAr.Prefix = plots/ampRes_
 # reset phases
 LoSoTo.Steps.resetP.Operation = RESET
 LoSoTo.Steps.resetP.Soltab = [sol000/phase000]
+
+# norm
+LoSoTo.Steps.norm.Operation = NORM
+LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.norm.NormVal = 1.
+LoSoTo.Steps.norm.NormAxes = [time,ant,pol]

@@ -42,7 +42,7 @@ def flatten(filename, channel=0, freqaxis=0):
             slice.append(0)
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header,f[0].data[slice]
+    return header, f[0].data[slice]
 
 
 def correct_beam_header(header):
@@ -51,13 +51,14 @@ def correct_beam_header(header):
     """
     import pyfits, re
     if ('BMAJ' in header) and ('BMIN' in header) and ('PA' in header): return header
-    for hist in header['HISTORY']:
-        if 'AIPS   CLEAN BMAJ' in hist:
-            # remove every letter from the string
-            bmaj, bmin, pa = re.sub(' +', ' ', re.sub('[A-Z ]*=','',hist)).strip().split(' ')
-            header['BMAJ'] = float(bmaj)
-            header['BMIN'] = float(bmin)
-            header['BPA'] = float(pa)
+    elif 'HISTORY' in header:
+        for hist in header['HISTORY']:
+            if 'AIPS   CLEAN BMAJ' in hist:
+                # remove every letter from the string
+                bmaj, bmin, pa = re.sub(' +', ' ', re.sub('[A-Z ]*=','',hist)).strip().split(' ')
+                header['BMAJ'] = float(bmaj)
+                header['BMIN'] = float(bmin)
+                header['BPA'] = float(pa)
     return header
 
 def find_freq(header):
@@ -91,7 +92,7 @@ class Image(object):
             logging.warning('%s: No beam information found.' % self.imagefile)
             sys.exit(1)
         logging.debug('%s: Beam: %.1f" %.1f" (pa %.1f deg)' % \
-                (self.imagefile, self.beam[0]*3600., self.beam[1]*3600., self.beam[2]))
+                (self.imagefile, beam[0]*3600., beam[1]*3600., beam[2]))
 
         self.freq = find_freq(header)
         if self.freq is None:
@@ -102,11 +103,18 @@ class Image(object):
 	self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile)
         self.set_beam(beam)
+        self.set_freq(self.freq)
+        self.ra = self.img_hdr['CRVAL1']
+        self.dec = self.img_hdr['CRVAL2']
 
     def set_beam(self, beam):
         self.img_hdr['BMAJ'] = beam[0]
         self.img_hdr['BMIN'] = beam[1]
         self.img_hdr['BPA'] = beam[2]
+
+    def set_freq(self, freq):
+        self.img_hdr['RESTFREQ'] = freq
+        self.img_hdr['FREQ'] = freq
 
     def get_beam(self):
         return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
@@ -130,7 +138,7 @@ class Image(object):
         if invert: self.img_data[~mask] = blankvalue
         else: self.img_data[mask] = blankvalue
 
-    def calc_noise(self, niter=50, eps=1e-5):
+    def calc_noise(self, niter=100, eps=1e-6):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
@@ -145,6 +153,47 @@ class Image(object):
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
-            data = data[np.abs(data)<5*rms]
+            data = data[np.abs(data)<3*rms]
             oldrms = rms
-        raise Exception('Failed to converge')
+        raise Exception('Noise estimation failed to converge.')
+
+    def convolve(self, target_beam):
+        """
+        Convolve *to* this rsolution
+        beam = [bmaj, bmin, bpa]
+        """
+        from lib_beamdeconv import *
+        from astropy import convolution
+
+        # if difference between beam is negligible, skip - it mostly happens when beams are exactly the same
+        beam = self.get_beam()
+        if ((target_beam[0] - beam[0]) < 1e-2) and ((target_beam[1] - beam[1]) < 1e-2) and ((target_beam[2] - beam[2]) < 1):
+            return
+        # first find beam to convolve with
+        convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
+        if convolve_beam[0] is None:
+            logging.error('Cannot deconvolve this beam.')
+            sys.exit(1)
+        logging.debug('%s: Convolve beam: %.3f" %.3f" (pa %.1f deg)' \
+                % (self.imagefile, convolve_beam[0]*3600, convolve_beam[1]*3600, convolve_beam[2]))
+        # do convolution on data
+        bmaj, bmin, bpa = convolve_beam
+        assert abs(self.img_hdr['CDELT1']) == abs(self.img_hdr['CDELT2'])
+        pixsize = abs(self.img_hdr['CDELT1'])
+        fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
+        gauss_kern = EllipticalGaussian2DKernel((bmaj*fwhm2sigma)/pixsize, (bmin*fwhm2sigma)/pixsize, (90+bpa)*np.pi/180.) # bmaj and bmin are in pixels
+        self.img_data = convolution.convolve(self.img_data, gauss_kern, boundary=None)
+        self.img_data *= (target_beam[0]*target_beam[1])/(beam[0]*beam[1]) # since we are in Jt/b we need to renormalise
+        self.set_beam(target_beam) # update beam
+
+    def apply_shift(self, dra, ddec):
+        """
+        Shift header by dra/ddec
+        dra, ddec in degree
+        """
+        # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log!
+        logging.debug('%s: Shift %.2f %.2f (arcsec)' % (self.imagefile, dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600))
+        dec = self.img_hdr['CRVAL2']
+        self.img_hdr['CRVAL1'] += dra/(np.cos(np.pi*dec/180.))
+        self.img_hdr['CRVAL2'] += ddec
+

@@ -26,6 +26,7 @@ from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.table import Table
 import pyregion
+from lib_beamdeconv import *
 # https://github.com/astrofrog/reproject
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_interp
@@ -38,11 +39,13 @@ parser.add_argument('--masks', dest='masks', nargs='+', help='List of masks/regi
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
 parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
 parser.add_argument('--beamcorr', dest='beamcorr', action='store_true', help='Pre-correct for beam before combining (default: do not apply)')
+parser.add_argument('--beamarm', dest='beamarm', action='store_true', help='Convolve all images to minimum common beam (default: False)')
 parser.add_argument('--header', dest='header', help='An image/header to use for the output mosaic coordinates')
 parser.add_argument('--noises', dest='noises', type=float, nargs='+', help='UNSCALED Central noise level for weighting: must match numbers of maps')
 parser.add_argument('--scales', dest='scales', type=float, nargs='+', help='Scale factors by which maps should be multiplied: must match numbers of maps')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before mosaicing')
 parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image (default: assume equal weights, ignored if noises are given)')
+parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results (default: False)')
 parser.add_argument('--output', dest='output', default='mosaic.fits', help='Name of output mosaic (default: mosaic.fits)')
 
 args = parser.parse_args()
@@ -65,6 +68,9 @@ if args.images is None or len(args.images) < 2:
     logging.error('Requires at lest 2 images.')
     sys.exit(1)
 
+if args.shift and not args.beamcorr:
+    logging.warning('Attempting shift calculation on beam corrected images, this is not the best.')
+
 #############################################################
 
 from lib_fits import Image
@@ -77,22 +83,22 @@ class Direction(Image):
         self.shift = 0.
         self.beamfile = None
         self.noise = 1.
+        self.imagefile = imagefile
 
-        self.img_hdr, self.img_data = flatten(self.imagefile)
-
-    def set_beam(self, beamfile):
+    def set_beam_file(self, beamfile):
         if not os.path.exists(beamfile):
             logging.error('Beam file %s not found.' % beamfile)
             sys.exit(1)
+        logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
         self.beamfile = beamfile
-        self.beam_hdr, self.beam_data = flatten(pyfits.open(self.beamfile))
-        if beam_data.shape != self.img_data.shape:
+        self.beam_hdr, self.beam_data = flatten(self.beamfile)
+        if self.beam_data.shape != self.img_data.shape:
             logging.error('Beam and image shape are different.')
             sys.exit(1)
 
     def apply_beam_cut(self, beamcut=0.3):
         if self.beamfile is None: return
-        self.img_data[self.beam_data < self.beamcut] = 0.
+        self.img_data[self.beam_data < beamcut] = 0.
 
     def apply_beam_corr(self):
         if self.beamfile is None: return
@@ -107,20 +113,22 @@ class Direction(Image):
         self.weight_data /= self.noise * self.scale
         self.weight_data = self.weight_data**2.0
 
-    def calc_shift(self, ref_cat):
+    def calc_shift(self, ref_cat, separation=15):
         """
         Find a shift cross-matching source extracted from the image and a given catalog
+        separation in arcsec
         """
-        from lofar import bdsm
+        import bdsf
         from astropy.coordinates import match_coordinates_sky
         from astropy.coordinates import SkyCoord
         import astropy.units as u
 
         img_cat = self.imagefile+'.cat'
-        bdsm_img = bdsm.process_image(self.imagefile, rms_box=(100,30), \
-            thresh_pix=5, thresh_isl=3, atrous_do=False, \
-            adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
-        bdsm_img.write_catalog(outfile=img_cat, catalog_type='srl', format='fits', clobber=True)
+        if not os.path.exists(img_cat):
+            bdsf_img = bdsf.process_image(self.imagefile, rms_box=(100,30), \
+                thresh_pix=5, thresh_isl=3, atrous_do=False, \
+                adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
+            bdsf_img.write_catalog(outfile=img_cat, catalog_type='srl', format='fits', clobber=True)
 
         # read catlogue
         ref_t = Table.read(ref_cat)
@@ -129,30 +137,44 @@ class Direction(Image):
         # cross match
         idx_match, sep, _ = match_coordinates_sky(SkyCoord(ref_t['RA'], ref_t['DEC']),\
                                                   SkyCoord(img_t['RA'], img_t['DEC']))
-        idx_match = idx_match[sep<15*u.arcsec]
+        idx_match_img = idx_match[sep<separation*u.arcsec]
+        idx_match_ref = np.arange(0,len(ref_t))[sep<separation*u.arcsec]
         
         # find & apply shift
         if len(idx_match) == 0:
             logging.warning('No match found in TGSS.')
             return
-        dra = np.mean(ref_t['RA'][idx_match] - img_t['RA'][idx_match])
-        ddec = np.mean(ref_t['DEC'][idx_match] - img_t['DEC'][idx_match])
-        logging.debug('Shift for %s: %f %f (arcsec)' % (self.imagefile, dra*3600, ddec*3600))
-        ra = self.img_hdr['CRVAL1']
-        dec = self.img_hdr['CRVAL2']
-        self.img_hdr['CRVAL1'] -= dra/(3600.*np.cos(np.pi*dec/180.))
-        self.img_hdr['CRVAL2'] -= ddec/3600.
+        dra = ref_t['RA'][idx_match_ref] - img_t['RA'][idx_match_img]
+        dra[ dra>180 ] -= 360
+        dra[ dra<-180 ] += 360
+        ddec = ref_t['DEC'][idx_match_ref] - img_t['DEC'][idx_match_img]
+        self.apply_shift(np.mean(dra), np.mean(ddec))
 
         # clean up
-        os.system('rm '+img_cat)
+        if not args.save:
+            os.system('rm '+img_cat)
 
 logging.info('Reading files...')
 directions = []
+beams = []
 for i, image in enumerate(args.images):
     d = Direction(image)
+    #beams.append([d.get_beam()[0]+0.0001, d.get_beam()[0]+0.0001, 0]) 
+    beams.append(d.get_beam()) 
+    directions.append(d)
+
+if args.beamarm:
+    common_beam = findCommonBeam(beams)
+    logging.debug('Minimum common beam: %.1f" %.1f" (pa %.1f deg)' % \
+             (common_beam[0]*3600., common_beam[1]*3600., common_beam[2]))
+
+for i, d in enumerate(directions):
+
+    if args.beamarm:
+        d.convolve(common_beam)
 
     if args.beams is not None:
-        d.set_beam(args.beams[i])
+        d.set_beam_file(args.beams[i])
         d.apply_beam_cut(beamcut = args.beamcut)
 
     if args.masks is not None:
@@ -170,7 +192,6 @@ for i, image in enumerate(args.images):
     if args.shift:
         d.calc_shift(tgss_catalog)
 
-    directions.append(d)
 
 # prepare header for final gridding
 if args.header is None:
@@ -202,7 +223,6 @@ if args.header is None:
         aymax = ys.max()
         del(xs)
         del(ys)
-        print 'non-zero',axmin,aymin,axmax,aymax
         for x,y in ((axmin,aymin),(axmax,aymin),(axmin,aymax),(axmax,aymax)):
             ra, dec = [float(f) for f in w.wcs_pix2world(x,y,0)]
             #print ra,dec
@@ -251,7 +271,8 @@ for d in directions:
         r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
         r[ np.isnan(r) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
-        hdu.writeto(outname, clobber=True)
+        if args.save:
+            hdu.writeto(outname, clobber=True)
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
@@ -263,7 +284,8 @@ for d in directions:
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
-        hdu.writeto(outname, clobber=True)
+        if args.save:
+            hdu.writeto(outname, clobber=True)
     logging.debug('Add to mosaic...')
     isum += r*w
     wsum += w
