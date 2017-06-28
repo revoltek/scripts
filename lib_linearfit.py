@@ -61,7 +61,7 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
     return mean, err
 
 
-def linear_fit_bootstrap(x, y, yerr=None, niter=1000):
+def linear_fit_bootstrap(x, y, yerr=None, niter=1000, tolog=False):
     # An issue arises with scipy.curve_fit when errors in the y data points
     # are given.  Only the relative errors are used as weights, so the fit
     # parameter errors, determined from the covariance do not depended on the
@@ -85,9 +85,21 @@ def linear_fit_bootstrap(x, y, yerr=None, niter=1000):
     # Estimate the confidence interval of the fitted parameter using
     # the bootstrap Monte-Carlo method
     # http://phe.rockefeller.edu/LogletLab/whitepaper/node17.html
+    #
+    # tolog : convert in log space x, y, and yerr before doing linear regression
+    # use: (a, b, sa, sb) = linear_fit_bootstrap(x, y, yerr)
+
+    x = np.array(x)
+    y = np.array(y)
+    yerr = np.array(yerr)
 
     from scipy import optimize
     errfunc = lambda B, x, y: f(x, B[0], B[1]) - y
+
+    if tolog:
+        yerr=0.434*yerr/y
+        x=np.log10(x)
+        y=np.log10(y)
 
     pfit, pcov, infodict, errmsg, success = optimize.leastsq( errfunc, [-1, 0], args=(x, y), full_output=1)
 
@@ -136,7 +148,6 @@ def linear_fit(x, y, yerr=None):
 
 # extimate errors and accept errors on x and y-data
 def linear_fit_odr(x, y, xerr=None, yerr=None):
-#    print "Using ODR"
     from scipy import odr
     def f(B, x):
         return B[0]*x + B[1]
