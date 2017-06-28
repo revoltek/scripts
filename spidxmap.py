@@ -18,12 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os, sys, argparse, logging
+import numpy as np
 from lib_linearfit import linear_fit_bootstrap as linearfit
 from lib_fits import flatten
-from lib_beamdeconv import *
+from lib_beamdeconv import findCommonBeam
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
-from astropy import convolution
 from astropy.coordinates import match_coordinates_sky
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -43,6 +43,7 @@ parser.add_argument('--shift', dest='shift', action='store_true', help='Shift im
 parser.add_argument('--noise', dest='noise', action='store_true', help='Calculate noise of each image')
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results')
 parser.add_argument('--sigma', dest='sigma', type=float, help='Restrict to pixels above this sigma in all images')
+parser.add_argument('--circbeam', dest='circbeam', action='store_true', help='Force final beam to be circular (default: False, use minimum common beam area)')
 parser.add_argument('--output', dest='output', default='spidx.fits', help='Name of output mosaic (default: mosaic.fits)')
 
 args = parser.parse_args()
@@ -65,32 +66,6 @@ class ImageSpidx(Image):
 
     def __init__(self, imagefile):
         Image.__init__(self, imagefile)
-
-    def convolve(self, target_beam):
-        """
-        Convolve *to* this rsolution
-        beam = [bmaj, bmin, bpa]
-        """
-        # if difference between beam is negligible, skip - it mostly happens when beams are exactly the same
-        beam = self.get_beam()
-        if ((target_beam[0] - beam[0]) < 1e-4) and ((target_beam[1] - beam[1]) < 1e-4) and ((target_beam[2] - beam[2]) < 1):
-            return
-        # first find beam to convolve with
-        convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
-        if convolve_beam[0] is None: 
-            logging.error('Cannot deconvolve this beam.')
-            sys.exit(1)
-        logging.debug('%s: Convolve beam: %.3f" %.3f" (pa %.1f deg)' \
-                % (self.imagefile, convolve_beam[0]*3600, convolve_beam[1]*3600, convolve_beam[2]))
-        # do convolution on data
-        bmaj, bmin, bpa = convolve_beam
-        assert abs(self.img_hdr['CDELT1']) == abs(self.img_hdr['CDELT2'])
-        pixsize = abs(self.img_hdr['CDELT1'])
-        fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
-        gauss_kern = EllipticalGaussian2DKernel((bmaj*fwhm2sigma)/pixsize, (bmin*fwhm2sigma)/pixsize, (90+bpa)*np.pi/180.) # bmaj and bmin are in pixels
-        self.img_data = convolution.convolve(self.img_data, gauss_kern, boundary=None)
-        self.img_data *= (target_beam[0]*target_beam[1])/(beam[0]*beam[1]) # since we are in Jt/b we need to renormalise
-        self.set_beam(target_beam) # update beam
 
     def regrid(self, regrid_hdr):
         logging.debug('%s: regridding' % (self.imagefile))
@@ -128,15 +103,6 @@ class ImageSpidx(Image):
         self.cat = Table.read(img_cat)
         logging.debug('%s: Number of sources detected: %i' % (self.imagefile, len(self.cat)) )
 
-    def apply_shift(self, dra, ddec):
-        """
-        Shift header by dra/ddec
-        """
-        logging.debug('%s: Shift %.2f %.2f (arcsec)' % (self.imagefile, dra*3600, ddec*3600))
-        dec = self.img_hdr['CRVAL2']
-        self.img_hdr['CRVAL1'] += dra/(np.cos(np.pi*dec/180.))
-        self.img_hdr['CRVAL2'] += ddec
-
 
 ########################################################
 # prepare images and make catalogues if necessary
@@ -152,7 +118,11 @@ for imagefile in args.images:
 #####################################################
 # find the smallest common beam
 if args.beam is None:
-    target_beam = findCommonBeam(all_beams)
+    if args.circbeam:
+        maxmaj = np.max([b[0] for b in all_beams])
+        target_beam = [maxmaj, maxmaj, 0.]
+    else:
+        target_beam = findCommonBeam(all_beams)
 else:
     target_beam = [args.beam[0]/3600., args.beam[1]/3600., args.beam[2]]
 
@@ -175,9 +145,11 @@ if args.shift:
             logging.warning('%s: No match found, assume no shift.' % image.imagefile)
             continue
             
-        dra = np.mean(ref_cat['RA'][idx_matched_ref] - image.cat['RA'][idx_matched_img])
-        ddec = np.mean(ref_cat['DEC'][idx_matched_ref] - image.cat['DEC'][idx_matched_img])
-        image.apply_shift(dra, ddec)
+        dra = ref_cat['RA'][idx_matched_ref] - image.cat['RA'][idx_matched_img]
+        dra[ dra>180 ] -= 360
+        dra[ dra<-180 ] += 360
+        ddec = ref_cat['DEC'][idx_matched_ref] - image.cat['DEC'][idx_matched_img]
+        image.apply_shift(np.mean(dra), np.mean(ddec))
 
     # clean up
     #for image in all_images:
@@ -204,11 +176,13 @@ if args.size is None:
     if args.region is not None:
         r = pyregion.open(args.region)
         mask = r.get_mask(header=all_images[0].img_hdr, shape=all_images[0].img_data.shape)
+        intermediate = pyfits.PrimaryHDU(mask.astype(float), all_images[0].img_hdr)
+        intermediate.writeto('mask.fits', overwrite=True)
         w = all_images[0].get_wcs()
         y, x = mask.nonzero()
         ra_max, dec_max = w.all_pix2world(np.max(x), np.max(y), 0, ra_dec_order=True)
         ra_min, dec_min = w.all_pix2world(np.min(x), np.min(y), 0, ra_dec_order=True)
-        args.size = np.max( [ np.abs(ra_max-ra_min), np.abs(dec_max-dec_min) ] )
+        args.size = 2*np.max( [ np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]), np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]) ] )
     else:
         logging.warning('No size or region provided, use entire size of first image.')
         sys.exit('not implemented')
@@ -228,13 +202,17 @@ logging.info('Image size: %f deg (%i %i pixels)' % (args.size,xsize,ysize))
 #########################################################
 # regrid, convolve and only after apply mask and find noise
 for image in all_images:
-    image.regrid(regrid_hdr) # regrid initially to speed up convolution
- 
+
     image.convolve(target_beam)
     if args.save:
         intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
-        intermediate.writeto(image.imagefile+'-regrid-conv.fits', overwrite=True)
+        intermediate.writeto(image.imagefile+'-conv.fits', overwrite=True)
 
+    image.regrid(regrid_hdr) # regrid initially to speed up convolution
+    if args.save:
+        intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
+        intermediate.writeto(image.imagefile+'-regrid-conv.fits', overwrite=True)
+ 
     if args.region is not None:
         image.apply_region(args.region, invert=True) # after convolution to minimise bad pixels
     if args.noise:
@@ -259,7 +237,7 @@ for i in xrange(xsize):
     for j in xrange(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any(): continue
-        (a, b, sa, sb) = linearfit(x=np.log10(frequencies), y=np.log10(val4reg), yerr=yerr)
+        (a, b, sa, sb) = linearfit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
 

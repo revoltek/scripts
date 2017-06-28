@@ -375,14 +375,6 @@ for c in xrange(niter):
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
-        # super low resolution to catch extended emission
-        logger.info('Cleaning beam-low (cycle: '+str(c)+')...')
-        imagename = 'img/wideBeamLow'
-        s.add('wsclean -reorder -name ' + imagename + ' -size 1000 1000 -trim 700 700 -mem 90 -j '+str(s.max_processors)+' \
-                -scale 45arcsec -weight briggs 0.5 -auto-mask 5 -auto-threshold 1 -niter 10000 -no-update-model-required -mgain 0.8 -maxuv-l 3000\
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
-                log='wscleanBeamLow-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-        s.run(check=True)
 
     # clean mask clean (cut at 5k lambda)
     # no MODEL_DATA update with -baseline-averaging
@@ -478,12 +470,15 @@ for c in xrange(niter):
     #    s.add('NDPPP '+parset_dir+'/NDPPP-flag.parset msin='+ms, log=ms+'_flag-c'+str(c)+'.log', cmd_type='NDPPP')
     #s.run(check=True
     
+# make beam
+# TODO: remove when wsclean will produce a proper primary beam
+os.system('~/opt/src/makeavgpb/build/wsbeam.py img/wideBeam')
+
 # Copy images
 [ os.system('mv img/wideM-'+str(c)+'-MFS-image.fits self/images') for c in xrange(niter) ]
 [ os.system('mv img/wideM-'+str(c)+'-sources.txt self/images') for c in xrange(niter) ]
 os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv img/wideBeam-MFS-image.fits  img/wideBeam-MFS-image-pb.fits self/images')
-os.system('mv img/wideBeamLow-MFS-image.fits img/wideBeamLow-MFS-image-pb.fits self/images')
 os.system('mv logs self')
 
 logger.info("Done.")
