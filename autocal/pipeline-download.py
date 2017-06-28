@@ -60,14 +60,15 @@ def getName(ms):
         if not os.path.exists(cycle_obs+'/'+sou): os.makedirs(cycle_obs+'/'+sou)
         return cycle_obs+'/'+sou+'/'+sou+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
     else:
-        return code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
+        if not os.path.exists('mss'): os.makedirs('mss')
+        return 'mss/'+code+'_t'+time+'_SB'+str(nu2num(freq/1.e6))+'.MS'
  
 logger = set_logger('pipeline-download.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
 
 if download_file is not None:
-    with open(download_file,'r') as df:
+   with open(download_file,'r') as df:
 
         logger.info('Downloading...')
         downloaded = glob.glob('*MS')
@@ -145,7 +146,7 @@ if rename:
                 os.system('mv '+ms+' '+msout)
         s.run(check=True, max_threads=20) # limit threads to prevent I/O isssues
 
-    logger.info('Cleaning up...')
+    #logger.info('Cleaning up...')
     #check_rm('*MS')
 
 logger.info("Done.")
