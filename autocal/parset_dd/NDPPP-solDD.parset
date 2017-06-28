@@ -15,14 +15,14 @@ ddecal.maxiter = 500
 ddecal.tolerance = 1.e-5 # Is default
 ddecal.stepsize = 0.2
 ddecal.solint = 1
+
+ddecal.mode = tecandphase # phaseonly, complexgain, tec, tecandphase
+ddecal.coreconstraint = 1500 # in meters
 ddecal.propagatesolutions = True
 
-#ddecal.mode = tec # phaseonly, complexgain, tec, tecandphase
-#ddecal.coreconstraint = 1500 # in meters
-
-ddecal.mode = tecscreen
-ddecal.tecscreen.order = 4
-ddecal.tecscreen.height = 300e3
-ddecal.tecscreen.beta = 1.666666666666667
-ddecal.tecscreen.rdiff = 1e3
-ddecal.tecscreen.mode = direction # station, direction, full, CSfull
+#ddecal.mode = tecscreen
+#ddecal.tecscreen.order = 4
+#ddecal.tecscreen.height = 300e3
+#ddecal.tecscreen.beta = 1.666666666666667
+#ddecal.tecscreen.rdiff = 1e3
+#ddecal.tecscreen.mode = direction # station, direction, full, CSfull
