@@ -1,14 +1,17 @@
 msin = 
 msin.datacolumn = DATA
-# do not copy aucorr as they have too weird weights for dysco
-msin.baseline = [CR]S*&&
 msout = 
 msout.writefullresflag = False
 #msout.storagemanager = dysco
 
 numthreads = 1 # bug fix
 
-steps = [avg]
+steps = [avg,filter]
+
+# remove international
+filter.type = filter
+filter.remove=T
+filter.baseline='![CR]S&&*'
 
 avg.type = averager
 avg.freqstep = 1
