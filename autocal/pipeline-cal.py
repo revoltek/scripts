@@ -8,7 +8,7 @@ import pyrap.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
-imaging = False
+imaging = True
 clock = False
 
 if 'tooth' in os.getcwd(): # tooth 2013
@@ -195,14 +195,13 @@ run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-a
 # Correct cd+amp DATA -> CORRECTED_DATA
 logger.info('Cross delay+ampBP correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.parmdb='+ms+'/instrument-cd cor.correction=gain corrbeam.updateweights=True', log=ms+'_corCD.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Beam correction (and update weight in case of imaging) CORRECTED_DATA -> CORRECTED_DATA
-# TEST: wegith -> true
 logger.info('Beam correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA corrbeam.updateweights=False', log=ms+'_beam2.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA corrbeam.updateweights=True', log=ms+'_beam2.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Correct FR CORRECTED_DATA -> CORRECTED_DATA
@@ -257,10 +256,9 @@ if imaging:
         mss = mss[int(len(mss)/2.):] # keep only upper band
 
     # Correct all CORRECTED_DATA (beam, CD, FR, BP corrected) -> CORRECTED_DATA
-    # TEST: wegith -> true
     logger.info('Amp/ph correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=False cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
 
     logger.info('Subtract model...')
