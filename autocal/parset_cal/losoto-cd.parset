@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateBkp, plotPi, plotPi2, crossdelay, plotCD, plotCD2, residuals, plotPr, plotPr2]
+LoSoTo.Steps = [duplicateBkp, plotPi, plotPi2, crossdelay, plotCD, plotCD2, residuals, plotPr, plotPr2, reset]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -88,6 +88,7 @@ LoSoTo.Steps.plotPr2.Prefix = plots/ph-res_
 LoSoTo.Steps.plotPr2.Reference = 'CS001LBA'
 #LoSoTo.Steps.plotPr2.MinMax = [-3.14,3.14]
 
-# reset amplitude
-#LoSoTo.Steps.reset.Operation = RESET
-#LoSoTo.Steps.reset.Soltab = [sol000/amplitude000]
+# reset remotes as FR can still corrput
+LoSoTo.Steps.reset.Operation = RESET
+LoSoTo.Steps.reset.Soltab = [sol000/crossdelay]
+LoSoTo.Steps.reset.ant = ['RS310LBA,RS210LBA,RS509LBA,RS508LBA,RS407LBA,RS307LBA']

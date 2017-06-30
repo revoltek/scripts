@@ -57,7 +57,7 @@ def clean(c, mss, size=2.):
     imagename = 'img/ddcal-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs -0.5 -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 20 -minuv-l 100 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -76,7 +76,7 @@ def clean(c, mss, size=2.):
     imagename = 'img/ddcalM-'+str(c)
     s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs -0.5 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 0.1 -save-source-list -minuv-l 100 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
