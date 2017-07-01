@@ -16,7 +16,7 @@ LoSoTo.Steps.plotCSPTEC.Axes = time
 LoSoTo.Steps.plotCSPTEC.TableAxis = ant
 LoSoTo.Steps.plotCSPTEC.PlotFlag = True
 LoSoTo.Steps.plotCSPTEC.Prefix = plots/csptec_
-LoSoTo.Steps.plotCSPTEC.Reference = 'CS001LBA'
+LoSoTo.Steps.plotCSPTEC.Reference = 'CS002LBA'
 LoSoTo.Steps.plotCSPTEC.Add = [sol000/tec000]
 
 # plot CSP
@@ -26,7 +26,7 @@ LoSoTo.Steps.plotCSP.Axes = time
 LoSoTo.Steps.plotCSP.TableAxis = ant
 LoSoTo.Steps.plotCSP.PlotFlag = True
 LoSoTo.Steps.plotCSP.Prefix = plots/csp_
-LoSoTo.Steps.plotCSP.Reference = 'CS001LBA'
+LoSoTo.Steps.plotCSP.Reference = 'CS002LBA'
 
 # plot TEC
 LoSoTo.Steps.plotTEC.Operation = PLOT
@@ -36,4 +36,4 @@ LoSoTo.Steps.plotTEC.TableAxis = ant
 LoSoTo.Steps.plotTEC.PlotFlag = True
 LoSoTo.Steps.plotTEC.MinMax = [-0.5,0.5]
 LoSoTo.Steps.plotTEC.Prefix = plots/tec_
-LoSoTo.Steps.plotTEC.Reference = 'CS001LBA'
+LoSoTo.Steps.plotTEC.Reference = 'CS002LBA'
