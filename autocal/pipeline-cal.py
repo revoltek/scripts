@@ -100,10 +100,11 @@ s.run(check=True)
 # Prepare output parmdb
 # TODO: remove as soon as losoto has the proper exporter
 logger.info('Creating fake parmdb...')
-for ms in mss:
-    if os.path.exists(ms+'/instrument-clock'): continue
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-s.run(check=True)
+if clock:
+    for ms in mss:
+        if os.path.exists(ms+'/instrument-clock'): continue
+        s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
+    s.run(check=True)
 for ms in mss:
     if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
@@ -159,7 +160,7 @@ run_losoto(s, 'fr', mss, [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasu
     inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)
 
 #####################################################
-# 2: find CROSS DELAY and amplitude
+# 2: find amplitude + cd
 
 # Beam correction DATA -> CORRECTED_DATA
 logger.info('Beam correction...')
@@ -190,12 +191,12 @@ run_losoto(s, 'cd', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-a
     inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument-cd', putback=True)
 
 #################################################
-# 3: recalibrate without FR
+# 3: find iono
 
 # Correct cd+amp DATA -> CORRECTED_DATA
 logger.info('Cross delay+ampBP correction...')
 for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.parmdb='+ms+'/instrument-cd cor.correction=gain corrbeam.updateweights=True', log=ms+'_corCD.log', cmd_type='NDPPP')
+    s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.parmdb='+ms+'/instrument-cd cor.correction=gain cor.updateweights=True', log=ms+'_corCD.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Beam correction (and update weight in case of imaging) CORRECTED_DATA -> CORRECTED_DATA
@@ -261,10 +262,10 @@ if imaging:
         s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    logger.info('Subtract model...')
-    for ms in mss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql.log', cmd_type='general')
-    s.run(check=True)
+#    logger.info('Subtract model...')
+#    for ms in mss:
+#        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql.log', cmd_type='general')
+#    s.run(check=True)
 
     logger.info('Cleaning...')
     check_rm('img')
