@@ -75,12 +75,7 @@ else:
 mss = sorted(glob.glob('*.MS'))
 
 ####################################################
-# Beam correction DATA -> CORRECTED_DATA (beam corrected+reweight)
-logger.info('Beam correction...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
-s.run(check=True)
-
+# Correct fist for BP(diag)+TEC+Clock and then for beam
 # Copy instrument tables
 for ms in mss:
     tnum = re.findall(r't\d+', ms)[0][1:]
@@ -89,13 +84,19 @@ for ms in mss:
     check_rm(ms+'/instrument')
     os.system('scp -q -r '+globaldb+'/sol000_instrument-'+str(tnum)+'-'+str(sbnum)+' '+ms+'/instrument')
 
-# Apply cal sol - SB.MS:CORRECTED_DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
+# Apply cal sol - SB.MS:DATA -> SB.MS:CORRECTED_DATA (calibrator corrected+reweight, beam corrected, circular)
 logger.info('Apply solutions...')
 for ms in mss:
     if clock:
         s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' steps=[cor1,cor2] cor1.parmdb='+ms+'/instrument'+' cor2.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
     else:
         s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' steps=[cor1] cor1.parmdb='+ms+'/instrument', log=ms+'_cor.log', cmd_type='NDPPP')
+s.run(check=True)
+
+# Beam correction CORRECTED_DATA -> CORRECTED_DATA (beam corrected+reweight)
+logger.info('Beam correction...')
+for ms in mss:
+    s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms, log=ms+'_beam.log', cmd_type='NDPPP')
 s.run(check=True)
 
 # Re-set weights of flagged data to 0 - this is necessary if we want to use dysco
