@@ -16,7 +16,7 @@ if 'tooth' in os.getcwd(): # tooth 2013
     bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
-    bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA'
+    bl2flag = 'CS013LBA\;CS031LBA'
 elif 'survey' in os.getcwd():
     obs = os.getcwd().split('/')[-2] # assumes .../c??-o??/3c196
     calname = os.getcwd().split('/')[-1] # assumes .../c??-o??/3c196
@@ -128,7 +128,7 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+sourcedb+' pre.sources='+patch, log=ms+'_pre.log', cmd_type='NDPPP')
 s.run(check=True)
 
-#################################################
+##################################################
 # 1: find the FR and remve it
 
 # Beam correction DATA -> CORRECTED_DATA
@@ -205,7 +205,7 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA corrbeam.updateweights=True', log=ms+'_beam2.log', cmd_type='NDPPP')
 s.run(check=True)
 
-# Correct FR CORRECTED_DATA -> CORRECTED_DATA
+## Correct FR CORRECTED_DATA -> CORRECTED_DATA
 logger.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
@@ -223,6 +223,9 @@ for ms in mss:
     check_rm(ms+'/instrument')
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP')
 s.run(check=True)
+
+#run_losoto(s, 'flag', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-iono.parset'], outtab='amplitude000,phaseOrig000', \
+#           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
 
 if clock:
     run_losoto(s, 'iono', mss, [parset_dir+'/losoto-iono.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
@@ -259,13 +262,13 @@ if imaging:
     # Correct all CORRECTED_DATA (beam, CD, FR, BP corrected) -> CORRECTED_DATA
     logger.info('Amp/ph correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=True cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
 
-#    logger.info('Subtract model...')
-#    for ms in mss:
-#        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql.log', cmd_type='general')
-#    s.run(check=True)
+    logger.info('Subtract model...')
+    for ms in mss:
+        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql.log', cmd_type='general')
+    s.run(check=True)
 
     logger.info('Cleaning...')
     check_rm('img')
