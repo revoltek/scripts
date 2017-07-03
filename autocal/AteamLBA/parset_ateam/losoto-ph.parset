@@ -1,6 +1,6 @@
 # losoto parset
 #LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, merge]
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2]
+LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, plotPd, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -47,6 +47,17 @@ LoSoTo.Steps.plotPi3.Prefix = plots/ph_
 LoSoTo.Steps.plotPi3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPi3.MinMax = [-3.14,3.14]
 
+# test
+LoSoTo.Steps.plotPd.Operation = PLOT
+LoSoTo.Steps.plotPd.Soltab = [sol000/phase000]
+LoSoTo.Steps.plotPd.Axes = [time,freq]
+LoSoTo.Steps.plotPd.TableAxis = ant
+LoSoTo.Steps.plotPd.DiffAxis = pol
+LoSoTo.Steps.plotPd.PlotFlag = True
+LoSoTo.Steps.plotPd.Prefix = plots/ph-dif_
+LoSoTo.Steps.plotPd.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPd.MinMax = [-1,+1]
+
 # clock/tec separation
 LoSoTo.Steps.ct.Operation = CLOCKTEC
 LoSoTo.Steps.ct.Soltab = [sol000/phase000]
@@ -85,11 +96,6 @@ LoSoTo.Steps.residuals.Operation = RESIDUALS
 LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
 #LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000]
 LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # only for very low-freq dataset
-
-# NOTE: TEST
-#LoSoTo.Steps.residuals.Operation = RESIDUALS
-#LoSoTo.Steps.residuals.Soltab = [sol000/phase000]
-#LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/tec3rd000]
 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT
