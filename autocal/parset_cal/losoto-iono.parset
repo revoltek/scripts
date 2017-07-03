@@ -1,6 +1,5 @@
 # losoto parset
-#LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, merge]
-LoSoTo.Steps = [duplicatePbkp, plotPi1, plotPi2, plotPi3, plotPd, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, smoothP, merge]
+LoSoTo.Steps = [plotAi1, plotAi2, plotAi3, duplicatePbkp, plotPi1, plotPi2, plotPi3, plotPd, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, merge]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -8,6 +7,37 @@ LoSoTo.ant = []
 LoSoTo.pol = []
 LoSoTo.dir = []
 LoSoTo.Ncpu = 0
+
+#plot initials
+LoSoTo.Steps.plotAi1.Operation = PLOT
+LoSoTo.Steps.plotAi1.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotAi1.Axes = time
+LoSoTo.Steps.plotAi1.TableAxis = ant
+LoSoTo.Steps.plotAi1.ColorAxis = pol
+LoSoTo.Steps.plotAi1.PlotFlag = True
+LoSoTo.Steps.plotAi1.Prefix = plots/amp_
+LoSoTo.Steps.plotAi1.Columns = 4
+LoSoTo.Steps.plotAi1.FigSize = [20,20]
+#LoSoTo.Steps.plotAi1.MinMax = [1e-4,3e-3]
+
+LoSoTo.Steps.plotAi2.Operation = PLOT
+LoSoTo.Steps.plotAi2.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi2.time.minmax = [0,1e20,500]
+LoSoTo.Steps.plotAi2.Axes = freq
+LoSoTo.Steps.plotAi2.TableAxis = ant
+LoSoTo.Steps.plotAi2.ColorAxis = pol
+LoSoTo.Steps.plotAi2.PlotFlag = True
+LoSoTo.Steps.plotAi2.Prefix = plots/amp_
+#LoSoTo.Steps.plotAi2.MinMax = [1e-4,3e-3]
+
+LoSoTo.Steps.plotAi3.Operation = PLOT
+LoSoTo.Steps.plotAi3.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.plotAi3.Axes = [time,freq]
+LoSoTo.Steps.plotAi3.TableAxis = ant
+LoSoTo.Steps.plotAi3.PlotFlag = True
+LoSoTo.Steps.plotAi3.Prefix = plots/amp_
+#LoSoTo.Steps.plotAi3.MinMax = [100,300]
 
 # bkp copy
 LoSoTo.Steps.duplicatePbkp.Operation = DUPLICATE
@@ -23,7 +53,7 @@ LoSoTo.Steps.plotPi1.TableAxis = ant
 LoSoTo.Steps.plotPi1.ColorAxis = pol
 LoSoTo.Steps.plotPi1.PlotFlag = True
 LoSoTo.Steps.plotPi1.Prefix = plots/ph_
-LoSoTo.Steps.plotPi1.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi1.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPi1.MinMax = [-3.14,3.14]
 LoSoTo.Steps.plotPi1.Columns = 4
 LoSoTo.Steps.plotPi1.FigSize = [20,20]
@@ -36,7 +66,7 @@ LoSoTo.Steps.plotPi2.TableAxis = ant
 LoSoTo.Steps.plotPi2.ColorAxis = pol
 LoSoTo.Steps.plotPi2.PlotFlag = True
 LoSoTo.Steps.plotPi2.Prefix = plots/ph_
-LoSoTo.Steps.plotPi2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi2.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPi2.MinMax = [-3.14,3.14]
 
 LoSoTo.Steps.plotPi3.Operation = PLOT
@@ -45,7 +75,7 @@ LoSoTo.Steps.plotPi3.Axes = [time,freq]
 LoSoTo.Steps.plotPi3.TableAxis = ant
 LoSoTo.Steps.plotPi3.PlotFlag = True
 LoSoTo.Steps.plotPi3.Prefix = plots/ph_
-LoSoTo.Steps.plotPi3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPi3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPi3.MinMax = [-3.14,3.14]
 
 # test
@@ -56,7 +86,7 @@ LoSoTo.Steps.plotPd.TableAxis = ant
 LoSoTo.Steps.plotPd.DiffAxis = pol
 LoSoTo.Steps.plotPd.PlotFlag = True
 LoSoTo.Steps.plotPd.Prefix = plots/ph-dif_
-LoSoTo.Steps.plotPd.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPd.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPd.MinMax = [-1,+1]
 
 # clock/tec separation
@@ -107,7 +137,7 @@ LoSoTo.Steps.plotPr1.TableAxis = ant
 LoSoTo.Steps.plotPr1.ColorAxis = pol
 LoSoTo.Steps.plotPr1.PlotFlag = True
 LoSoTo.Steps.plotPr1.Prefix = plots/phRes_
-LoSoTo.Steps.plotPr1.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPr1.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPr1.MinMax = [-3.14,3.14]
 LoSoTo.Steps.plotPr1.Columns = 4
 LoSoTo.Steps.plotPr1.FigSize = [20,20]
@@ -120,7 +150,7 @@ LoSoTo.Steps.plotPr2.TableAxis = ant
 LoSoTo.Steps.plotPr2.ColorAxis = pol
 LoSoTo.Steps.plotPr2.PlotFlag = True
 LoSoTo.Steps.plotPr2.Prefix = plots/phRes_
-LoSoTo.Steps.plotPr2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPr2.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPr2.MinMax = [-3.14,3.14]
 
 LoSoTo.Steps.plotPr3.Operation = PLOT
@@ -129,7 +159,7 @@ LoSoTo.Steps.plotPr3.Axes = [time,freq]
 LoSoTo.Steps.plotPr3.TableAxis = ant
 LoSoTo.Steps.plotPr3.PlotFlag = True
 LoSoTo.Steps.plotPr3.Prefix = plots/phRes_
-LoSoTo.Steps.plotPr3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPr3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPr3.MinMax = [-3.14,3.14]
 
 LoSoTo.Steps.flag.Operation = FLAG
@@ -141,7 +171,7 @@ LoSoTo.Steps.flag.Order = [1200]
 LoSoTo.Steps.flag.Replce = False
 LoSoTo.Steps.flag.PreFlagZeros = False
 LoSoTo.Steps.flag.Mode = smooth
-LoSoTo.Steps.flag.Reference = 'CS001LBA'
+LoSoTo.Steps.flag.Reference = 'CS002LBA'
 
 LoSoTo.Steps.plotPrf2.Operation = PLOT
 LoSoTo.Steps.plotPrf2.Soltab = [sol000/phase000]
@@ -151,7 +181,7 @@ LoSoTo.Steps.plotPrf2.TableAxis = ant
 LoSoTo.Steps.plotPrf2.ColorAxis = pol
 LoSoTo.Steps.plotPrf2.PlotFlag = True
 LoSoTo.Steps.plotPrf2.Prefix = plots/phResFlag_
-LoSoTo.Steps.plotPrf2.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPrf2.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPrf2.MinMax = [-3.14,3.14]
 LoSoTo.Steps.plotPrf2.Columns = 4
 LoSoTo.Steps.plotPrf2.FigSize = [20,20]
@@ -162,16 +192,16 @@ LoSoTo.Steps.plotPrf3.Axes = [time,freq]
 LoSoTo.Steps.plotPrf3.TableAxis = ant
 LoSoTo.Steps.plotPrf3.PlotFlag = True
 LoSoTo.Steps.plotPrf3.Prefix = plots/phResFlag_
-LoSoTo.Steps.plotPrf3.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPrf3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
 
 # supersmooth phase residuals to be transferred in case of clock
-LoSoTo.Steps.smoothP.Operation = SMOOTH
-LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
-LoSoTo.Steps.smoothP.Axes = [time,freq]
-LoSoTo.Steps.smoothP.Mode = median
+#LoSoTo.Steps.smoothP.Operation = SMOOTH
+#LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
+#LoSoTo.Steps.smoothP.Axes = [time,freq]
+#LoSoTo.Steps.smoothP.Mode = median
 
-# copy flags on amp
+# copy flags on phorig
 LoSoTo.Steps.merge.Operation = REWEIGHT
-LoSoTo.Steps.merge.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.merge.Soltab = [sol000/phaseOrig000]
 LoSoTo.Steps.merge.MergeFromSoltab = sol000/phase000
