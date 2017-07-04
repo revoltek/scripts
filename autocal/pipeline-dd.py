@@ -74,7 +74,7 @@ def clean(c, mss, size=2.):
     #-auto-mask 3 -rms-background-window 40 -rms-background-method rms-with-min \
     logger.info('Cleaning w/ mask ('+str(c)+')...')
     imagename = 'img/ddcalM-'+str(c)
-    s.add('run_envw.sh wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
+    s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs -0.5 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
@@ -82,6 +82,7 @@ def clean(c, mss, size=2.):
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
+    sys.exit(1)
 
     return imagename
 
@@ -183,12 +184,12 @@ for c in xrange(maxniter):
 
     skymodel_cl_skydb = skymodel_cl.replace('.txt','.skydb')
     check_rm(skymodel_cl_skydb)
-    s.add( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_cl, skymodel_cl_skydb), log='makesourcedb_cl.log', cmd_type='general' )
+    s.add('run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_cl, skymodel_cl_skydb), log='makesourcedb_cl.log', cmd_type='general' )
     s.run(check=True)
 
     skymodel_voro_skydb = skymodel_voro.replace('.txt','.skydb')
     check_rm(skymodel_voro_skydb)
-    s.add( 'run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_voro, skymodel_voro_skydb), log='makesourcedb_voro.log', cmd_type='general')
+    s.add('run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_voro, skymodel_voro_skydb), log='makesourcedb_voro.log', cmd_type='general')
     s.run(check=True)
 
     ################################################################

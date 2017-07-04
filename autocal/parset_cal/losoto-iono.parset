@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [plotAi1, plotAi2, plotAi3, duplicatePbkp, plotPi1, plotPi2, plotPi3, plotPd, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, merge]
+LoSoTo.Steps = [duplicatePbka, plotAi1, plotAi2, plotAi3, duplicatePbkp, plotPi1, plotPi2, plotPi3, plotPd, ct, plotCLOCK, plotTEC, plotTEC3, residuals, plotPr1, plotPr2, plotPr3, flag, plotPrf2, plotPrf3, merge, resetA]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -7,6 +7,11 @@ LoSoTo.ant = []
 LoSoTo.pol = []
 LoSoTo.dir = []
 LoSoTo.Ncpu = 0
+
+# bkp copy
+LoSoTo.Steps.duplicatePbka.Operation = DUPLICATE
+LoSoTo.Steps.duplicatePbka.InTable = sol000/amplitude000
+LoSoTo.Steps.duplicatePbka.OutTable = sol000/amplitudeOrig000
 
 #plot initials
 LoSoTo.Steps.plotAi1.Operation = PLOT
@@ -78,7 +83,7 @@ LoSoTo.Steps.plotPi3.Prefix = plots/ph_
 LoSoTo.Steps.plotPi3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPi3.MinMax = [-3.14,3.14]
 
-# test
+# plot diff phase
 LoSoTo.Steps.plotPd.Operation = PLOT
 LoSoTo.Steps.plotPd.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPd.Axes = [time,freq]
@@ -195,13 +200,10 @@ LoSoTo.Steps.plotPrf3.Prefix = plots/phResFlag_
 LoSoTo.Steps.plotPrf3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPrf3.MinMax = [-3.14,3.14]
 
-# supersmooth phase residuals to be transferred in case of clock
-#LoSoTo.Steps.smoothP.Operation = SMOOTH
-#LoSoTo.Steps.smoothP.Soltab = [sol000/phase000]
-#LoSoTo.Steps.smoothP.Axes = [time,freq]
-#LoSoTo.Steps.smoothP.Mode = median
-
 # copy flags on phorig
 LoSoTo.Steps.merge.Operation = REWEIGHT
 LoSoTo.Steps.merge.Soltab = [sol000/phaseOrig000]
 LoSoTo.Steps.merge.MergeFromSoltab = sol000/phase000
+
+LoSoTo.Steps.resetA.Operation = RESET
+LoSoTo.Steps.resetA.Soltab = [sol000/amplitude000]
