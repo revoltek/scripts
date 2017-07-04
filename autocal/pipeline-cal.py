@@ -117,9 +117,9 @@ tab.close()
 
 for ms in mss:
     if HBA:
-        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,25)"', log=ms+'_taql.log', cmd_type='general')
+        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,25)"', log=ms+'_taql1.log', cmd_type='general')
     else:
-        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql1.log', cmd_type='general')
 s.run(check=True)
 
 # predict to save time ms:MODEL_DATA
@@ -205,7 +205,7 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA corrbeam.updateweights=True', log=ms+'_beam2.log', cmd_type='NDPPP')
 s.run(check=True)
 
-## Correct FR CORRECTED_DATA -> CORRECTED_DATA
+# Correct FR CORRECTED_DATA -> CORRECTED_DATA
 logger.info('Faraday rotation correction...')
 for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', log=ms+'_corFR.log', cmd_type='NDPPP')
@@ -224,8 +224,42 @@ for ms in mss:
     s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol3.log', cmd_type='NDPPP')
 s.run(check=True)
 
-#run_losoto(s, 'flag', mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-iono.parset'], outtab='amplitude000,phaseOrig000', \
-#           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
+# if field model available, subtract it
+field_model = '/home/fdg/scripts/model/calfields/'+patch+'-field.skydb'
+if os.path.exist(field_model):
+    logger.info('Removing field sources...')
+
+    run_losoto(s, 'noamp', mss, [parset_dir+'/losoto-noamp.parset'], outtab='amplitude000,phase000', \
+           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
+
+    # Correct all CORRECTED_DATA (beam, CD, FR, BP corrected) -> CORRECTED_DATA
+    logger.info('Ph correction...')
+    for ms in mss:
+        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_field_corG.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    logger.info('Ft model...')
+    for ms in mss:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset pre.sourcedb='+field_model+' msin='+ms, log=ms+'_field_pre.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    logger.info('Subtract model...')
+    for ms in mss:
+        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_field_taql.log', cmd_type='general')
+    s.run(check=True)
+    
+    # Smooth data CORRECTED_DATA -> SMOOTHED_DATA (BL-based smoothing)
+    logger.info('BL-smooth...')
+    for ms in mss:
+        s.add('BLsmooth.py -r -i CORRECTED_DATA -o SMOOTHED_DATA '+ms, log=ms+'_field_smooth.log', cmd_type='python')
+    s.run(check=True)
+
+    # Solve cal_SB.MS:SMOOTHED_DATA (only solve)
+    logger.info('Calibrating...')
+    for ms in mss:
+        check_rm(ms+'/instrument')
+        s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_field_sol.log', cmd_type='NDPPP')
+    s.run(check=True)
 
 if clock:
     run_losoto(s, 'iono', mss, [parset_dir+'/losoto-iono.parset'], outtab='amplitude000,phase000,clock000', \
@@ -267,7 +301,7 @@ if imaging:
 
     logger.info('Subtract model...')
     for ms in mss:
-        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql.log', cmd_type='general')
+        s.add('taql "update '+ms+' set CORRECTED_DATA = CORRECTED_DATA - MODEL_DATA"', log=ms+'_taql2.log', cmd_type='general')
     s.run(check=True)
 
     logger.info('Cleaning...')
@@ -291,7 +325,8 @@ if imaging:
     imagename = 'img/wideM'
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -minuv-l 100 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -apply-primary-beam -use-differential-lofar-beam \
+            -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanB.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
