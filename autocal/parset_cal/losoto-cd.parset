@@ -81,4 +81,4 @@ LoSoTo.Steps.plotPr2.MinMax = [-3.14,3.14]
 # reset remotes as FR can still corrput
 LoSoTo.Steps.reset.Operation = RESET
 LoSoTo.Steps.reset.Soltab = [sol000/crossdelay]
-LoSoTo.Steps.reset.ant = ['RS310LBA','RS210LBA','RS509LBA','RS508LBA','RS407LBA','RS307LBA']
+LoSoTo.Steps.reset.ant = ['RS310LBA','RS210LBA','RS509LBA','RS508LBA','RS407LBA']

@@ -1,6 +1,5 @@
 msin = 
 msin.datacolumn = DATA
-msin.baseline = [CR]S*&&
 
 msout = 
 msout.writefullresflag = False
@@ -8,7 +7,10 @@ msout.writefullresflag = False
 
 numthreads = 1 # bug fix
 
-steps = [avg]
+steps = [filter, avg]
+
+filter.remove=T
+filter.baseline='![CR]S&*'
 
 avg.type = averager
 avg.freqstep = 1

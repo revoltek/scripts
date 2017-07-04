@@ -22,7 +22,7 @@ LoSoTo.Steps.plotA1.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.plotA1.Axes = [time,freq]
 LoSoTo.Steps.plotA1.TableAxis = ant
 LoSoTo.Steps.plotA1.PlotFlag = True
-LoSoTo.Steps.plotA1.Prefix = plots/ampPF_
+LoSoTo.Steps.plotA1.Prefix = plots/ampBF_
 #LoSoTo.Steps.plotA1.MinMax = [100,300]
 
 # flag

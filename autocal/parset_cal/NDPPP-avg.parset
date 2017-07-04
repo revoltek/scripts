@@ -11,7 +11,7 @@ steps = [filter,avg]
 # do not copy aucorr as they have too weird weights for dysco
 # do not copy international
 filter.remove=T
-filter.baseline='![CR]S&&*'
+filter.baseline='![CR]S&*'
 
 avg.type = averager
 avg.freqstep = 1
