@@ -27,6 +27,7 @@ LoSoTo.Steps.plotPi.MinMax = [-3.14,3.14]
 # faraday rotation extraction
 LoSoTo.Steps.faraday.Operation = FARADAY
 LoSoTo.Steps.faraday.Soltab = [sol000/phase000]
+LoSoTo.Steps.faraday.RefAnt = 'CS002LBA'
 
 LoSoTo.Steps.plotFR.Operation = PLOT
 LoSoTo.Steps.plotFR.Soltab = [sol000/rotationmeasure000]

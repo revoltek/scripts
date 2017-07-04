@@ -228,7 +228,7 @@ s.run(check=True)
 #           inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
 
 if clock:
-    run_losoto(s, 'iono', mss, [parset_dir+'/losoto-iono.parset'], outtab='amplitudeSmooth000,phase000,clock000', \
+    run_losoto(s, 'iono', mss, [parset_dir+'/losoto-iono.parset'], outtab='amplitude000,phase000,clock000', \
            inglobaldb='globaldb', outglobaldb='globaldb-clock', ininstrument='instrument', outinstrument='instrument-clock', putback=False)
 else:
     run_losoto(s, 'iono', mss, [parset_dir+'/losoto-iono.parset'], outtab='amplitude000,phaseOrig000', \
@@ -291,7 +291,7 @@ if imaging:
     imagename = 'img/wideM'
     s.add('wsclean -reorder -name ' + imagename + ' -size 5000 5000 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.8 -minuv-l 100 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -fitsmask '+maskname+' '+' '.join(mss), \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanB.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 

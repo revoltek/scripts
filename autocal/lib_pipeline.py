@@ -113,7 +113,7 @@ class Scheduler():
 
         if max_threads == None:
             if self.cluster == 'Hamburg': self.max_threads = 32
-            elif self.cluster == 'Leiden': self.max_threads = 32 # TODO: put to 64 for full cluster
+            elif self.cluster == 'Leiden': self.max_threads = 64
             elif self.cluster == 'CEP3': self.max_threads = 40
             else: self.max_threads = 12
         else:
