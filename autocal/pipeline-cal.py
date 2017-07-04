@@ -13,7 +13,7 @@ clock = False
 
 if 'tooth' in os.getcwd(): # tooth 2013
     datadir = '../cals-bkp/'
-    bl2flag = 'CS031LBA\;RS409LBA\;RS310LBA'
+    bl2flag = 'CS031LBA'
 elif 'bootes' in os.getcwd(): # bootes 2013
     datadir = '../cals-bkp/'
     bl2flag = 'CS013LBA\;CS031LBA'
@@ -249,7 +249,7 @@ if 'survey' in os.getcwd():
     check_rm('globaldb/instrument*') # keep only filled instrument tables
     newglobaldb = 'globaldb_'+os.getcwd().split('/')[-2]
     logger.info('Copy: globaldb -> dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
-    os.system('ssh dsk "rm -f /disks/paradata/fdg/LBAsurvey/%s"' % newglobaldb)
+    os.system('ssh dsk "rm -rf /disks/paradata/fdg/LBAsurvey/%s"' % newglobaldb)
     os.system('scp -q -r globaldb dsk:/disks/paradata/fdg/LBAsurvey/%s' % newglobaldb)
 
 # a debug image
