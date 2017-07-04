@@ -83,7 +83,7 @@ LoSoTo.Steps.plotPi3.Prefix = plots/ph_
 LoSoTo.Steps.plotPi3.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPi3.MinMax = [-3.14,3.14]
 
-# test
+# plot diff phase
 LoSoTo.Steps.plotPd.Operation = PLOT
 LoSoTo.Steps.plotPd.Soltab = [sol000/phase000]
 LoSoTo.Steps.plotPd.Axes = [time,freq]
