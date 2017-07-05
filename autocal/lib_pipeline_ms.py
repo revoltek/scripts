@@ -91,6 +91,7 @@ def find_timeint(ms):
 def get_phase_centre(ms):
     """
     Get the phase centre of the first source (is it a problem?) of an MS
+    values in deg
     """
     field_no = 0
     ant_no = 0

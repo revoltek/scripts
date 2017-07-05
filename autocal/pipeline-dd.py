@@ -82,7 +82,6 @@ def clean(c, mss, size=2.):
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
-    sys.exit(1)
 
     return imagename
 
@@ -107,7 +106,6 @@ def mask_cc(image):
     logger.info('Predict (apply mask)...')
     lsm = lsmtool.load(image.skymodel)
     lsm.select('%s == True' % image.maskname)
-    fluxes = lsm.getColValues('I')
     lsm.write(image.skymodel_cut, format='makesourcedb', clobber=True)
     del lsm
 
