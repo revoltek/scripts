@@ -227,7 +227,7 @@ for c in xrange(maxniter):
         for ms in mss:
             #s.add('NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
             #     log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
                   log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
@@ -260,7 +260,7 @@ for c in xrange(maxniter):
         for ms in mss:
             #s.add('NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
             #     log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
                   log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
@@ -288,7 +288,7 @@ for c in xrange(maxniter):
             #s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
 
             #   log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
                   log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
@@ -313,18 +313,18 @@ for c in xrange(maxniter):
     for image, region in zip( sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')), sorted(glob.glob('ddcal/regions/Dir*')) ):
         directions.append( Image(image, region_facet = region) )
 
-    logger.info('Mosaic: residuals...')
-    images = ' '.join([image.imagename.replace('image', 'residual') for image in directions])
-    masks = ' '.join([image.region_facet for image in directions])
-    mosaic_residual = 'img/mos-MFS-residual.fits'
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_residual, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
-    s.run(check=True)
-
     logger.info('Mosaic: image...')
     images = ' '.join([image.imagename for image in directions])
     masks = ' '.join([image.region_facet for image in directions])
     mosaic_imagename = 'img/mos-MFS-image.fits'
     s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_imagename, log='mosaic-img-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
+
+    logger.info('Mosaic: residuals...')
+    images = ' '.join([image.imagename.replace('image', 'residual') for image in directions])
+    masks = ' '.join([image.region_facet for image in directions])
+    mosaic_residual = 'img/mos-MFS-residual.fits'
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_residual, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     # prepare new skymodel
