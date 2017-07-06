@@ -2,13 +2,19 @@ msin =
 msin.datacolumn = MODEL_DATA
 msout = .
 msout.datacolumn = MODEL_DATA
-#msout.storagemanager = dysco
 
 numthreads = 1 # bug fix
 
-steps = [cor1]
+steps = [cor1, cor2]
 
-cor.type = applycal
-cor.parmdb =
-cor.correction = tec
-cor.invert = False
+cor1.type = applycal
+cor1.parmdb =
+cor1.correction = tec
+cor1.invert = False
+cor2.direction=
+
+cor2.type = applycal
+cor2.parmdb =
+cor2.correction = scalarphase
+cor2.invert = False
+cor2.direction=
