@@ -13,6 +13,6 @@ pre.sourcedb =
 pre.sources = 
 pre.usebeammodel = False
 # and corrupt
-pre.applycal.parmdb = 
-pre.applycal.correction = tec000
-pre.applycal.direction = 
+#pre.applycal.h5parm = 
+#pre.applycal.correction = tec000
+#pre.applycal.direction = 
