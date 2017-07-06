@@ -332,4 +332,17 @@ if imaging:
             log='wscleanB.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
+    # prepare mask
+    logger.info('Masking skymodel...'
+    make_mask(image_name=imagename+'-MFS-image.fits', mask_name=imagename+'-mask.fits', threshisl=5, atrous_do=True)
+    # apply mask
+    logger.info('Predict (apply mask)...')
+    lsm = lsmtool.load(imagename+'-sources-pb.txt')
+    lsm.select('%s == True' % (imagename+'-mask.fits'))
+    cRA, cDEC = get_phase_centre(mss[0])
+    lsm.select( lsm.getDistance(cRA, cDEC) > 0.1 )
+    lsm.group('every')
+    lsm.write(imagename+'-sources-pb-cut.txt', format='makesourcedb', clobber=True)
+    del lsm
+
 logger.info("Done.")
