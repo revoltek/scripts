@@ -57,7 +57,7 @@ def clean(c, mss, size=2.):
     imagename = 'img/ddcal-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs -0.5 -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0. -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 20 -minuv-l 100 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -76,7 +76,7 @@ def clean(c, mss, size=2.):
     imagename = 'img/ddcalM-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size '+str(imsize)+' '+str(imsize)+' -trim '+str(trim)+' '+str(trim)+' \
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-            -scale '+str(pixscale)+'arcsec -weight briggs -0.5 -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
+            -scale '+str(pixscale)+'arcsec -weight briggs 0. -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
             -auto-threshold 0.1 -save-source-list -minuv-l 100 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
@@ -140,10 +140,10 @@ for ms in mss:
 s.run(check=True)
 
 ###############################################################
-logger.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-s.run(check=True)
+#logger.info('BL-based smoothing...')
+#for ms in mss:
+#    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+#s.run(check=True)
 
 mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1])
 mask_cc(mosaic_image)
@@ -190,22 +190,22 @@ for c in xrange(maxniter):
     s.add('run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_voro, skymodel_voro_skydb), log='makesourcedb_voro.log', cmd_type='general')
     s.run(check=True)
 
-    ################################################################
-    # Calibration
-    logger.info('Calibrating...')
-    for ms in mss:
-        check_rm(ms+'/cal-c'+str(c)+'.h5')
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
-                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
-    s.run(check=True)
-
-    # Plot solutions
-    # TODO: concat h5parm into a single file
-    logger.info('Running losoto...')
-    for i, ms in enumerate(mss):
-        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
-        s.run(check=True)
-        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
+#    ################################################################
+#    # Calibration
+#    logger.info('Calibrating...')
+#    for ms in mss:
+#        check_rm(ms+'/cal-c'+str(c)+'.h5')
+#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
+#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+#    s.run(check=True)
+#
+#    # Plot solutions
+#    # TODO: concat h5parm into a single file
+#    logger.info('Running losoto...')
+#    for i, ms in enumerate(mss):
+#        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+#        s.run(check=True)
+#        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
 
     ############################################################
     # Empty the dataset
@@ -217,16 +217,19 @@ for c in xrange(maxniter):
     logger.info('Subtraction...')
     for i, p in enumerate(patches):
         logger.info('Patch '+p+': predict...')
+        #pre.applycal.h5parm='+ms+'/cal-c'+str(c)+'.h5 pre.applycal.direction='+p, \
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p+' \
-                    predict.applycal.parmdb='+ms+'/cal-c'+str(c)+'.h5 predict.applycal.direction='+p, \
-                    log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p, \
+                   log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        #logger.info('Patch '+p+': corrupt...')
-        #for ms in mss:
-        #    s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
-        #s.run(check=True)
+        logger.info('Patch '+p+': corrupt...')
+        for ms in mss:
+            #s.add('NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            #     log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
+                  log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
+        s.run(check=True)
 
         logger.info('Patch '+p+': subtract...')
         for ms in mss:
@@ -247,16 +250,19 @@ for c in xrange(maxniter):
 
     for i, p in enumerate(patches):
         logger.info('Patch '+p+': predict...')
+        #pre.applycal.h5parm='+ms+'/cal-c'+str(c)+'.h5 pre.applycal.direction='+p, \
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p+ '\
-                    predict.applycal.parmdb='+ms+'/cal-c'+str(c)+'.h5 predict.applycal.direction='+p, \
-                    log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+skymodel_voro_skydb+' pre.sources='+p, \
+                   log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-        #logger.info('Patch '+p+': corrupt...')
-        #for ms in mss:
-        #    s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol MODEL_DATA --outcol MODEL_DATA -c', log=ms+'_cor1-c'+str(c)+'.log', cmd_type='python')
-        #s.run(check=True)
+        logger.info('Patch '+p+': corrupt...')
+        for ms in mss:
+            #s.add('NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            #     log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
+                  log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
+        s.run(check=True)
 
         logger.info('Patch '+p+': add...')
         for ms in mss:
@@ -279,9 +285,11 @@ for c in xrange(maxniter):
 
         logger.info('Patch '+p+': correct...')
         for ms in mss:
-            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+str(i)+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', log=ms+'_cor2-c'+str(c)+'.log', cmd_type='python')
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor.direction='+p, \
-                 log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            #s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+
+            #   log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
+                  log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': phase shift and avg...')
@@ -305,18 +313,18 @@ for c in xrange(maxniter):
     for image, region in zip( sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')), sorted(glob.glob('ddcal/regions/Dir*')) ):
         directions.append( Image(image, region_facet = region) )
 
-    logger.info('Mosaic: residuals...')
-    images = ' '.join([image.imagename.replace('image', 'residual') for image in directions])
-    masks = ' '.join([image.region_facet for image in directions])
-    mosaic_residual = 'img/mos-MFS-residual.fits'
-    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_residual, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
-    s.run(check=True)
-
     logger.info('Mosaic: image...')
     images = ' '.join([image.imagename for image in directions])
     masks = ' '.join([image.region_facet for image in directions])
     mosaic_imagename = 'img/mos-MFS-image.fits'
     s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_imagename, log='mosaic-img-c'+str(c)+'.log', cmd_type='python')
+    s.run(check=True)
+
+    logger.info('Mosaic: residuals...')
+    images = ' '.join([image.imagename.replace('image', 'residual') for image in directions])
+    masks = ' '.join([image.region_facet for image in directions])
+    mosaic_residual = 'img/mos-MFS-residual.fits'
+    s.add('mosaic.py --image '+images+' --masks '+masks+' --output '+mosaic_residual, log='mosaic-res-c'+str(c)+'.log', cmd_type='python')
     s.run(check=True)
 
     # prepare new skymodel
