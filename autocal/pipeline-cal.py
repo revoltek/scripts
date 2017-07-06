@@ -333,7 +333,7 @@ if imaging:
     s.run(check=True)
 
     # prepare mask
-    logger.info('Masking skymodel...'
+    logger.info('Masking skymodel...')
     make_mask(image_name=imagename+'-MFS-image.fits', mask_name=imagename+'-mask.fits', threshisl=5, atrous_do=True)
     # apply mask
     logger.info('Predict (apply mask)...')
