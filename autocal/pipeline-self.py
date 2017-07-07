@@ -22,7 +22,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 3
 user_mask = None
-cc_predict = True
+cc_predict = False
 
 if 'tooth' in os.getcwd():
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
@@ -323,12 +323,12 @@ for c in xrange(niter):
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
                     log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-       # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+       # Correct CD SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Cross-delay correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        # Correct beam SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        # Correct beam amp SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Beam amp correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
@@ -364,7 +364,7 @@ for c in xrange(niter):
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-   ###################################################################################################################
+    ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
 
     # do beam-corrected+deeper image at last cycle
