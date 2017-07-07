@@ -188,7 +188,7 @@ for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 for ms in mss:
-    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=replace(NAME,\':@MODEL_DATA\',\'\')"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
 #####################################################################################################
