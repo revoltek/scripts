@@ -29,7 +29,7 @@ print "Applying dir %s" % h5.root.sol000.tec000.dir[direction]
 sols_tec = np.squeeze(soltab_tec.val) # remove freq axis with squeeze
 wgts_tec = np.squeeze(soltab_tec.weight)
 sols_csp = np.squeeze(soltab_csp.val)
-#sols_csp = -1.*np.array(sols_csp)
+#sols_csp = -1.*np.array(sols_csp) # bug in NDPPP
 wgts_csp = np.squeeze(soltab_csp.weight)
 
 times = soltab_tec.time
@@ -49,12 +49,13 @@ for timestep, buf in enumerate(t.iter("TIME")):
         if (wgts_tec[ant1,direction,timestep] == 0).all() or (wgts_tec[ant2,direction,timestep] == 0).all() \
                 or (wgts_csp[ant1,direction,timestep] == 0).all() or (wgts_csp[ant2,direction,timestep] == 0).all():
             flag[rownr,:,:] = True
+            print "skip flagged ",
             continue
 
-        g1 = sols_csp[ant1,direction,timestep] + sols_tec[ant1,direction,timestep] * 8.44797245e9 / freqs
+        g1 = sols_csp[ant1,direction,timestep] - sols_tec[ant1,direction,timestep] * 8.44797245e9 / freqs
         #g1 = -1. * sols_tec[ant1,direction,timestep] * 8.44797245e9 / freqs
         g1 = cos(g1) + 1j*sin(g1)
-        g2 = sols_csp[ant2,direction,timestep] + sols_tec[ant2,direction,timestep] * 8.44797245e9 / freqs
+        g2 = sols_csp[ant2,direction,timestep] - sols_tec[ant2,direction,timestep] * 8.44797245e9 / freqs
         #g2 = -1. * sols_tec[ant2,direction,timestep] * 8.44797245e9 / freqs
         g2 = cos(g2) + 1j*sin(g2)
         for pol in range(4):

@@ -140,10 +140,10 @@ for ms in mss:
 s.run(check=True)
 
 ###############################################################
-#logger.info('BL-based smoothing...')
-#for ms in mss:
-#    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-#s.run(check=True)
+logger.info('BL-based smoothing...')
+for ms in mss:
+    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+s.run(check=True)
 
 mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1])
 mask_cc(mosaic_image)
@@ -190,22 +190,22 @@ for c in xrange(maxniter):
     s.add('run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_voro, skymodel_voro_skydb), log='makesourcedb_voro.log', cmd_type='general')
     s.run(check=True)
 
-#    ################################################################
-#    # Calibration
-#    logger.info('Calibrating...')
-#    for ms in mss:
-#        check_rm(ms+'/cal-c'+str(c)+'.h5')
-#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
-#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
-#    s.run(check=True)
-#
-#    # Plot solutions
-#    # TODO: concat h5parm into a single file
-#    logger.info('Running losoto...')
-#    for i, ms in enumerate(mss):
-#        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
-#        s.run(check=True)
-#        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
+    ################################################################
+    # Calibration
+    logger.info('Calibrating...')
+    for ms in mss:
+        check_rm(ms+'/cal-c'+str(c)+'.h5')
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
+                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
+
+    # Plot solutions
+    # TODO: concat h5parm into a single file
+    logger.info('Running losoto...')
+    for i, ms in enumerate(mss):
+        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+        s.run(check=True)
+        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
 
     ############################################################
     # Empty the dataset
@@ -216,6 +216,7 @@ for c in xrange(maxniter):
 
     logger.info('Subtraction...')
     for i, p in enumerate(patches):
+        # predict - ms:MODEL_DATA
         logger.info('Patch '+p+': predict...')
         #pre.applycal.h5parm='+ms+'/cal-c'+str(c)+'.h5 pre.applycal.direction='+p, \
         for ms in mss:
@@ -223,12 +224,13 @@ for c in xrange(maxniter):
                    log=ms+'_pre1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
+        # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            #s.add('NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
-            #     log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
-                  log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
+            s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+                 log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
+            #      log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': subtract...')
@@ -249,6 +251,7 @@ for c in xrange(maxniter):
     #s.run(check=True)
 
     for i, p in enumerate(patches):
+        # predict - ms:MODEL_DATA
         logger.info('Patch '+p+': predict...')
         #pre.applycal.h5parm='+ms+'/cal-c'+str(c)+'.h5 pre.applycal.direction='+p, \
         for ms in mss:
@@ -256,12 +259,13 @@ for c in xrange(maxniter):
                    log=ms+'_pre2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
+        # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            #s.add('NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
-            #     log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
-                  log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
+            s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+                 log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
+            #      log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': add...')
@@ -269,7 +273,7 @@ for c in xrange(maxniter):
             s.add('taql "update '+ms+' set CORRECTED_DATA = SUBTRACTED_DATA + MODEL_DATA"', log=ms+'_taql2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='general')
         s.run(check=True)
 
-        # TEST
+        ### TEST
         #logger.info('Patch '+p+': phase shift and avg...')
         #check_rm('mss_dd')
         #os.makedirs('mss_dd')
@@ -280,16 +284,17 @@ for c in xrange(maxniter):
         #        log=ms+'_shift-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         #s.run(check=True)
         #logger.info('Patch '+p+': corrupted image...')
-        #clean('uncor-'+p, glob.glob('mss_dd/*MS'), size=sizes[i]) # TEST
-        # end TEST
+        #clean('uncor-'+p, glob.glob('mss_dd/*MS'), size=sizes[i])
+        ### end TEST
 
+        # DD-correct - ms:CORRECTED_DATA -> ms:CORRECTED_DATA
         logger.info('Patch '+p+': correct...')
         for ms in mss:
-            #s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
 
-            #   log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
-                  log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
+               log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
+            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
+            #      log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': phase shift and avg...')
