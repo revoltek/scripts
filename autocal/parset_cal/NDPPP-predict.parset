@@ -14,3 +14,6 @@ pre.sources =
 pre.usebeammodel = True
 pre.usechannelfreq = False
 pre.beammode = array_factor
+
+#pre.applycal.parmdb = 
+#pre.applycal.correction = gain
