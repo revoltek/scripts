@@ -26,7 +26,7 @@ elif 'survey' in os.getcwd():
         bl2flag = 'CS031LBA\;RS310LBA\;RS210LBA\;RS409LBA\;RS407LBA'
 else:
     datadir = '../cals-bkp/'
-    bl2flag = 'RS310HBA'
+    bl2flag = ''
 
 ########################################################
 logger = set_logger('pipeline-cal.logger')
@@ -111,15 +111,12 @@ for ms in mss:
 s.run(check=True)
 
 # are we doing HBA?
-tab = pt.table(mss[0]+'/instrument-fr/NAMES/', ack=False)
-HBA = 'HBA' in tab.getcol('NAME')[0]
-tab.close()
+#tab = pt.table(mss[0]+'/instrument-fr/NAMES/', ack=False)
+#HBA = 'HBA' in tab.getcol('NAME')[0]
+#tab.close()
 
 for ms in mss:
-    if HBA:
-        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,25)"', log=ms+'_taql1.log', cmd_type='general')
-    else:
-        s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql1.log', cmd_type='general')
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=replace(NAME,\':@MODEL_DATA\',\'\')"', log=ms+'_taql1.log', cmd_type='general')
 s.run(check=True)
 
 # predict to save time ms:MODEL_DATA
@@ -232,15 +229,10 @@ if os.path.exists(field_model):
     run_losoto(s, 'noamp', mss, [parset_dir+'/losoto-noamp.parset'], outtab='amplitude000,phase000', \
            inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=True)
 
-    # Correct all CORRECTED_DATA (beam, CD, FR, BP corrected) -> CORRECTED_DATA
-    logger.info('Ph correction...')
+    logger.info('Ft+corrupt model...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_field_corG.log', cmd_type='NDPPP')
-    s.run(check=True)
-
-    logger.info('Ft model...')
-    for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset pre.sourcedb='+field_model+' msin='+ms, log=ms+'_field_pre.log', cmd_type='NDPPP')
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+field_model+' \
+                pre.applycal.parmdb='+ms+'/instrument pre.applycal.correction=gain', log=ms+'_field_pre.log', cmd_type='NDPPP')
     s.run(check=True)
 
     logger.info('Subtract model...')
