@@ -156,7 +156,7 @@ for c in xrange(maxniter):
     os.makedirs('img')
 
     lsm = lsmtool.load(mosaic_image.skymodel_cut)
-    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
+    lsm.group('tessellate', targetFlux='40Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
     directions_clusters = lsm.getPatchPositions()
     patches = lsm.getPatchNames()
     logger.info("Created %i directions." % len(patches))
@@ -229,8 +229,6 @@ for c in xrange(maxniter):
         for ms in mss:
             s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
                  log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
-            #      log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': subtract...')
@@ -264,8 +262,6 @@ for c in xrange(maxniter):
         for ms in mss:
             s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
                  log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol MODEL_DATA --outcol MODEL_DATA -c', \
-            #      log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': add...')
@@ -291,10 +287,9 @@ for c in xrange(maxniter):
         logger.info('Patch '+p+': correct...')
         for ms in mss:
             s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
-
                log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
             #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
-            #      log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
+            #    log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': phase shift and avg...')
@@ -341,10 +336,10 @@ for c in xrange(maxniter):
     for skymodel in skymodels[1:]:
         lsm2 = lsmtool.load(skymodel)
         lsm.concatenate(lsm2)
-    lsm.write('ddcal/images/c'+str(c)+'/mos_sources-cut.txt', format='makesourcedb', clobber=True)
+    lsm.write('ddcal/images/c'+str(c)+'/mos-sources-cut.txt', format='makesourcedb', clobber=True)
 
     os.system('cp img/*M*MFS-image.fits img/mos-MFS-image.fits img/mos-MFS-residual.fits ddcal/images/c'+str(c))
-    mosaic_image = Image('ddcal/images/c'+str(c)+'/mos_MFS-image.fits')
+    mosaic_image = Image('ddcal/images/c'+str(c)+'/mos-MFS-image.fits')
 
     # get noise, if larger than 95% of prev cycle: break
     rms_noise = get_noise_img(mosaic_residual)

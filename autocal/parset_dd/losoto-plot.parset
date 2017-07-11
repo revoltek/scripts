@@ -36,4 +36,3 @@ LoSoTo.Steps.plotTEC.PlotFlag = True
 LoSoTo.Steps.plotTEC.MinMax = [-0.2,0.2]
 LoSoTo.Steps.plotTEC.Prefix = plots/tec_
 LoSoTo.Steps.plotTEC.Reference = 'CS002LBA'
-

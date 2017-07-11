@@ -29,7 +29,6 @@ print "Applying dir %s" % h5.root.sol000.tec000.dir[direction]
 sols_tec = np.squeeze(soltab_tec.val) # remove freq axis with squeeze
 wgts_tec = np.squeeze(soltab_tec.weight)
 sols_csp = np.squeeze(soltab_csp.val)
-#sols_csp = -1.*np.array(sols_csp) # bug in NDPPP
 wgts_csp = np.squeeze(soltab_csp.weight)
 
 times = soltab_tec.time
