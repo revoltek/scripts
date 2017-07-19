@@ -113,7 +113,7 @@ def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_co
     lsm = lsmtool.load(skymodel)
     lsm.select('%s == True' % maskname)
     fluxes = lsm.getColValues('I')
-    lsm.remove(np.abs(fluxes) < 5e-4) # TEST
+    #lsm.remove(np.abs(fluxes) < 5e-4) # TEST
     lsm.write(skymodel_cut, format='makesourcedb', clobber=True)
     del lsm
 

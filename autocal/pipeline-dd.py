@@ -64,10 +64,8 @@ def clean(c, mss, size=2.):
     s.run(check=True)
 
     # make mask
-    maskname = imagename+'-mask.fits'
-    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3)
-    if user_mask is not None:
-        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
+    im = Image(imagename+'-MFS-image.fits', user_mask=user_mask)
+    im.make_mask(threshisl = 3)
 
     # clean 2
     #-multiscale -multiscale-scale-bias 0.5 \
@@ -78,7 +76,7 @@ def clean(c, mss, size=2.):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0. -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
-            -auto-threshold 0.1 -save-source-list -minuv-l 100 -fitsmask '+maskname+' '+' '.join(mss), \
+            -auto-threshold 0.1 -save-source-list -minuv-l 100 -fitsmask '+im.maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
@@ -86,37 +84,42 @@ def clean(c, mss, size=2.):
     return imagename
 
 
-def mask_cc(image):
-    """
-    remove less-important cc from a skymodel
-    """
-    logger.info('Masking skymodel on %s...' % image.imagename)
-
-    # prepare mask
-    if not os.path.exists(image.maskname):
-        logger.info('Predict (make mask)...')
-        make_mask(image_name=image.imagename, mask_name=image.maskname, threshisl=5, atrous_do=True)
-    if user_mask is not None:
-        blank_image_reg(image.maskname, user_mask, inverse=False, blankval=1)
-    if image.region_facet is not None:
-        logger.info('Predict (apply facet mask %s)...' % image.region_facet)
-        blank_image_reg(image.maskname, image.region_facet, inverse=True, blankval=0) # set to 0 pixels outside facet mask
-
-    # apply mask
-    logger.info('Predict (apply mask)...')
-    lsm = lsmtool.load(image.skymodel)
-    lsm.select('%s == True' % image.maskname)
-    lsm.write(image.skymodel_cut, format='makesourcedb', clobber=True)
-    del lsm
-
-
 class Image(object):
-    def __init__(self, imagename, region_facet = None):
+    def __init__(self, imagename, region_facet = None, user_mask = None):
         self.imagename = imagename
         self.maskname = imagename.replace('MFS-image.fits', 'mask.fits')
         self.skymodel = imagename.replace('MFS-image.fits', 'sources.txt')
         self.skymodel_cut = imagename.replace('MFS-image.fits', 'sources-cut.txt')
         self.region_facet = region_facet
+        self.user_mask = user_mask
+
+    def make_mask(self, threshisl=5):
+        """
+        Create a mask of the image where only belivable flux is
+        """
+        logger.info('%s: Making mask...' % self.imagename)
+        if not os.path.exists(self.maskname):
+            make_mask(image_name=self.imagename, mask_name=self.maskname, threshisl=threshisl, atrous_do=True)
+        if self.user_mask is not None:
+            logger.info('%s: Adding user mask (%s)...' % (self.imagename, self.user_mask))
+            blank_image_reg(self.maskname, self.user_mask, inverse=False, blankval=1)
+
+    def select_cc(self):
+        """
+        remove cc from a skymodel according to masks
+        """
+        self.make_mask()
+
+        if self.region_facet is not None:
+            logger.info('Predict (apply facet mask %s)...' % self.region_facet)
+            blank_image_reg(self.maskname, self.region_facet, inverse=True, blankval=0) # set to 0 pixels outside facet mask
+
+        # apply mask
+        logger.info('%s: Apply mask on skymodel...' % self.imagename)
+        lsm = lsmtool.load(self.skymodel)
+        lsm.select('%s == True' % self.maskname)
+        lsm.write(self.skymodel_cut, format='makesourcedb', clobber=True)
+        del lsm
 
 
 ############################################################
@@ -145,8 +148,8 @@ for ms in mss:
     s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
 s.run(check=True)
 
-mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1])
-mask_cc(mosaic_image)
+mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1], user_mask = user_mask)
+mosaic_image.select_cc()
 rms_noise_pre = np.inf
 
 for c in xrange(maxniter):
@@ -177,7 +180,7 @@ for c in xrange(maxniter):
     lsm.plot(fileName=skymodel_voro_plot, labelBy='patch')
     del lsm
 
-    # create masks (using cluster directions)
+    # create regions (using cluster directions)
     make_voronoi_reg(directions_clusters, mosaic_image.imagename, outdir='ddcal/regions/', beam_reg='', png='ddcal/skymodels/voronoi%02i.png' % c)
 
     skymodel_cl_skydb = skymodel_cl.replace('.txt','.skydb')
@@ -311,7 +314,7 @@ for c in xrange(maxniter):
     os.makedirs('ddcal/images/c'+str(c))
     directions = []
     for image, region in zip( sorted(glob.glob('img/ddcalM-Dir*MFS-image.fits')), sorted(glob.glob('ddcal/regions/Dir*')) ):
-        directions.append( Image(image, region_facet = region) )
+        directions.append( Image(image, region_facet = region, user_mask = user_mask) )
 
     logger.info('Mosaic: image...')
     images = ' '.join([image.imagename for image in directions])
@@ -330,7 +333,7 @@ for c in xrange(maxniter):
     # prepare new skymodel
     skymodels = []
     for image in directions:
-        mask_cc(image)
+        image.select_cc()
         skymodels.append(image.skymodel_cut)
     lsm = lsmtool.load(skymodels[0])
     for skymodel in skymodels[1:]:
@@ -339,7 +342,7 @@ for c in xrange(maxniter):
     lsm.write('ddcal/images/c'+str(c)+'/mos-sources-cut.txt', format='makesourcedb', clobber=True)
 
     os.system('cp img/*M*MFS-image.fits img/mos-MFS-image.fits img/mos-MFS-residual.fits ddcal/images/c'+str(c))
-    mosaic_image = Image('ddcal/images/c'+str(c)+'/mos-MFS-image.fits')
+    mosaic_image = Image('ddcal/images/c'+str(c)+'/mos-MFS-image.fits', user_mask = user_mask)
 
     # get noise, if larger than 95% of prev cycle: break
     rms_noise = get_noise_img(mosaic_residual)
