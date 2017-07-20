@@ -16,7 +16,7 @@ LoSoTo.Steps.duplicatePbka.OutTable = sol000/amplitudeOrig000
 #plot initials
 LoSoTo.Steps.plotAi1.Operation = PLOT
 LoSoTo.Steps.plotAi1.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotAi1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotAi1.freq.minmax = [0,300e6,100]
 LoSoTo.Steps.plotAi1.Axes = time
 LoSoTo.Steps.plotAi1.TableAxis = ant
 LoSoTo.Steps.plotAi1.ColorAxis = pol
@@ -52,7 +52,7 @@ LoSoTo.Steps.duplicatePbkp.OutTable = sol000/phaseOrig000
 # plot initials
 LoSoTo.Steps.plotPi1.Operation = PLOT
 LoSoTo.Steps.plotPi1.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPi1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotPi1.freq.minmax = [0,300e6,100]
 LoSoTo.Steps.plotPi1.Axes = time
 LoSoTo.Steps.plotPi1.TableAxis = ant
 LoSoTo.Steps.plotPi1.ColorAxis = pol
@@ -110,6 +110,7 @@ LoSoTo.Steps.plotCLOCK.TableAxis = ant
 LoSoTo.Steps.plotCLOCK.Prefix = plots/clock
 #LoSoTo.Steps.plotCLOCK.MinMax = [-2e-7,2e-7]
 LoSoTo.Steps.plotCLOCK.PlotFlag = False
+LoSoTo.Steps.plotCLOCK.Reference = 'CS002LBA'
 
 LoSoTo.Steps.plotTEC.Operation = PLOT
 LoSoTo.Steps.plotTEC.Soltab = [sol000/tec000]
@@ -118,6 +119,7 @@ LoSoTo.Steps.plotTEC.TableAxis = ant
 LoSoTo.Steps.plotTEC.Prefix = plots/tec
 LoSoTo.Steps.plotTEC.MinMax = [-0.5,0.5]
 LoSoTo.Steps.plotTEC.PlotFlag = False
+LoSoTo.Steps.plotTEC.Reference = 'CS002LBA'
 
 LoSoTo.Steps.plotTEC3.Operation = PLOT
 LoSoTo.Steps.plotTEC3.Soltab = [sol000/tec3rd000]
@@ -126,6 +128,7 @@ LoSoTo.Steps.plotTEC3.TableAxis = ant
 LoSoTo.Steps.plotTEC3.Prefix = plots/tec3rd
 LoSoTo.Steps.plotTEC3.MinMax = [-300,300]
 LoSoTo.Steps.plotTEC3.PlotFlag = False
+LoSoTo.Steps.plotTEC3.Reference = 'CS002LBA'
 
 # residuals
 LoSoTo.Steps.residuals.Operation = RESIDUALS
@@ -136,7 +139,7 @@ LoSoTo.Steps.residuals.Sub = [sol000/tec000,sol000/clock000,sol000/tec3rd000] # 
 # plot residuals
 LoSoTo.Steps.plotPr1.Operation = PLOT
 LoSoTo.Steps.plotPr1.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPr1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotPr1.freq.minmax = [0,300e6,100]
 LoSoTo.Steps.plotPr1.Axes = time
 LoSoTo.Steps.plotPr1.TableAxis = ant
 LoSoTo.Steps.plotPr1.ColorAxis = pol
@@ -180,7 +183,7 @@ LoSoTo.Steps.flag.Reference = 'CS002LBA'
 
 LoSoTo.Steps.plotPrf2.Operation = PLOT
 LoSoTo.Steps.plotPrf2.Soltab = [sol000/phase000]
-LoSoTo.Steps.plotPrf2.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotPrf2.freq.minmax = [0,300e6,100]
 LoSoTo.Steps.plotPrf2.Axes = time
 LoSoTo.Steps.plotPrf2.TableAxis = ant
 LoSoTo.Steps.plotPrf2.ColorAxis = pol

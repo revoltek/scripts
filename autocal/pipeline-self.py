@@ -113,7 +113,7 @@ def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_co
     lsm = lsmtool.load(skymodel)
     lsm.select('%s == True' % maskname)
     fluxes = lsm.getColValues('I')
-    lsm.remove(np.abs(fluxes) < 5e-4) # TEST
+    #lsm.remove(np.abs(fluxes) < 5e-4) # TEST
     lsm.write(skymodel_cut, format='makesourcedb', clobber=True)
     del lsm
 
@@ -188,7 +188,7 @@ for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 for ms in mss:
-    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=replace(NAME,\':@MODEL_DATA\',\'\')"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
 #####################################################################################################
@@ -317,21 +317,21 @@ for c in xrange(niter):
         os.system('mv plots-amp'+str(c)+'* self/solutions/')
         os.system('mv cal-amp'+str(c)+'*.h5 self/solutions/')
 
-        # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
-        logger.info('Faraday rotation correction...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
-                    log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-       # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+      # Correct CD SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Cross-delay correction...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        # Correct beam SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        # Correct beam amp SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Beam amp correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+        # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
+        logger.info('Faraday rotation correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
+                    log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         # Finally re-calculate TEC
@@ -364,7 +364,7 @@ for c in xrange(niter):
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-   ###################################################################################################################
+    ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
 
     # do beam-corrected+deeper image at last cycle
