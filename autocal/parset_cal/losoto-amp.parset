@@ -16,7 +16,7 @@ LoSoTo.Steps.duplicateAbkp.OutTable = sol000/amplitudeOrig000
 # plot initials
 LoSoTo.Steps.plotAi1.Operation = PLOT
 LoSoTo.Steps.plotAi1.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotAi1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotAi1.freq.minmax = [0,300e6,100]
 LoSoTo.Steps.plotAi1.Axes = time
 LoSoTo.Steps.plotAi1.TableAxis = ant
 LoSoTo.Steps.plotAi1.ColorAxis = pol
@@ -83,7 +83,7 @@ LoSoTo.Steps.residualA.Ratio = True
 # plot residuals
 LoSoTo.Steps.plotAr1.Operation = PLOT
 LoSoTo.Steps.plotAr1.Soltab = [sol000/amplitude000]
-LoSoTo.Steps.plotAr1.freq.minmax = [0,100e6,50]
+LoSoTo.Steps.plotAr1.freq.minmax = [0,300e6,100]
 LoSoTo.Steps.plotAr1.Axes = time
 LoSoTo.Steps.plotAr1.TableAxis = ant
 LoSoTo.Steps.plotAr1.ColorAxis = pol

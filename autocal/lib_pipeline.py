@@ -46,6 +46,7 @@ def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb
         if inglobaldb != outglobaldb:
             if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+outglobaldb)
         
+        # necessary for self step
         try:
             tnum = re.findall(r't\d+', ms)[0][1:]
             sbnum = re.findall(r'SB\d+', ms)[0][2:]
