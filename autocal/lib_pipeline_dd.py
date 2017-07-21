@@ -7,6 +7,7 @@ from astropy import wcs as pywcs
 import astropy.units as u
 import pyregion
 from pyregion.parser_helper import Shape
+import bdsf
 try:
     from scipy.spatial import Voronoi
 except:
@@ -172,16 +173,16 @@ def make_directions_from_img(imagename, outdir='regions/', target_flux_jy=10, br
     trials = number of sources to use as possible region center, if None, use all
     """
 
-    # Run pybdsm
+    # Run pybdsf
     logger.info('Finding directions...')
     if not os.path.exists('regions/DIEcatalog.fits'):
-        bdsm_img = bdsm.process_image(imagename, rms_box=(55,12), \
+        bdsf_img = bdsf.process_image(imagename, rms_box=(55,12), \
             thresh_pix=5, thresh_isl=3, atrous_do=False, atrous_jmax=3, \
             adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(80,20), \
             quiet=True)
         check_rm('regions')
         os.makedirs('regions')
-        bdsm_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
+        bdsf_img.write_catalog(outfile='regions/DIEcatalog.fits', catalog_type='srl', format='fits')
 
     t = Table.read('regions/DIEcatalog.fits', format='fits')['RA','DEC','Maj','Peak_flux','Total_flux'] # restrict to some cols
     t.rename_column('Maj', 'size') # use Maj as proxy for region size
