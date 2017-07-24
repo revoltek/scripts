@@ -1,17 +1,13 @@
 msin = 
 msin.datacolumn = DATA
+msin.baseline = '[CR]S*&'
 msout = 
 msout.writefullresflag = False
 #msout.storagemanager = dysco
 
 numthreads = 1 # bug fix
 
-steps = [avg,filter]
-
-# remove international
-filter.type = filter
-filter.remove=T
-filter.baseline='![CR]S&&*'
+steps = [avg]
 
 avg.type = averager
 avg.freqstep = 1
