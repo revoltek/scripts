@@ -22,7 +22,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 3
 user_mask = None
-cc_predict = False
+cc_predict = True
 
 if 'tooth' in os.getcwd():
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
