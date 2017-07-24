@@ -12,7 +12,7 @@ if 'VirA2013' in os.getcwd():
 elif 'VirA2015' in os.getcwd():
     patch = 'VirA'
     datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts2015-bkp'
-    bl2flag = ''
+    bl2flag = 'CS017LBA\;RS407LBA'
 elif 'VirA2017' in os.getcwd():
     patch = 'VirA'
     datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts2017-bkp'
@@ -20,7 +20,7 @@ elif 'VirA2017' in os.getcwd():
 elif 'TauA' in os.getcwd():
     patch = 'TauA'
     datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/TauA/tgts-bkp'
-    bl2flag = ''
+    bl2flag = 'RS310LBA\;RS210LBA\;RS407LBA\;RS409LBA'
 elif 'CasA' in os.getcwd():
     patch = 'CasA'
     datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CasA/tgts1-bkp'
@@ -175,8 +175,8 @@ for c in xrange(10):
     #################################################
     # 3: recalibrate without FR
 
-    # Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
-    logger.info('Cross delay correction...')
+    # Correct DELAY + ampBP CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
+    logger.info('Cross delay+ampBP correction...')
     for ms in mss:
         if c == 0:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.updateweights=True cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
