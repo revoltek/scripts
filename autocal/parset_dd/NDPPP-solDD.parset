@@ -12,7 +12,7 @@ ddecal.sourcedb =
 ddecal.h5parm = 
 #ddecal.directions = 
 ddecal.maxiter = 500
-ddecal.tolerance = 1.e-6 # andre' suggestion: 1e-6
+ddecal.tolerance = 1.e-5 # andre' suggestion: 1e-6
 ddecal.stepsize = 0.2 # andre' suggestion: 0.2
 ddecal.solint = 1
 

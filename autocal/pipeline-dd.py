@@ -35,7 +35,7 @@ else:
 def clean(c, mss, size=2.):
     """
     c = cycle/name
-    mss = list of mss to avg/clean
+    mss = list of mss to clean
     size = in deg of the image
     """
     # set pixscale and imsize
@@ -123,19 +123,14 @@ class Image(object):
 
 
 ############################################################
-# Avg to 1 chan/sb
-chanband = find_chanband(mss[0])
-avg_factor_f = int(np.round(0.2e6/chanband)) # to 1 ch/SB
-
-if avg_factor_f > 1:
-    logger.info('Average in freq (factor of %i)...' % avg_factor_f)
-    for ms in mss:
-        msout = ms.replace('.MS','-avg.MS')
-        if os.path.exists(msout): continue
-        s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA avg.timestep=1 avg.freqstep='+str(avg_factor_f), \
-                log=msout.split('/')[-1]+'_avg.log', cmd_type='NDPPP')
-    s.run(check=True)
-mss = sorted(glob.glob('mss/TC*-avg.MS'))
+logger.info('Copy data...')
+for ms in mss:
+    msout = ms.replace('.MS','-cp.MS')
+    if os.path.exists(msout): continue
+    s.add('NDPPP '+parset_dir+'/NDPPP-avg.parset msin='+ms+' msout='+msout+' msin.datacolumn=CORRECTED_DATA avg.freqstep=1 avg.timestep=1', \
+                log=msout.split('/')[-1]+'_cp.log', cmd_type='NDPPP')
+s.run(check=True)
+mss = sorted(glob.glob('mss/TC*-cp.MS'))
        
 logger.info('Add columns...')
 for ms in mss:
