@@ -18,8 +18,8 @@ import warnings
 warnings.filterwarnings("ignore") 
 
 # options
-#wdir = '/home/fdg/phd/works/spidxskymap/sw_test/'
-wdir = '/data2/spidxskymap/'
+wdir = '/net/spaarne/data2/spidxskymap/'
+#wdir = '/data2/spidxskymap/'
 #area = 10.1978092553 # beam area in pixels - with beam: 45"x45" and pixels size: 15"x15"
 area = 0.0125*0.0125*np.pi/(4*np.log(2.)) # beam area in deg
 
@@ -150,7 +150,7 @@ for image_nvss in images_nvss:
     image_isl_nvss = image_nvss.replace('.fits','-isl.fits').replace('NVSS','NVSS/isl',1)
     cat_srl_nvss = image_nvss.replace('.fits','-srl.fits').replace('NVSS','NVSS/catalog',1)
     if not os.path.exists(cat_srl_nvss) or not os.path.exists(image_isl_nvss) or not os.path.exists(image_rms_nvss):# or not os.path.exists(image_gaus_nvss):
-        import bdff
+        import bdsf
         c = bdsf.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
         c.export_image(outfile=image_rms_nvss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
@@ -224,6 +224,12 @@ for image_nvss in images_nvss:
 
         # For each island figure out what to do - number 0 is no-island
         for blob in xrange(1,number_of_blobs):
+            # find and skip blobs that touches the edge of the image
+            shape = pyfits.open(image_mask)[0].data.shape[2:]
+            coord_blob = np.where(blobs == blob)
+            if 0 in coord_blob[0] or 0 in coord_blob[1] or shape[0] in coord_blob[0] or shape[1] in coord_blob[1]:
+                print "Edge blob, skip."
+                continue
             idx_blob_nvss = np.where(val_blob_nvss == blob) # idx of NVSS sources in this blob
             idx_blob_tgss = np.where(val_blob_tgss == blob) # idx of TGSS sources in this blob
 
