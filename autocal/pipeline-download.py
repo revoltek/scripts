@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# download from LTA using WGET
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 fix_tables = True
 rename = True

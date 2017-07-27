@@ -4,29 +4,42 @@ import numpy as np
 import logging
 logger = logging.getLogger('PiLL')
 
-def angsep(ra1deg, dec1deg, ra2deg, dec2deg):
-    """Returns angular separation between two coordinates (all in degrees)"""
-    import math
+class Image(object):
+    def __init__(self, imagename, region_facet = None, user_mask = None):
+        self.imagename = imagename
+        self.maskname = imagename.replace('MFS-image.fits', 'mask.fits')
+        self.skymodel = imagename.replace('MFS-image.fits', 'sources.txt')
+        self.skymodel_cut = imagename.replace('MFS-image.fits', 'sources-cut.txt')
+        self.region_facet = region_facet
+        self.user_mask = user_mask
 
-    if ra1deg == ra2deg and dec1deg == dec2deg: return 0
+    def make_mask(self, threshisl=5):
+        """
+        Create a mask of the image where only belivable flux is
+        """
+        logger.info('%s: Making mask...' % self.imagename)
+        if not os.path.exists(self.maskname):
+            make_mask(image_name=self.imagename, mask_name=self.maskname, threshisl=threshisl, atrous_do=True)
+        if self.user_mask is not None:
+            logger.info('%s: Adding user mask (%s)...' % (self.imagename, self.user_mask))
+            blank_image_reg(self.maskname, self.user_mask, inverse=False, blankval=1)
 
-    ra1rad=ra1deg*math.pi/180.0
-    dec1rad=dec1deg*math.pi/180.0
-    ra2rad=ra2deg*math.pi/180.0
-    dec2rad=dec2deg*math.pi/180.0
+    def select_cc(self):
+        """
+        remove cc from a skymodel according to masks
+        """
+        self.make_mask()
 
-    # calculate scalar product for determination
-    # of angular separation
-    x=math.cos(ra1rad)*math.cos(dec1rad)*math.cos(ra2rad)*math.cos(dec2rad)
-    y=math.sin(ra1rad)*math.cos(dec1rad)*math.sin(ra2rad)*math.cos(dec2rad)
-    z=math.sin(dec1rad)*math.sin(dec2rad)
+        if self.region_facet is not None:
+            logger.info('Predict (apply facet mask %s)...' % self.region_facet)
+            blank_image_reg(self.maskname, self.region_facet, inverse=True, blankval=0) # set to 0 pixels outside facet mask
 
-    if x+y+z >= 1: rad = 0
-    else: rad=math.acos(x+y+z)
-
-    # Angular separation
-    deg=rad*180/math.pi
-    return deg
+        # apply mask
+        logger.info('%s: Apply mask on skymodel...' % self.imagename)
+        lsm = lsmtool.load(self.skymodel)
+        lsm.select('%s == True' % self.maskname)
+        lsm.write(self.skymodel_cut, format='makesourcedb', clobber=True)
+        del lsm
 
 
 def flatten(f, channel=0, freqaxis=0):
@@ -227,42 +240,42 @@ def get_noise_img(filename, boxsize=None, niter=20, eps=1e-5):
             oldrms=rms
         raise Exception('Failed to converge')
 
-def nan2zeros(filename):
-    """
-    Replace NaNs to zeros in a fits file
-    """
-    import astropy.io.fits as pyfits
-    with pyfits.open(filename) as fits:
-        fits[0].data = np.nan_to_num(fits[0].data)
-        fits.writeto(filename, clobber=True)
-
-
-def get_coord_centroid(filename, region):
-    """
-    Get centroid coordinates from an image and a region
-    filename: fits file
-    region: ds9 region
-    """
-    import astropy.io.fits as pyfits
-    import astropy.wcs as pywcs
-    import pyregion
-    from scipy.ndimage.measurements import center_of_mass
-
-    fits = pyfits.open(filename)
-    header, data = flatten(fits)
-
-    # extract mask and find center of mass
-    r = pyregion.open(region)
-    mask = r.get_mask(header=header, shape=data.shape)
-    dec_pix, ra_pix = center_of_mass(mask)
-    
-    # convert to ra/dec in angle
-    w = pywcs.WCS(fits[0].header)
-    #w = w.celestial # needs newer astropy
-    ra, dec = w.all_pix2world(ra_pix, dec_pix, 0, 0, 0, ra_dec_order=True)
-
-    fits.close()
-    return float(ra), float(dec)
+#def nan2zeros(filename):
+#    """
+#    Replace NaNs to zeros in a fits file
+#    """
+#    import astropy.io.fits as pyfits
+#    with pyfits.open(filename) as fits:
+#        fits[0].data = np.nan_to_num(fits[0].data)
+#        fits.writeto(filename, clobber=True)
+#
+#
+#def get_coord_centroid(filename, region):
+#    """
+#    Get centroid coordinates from an image and a region
+#    filename: fits file
+#    region: ds9 region
+#    """
+#    import astropy.io.fits as pyfits
+#    import astropy.wcs as pywcs
+#    import pyregion
+#    from scipy.ndimage.measurements import center_of_mass
+#
+#    fits = pyfits.open(filename)
+#    header, data = flatten(fits)
+#
+#    # extract mask and find center of mass
+#    r = pyregion.open(region)
+#    mask = r.get_mask(header=header, shape=data.shape)
+#    dec_pix, ra_pix = center_of_mass(mask)
+#    
+#    # convert to ra/dec in angle
+#    w = pywcs.WCS(fits[0].header)
+#    #w = w.celestial # needs newer astropy
+#    ra, dec = w.all_pix2world(ra_pix, dec_pix, 0, 0, 0, ra_dec_order=True)
+#
+#    fits.close()
+#    return float(ra), float(dec)
 
 
 

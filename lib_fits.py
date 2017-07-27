@@ -100,7 +100,7 @@ class Image(object):
             sys.exit(1)
         logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, self.freq/1e6))
         
-	self.noise = None
+	    self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile)
         self.set_beam(beam)
         self.set_freq(self.freq)
