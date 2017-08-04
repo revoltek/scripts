@@ -4,10 +4,10 @@ msout=.
 
 numthreads = 6
 
-steps=[aoflagger, elev, count]
-
-aoflagger.strategy=/home/fdg/scripts/autocal/parset_timesplit/LBAdefault.rfis
-aoflagger.memoryperc=6
+steps=[elev, aoflagger, count]
 
 elev.type = preflagger
 elev.elevation = 0deg..30deg
+
+aoflagger.strategy=/home/fdg/scripts/autocal/parset_timesplit/LBAdefault.rfis
+aoflagger.memoryperc=6
