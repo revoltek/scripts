@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # perform self-calibration on a group of SBs concatenated in TCs. Script must be run in dir with MS.
 # number/chan in MS are flexible but the must be concatenable (same chans/freq!)
 # Input:

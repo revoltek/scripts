@@ -1,6 +1,5 @@
-#!/usr/bin/python
-#
-# pipeline to do direction dependent calibration using NDPPP-dd
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 parset_dir = '/home/fdg/scripts/autocal/parset_dd'
 maxniter = 10 # max iteration if not converged
@@ -82,44 +81,6 @@ def clean(c, mss, size=2.):
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
     return imagename
-
-
-class Image(object):
-    def __init__(self, imagename, region_facet = None, user_mask = None):
-        self.imagename = imagename
-        self.maskname = imagename.replace('MFS-image.fits', 'mask.fits')
-        self.skymodel = imagename.replace('MFS-image.fits', 'sources.txt')
-        self.skymodel_cut = imagename.replace('MFS-image.fits', 'sources-cut.txt')
-        self.region_facet = region_facet
-        self.user_mask = user_mask
-
-    def make_mask(self, threshisl=5):
-        """
-        Create a mask of the image where only belivable flux is
-        """
-        logger.info('%s: Making mask...' % self.imagename)
-        if not os.path.exists(self.maskname):
-            make_mask(image_name=self.imagename, mask_name=self.maskname, threshisl=threshisl, atrous_do=True)
-        if self.user_mask is not None:
-            logger.info('%s: Adding user mask (%s)...' % (self.imagename, self.user_mask))
-            blank_image_reg(self.maskname, self.user_mask, inverse=False, blankval=1)
-
-    def select_cc(self):
-        """
-        remove cc from a skymodel according to masks
-        """
-        self.make_mask()
-
-        if self.region_facet is not None:
-            logger.info('Predict (apply facet mask %s)...' % self.region_facet)
-            blank_image_reg(self.maskname, self.region_facet, inverse=True, blankval=0) # set to 0 pixels outside facet mask
-
-        # apply mask
-        logger.info('%s: Apply mask on skymodel...' % self.imagename)
-        lsm = lsmtool.load(self.skymodel)
-        lsm.select('%s == True' % self.maskname)
-        lsm.write(self.skymodel_cut, format='makesourcedb', clobber=True)
-        del lsm
 
 
 ############################################################
