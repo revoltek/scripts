@@ -16,7 +16,7 @@ import lsmtool
 logger = set_logger('pipeline-dd.logger')
 check_rm('logs')
 s = Scheduler(dry=False)
-mss = sorted(glob.glob('mss/TC*.MS'))
+mss = sorted(glob.glob('mss/TC*[0-9].MS'))
 phasecentre = get_phase_centre(mss[0])
 check_rm('ddcal')
 os.makedirs('ddcal/regions')
@@ -186,7 +186,7 @@ for c in xrange(maxniter):
         # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
                  log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -219,7 +219,7 @@ for c in xrange(maxniter):
         # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
                  log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -245,7 +245,7 @@ for c in xrange(maxniter):
         # DD-correct - ms:CORRECTED_DATA -> ms:CORRECTED_DATA
         logger.info('Patch '+p+': correct...')
         for ms in mss:
-            s.add('run_env2.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction='+p+' cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
                log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
             #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
             #    log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')

@@ -410,12 +410,12 @@ for c in xrange(niter):
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
-    # do low-res first cycle and remove it from the data
-    if c > 0:
+    if c > 0 and c != niter:
         if cc_predict:
             ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA')
         else:
             ft_model_wsclean(mss, imagename, c, user_mask=user_mask, resamp='10asec', keep_in_beam=True)
+    # do low-res first cycle and remove it from the data
     if c == 0:
         if cc_predict:
             ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA_HIGHRES')
