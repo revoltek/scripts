@@ -80,7 +80,6 @@ for ms in mss.get_list_str():
 mss.run('NDPPP '+parset_dir+'/NDPPP-sol.parset msin=$ms', log='$ms_sol1.log', cmd_type='NDPPP')
 
 # TODO: add losoto concat
-
 run_losoto(s, 'fr', mss.get_list_str(), [parset_dir+'/losoto-fr.parset'], outtab='rotationmeasure000', \
     inglobaldb='globaldb', outglobaldb='globaldb-fr', ininstrument='instrument', outinstrument='instrument-fr', putback=True)
 
