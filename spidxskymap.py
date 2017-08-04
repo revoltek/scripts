@@ -46,10 +46,30 @@ def remove_duplicates(file_cat='spidx-cat.txt'):
             dec = head['CRVAL2']
             centers.add_row([os.path.basename(mask_file), ra, dec])
 
-    print "Matching catalogues..."
     sources = Table.read('spidx-cat.fits', format='fits')
+    print "Matching catalogues..."
     idx, _, _ = match_coordinates_sky(SkyCoord(sources['RA']*u.deg, sources['DEC']*u.deg),\
                                       SkyCoord(centers['RA'], centers['DEC']))
+    print "Matching catalogues 2..."
+    idx2, _, _ = match_coordinates_sky(SkyCoord(sources['RA']*u.deg, sources['DEC']*u.deg),\
+                                      SkyCoord(centers['RA'], centers['DEC']), nthneighbor=2)
+
+    print "Using second closest for wrong matches..."
+    # this is a speed up not to fetch data each source but once each mask
+    masks = {}
+    for maskname in glob.glob('masks/*fits'):
+        mask = pyfits.open(maskname)[0]
+        masks[maskname] = [wcs.WCS(mask.header), mask.data.shape] 
+
+    # check if the closest mask is actually covering the source, otherwise get the second closest
+    for i, source in enumerate(sources):
+        proposed_mask = 'masks/'+centers[int(idx[i])]['Mask']
+        w, shape = masks[proposed_mask]
+        x, y, _, _ = w.all_world2pix(source['RA'],source['DEC'],0,0, 0, ra_dec_order=True)
+        # if this source might be on the border (or outside) the mask
+        if x<10 or x>(shape[2]-10) or y<10 or y>(shape[3]-10):
+            print "Alternative mask found:", idx[i], "("+centers[int(idx[i])]['Mask']+") -> ", idx2[i], "("+centers[int(idx2[i])]['Mask']+") - xy:",x,y
+            idx[i] = idx2[i]
 
     print "Removing duplicates..."
     idx_duplicates = [] 
@@ -118,8 +138,8 @@ class t_surv():
     """
     A class to store survey information
     """
-    def __init__(self, cat):
-        self.w = wcs.WCS(pyfits.open(image_nvss)[0].header)
+    def __init__(self, cat, image):
+        yyself.w = wcs.WCS(pyfits.open(image)[0].header)
         self.t = Table.read(cat)
 
         # arbitrary remove bad detections, it happens a couple of times
@@ -192,8 +212,8 @@ for image_nvss in images_nvss:
         t = Table(names=('RA','DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Rms_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','Rms_TGSS','Spidx','E_Spidx','s2n','S_code','Num_match','Num_unmatch_NVSS','Num_unmatch_TGSS','Isl_id','Mask'),\
                   dtype=('f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','S1','i4','i4','i4','i4','S100'))
 
-        nvss = t_surv(cat_srl_nvss)
-        tgss = t_surv(cat_srl_tgss)
+        nvss = t_surv(cat_srl_nvss, image_mask)
+        tgss = t_surv(cat_srl_tgss, image_mask)
 
         # Cross-match NVSS-TGSS source catalogue
         # match_coordinates_sky() gives an idx of the 2nd catalogue for each source of the 1st catalogue
@@ -224,6 +244,7 @@ for image_nvss in images_nvss:
 
         # For each island figure out what to do - number 0 is no-island
         for blob in xrange(1,number_of_blobs):
+
             # find and skip blobs that touches the edge of the image
             shape = pyfits.open(image_mask)[0].data.shape[2:]
             coord_blob = np.where(blobs == blob)
