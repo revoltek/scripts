@@ -1,10 +1,9 @@
-#!/usr/bin/python
-# initial calibration of the calibrator in circular, get and corr FR, back to linear, sol flag + effects separation
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import sys, os, glob, re
 import numpy as np
-from astropy.time import Time
 from autocal.lib_pipeline import *
-import pyrap.tables as pt
 
 parset_dir = '/home/fdg/scripts/autocal/parset_cal/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
@@ -109,11 +108,6 @@ for ms in mss:
     if os.path.exists(ms+'/instrument-fr'): continue
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
-
-# are we doing HBA?
-#tab = pt.table(mss[0]+'/instrument-fr/NAMES/', ack=False)
-#HBA = 'HBA' in tab.getcol('NAME')[0]
-#tab.close()
 
 for ms in mss:
     s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=replace(NAME,\':@MODEL_DATA\',\'\')"', log=ms+'_taql1.log', cmd_type='general')

@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # data preparation for selfcal, apply cal solutions and split SB in time and concatenate in freq
 # Input:
 # Virgin target MSs and a globaldb of the calibrator
