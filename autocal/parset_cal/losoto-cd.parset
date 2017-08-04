@@ -40,6 +40,7 @@ LoSoTo.Steps.crossdelay.Soltab = [sol000/phase000]
 LoSoTo.Steps.crossdelay.Operation = CROSSDELAY
 LoSoTo.Steps.crossdelay.OutTable = crossdelay
 LoSoTo.Steps.crossdelay.Smooth = 201
+LoSoTo.Steps.crossdelay.Reference = 'CS002LBA'
 
 # plot cross delay
 LoSoTo.Steps.plotCD.Operation = PLOT

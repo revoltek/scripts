@@ -41,6 +41,7 @@ check_rm('img')
 os.makedirs('img')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
+mss = mss[len(mss)/2:] # use only upper half of the band
 
 ############################################################
 # Avg to 4 chan and 4 sec
@@ -175,7 +176,7 @@ for c in xrange(10):
     #################################################
     # 3: recalibrate without FR
 
-    # Correct DELAY + ampBP CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
+    # Correct DELAY + ampBP DATA (beam corrected) -> CORRECTED_DATA
     logger.info('Cross delay+ampBP correction...')
     for ms in mss:
         if c == 0:
@@ -184,7 +185,7 @@ for c in xrange(10):
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.updateweights=False cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    # Beam correction (and update weight in case of imaging) DATA -> CORRECTED_DATA
+    # Beam correction (and update weight in case of imaging) CORRECTED_DATA -> CORRECTED_DATA
     logger.info('Beam correction...')
     for ms in mss:
         if c == 0:
@@ -227,10 +228,10 @@ for c in xrange(10):
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=False cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    logger.info('Cleaning...')
+    logger.info('Cleaning (cycle %i)...' % c)
     imagename = 'img/wideM-c'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 1200 1200 -trim 800 800 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 1.5 \
-            -scale 4arcsec -weight briggs -0.5 -niter 100000 -no-update-model-required -mgain 0.7 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 2000 2000 -trim 1800 1800 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 1.5 \
+            -scale 2arcsec -weight briggs -1.5 -niter 100000 -no-update-model-required -mgain 0.7 \
             -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,4,8,16,32 -auto-mask 5\
             -pol I -joinchannels -fit-spectral-pol 3 -channelsout 15 -threshold 0.005 '+' '.join(mss), \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
