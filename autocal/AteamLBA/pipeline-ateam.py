@@ -5,13 +5,34 @@ import numpy as np
 from autocal.lib_pipeline import *
 import pyrap.tables as pt
 
-sourcedb = '/home/fdg/scripts/model/A-team_4_CC.skydb'
-skymodel = '/home/fdg/scripts/model/A-team_4_CC.skymodel'
-patch = 'VirA'
-datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts-cycle1-bkp'
-bl2flag = 'CS013LBA\;CS031LBA\;RS409LBA\;RS310LBA' # virgo
+if 'VirA2013' in os.getcwd():
+    patch = 'VirA'
+    datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts2013-bkp'
+    bl2flag = 'CS013LBA\;CS031LBA'
+elif 'VirA2015' in os.getcwd():
+    patch = 'VirA'
+    datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts2015-bkp'
+    bl2flag = 'CS017LBA\;RS407LBA'
+elif 'VirA2017' in os.getcwd():
+    patch = 'VirA'
+    datadir = '/home/fdg/lofar2/LOFAR/Ateam_LBA/VirA/tgts2017-bkp'
+    bl2flag = ''
+elif 'TauA' in os.getcwd():
+    patch = 'TauA'
+    datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/TauA/tgts-bkp'
+    bl2flag = 'RS310LBA\;RS210LBA\;RS407LBA\;RS409LBA'
+elif 'CasA' in os.getcwd():
+    patch = 'CasA'
+    datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CasA/tgts1-bkp'
+    #datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CasA/tgts2-bkp'
+    bl2flag = ''
+elif 'CygA' in os.getcwd():
+    patch = 'CygA'
+    datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CygA/tgts1-bkp'
+    #datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CygA/tgts2-bkp'
+    bl2flag = ''
+
 parset_dir = '/home/fdg/scripts/autocal/AteamLBA/parset_ateam/'
-user_mask = '/home/fdg/scripts/autocal/AteamLBA/VirA.reg'
 
 ########################################################
 logger = set_logger('pipeline-ateam.logger')
@@ -20,6 +41,7 @@ check_rm('img')
 os.makedirs('img')
 s = Scheduler(dry=False)
 mss = sorted(glob.glob(datadir+'/*MS'))
+mss = mss[len(mss)/2:] # use only upper half of the band
 
 ############################################################
 # Avg to 4 chan and 4 sec
@@ -69,21 +91,22 @@ s.run(check=True)
 # TODO: remove as soon as losoto has the proper exporter
 logger.info('Creating fake parmdb...')
 for ms in mss:
-    if os.path.exists(ms+'/instrument-clock'): continue
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-clock '+ms+' '+parset_dir+'/bbs-fakeparmdb-clock.parset '+skymodel, log=ms+'_fakeparmdb-clock.log', cmd_type='BBS')
-s.run(check=True)
-for ms in mss:
     if os.path.exists(ms+'/instrument-fr'): continue
-    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
+    s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset /home/fdg/scripts/model/calib-simple.skymodel', log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 for ms in mss:
     s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
 # predict to save time ms:MODEL_DATA
-logger.info('Predict...')
-for ms in mss:
-    s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb='+sourcedb+' pre.sources='+patch, log=ms+'_pre.log', cmd_type='NDPPP')
+if os.path.exists('/home/fdg/scripts/model/AteamLBA/'+patch+'/wideM-MFS-model.fits'):
+    logger.info('Predict (wsclean)...')
+    s.add('wsclean -predict -name /home/fdg/scripts/model/AteamLBA/'+patch+'/wideM -mem 90 -j '+str(s.max_processors)+' -channelsout 15 '+' '.join(mss), \
+          log='wscleanPRE-init.log', cmd_type='wsclean', processors='max')
+else:
+    logger.info('Predict (NDPPP)...')
+    for ms in mss:
+        s.add('NDPPP '+parset_dir+'/NDPPP-predict.parset msin='+ms+' pre.sourcedb=/home/fdg/scripts/model/A-team_4_CC.skydb pre.sources='+patch, log=ms+'_pre.log', cmd_type='NDPPP')
 s.run(check=True)
 
 for c in xrange(10):
@@ -147,22 +170,28 @@ for c in xrange(10):
         s.add('NDPPP '+parset_dir+'/NDPPP-sol.parset msin='+ms, log=ms+'_sol2.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    run_losoto(s, 'cd-c'+str(c), mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitude000,crossdelay', \
+    run_losoto(s, 'cd-c'+str(c), mss, [parset_dir+'/losoto-flag.parset',parset_dir+'/losoto-amp.parset',parset_dir+'/losoto-cd.parset'], outtab='amplitudeSmooth000,crossdelay', \
         inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument-cd', putback=True)
     
     #################################################
     # 3: recalibrate without FR
-    
-    # Beam correction (and update weight in case of imaging) DATA -> CORRECTED_DATA
-    logger.info('Beam correction...')
+
+    # Correct DELAY + ampBP DATA (beam corrected) -> CORRECTED_DATA
+    logger.info('Cross delay+ampBP correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' corrbeam.updateweight=True', log=ms+'_beam2.log', cmd_type='NDPPP')
+        if c == 0:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.updateweights=True cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
+        else:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=DATA cor.updateweights=False cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
     s.run(check=True)
     
-    # Correct DELAY CORRECTED_DATA (beam corrected) -> CORRECTED_DATA
-    logger.info('Cross delay correction...')
+    # Beam correction (and update weight in case of imaging) CORRECTED_DATA -> CORRECTED_DATA
+    logger.info('Beam correction...')
     for ms in mss:
-        s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.parmdb='+ms+'/instrument-cd cor.correction=gain', log=ms+'_corCD.log', cmd_type='NDPPP')
+        if c == 0:
+            s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA corrbeam.updateweights=True', log=ms+'_beam2.log', cmd_type='NDPPP')
+        else:
+            s.add('NDPPP '+parset_dir+'/NDPPP-beam.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA corrbeam.updateweights=False', log=ms+'_beam2.log', cmd_type='NDPPP')
     s.run(check=True)
     
     # Correct FR CORRECTED_DATA -> CORRECTED_DATA
@@ -199,29 +228,14 @@ for c in xrange(10):
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=False cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
     
-#    logger.info('Cleaning...')
-#    imagename = 'img/wide-c'+str(c)
-#    s.add('wsclean -reorder -name ' + imagename + ' -size 3500 3500 -trim 3000 3000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
-#            -scale 6arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -mgain 0.9 \
-#            -pol I -joinchannels -fit-spectral-pol 3 -channelsout 10 -auto-threshold 20 '+' '.join(mss), \
-#            log='wscleanA-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
-#    s.run(check=True)
-#    
-#    # make mask
-#    maskname = imagename+'-mask.fits'
-#    make_mask(image_name = imagename+'-MFS-image.fits', mask_name = maskname, threshisl = 3, atrous_do=True)
-#    if user_mask is not None:
-#        blank_image_reg(maskname, user_mask, inverse=False, blankval=1)
-    
-    logger.info('Cleaning w/ mask')
+    logger.info('Cleaning (cycle %i)...' % c)
     imagename = 'img/wideM-c'+str(c)
-    s.add('wsclean -reorder -name ' + imagename + ' -size 1200 1200 -trim 800 800 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 1.5 \
-            -scale 4arcsec -weight briggs -0.5 -niter 100000 -no-update-model-required -mgain 0.7 \
+    s.add('wsclean -reorder -name ' + imagename + ' -size 2000 2000 -trim 1800 1800 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 1.5 \
+            -scale 2arcsec -weight briggs -1.5 -niter 100000 -no-update-model-required -mgain 0.7 \
             -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,4,8,16,32 -auto-mask 5\
             -pol I -joinchannels -fit-spectral-pol 3 -channelsout 15 -threshold 0.005 '+' '.join(mss), \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
-    sys.exit(1)
 
     logger.info('Predict (ft)...')
     s.add('wsclean -predict -name ' + imagename + ' -mem 90 -j '+str(s.max_processors)+' -channelsout 15 '+' '.join(mss), \

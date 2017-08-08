@@ -7,7 +7,7 @@ def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(
     import sys, os
     import numpy as np
     from astropy.io import fits as pyfits
-    import lofar.bdsm as bdsf
+    import bdsf
 
     # wavelets are required to fit gaussians
     if atrous_do: stop_at = None
