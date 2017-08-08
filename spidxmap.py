@@ -120,7 +120,7 @@ for imagefile in args.images:
 if args.beam is None:
     if args.circbeam:
         maxmaj = np.max([b[0] for b in all_beams])
-        target_beam = [maxmaj, maxmaj, 0.]
+        target_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
     else:
         target_beam = findCommonBeam(all_beams)
 else:
@@ -133,6 +133,8 @@ logging.info('Final beam: %.1f" %.1f" (pa %.1f deg)' \
 # find+apply shift w.r.t. first image
 if args.shift:
     ref_cat = all_images[0].cat
+    # keep only point sources
+    print ref_cat
     for image in all_images[1:]:
         # cross match
         idx_match, sep, _ = match_coordinates_sky(SkyCoord(ref_cat['RA'], ref_cat['DEC']),\
@@ -141,15 +143,16 @@ if args.shift:
         idx_matched_img = idx_match[sep<target_beam[0]*u.degree]
 
         # find & apply shift
-        if len(idx_match) == 0:
-            logging.warning('%s: No match found, assume no shift.' % image.imagefile)
+        if len(idx_match) < 3:
+            logging.warning('%s: Not enough matches found, assume no shift.' % image.imagefile)
             continue
             
         dra = ref_cat['RA'][idx_matched_ref] - image.cat['RA'][idx_matched_img]
         dra[ dra>180 ] -= 360
         dra[ dra<-180 ] += 360
         ddec = ref_cat['DEC'][idx_matched_ref] - image.cat['DEC'][idx_matched_img]
-        image.apply_shift(np.mean(dra), np.mean(ddec))
+        flux = ref_cat['Peak_flux'][idx_matched_ref]
+        image.apply_shift(np.average(dra, weights=flux), np.average(ddec, weights=flux))
 
     # clean up
     #for image in all_images:

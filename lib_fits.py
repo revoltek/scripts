@@ -165,9 +165,10 @@ class Image(object):
         from lib_beamdeconv import *
         from astropy import convolution
 
-        # if difference between beam is negligible, skip - it mostly happens when beams are exactly the same
+        # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
         beam = self.get_beam()
-        if ((target_beam[0] - beam[0]) < 1e-2) and ((target_beam[1] - beam[1]) < 1e-2) and ((target_beam[2] - beam[2]) < 1):
+        if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
+            logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
             return
         # first find beam to convolve with
         convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
