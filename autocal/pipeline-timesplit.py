@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # data preparation for selfcal, apply cal solutions and split SB in time and concatenate in freq
 # Input:
 # Virgin target MSs and a globaldb of the calibrator
@@ -69,7 +70,7 @@ else:
     for ms in mss:
         msout = ms.replace('.MS','-avg.MS').split('/')[-1]
         # weights are changed here, so be sure to delete previous MSs
-        if os.path.exists(msout): check_rm(ms)
+        if os.path.exists(msout): check_rm(msout)
         os.system('cp -r '+ms+' '+msout)
 
 mss = sorted(glob.glob('*.MS'))

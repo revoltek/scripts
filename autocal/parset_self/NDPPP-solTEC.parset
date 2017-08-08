@@ -8,13 +8,18 @@ msout.datacolumn = CORRECTED_DATA
 
 steps = [filter, sol]
 
-filter.blrange = [1500,1e30]
+filter.blrange = [1000,1e30]
 
 sol.type = gaincal
 sol.parmdb = 
-sol.caltype = tec
+sol.caltype = tec #tecandphase/tec
 sol.maxiter = 500
 sol.usemodelcolumn = True
 sol.solint = 1
 sol.nchan = 1
 sol.propagatesolutions = True
+<<<<<<< HEAD
+=======
+sol.stepsize = 0.2 # can be set? ask tj
+sol.tolerance = 1.e-5
+>>>>>>> 117c359fb7635d4344a6fd14a5637c49d1ac7efb

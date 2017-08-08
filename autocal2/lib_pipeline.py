@@ -20,74 +20,32 @@ def check_rm(regexp):
             os.system('rm -r '+f)
 
 
-def run_losoto(s, c, mss, parsets, outtab='', inglobaldb='globaldb', outglobaldb='globaldb', ininstrument='instrument', outinstrument='instrument', putback=False):
+def run_losoto(s, c, h5s, parsets):
     """
     s : scheduler
     c : cycle name, e.g. "final"
-    mss : lists of MS files
+    h5s : lists of H5parm files
     parsets : lists of parsets to execute
-    outtab : strings with soltab to output e.g. 'amplitudeSmooth000,phaseOrig000'
-    putback : put back in MS the instrument tables
     """
 
     logger.info('Running LoSoTo...')
 
-    # prepare globaldbs
-    check_rm('plots-'+c)
-    check_rm(inglobaldb)
-    os.system('mkdir '+inglobaldb)
-    if inglobaldb != outglobaldb: 
-        check_rm(outglobaldb)
-        os.system('mkdir '+outglobaldb)
+    # concat
+    check_rm('cal-'+c+'.h5')
+    s.add('H5parm_append.py -v -c freq -s sol000 -o cal-'+c+'.h5 '+' '.join(h5s), log='losoto-'+c+'.log', cmd_type='python', processors='max')
+    s.run(check=True)
 
-    for i, ms in enumerate(mss):
-        if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+inglobaldb)
-        if inglobaldb != outglobaldb:
-            if i == 0: os.system('cp -r '+ms+'/ANTENNA '+ms+'/FIELD '+ms+'/sky '+outglobaldb)
-        
-        # necessary for self step
-        try:
-            tnum = re.findall(r't\d+', ms)[0][1:]
-            sbnum = re.findall(r'SB\d+', ms)[0][2:]
-            gbinst = 'instrument-'+str(tnum)+'-'+str(sbnum)
-        except:
-            gbinst = 'instrument-'+str(i)
-
-        os.system('cp -r '+ms+'/'+ininstrument+' '+inglobaldb+'/'+gbinst)
-       
-        if inglobaldb != outglobaldb:
-            os.system('cp -r '+ms+'/'+outinstrument+' '+outglobaldb+'/'+gbinst)
-    
     check_rm('plots')
     os.makedirs('plots')
-    check_rm('cal-'+c+'.h5')
-    
-    s.add('H5parm_importer.py -v cal-'+c+'.h5 globaldb', log='losoto-'+c+'.log', cmd_type='python', processors='max')
-    s.run(check=True)
     
     for parset in parsets:
         logger.debug('-- executing '+parset+'...')
         s.add('losoto -v cal-'+c+'.h5 '+parset, log='losoto-'+c+'.log', log_append=True, cmd_type='python', processors='max')
         s.run(check=True)
 
+    check_rm('plots-'+c)
     os.system('mv plots plots-'+c)
     
-    if outtab != '':
-        s.add('H5parm_exporter.py -v -c --soltab '+outtab+' cal-'+c+'.h5 '+outglobaldb, log='losoto-'+c+'.log', log_append=True, cmd_type='python', processors='max')
-        s.run(check=True)
-
-    if putback:
-        for i, ms in enumerate(mss):
-            try:
-                tnum = re.findall(r't\d+', ms)[0][1:]
-                sbnum = re.findall(r'SB\d+', ms)[0][2:]
-                gbinst = 'instrument-'+str(tnum)+'-'+str(sbnum)
-            except:
-                gbinst = 'instrument-'+str(i)
-
-            check_rm(ms+'/'+outinstrument)
-            os.system('cp -r '+outglobaldb+'/sol000_'+gbinst+' '+ms+'/'+outinstrument)
-
 
 class Scheduler():
     def __init__(self, qsub = None, max_threads = None, max_processors = None, log_dir = 'logs', dry = False):

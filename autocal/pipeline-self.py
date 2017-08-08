@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # perform self-calibration on a group of SBs concatenated in TCs. Script must be run in dir with MS.
 # number/chan in MS are flexible but the must be concatenable (same chans/freq!)
 # Input:
@@ -113,7 +114,7 @@ def ft_model_cc(mss, imagename, c, user_mask = None, keep_in_beam=True, model_co
     lsm = lsmtool.load(skymodel)
     lsm.select('%s == True' % maskname)
     fluxes = lsm.getColValues('I')
-    lsm.remove(np.abs(fluxes) < 5e-4) # TEST
+    #lsm.remove(np.abs(fluxes) < 5e-4) # TEST
     lsm.write(skymodel_cut, format='makesourcedb', clobber=True)
     del lsm
 
@@ -188,7 +189,7 @@ for ms in mss:
     s.add('calibrate-stand-alone -f --parmdb-name instrument-fr '+ms+' '+parset_dir+'/bbs-fakeparmdb-fr.parset '+skymodel, log=ms+'_fakeparmdb-fr.log', cmd_type='BBS')
 s.run(check=True)
 for ms in mss:
-    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=substr(NAME,0,24)"', log=ms+'_taql.log', cmd_type='general')
+    s.add('taql "update '+ms+'/instrument-fr::NAMES set NAME=replace(NAME,\':@MODEL_DATA\',\'\')"', log=ms+'_taql.log', cmd_type='general')
 s.run(check=True)
 
 #####################################################################################################
@@ -317,21 +318,21 @@ for c in xrange(niter):
         os.system('mv plots-amp'+str(c)+'* self/solutions/')
         os.system('mv cal-amp'+str(c)+'*.h5 self/solutions/')
 
-        # Correct FR SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
-        logger.info('Faraday rotation correction...')
-        for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
-                    log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
-        s.run(check=True)
-       # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+      # Correct CD SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
         logger.info('Cross-delay correction...')
         for ms in mss:
-            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
-        # Correct beam SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        # Correct beam amp SB.MS:CORRECTED_DATA->CORRECTED_DATA
         logger.info('Beam amp correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-amp cor.correction=Gain', log=ms+'_corAMP-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.run(check=True)
+        # Correct FR SB.MS:CORRECTED_DATA->CORRECTED_DATA
+        logger.info('Faraday rotation correction...')
+        for ms in mss:
+            s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=CORRECTED_DATA cor.parmdb='+ms+'/instrument-fr cor.correction=RotationMeasure', \
+                    log=ms+'_corFR-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
         # Finally re-calculate TEC
@@ -364,7 +365,7 @@ for c in xrange(niter):
                     log=ms+'_corTECb-c'+str(c)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
-   ###################################################################################################################
+    ###################################################################################################################
     # clen on concat.MS:CORRECTED_DATA (FR/TEC corrected, beam corrected)
 
     # do beam-corrected+deeper image at last cycle
@@ -376,6 +377,14 @@ for c in xrange(niter):
                 -scale 8arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
+        s.run(check=True)
+
+        logger.info('Cleaning beam high-res (cycle: '+str(c)+')...')
+        imagename = 'img/wideBeamHR'
+        s.add('wsclean -reorder -name ' + imagename + ' -size 6000 6000 -trim 5500 5500 -mem 90 -j '+str(s.max_processors)+' \
+                -scale 4arcsec -weight briggs -1.5 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
+                log='wscleanBeamHR-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
     # clean mask clean (cut at 5k lambda)
@@ -409,12 +418,12 @@ for c in xrange(niter):
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
 
-    # do low-res first cycle and remove it from the data
-    if c > 0:
+    if c > 0 and c != niter:
         if cc_predict:
             ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA')
         else:
             ft_model_wsclean(mss, imagename, c, user_mask=user_mask, resamp='10asec', keep_in_beam=True)
+    # do low-res first cycle and remove it from the data
     if c == 0:
         if cc_predict:
             ft_model_cc(mss, imagename, c, user_mask=user_mask, keep_in_beam=True, model_column='MODEL_DATA_HIGHRES')

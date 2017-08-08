@@ -262,6 +262,7 @@ wsum = np.zeros_like(isum)
 mask = np.zeros_like(isum,dtype=np.bool)
 for d in directions:
     logging.info('Working on: %s' % d.imagefile)
+
     outname = d.imagefile.replace('.fits','-reproj.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
@@ -273,6 +274,7 @@ for d in directions:
         hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
         if args.save:
             hdu.writeto(outname, clobber=True)
+
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)

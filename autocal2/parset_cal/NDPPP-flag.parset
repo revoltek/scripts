@@ -11,4 +11,4 @@ flag1.type = preflagger
 flag1.baseline = 
 
 elev.type = preflagger
-elev.elevation = 0deg..20deg
+elev.elevation = 0deg..25deg
