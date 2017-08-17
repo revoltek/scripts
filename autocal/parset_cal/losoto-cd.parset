@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateBkp, plotPi, plotPi2, crossdelay, plotCD, residuals, plotPr, plotPr2, reset]
+LoSoTo.Steps = [duplicateBkp, plotPi, plotPi2, crossdelay, plotCD, residuals, plotPr, plotPr2]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -80,6 +80,6 @@ LoSoTo.Steps.plotPr2.Reference = 'CS002LBA'
 LoSoTo.Steps.plotPr2.MinMax = [-3.14,3.14]
 
 # reset remotes as FR can still corrput
-LoSoTo.Steps.reset.Operation = RESET
-LoSoTo.Steps.reset.Soltab = [sol000/crossdelay]
-LoSoTo.Steps.reset.ant = ['RS310LBA','RS210LBA','RS509LBA','RS508LBA','RS407LBA']
+#LoSoTo.Steps.reset.Operation = RESET
+#LoSoTo.Steps.reset.Soltab = [sol000/crossdelay]
+#LoSoTo.Steps.reset.ant = ['RS310LBA','RS210LBA','RS509LBA','RS508LBA','RS407LBA']
