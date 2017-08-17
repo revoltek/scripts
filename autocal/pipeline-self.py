@@ -23,7 +23,7 @@ parset_dir = '/home/fdg/scripts/autocal/parset_self/'
 skymodel = '/home/fdg/scripts/model/calib-simple.skymodel'
 niter = 3
 user_mask = None
-cc_predict = False
+cc_predict = True
 
 if 'tooth' in os.getcwd():
     sourcedb = '/home/fdg/scripts/autocal/LBAsurvey/toothbrush.LBA.skydb'
@@ -165,7 +165,7 @@ for ms in mss:
     s.add('addcol2ms.py -m '+ms+' -c MODEL_DATA_HIGHRES,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
 s.run(check=True)
 
-###################################################################################################
+##################################################################################################
 # Add model to MODEL_DATA
 # copy sourcedb into each MS to prevent concurrent access from multiprocessing to the sourcedb
 sourcedb_basename = sourcedb.split('/')[-1]
@@ -195,6 +195,7 @@ s.run(check=True)
 #####################################################################################################
 # Self-cal cycle
 for c in xrange(niter):
+
     logger.info('Start selfcal cycle: '+str(c))
 
     # Smooth DATA -> SMOOTHED_DATA
@@ -318,7 +319,7 @@ for c in xrange(niter):
         os.system('mv plots-amp'+str(c)+'* self/solutions/')
         os.system('mv cal-amp'+str(c)+'*.h5 self/solutions/')
 
-      # Correct CD SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
+        # Correct CD SB.MS:SUBTRACTED_DATA->CORRECTED_DATA
         logger.info('Cross-delay correction...')
         for ms in mss:
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' msin.datacolumn=SUBTRACTED_DATA cor.parmdb='+ms+'/instrument-cd cor.correction=Gain', log=ms+'_corCD-c'+str(c)+'.log', cmd_type='NDPPP')
@@ -375,7 +376,8 @@ for c in xrange(niter):
         imagename = 'img/wideBeam'
         s.add('wsclean -reorder -name ' + imagename + ' -size 4000 4000 -trim 3500 3500 -mem 90 -j '+str(s.max_processors)+' \
                 -scale 8arcsec -weight briggs 0.0 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
+                -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,3,9 \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 30 '+' '.join(mss), \
                 log='wscleanBeam-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
@@ -383,7 +385,8 @@ for c in xrange(niter):
         imagename = 'img/wideBeamHR'
         s.add('wsclean -reorder -name ' + imagename + ' -size 6000 6000 -trim 5500 5500 -mem 90 -j '+str(s.max_processors)+' \
                 -scale 4arcsec -weight briggs -1.5 -auto-mask 10 -auto-threshold 1 -niter 100000 -no-update-model-required -mgain 0.8 \
-                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 100 '+' '.join(mss), \
+                -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,3,9 \
+                -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -apply-primary-beam -use-differential-lofar-beam -minuv-l 30 '+' '.join(mss), \
                 log='wscleanBeamHR-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
         s.run(check=True)
 
@@ -393,7 +396,7 @@ for c in xrange(niter):
     imagename = 'img/wide-'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 5000 -mgain 0.9 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 -minuv-l 100 '+' '.join(mss), \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 20 -minuv-l 30 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -404,16 +407,18 @@ for c in xrange(niter):
 
     logger.info('Cleaning w/ mask (cycle: '+str(c)+')...')
     imagename = 'img/wideM-'+str(c)
-    #-multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
+    #TODO: -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,9 \
     if cc_predict:
         s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -minuv-l 100 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
+            -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,3,9 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -minuv-l 30 -save-source-list -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     else:
         s.add('wsclean -reorder -name ' + imagename + ' -size 3000 3000 -trim 2500 2500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale 12arcsec -weight briggs 0.0 -niter 1000000 -no-update-model-required -maxuv-l 5000 -mgain 0.8 \
-            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -minuv-l 100 -fitsmask '+maskname+' '+' '.join(mss), \
+            -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,3,9 \
+            -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 0.1 -minuv-l 30 -fitsmask '+maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
