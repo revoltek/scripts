@@ -102,7 +102,7 @@ s.run(check=True)
 logger.info('BL-based smoothing...')
 for ms in mss:
     s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-s.run(check=True)
+s.run(check=True, max_threads=6)
 
 mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1], user_mask = user_mask)
 mosaic_image.select_cc()

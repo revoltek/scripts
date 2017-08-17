@@ -17,10 +17,9 @@ sol.maxiter = 500
 sol.usemodelcolumn = True
 sol.solint = 1
 sol.nchan = 1
-
-#sol.propagatesolutions = False
-
-# TO TEST
 sol.propagatesolutions = True
+<<<<<<< HEAD
+=======
 sol.stepsize = 0.2 # can be set? ask tj
 sol.tolerance = 1.e-5
+>>>>>>> 117c359fb7635d4344a6fd14a5637c49d1ac7efb
