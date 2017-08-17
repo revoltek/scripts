@@ -23,11 +23,12 @@ import pyrap.images as pim
 from pyrap import quanta
 import sys
 
-this_pim = pim.image(sys.argv[1])
-info_dict = this_pim.info()['imageinfo']['restoringbeam']
-# get beam info
-bpar_ma = quanta.quantity(info_dict['major']).get_value('arcsec')
-bpar_mi = quanta.quantity(info_dict['minor']).get_value('arcsec')
-bpar_pa = quanta.quantity(info_dict['positionangle']).get_value('deg')
-print '\nmean Beam: {0:0.3f} maj (arcsec), {1:2.3f} min (arcsec), {2:0.2f} pa (deg)'.format(bpar_ma, bpar_mi,bpar_pa)
+for img in sys.argv[1:]:
+    this_pim = pim.image(img)
+    info_dict = this_pim.info()['imageinfo']['restoringbeam']
+    # get beam info
+    bpar_ma = quanta.quantity(info_dict['major']).get_value('arcsec')
+    bpar_mi = quanta.quantity(info_dict['minor']).get_value('arcsec')
+    bpar_pa = quanta.quantity(info_dict['positionangle']).get_value('deg')
+    print '\n{0} - Beam: maj {1:0.3f} (arcsec), min {2:2.3f} (arcsec), pa {3:0.2f} (deg)'.format(img, bpar_ma, bpar_mi,bpar_pa)
 
