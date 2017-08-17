@@ -274,6 +274,10 @@ for image_nvss in images_nvss:
                     print 'skip Good: s2n==%f' % s2n 
                     continue
 
+                # save matched coordinates to check astrometry
+                with open('astrometry.txt', 'w') as astrometry:
+                    astrometry.write('%f %f %f %f' % (s_nvss['RA'],s_nvss['DEC'],s_tgss['RA'],s_tgss['DEC']) )
+
                 ra = np.average([s_nvss['RA'],s_tgss['RA']], weights=[1/s_nvss['E_RA']**2,1/s_tgss['E_RA']**2])
                 dec = np.average([s_nvss['DEC'],s_tgss['DEC']], weights=[1/s_nvss['E_DEC']**2,1/s_tgss['E_DEC']**2])
                 spidx, e_spidx = twopoint_spidx_bootstrap([147.,1400.], \
