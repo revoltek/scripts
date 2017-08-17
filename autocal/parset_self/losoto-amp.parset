@@ -1,5 +1,5 @@
 # losoto parset
-LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, smoothA, plotAs, residualA, plotAr, resetP, norm]
+LoSoTo.Steps = [duplicateAbkp, plotAi1, plotAi2, plotAi3, flag, smoothA, plotAs, residualA, plotAr, resetP, norm]
 LoSoTo.Solset = [sol000]
 LoSoTo.Soltab = []
 LoSoTo.SolType = []
@@ -42,6 +42,17 @@ LoSoTo.Steps.plotAi3.PlotFlag = True
 LoSoTo.Steps.plotAi3.Prefix = plots/amp_
 LoSoTo.Steps.plotAi3.MinMax = [0.8,1.2]
 
+# flag
+LoSoTo.Steps.flag.Operation = FLAG
+LoSoTo.Steps.flag.Soltab = [sol000/amplitude000]
+LoSoTo.Steps.flag.Axes = [time,freq]
+LoSoTo.Steps.flag.MaxCycles = 1
+LoSoTo.Steps.flag.MaxRms = 5
+LoSoTo.Steps.flag.Order = [0,0]
+LoSoTo.Steps.flag.Replce = False
+LoSoTo.Steps.flag.PreFlagZeros = False
+LoSoTo.Steps.flag.Mode = smooth
+
 # smooth
 LoSoTo.Steps.smoothA.Operation = SMOOTH
 LoSoTo.Steps.smoothA.Soltab = [sol000/amplitude000]
@@ -80,4 +91,4 @@ LoSoTo.Steps.resetP.Soltab = [sol000/phase000]
 LoSoTo.Steps.norm.Operation = NORM
 LoSoTo.Steps.norm.Soltab = [sol000/amplitude000]
 LoSoTo.Steps.norm.NormVal = 1.
-LoSoTo.Steps.norm.NormAxes = [time,ant,pol]
+LoSoTo.Steps.norm.NormAxes = [time,freq,ant]
