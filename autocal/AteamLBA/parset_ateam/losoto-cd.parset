@@ -41,7 +41,7 @@ LoSoTo.Steps.crossdelay.Operation = CROSSDELAY
 LoSoTo.Steps.crossdelay.OutTable = crossdelay
 LoSoTo.Steps.crossdelay.Smooth = 201
 LoSoTo.Steps.crossdelay.Reference = 'CS002LBA'
-LoSoTo.Steps.crossdelay.MaxResidual = 10
+LoSoTo.Steps.crossdelay.MaxResidual = 0
 
 # plot cross delay
 LoSoTo.Steps.plotCD.Operation = PLOT
