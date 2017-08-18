@@ -18,7 +18,7 @@ ddecal.solint = 1
 
 ddecal.mode = tecandphase # phaseonly, complexgain, tec, tecandphase
 #ddecal.coreconstraint = 1500 # in meters
-ddecal.propagatesolutions = True
+ddecal.propagatesolutions = False
 
 #ddecal.mode = tecscreen
 #ddecal.tecscreen.order = 4

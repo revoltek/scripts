@@ -93,16 +93,16 @@ for ms in mss:
 s.run(check=True)
 mss = sorted(glob.glob('mss/TC*-cp.MS'))
        
-logger.info('Add columns...')
-for ms in mss:
-    s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
-s.run(check=True)
-
-###############################################################
-logger.info('BL-based smoothing...')
-for ms in mss:
-    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
-s.run(check=True, max_threads=6)
+#logger.info('Add columns...')
+#for ms in mss:
+#    s.add('addcol2ms.py -m '+ms+' -c CORRECTED_DATA,SUBTRACTED_DATA', log=ms+'_addcol.log', cmd_type='python')
+#s.run(check=True)
+#
+################################################################
+#logger.info('BL-based smoothing...')
+#for ms in mss:
+#    s.add('BLsmooth.py -f 1.0 -r -i DATA -o SMOOTHED_DATA '+ms, log=ms+'_smooth.log', cmd_type='python')
+#s.run(check=True, max_threads=6)
 
 mosaic_image = Image(sorted(glob.glob('self/images/wide*-[0-9]-MFS-image.fits'))[-1], user_mask = user_mask)
 mosaic_image.select_cc()
@@ -149,22 +149,28 @@ for c in xrange(maxniter):
     s.add('run_env.sh makesourcedb outtype="blob" format="<" in="%s" out="%s"' % (skymodel_voro, skymodel_voro_skydb), log='makesourcedb_voro.log', cmd_type='general')
     s.run(check=True)
 
-    ################################################################
-    # Calibration
-    logger.info('Calibrating...')
+#    ################################################################
+#    # Calibration
+#    logger.info('Calibrating...')
+#    for ms in mss:
+#        check_rm(ms+'/cal-c'+str(c)+'.h5')
+#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
+#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+#    s.run(check=True)
+#
+#    # TODO: remove when NDPPP is fixed
+    logger.info('Fix axis...')
     for ms in mss:
-        check_rm(ms+'/cal-c'+str(c)+'.h5')
-        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
-                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+        s.add('fixaxis.py '+ms+'/cal-c'+str(c)+'.h5', log=ms+'_fixaxis-c'+str(c)+'.log', cmd_type='python', processors='max')
     s.run(check=True)
-
-    # Plot solutions
-    # TODO: concat h5parm into a single file
-    logger.info('Running losoto...')
-    for i, ms in enumerate(mss):
-        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
-        s.run(check=True)
-        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
+#
+#    # Plot solutions
+#    # TODO: concat h5parm into a single file
+#    logger.info('Running losoto...')
+#    for i, ms in enumerate(mss):
+#        s.add('losoto -v '+ms+'/cal-c'+str(c)+'.h5 '+parset_dir+'/losoto-plot.parset', log=ms+'_losoto-c'+str(c)+'.log', cmd_type='python', processors='max')
+#        s.run(check=True)
+#        os.system('mv plots ddcal/plots/plots-c'+str(c)+'-t'+str(i))
 
     ############################################################
     # Empty the dataset
