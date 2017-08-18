@@ -58,7 +58,7 @@ def clean(c, mss, size=2.):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0. -niter 100000 -no-update-model-required -mgain 0.9 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
-            -auto-threshold 20 -minuv-l 100 '+' '.join(mss), \
+            -auto-threshold 20 -minuv-l 30 '+' '.join(mss), \
             log='wsclean-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
 
@@ -75,7 +75,7 @@ def clean(c, mss, size=2.):
             -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
             -scale '+str(pixscale)+'arcsec -weight briggs 0. -niter 1000000 -no-update-model-required -mgain 0.8 -pol I \
             -joinchannels -fit-spectral-pol 2 -channelsout 10 \
-            -auto-threshold 0.1 -save-source-list -minuv-l 100 -fitsmask '+im.maskname+' '+' '.join(mss), \
+            -auto-threshold 0.1 -save-source-list -minuv-l 30 -fitsmask '+im.maskname+' '+' '.join(mss), \
             log='wscleanM-c'+str(c)+'.log', cmd_type='wsclean', processors='max')
     s.run(check=True)
     os.system('cat logs/wscleanM-c'+str(c)+'.log | grep "background noise"')
