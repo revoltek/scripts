@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore")
 
 # options
 wdir = '/net/spaarne/data2/spidxskymap/'
-#wdir = '/data2/spidxskymap/'
+#wdir = '/net/spaarne/data2/spidxskymap/test_reliability/'
 #area = 10.1978092553 # beam area in pixels - with beam: 45"x45" and pixels size: 15"x15"
 area = 0.0125*0.0125*np.pi/(4*np.log(2.)) # beam area in deg
 
@@ -139,7 +139,7 @@ class t_surv():
     A class to store survey information
     """
     def __init__(self, cat, image):
-        yyself.w = wcs.WCS(pyfits.open(image)[0].header)
+        self.w = wcs.WCS(pyfits.open(image)[0].header)
         self.t = Table.read(cat)
 
         # arbitrary remove bad detections, it happens a couple of times
@@ -171,7 +171,7 @@ for image_nvss in images_nvss:
     cat_srl_nvss = image_nvss.replace('.fits','-srl.fits').replace('NVSS','NVSS/catalog',1)
     if not os.path.exists(cat_srl_nvss) or not os.path.exists(image_isl_nvss) or not os.path.exists(image_rms_nvss):# or not os.path.exists(image_gaus_nvss):
         import bdsf
-        c = bdsf.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
+        c = bdsf.process_image(image_nvss, frequency=1400e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=3.5)
         c.export_image(outfile=image_rms_nvss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_nvss, img_type='gaus_model', clobber=True)
         c.export_image(outfile=image_isl_nvss, img_type='island_mask', clobber=True)
@@ -186,7 +186,7 @@ for image_nvss in images_nvss:
     cat_srl_tgss = image_tgss.replace('.fits','-srl.fits').replace('TGSS','TGSS/catalog',1)
     if not os.path.exists(cat_srl_tgss) or not os.path.exists(image_isl_tgss) or not os.path.exists(image_rms_tgss):# or not os.path.exists(image_gaus_tgss):
         import bdsf
-        c = bdsf.process_image(image_tgss, frequency=147e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=4)
+        c = bdsf.process_image(image_tgss, frequency=147e6, rms_box=(102,34), advanced_opts=True, group_tol=0.5, thresh_isl=3, thresh_pix=3.5)
         c.export_image(outfile=image_rms_tgss, img_type='rms', clobber=True)
         #c.export_image(outfile=image_gaus_tgss, img_type='gaus_model', clobber=True)
         c.export_image(outfile=image_isl_tgss, img_type='island_mask', clobber=True)
@@ -211,6 +211,12 @@ for image_nvss in images_nvss:
         # Creating new astropy Table
         t = Table(names=('RA','DEC','Total_flux_NVSS','E_Total_flux_NVSS','Peak_flux_NVSS','E_Peak_flux_NVSS','Rms_NVSS','Total_flux_TGSS','E_Total_flux_TGSS','Peak_flux_TGSS','E_Peak_flux_TGSS','Rms_TGSS','Spidx','E_Spidx','s2n','S_code','Num_match','Num_unmatch_NVSS','Num_unmatch_TGSS','Isl_id','Mask'),\
                   dtype=('f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','f8','S1','i4','i4','i4','i4','S100'))
+
+        # if 0 sources found in one of the two images, continue. This is just a workaround for inverted-image case and should never happen in normal mode
+        # otherwise a number of upper/lower limit are lost
+        if not os.path.exists(cat_srl_nvss) or not os.path.exists(cat_srl_tgss):
+            print "No sources! skip."
+            continue
 
         nvss = t_surv(cat_srl_nvss, image_mask)
         tgss = t_surv(cat_srl_tgss, image_mask)
@@ -272,11 +278,11 @@ for image_nvss in images_nvss:
                 s2n = np.sqrt( (s_nvss['Peak_flux']/s_nvss['Isl_rms'])**2 + (s_tgss['Peak_flux']/s_tgss['Isl_rms'])**2 )
                 if s2n < 5: 
                     print 'skip Good: s2n==%f' % s2n 
-                    continue
+                #    continue
 
                 # save matched coordinates to check astrometry
-                with open('astrometry.txt', 'w') as astrometry:
-                    astrometry.write('%f %f %f %f' % (s_nvss['RA'],s_nvss['DEC'],s_tgss['RA'],s_tgss['DEC']) )
+                with open('astrometry.txt', 'a') as astrometry:
+                    astrometry.write('%f %f %f %f\n' % (s_nvss['RA'],s_nvss['DEC'],s_tgss['RA'],s_tgss['DEC']) )
 
                 ra = np.average([s_nvss['RA'],s_tgss['RA']], weights=[1/s_nvss['E_RA']**2,1/s_tgss['E_RA']**2])
                 dec = np.average([s_nvss['DEC'],s_tgss['DEC']], weights=[1/s_nvss['E_DEC']**2,1/s_tgss['E_DEC']**2])
