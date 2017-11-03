@@ -24,14 +24,16 @@ pi = np.pi
 
 basevis = 'C1.MS' # something.MS
 spwlist = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15']
+uvlimit = "<100000klambda"
+uvlimitp= "<100000klambda"
 
 targetname = "XDCPJ0044-20"
 phasecalname = "J2357-1125"
 bandpasscalname = "0542+498=3C147"
 polangcalname = "0521+166=3C138"
 
-allspw_dataset   = 'C1_allspw.MS'
-allspw_target    = 'C1_target.MS'
+allspw_dataset   = basevis+'_allspw.MS'
+allspw_target    = basevis+'_target.MS'
 
 path_plot='plots/'
 path_cal='cals/'
@@ -48,15 +50,12 @@ for spw_id in spwlist:
   path_plot_spw = path_plot+'/spw%02i/' % int(spw_id)
   if not os.path.exists(path_plot_spw):
     os.makedirs(path_plot_spw)
-
-  uvlimit = "<1000klambda"
-  uvlimitp= "<1000klambda"
   
-  hsmooth_file     = basevis+'_spw%02i.ms' % int(spw_id)
-  outname_phasecal = basevis+'_spw%02i.phasecal.ms' % int(spw_id)
-  outname_bandpass = basevis+'_spw%02i.bandpass.ms' % int(spw_id)
-  outname_polang    = basevis+'_spw%02i.polang.ms' % int(spw_id)
-  outname_target     = basevis+'_spw%02i.target.ms' % int(spw_id) 
+  hsmooth_file     = basevis+'_spw%02i.MS' % int(spw_id)
+  outname_phasecal = basevis+'_spw%02i.phasecal.MS' % int(spw_id)
+  outname_bandpass = basevis+'_spw%02i.bandpass.MS' % int(spw_id)
+  outname_polang   = basevis+'_spw%02i.polang.MS' % int(spw_id)
+  outname_target   = basevis+'_spw%02i.target.MS' % int(spw_id) 
   
   calgceff       = path_cal+'cal.gceff.spw.' + str(spw_id)
   calantpos      = path_cal+'cal.antpos.spw.'+ str(spw_id)
@@ -193,8 +192,8 @@ for spw_id in spwlist:
 				plotrange=[-1,-1,-180,180], figfile=path_plot_spw+figure_name+str(i+1)+'.png')
               
   # apply above solution to the individual sources for flagging purposes (rficonsole)
-  applycal(vis=outname_bandpass, gaintable=[calgcal1,calbp1], interp=['linear','linear,linear'], flagbackup=False)
-  applycal(vis=outname_polang, gaintable=[calgcal1,calbp1], interp=['linear','linear,linear'], flagbackup=False)
+  applycal(vis=outname_bandpass, gaintable=[calgcal1,calbp1], interp=['linear','linear,linear'], calwt=False, flagbackup=False)
+  applycal(vis=outname_polang, gaintable=[calgcal1,calbp1], interp=['linear','linear,linear'], calwt=False, flagbackup=False)
 
   #################
   # INITPH 2
@@ -231,7 +230,7 @@ for spw_id in spwlist:
 
   # GAIN CAL
   gt = [calk1,calbp2]
-  gaincal(vis=outname_bandpass, caltable=calgcal3, calmode='ap', solint="inf", refant=ref_ant, gaintable=gt, interp=['linear','nearest'], parang=True)
+  gaincal(vis=outname_bandpass, caltable=calgcal3, spw="0:2~61", calmode='ap', solint="inf", refant=ref_ant, gaintable=gt, interp=['linear','nearest'], parang=True)
 
   figure_name='finalamp'
   plotcal(caltable=calgcal3, xaxis='antenna', yaxis='amp', figfile=path_plot_spw+figure_name+'.png')
@@ -266,7 +265,7 @@ for spw_id in spwlist:
 
   # Xf
   gt = [calgcal3, calbp2, calk1, calkross1, caldf1]
-  polcal(vis=outname_bandpass, caltable=calxf1, selectdata=True, uvrange=uvlimit, solint="inf", combine="scan", \
+  polcal(vis=outname_polang, caltable=calxf1, selectdata=True, uvrange=uvlimit, solint="inf", combine="scan", \
          refant=ref_ant, poltype="Xf", gaintable=gt, interp=['linear','linear','linear','linear','nearest'])
       
   figure_name='Xf.png'
