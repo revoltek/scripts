@@ -22,7 +22,7 @@ pi = np.pi
 # changed to Taylor Butler 2013
 # fixed aoflagger call with LD_LIBRARY_PATH and new rfis
 
-basevis = 'C1.MS' # something.MS
+basevis = 'B1.MS' # something.MS
 spwlist = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15']
 uvlimit = "<100000klambda"
 uvlimitp= "<100000klambda"
@@ -31,15 +31,25 @@ targetname = "XDCPJ0044-20"
 phasecalname = "J2357-1125"
 bandpasscalname = "0542+498=3C147"
 polangcalname = "0521+166=3C138"
+basevisnoMS = basevis.replace('.MS','')
 
-allspw_dataset   = basevis+'_allspw.MS'
-allspw_target    = basevis+'_target.MS'
-
-path_plot='plots/'
-path_cal='cals/'
-num_ant=27
-num_plots=(num_ant/4)
+path_plot = basevisnoMS+'_plots/'
+path_cal = basevisnoMS+'_cals/'
+path_ms = basevisnoMS+'_ms/'
+num_ant = 27
+num_plots = (num_ant/4)
 ref_ant = 'ea20'
+
+# delete and re-create MS-specific paths
+if os.path.exists(path_plot): os.system('rm -r '+path_plot)
+os.makedirs(path_plot)
+if os.path.exists(path_cal): os.system('rm -r '+path_cal)
+os.makedirs(path_cal)
+if os.path.exists(path_ms): os.system('rm -r '+path_ms)
+os.makedirs(path_ms)
+ 
+allspw_dataset   = path_ms+'allspw.MS'
+allspw_target    = path_ms+'target.MS'
 
 # listobs
 if os.path.exists(basevis.replace('MS', 'listobs')): os.system('rm '+basevis.replace('MS', 'listobs'))
@@ -48,39 +58,31 @@ listobs( vis=basevis, listfile=basevis.replace('MS', 'listobs') )
 for spw_id in spwlist:
 
   path_plot_spw = path_plot+'/spw%02i/' % int(spw_id)
-  if not os.path.exists(path_plot_spw):
-    os.makedirs(path_plot_spw)
+  os.makedirs(path_plot_spw)
+  path_cal_spw = path_cal+'/spw%02i/' % int(spw_id)
+  os.makedirs(path_cal_spw)
+  path_ms_spw = path_ms+'/spw%02i/' % int(spw_id)
+  os.makedirs(path_ms_spw)
   
-  hsmooth_file     = basevis+'_spw%02i.MS' % int(spw_id)
-  outname_phasecal = basevis+'_spw%02i.phasecal.MS' % int(spw_id)
-  outname_bandpass = basevis+'_spw%02i.bandpass.MS' % int(spw_id)
-  outname_polang   = basevis+'_spw%02i.polang.MS' % int(spw_id)
-  outname_target   = basevis+'_spw%02i.target.MS' % int(spw_id) 
+  hsmooth_file     = path_ms_spw+'hsmooth.MS'
+  outname_phasecal = path_ms_spw+'phasecal.MS'
+  outname_bandpass = path_ms_spw+'bandpass.MS'
+  outname_polang   = path_ms_spw+'polang.MS'
+  outname_target   = path_ms_spw+'target.MS'
   
-  calgceff       = path_cal+'cal.gceff.spw.' + str(spw_id)
-  calantpos      = path_cal+'cal.antpos.spw.'+ str(spw_id)
-  calgcal1       = path_cal+'cal.gcal1.spw.' + str(spw_id) # P
-  calbp1         = path_cal+'cal.bcal1.spw.' + str(spw_id)
-  calgcal2       = path_cal+'cal.gcal2.spw.' + str(spw_id) # P
-  calk1          = path_cal+'cal.kcal1.spw.' + str(spw_id)
-  calbp2         = path_cal+'cal.bcal2.spw.' + str(spw_id)
-  calgcal3       = path_cal+'cal.gcal3.spw.' + str(spw_id) # AP
-  calkross1      = path_cal+'cal.kross1.spw.'+ str(spw_id)
-  caldf1         = path_cal+'cal.dcal1.spw.' + str(spw_id)
-  calxf1         = path_cal+'cal.xcal1.spw.' + str(spw_id)
-  calgcal_loc    = path_cal+'cal.gcalloc.spw.' + str(spw_id) 
+  calgceff       = path_cal_spw+'cal.gceff'
+  calantpos      = path_cal_spw+'cal.antpos'
+  calgcal1       = path_cal_spw+'cal.gcal1' # P
+  calbp1         = path_cal_spw+'cal.bcal1'
+  calgcal2       = path_cal_spw+'cal.gcal2' # P
+  calk1          = path_cal_spw+'cal.kcal1'
+  calbp2         = path_cal_spw+'cal.bcal2'
+  calgcal3       = path_cal_spw+'cal.gcal3' # AP
+  calkross1      = path_cal_spw+'cal.kross1'
+  caldf1         = path_cal_spw+'cal.dcal1'
+  calxf1         = path_cal_spw+'cal.xcal1'
+  calgcal_loc    = path_cal_spw+'cal.gcalloc'
 
-  os.system('rm -rf ' + hsmooth_file) 
-  os.system('rm -rf ' + outname_phasecal)
-  os.system('rm -rf ' + outname_bandpass)
-  os.system('rm -rf ' + outname_polang)
-  os.system('rm -rf ' + outname_target)
-  os.system('rm -rf ' + calgceff)
-  os.system('rm -rf '+calbp1+' '+calbp2+' '+calgcal1+' '+calgcal2+' '+caldf1+' '+\
-             calxf1+' '+calantpos+' '+calk1+' '+calkross1+' '+calgcal3)
-  os.system('rm -rf ' + allspw_dataset)
-  os.system('rm -rf ' + allspw_target)
-  
   #apply the hanning smooth because of the RFI
   default("hanningsmooth")
   hanningsmooth(vis=basevis, datacolumn="data", outputvis=hsmooth_file, spw=spw_id)
@@ -269,7 +271,7 @@ for spw_id in spwlist:
          refant=ref_ant, poltype="Xf", gaintable=gt, interp=['linear','linear','linear','linear','nearest'])
       
   figure_name='Xf.png'
-  plotcal(caltable=calxf1, xaxis='chan', yaxis='phase', figfile=path_plot_spw+figure_name)
+  plotcal(caltable=calxf1, xaxis='chan', yaxis='phase', plotrange=[-1,-1,-180,180], figfile=path_plot_spw+figure_name)
 
   ###################
   # Local cal (amp for elevation dependent problems) 
@@ -278,26 +280,11 @@ for spw_id in spwlist:
           selectdata=True, uvrange=uvlimit, solint="10min", refant=ref_ant, \
           gaintype="G", calmode="ap", gaintable=gt, interp=['linear,linear','nearest','nearest','nearest,linear'], parang=True)
           
-  #figure_name='loc_amp-noscale'
-  #for i in range(num_plots+1):
-  #    ant_plot=str(i*4)+'~'+str(i*4+3)
-  #    plotcal(caltable=calgcal_loc, xaxis='time', yaxis='amp', subplot=221, antenna=ant_plot, iteration='antenna', \
-  #            figfile=path_plot_spw+figure_name+str(i+1)+'.png')
-
   # FLUXSCALE (fitorder not "used" as we have only 1 spw)
   fluxscale(vis=outname_phasecal, caltable=calgcal_loc, fluxtable=calgcal_loc, reference=[bandpasscalname], transfer=phasecalname)
             
-  figure_name='loc_amp'
-  for i in range(num_plots+1):
-      ant_plot=str(i*4)+'~'+str(i*4+3)
-      plotcal(caltable=calgcal_loc, xaxis='time', yaxis='amp', subplot=221, antenna=ant_plot, iteration='antenna', \
-              figfile=path_plot_spw+figure_name+str(i+1)+'.png')
-
-  figure_name='loc_phase'
-  for i in range(num_plots+1):
-      ant_plot=str(i*4)+'~'+str(i*4+3)
-      plotcal(caltable=calgcal_loc, xaxis='time', yaxis='phase', subplot=221, antenna=ant_plot, iteration='antenna', plotrange=[-1,-1,-180,180], \
-              figfile=path_plot_spw+figure_name+str(i+1)+'.png')
+  plotcal(caltable=calgcal_loc, xaxis='time', yaxis='amp', antenna=ant_plot, figfile=path_plot_spw+'loc_amp.png')
+  plotcal(caltable=calgcal_loc, xaxis='time', yaxis='phase', antenna=ant_plot, plotrange=[-1,-1,-180,180], figfile=path_plot_spw+'loc_ph.png')
 
 #  # APPLY
 #  gt = [calgcal_loc,calbp2,calk1,calkross1,caldf1,calxf1]
@@ -333,19 +320,16 @@ for spw_id in spwlist:
   applycal(vis=outname_target, gaintable=gt, interp=['linear','linear,linearflag','nearest','nearest','nearest,linearflag','nearest,linearflag'], parang=True, calwt=False, flagbackup=False)
 
 #put together all the spw in one dataset (that is still divided into 16 spw)
-all_spwlist = sorted(glob.glob('spw??.target.ms'))
+all_spwlist = sorted(glob.glob(basevisnoMS+'_ms/spw??/target.MS'))
 concat(vis=all_spwlist, concatvis=allspw_dataset)
-os.system('rm -rf spw??.target.ms')
+
+# flag bad spw
+#badspw='2,3,4,8,9'    
+#flagdata(vis=allspw_dataset, mode="manual", spw=badspw, flagbackup=False)
+
+#run AOFlagger to better remove the RFI
+subprocess.call('aoflagger -strategy ~/scripts/JVLA_Lband-flag.rfis -column CORRECTED_DATA '+allspw_dataset, shell=True)
 	
 #split and avareging; we ignore the initial and final channel because they are bad (total of 16 channels)
 split(vis=allspw_dataset, outputvis=allspw_target, datacolumn='corrected', field=targetname, spw='*:7~54', width=4, timebin='10s')
-os.system('rm -rf ' + allspw_dataset)
-
-#run AOFlagger to better remove the RFI
-subprocess.call('aoflagger -strategy ../flagonavg_rlandlr.rfis -column DATA '+allspw_target, shell=True)
-
-#further flagging after rl and lr correlation inspection -- on spw
-#plotms(vis=allspw_target, xaxis='uvdist',yaxis='amp',correlation='rl,lr',coloraxis='antenna1')
-
-#badspw='1,2,3,8,9'    
-#flagdata(vis=allspw_target,mode="manual",spw=badspw,flagbackup=False)
+#os.system('rm -rf ' + allspw_dataset)
