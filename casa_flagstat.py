@@ -22,10 +22,9 @@
 
 import sys
 import numpy as np
-active_ms = sys.argv[5]
 
 default('flagdata')
-t = flagdata(vis=active_ms, mode='summary', field='', scan='', spwchan=False, spwcorr=False, basecnt=False, action='calculate', flagbackup=False, savepars=False, async=False)
+t = flagdata(vis=active_ms, mode='summary', field='', scan='', spwchan=False, spwcorr=False, basecnt=False, action='calculate', flagbackup=False, savepars=False)
 log = 'Flag statistics:'
 log += '\nAntenna, '
 for k in sorted(t['antenna']):
