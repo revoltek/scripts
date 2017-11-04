@@ -22,7 +22,7 @@ pi = np.pi
 # changed to Taylor Butler 2013
 # fixed aoflagger call with LD_LIBRARY_PATH and new rfis
 
-basevis = 'B1.MS' # something.MS
+basevis = 'A2.MS' # something.MS
 spwlist = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15']
 uvlimit = "<100000klambda"
 uvlimitp= "<100000klambda"
@@ -34,22 +34,36 @@ polangcalname = "0521+166=3C138"
 basevisnoMS = basevis.replace('.MS','')
 
 path_plot = basevisnoMS+'_plots/'
-path_cal = basevisnoMS+'_cals/'
-path_ms = basevisnoMS+'_ms/'
+path_data = basevisnoMS+'_data/'
 num_ant = 27
 num_plots = (num_ant/4)
 ref_ant = 'ea20'
 
+def flag_stat(ms):
+  default('flagdata')
+  t = flagdata(vis=ms, mode='summary', field='', scan='', spwchan=False, spwcorr=False, basecnt=False, action='calculate', flagbackup=False, savepars=False)
+  log = 'Flag statistics:'
+  log += '\nAntenna, '
+  for k in sorted(t['antenna']):
+      log += k +': %d.2%% - ' % (100.*t['antenna'][k]['flagged']/t['antenna'][k]['total'])
+  log += '\nCorrelation, '
+  for k, v in t['correlation'].items():
+      log += k +': %d.2%% - ' % (100.*v['flagged']/v['total'])
+  log += '\nSpw, '
+  for k, v in t['spw'].items():
+      log += k +': %d.2%% - ' % (100.*v['flagged']/v['total'])
+  log += '\nTotal: %d.2%%' % (100.*t['flagged']/t['total'])
+  
+  print log.replace(' - \n','\n')
+
 # delete and re-create MS-specific paths
 if os.path.exists(path_plot): os.system('rm -r '+path_plot)
 os.makedirs(path_plot)
-if os.path.exists(path_cal): os.system('rm -r '+path_cal)
-os.makedirs(path_cal)
-if os.path.exists(path_ms): os.system('rm -r '+path_ms)
-os.makedirs(path_ms)
+if os.path.exists(path_data): os.system('rm -r '+path_data)
+os.makedirs(path_data)
  
-allspw_dataset   = path_ms+'allspw.MS'
-allspw_target    = path_ms+'target.MS'
+allspw_dataset   = path_data+'allspw.MS'
+allspw_target    = path_data+'target.MS'
 
 # listobs
 if os.path.exists(basevis.replace('MS', 'listobs')): os.system('rm '+basevis.replace('MS', 'listobs'))
@@ -57,31 +71,31 @@ listobs( vis=basevis, listfile=basevis.replace('MS', 'listobs') )
 
 for spw_id in spwlist:
 
+  print "Working on SPW", spw_id
+
   path_plot_spw = path_plot+'/spw%02i/' % int(spw_id)
   os.makedirs(path_plot_spw)
-  path_cal_spw = path_cal+'/spw%02i/' % int(spw_id)
-  os.makedirs(path_cal_spw)
-  path_ms_spw = path_ms+'/spw%02i/' % int(spw_id)
-  os.makedirs(path_ms_spw)
+  path_data_spw = path_data+'/spw%02i/' % int(spw_id)
+  os.makedirs(path_data_spw)
   
-  hsmooth_file     = path_ms_spw+'hsmooth.MS'
-  outname_phasecal = path_ms_spw+'phasecal.MS'
-  outname_bandpass = path_ms_spw+'bandpass.MS'
-  outname_polang   = path_ms_spw+'polang.MS'
-  outname_target   = path_ms_spw+'target.MS'
+  hsmooth_file     = path_data_spw+'hsmooth.MS'
+  outname_phasecal = path_data_spw+'phasecal.MS'
+  outname_bandpass = path_data_spw+'bandpass.MS'
+  outname_polang   = path_data_spw+'polang.MS'
+  outname_target   = path_data_spw+'target.MS'
   
-  calgceff       = path_cal_spw+'cal.gceff'
-  calantpos      = path_cal_spw+'cal.antpos'
-  calgcal1       = path_cal_spw+'cal.gcal1' # P
-  calbp1         = path_cal_spw+'cal.bcal1'
-  calgcal2       = path_cal_spw+'cal.gcal2' # P
-  calk1          = path_cal_spw+'cal.kcal1'
-  calbp2         = path_cal_spw+'cal.bcal2'
-  calgcal3       = path_cal_spw+'cal.gcal3' # AP
-  calkross1      = path_cal_spw+'cal.kross1'
-  caldf1         = path_cal_spw+'cal.dcal1'
-  calxf1         = path_cal_spw+'cal.xcal1'
-  calgcal_loc    = path_cal_spw+'cal.gcalloc'
+  calgceff       = path_data_spw+'cal.gceff'
+  calantpos      = path_data_spw+'cal.antpos'
+  calgcal1       = path_data_spw+'cal.gcal1' # P
+  calbp1         = path_data_spw+'cal.bcal1'
+  calgcal2       = path_data_spw+'cal.gcal2' # P
+  calk1          = path_data_spw+'cal.kcal1'
+  calbp2         = path_data_spw+'cal.bcal2'
+  calgcal3       = path_data_spw+'cal.gcal3' # AP
+  calkross1      = path_data_spw+'cal.kross1'
+  caldf1         = path_data_spw+'cal.dcal1'
+  calxf1         = path_data_spw+'cal.xcal1'
+  calgcal_loc    = path_data_spw+'cal.gcalloc'
 
   #apply the hanning smooth because of the RFI
   default("hanningsmooth")
@@ -283,8 +297,8 @@ for spw_id in spwlist:
   # FLUXSCALE (fitorder not "used" as we have only 1 spw)
   fluxscale(vis=outname_phasecal, caltable=calgcal_loc, fluxtable=calgcal_loc, reference=[bandpasscalname], transfer=phasecalname)
             
-  plotcal(caltable=calgcal_loc, xaxis='time', yaxis='amp', antenna=ant_plot, figfile=path_plot_spw+'loc_amp.png')
-  plotcal(caltable=calgcal_loc, xaxis='time', yaxis='phase', antenna=ant_plot, plotrange=[-1,-1,-180,180], figfile=path_plot_spw+'loc_ph.png')
+  plotcal(caltable=calgcal_loc, xaxis='time', yaxis='amp', figfile=path_plot_spw+'loc_amp.png')
+  plotcal(caltable=calgcal_loc, xaxis='time', yaxis='phase', plotrange=[-1,-1,-180,180], figfile=path_plot_spw+'loc_ph.png')
 
 #  # APPLY
 #  gt = [calgcal_loc,calbp2,calk1,calkross1,caldf1,calxf1]
@@ -320,7 +334,7 @@ for spw_id in spwlist:
   applycal(vis=outname_target, gaintable=gt, interp=['linear','linear,linearflag','nearest','nearest','nearest,linearflag','nearest,linearflag'], parang=True, calwt=False, flagbackup=False)
 
 #put together all the spw in one dataset (that is still divided into 16 spw)
-all_spwlist = sorted(glob.glob(basevisnoMS+'_ms/spw??/target.MS'))
+all_spwlist = sorted(glob.glob(basevisnoMS+'_data/spw??/target.MS'))
 concat(vis=all_spwlist, concatvis=allspw_dataset)
 
 # flag bad spw
@@ -328,8 +342,9 @@ concat(vis=all_spwlist, concatvis=allspw_dataset)
 #flagdata(vis=allspw_dataset, mode="manual", spw=badspw, flagbackup=False)
 
 #run AOFlagger to better remove the RFI
-subprocess.call('aoflagger -strategy ~/scripts/JVLA_Lband-flag.rfis -column CORRECTED_DATA '+allspw_dataset, shell=True)
+flag_stat(allspw_dataset)
+#subprocess.call('aoflagger -strategy ~/scripts/JVLA_Lband-flag.rfis -column CORRECTED_DATA '+allspw_dataset, shell=True)
+#flag_stat(allspw_dataset)
 	
 #split and avareging; we ignore the initial and final channel because they are bad (total of 16 channels)
-split(vis=allspw_dataset, outputvis=allspw_target, datacolumn='corrected', field=targetname, spw='*:7~54', width=4, timebin='10s')
-#os.system('rm -rf ' + allspw_dataset)
+#split(vis=allspw_dataset, outputvis=allspw_target, datacolumn='corrected', field=targetname, width=4, timebin='10s')
