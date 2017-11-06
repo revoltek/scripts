@@ -336,15 +336,18 @@ for spw_id in spwlist:
 #put together all the spw in one dataset (that is still divided into 16 spw)
 all_spwlist = sorted(glob.glob(basevisnoMS+'_data/spw??/target.MS'))
 concat(vis=all_spwlist, concatvis=allspw_dataset)
+flag_stat(allspw_dataset)
+sys.exit()
 
-# flag bad spw
+# flag bad spw/antennas looking at plots
 #badspw='2,3,4,8,9'    
 #flagdata(vis=allspw_dataset, mode="manual", spw=badspw, flagbackup=False)
 
 #run AOFlagger to better remove the RFI
+subprocess.call('aoflagger -strategy ~/scripts/JVLA_Lband-flag.rfis -column CORRECTED_DATA '+allspw_dataset, shell=True)
 flag_stat(allspw_dataset)
-#subprocess.call('aoflagger -strategy ~/scripts/JVLA_Lband-flag.rfis -column CORRECTED_DATA '+allspw_dataset, shell=True)
-#flag_stat(allspw_dataset)
 	
 #split and avareging; we ignore the initial and final channel because they are bad (total of 16 channels)
-#split(vis=allspw_dataset, outputvis=allspw_target, datacolumn='corrected', field=targetname, width=4, timebin='10s')
+split(vis=allspw_dataset, outputvis=allspw_target, datacolumn='corrected', field=targetname, width=4, timebin='10s')
+
+# the allspw_target can now be used for the selfcal part
