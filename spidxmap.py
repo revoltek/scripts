@@ -44,7 +44,7 @@ parser.add_argument('--noise', dest='noise', action='store_true', help='Calculat
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results')
 parser.add_argument('--sigma', dest='sigma', type=float, help='Restrict to pixels above this sigma in all images')
 parser.add_argument('--circbeam', dest='circbeam', action='store_true', help='Force final beam to be circular (default: False, use minimum common beam area)')
-parser.add_argument('--output', dest='output', default='spidx.fits', help='Name of output mosaic (default: mosaic.fits)')
+parser.add_argument('--output', dest='output', default='spidx.fits', help='Name of output mosaic (default: spidx.fits)')
 
 args = parser.parse_args()
 

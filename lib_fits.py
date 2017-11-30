@@ -138,12 +138,13 @@ class Image(object):
         if invert: self.img_data[~mask] = blankvalue
         else: self.img_data[mask] = blankvalue
 
-    def calc_noise(self, niter=100, eps=1e-6):
+    def calc_noise(self, niter=1000, eps=None):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
-        eps : convergency
+        eps : convergency criterion, if None is 0.1% of initial rms
         """
+        if eps == None: eps = np.nanstd(self.img_data)*1e-3
         data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
         oldrms = 1.
         for i in range(niter):
@@ -162,7 +163,7 @@ class Image(object):
         Convolve *to* this rsolution
         beam = [bmaj, bmin, bpa]
         """
-        from lib_beamdeconv import *
+        from lib_beamdeconv import deconvolve_ell, EllipticalGaussian2DKernel
         from astropy import convolution
 
         # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
