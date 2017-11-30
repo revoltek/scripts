@@ -115,7 +115,7 @@ for c in xrange(maxniter):
     os.makedirs('img')
 
     lsm = lsmtool.load(mosaic_image.skymodel_cut)
-    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
+    lsm.group('tessellate', targetFlux='10Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
     directions_clusters = lsm.getPatchPositions()
     patches = lsm.getPatchNames()
     logger.info("Created %i directions." % len(patches))
@@ -158,12 +158,6 @@ for c in xrange(maxniter):
                 log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
     s.run(check=True)
 
-    # TODO: remove when NDPPP is fixed
-    #logger.info('Fix axis...')
-    #for ms in mss:
-    #    s.add('fixaxis.py '+ms+'/cal-c'+str(c)+'.h5', log=ms+'_fixaxis-c'+str(c)+'.log', cmd_type='python', processors='max')
-    #s.run(check=True)
-
     # Plot solutions
     # TODO: concat h5parm into a single file
     logger.info('Running losoto...')
@@ -192,7 +186,7 @@ for c in xrange(maxniter):
         # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction=['+p+']', \
                  log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -225,7 +219,7 @@ for c in xrange(maxniter):
         # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction=['+p+']', \
                  log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -251,10 +245,8 @@ for c in xrange(maxniter):
         # DD-correct - ms:CORRECTED_DATA -> ms:CORRECTED_DATA
         logger.info('Patch '+p+': correct...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction=['+p+']', \
                log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
-            #s.add('applycal.py --inms '+ms+' --inh5 '+ms+'/cal-c'+str(c)+'.h5 --dir '+p+' --incol CORRECTED_DATA --outcol CORRECTED_DATA', \
-            #    log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='python')
         s.run(check=True)
 
         logger.info('Patch '+p+': phase shift and avg...')
