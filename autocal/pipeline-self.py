@@ -499,6 +499,7 @@ os.system('~/opt/src/makeavgpb/build/wsbeam.py img/wideBeam')
 if cc_predict: [ os.system('mv img/wideM-'+str(c)+'-sources.txt self/images') for c in xrange(niter) ]
 os.system('mv img/wide-lr-MFS-image.fits self/images')
 os.system('mv img/wideBeam-MFS-image.fits  img/wideBeam-MFS-image-pb.fits self/images')
+os.system('mv img/wideBeamHR-MFS-image.fits  img/wideBeamHR-MFS-image-pb.fits self/images')
 os.system('mv logs self')
 
 logger.info("Done.")
