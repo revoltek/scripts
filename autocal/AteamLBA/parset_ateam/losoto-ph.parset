@@ -56,8 +56,8 @@ LoSoTo.Steps.plotPd.TableAxis = ant
 LoSoTo.Steps.plotPd.DiffAxis = pol
 LoSoTo.Steps.plotPd.PlotFlag = True
 LoSoTo.Steps.plotPd.Prefix = plots/ph-dif_
-LoSoTo.Steps.plotPd.Reference = 'CS002LBA'
-LoSoTo.Steps.plotPd.MinMax = [-1,+1]
+LoSoTo.Steps.plotPd.Reference = 'CS001LBA'
+LoSoTo.Steps.plotPd.MinMax = [-3.14,+3.14]
 
 # clock/tec separation
 LoSoTo.Steps.ct.Operation = CLOCKTEC
