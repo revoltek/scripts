@@ -67,7 +67,7 @@ LoSoTo.Steps.plotPr.DiffAxis = pol
 LoSoTo.Steps.plotPr.PlotFlag = True
 LoSoTo.Steps.plotPr.Prefix = plots/ph-res_
 LoSoTo.Steps.plotPr.Reference = 'CS002LBA'
-LoSoTo.Steps.plotPr.MinMax = [-1,+1]
+LoSoTo.Steps.plotPr.MinMax = [-3.14,+3.14]
 
 LoSoTo.Steps.plotPr2.Operation = PLOT
 LoSoTo.Steps.plotPr2.Soltab = [sol000/phase000]

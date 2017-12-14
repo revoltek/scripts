@@ -30,13 +30,13 @@ elif 'CasA' in os.getcwd():
     datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CasA/tgts1-bkp'
     #datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CasA/tgts2-bkp'
     bl2flag = 'CS031LBA'
-    blrange = '[0,20000]'
+    blrange = '[0,30000]'
 elif 'CygA' in os.getcwd():
     patch = 'CygA'
     datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CygA/tgts1-bkp'
     #datadir='/home/fdg/lofar2/LOFAR/Ateam_LBA/CygA/tgts2-bkp'
     bl2flag = 'CS031LBA'
-    blrange = '[0,1e30]'
+    blrange = '[0,30000]'
 
 parset_dir = '/home/fdg/scripts/autocal/AteamLBA/parset_ateam/'
 
@@ -234,10 +234,11 @@ for c in xrange(10):
             s.add('NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor.updateweights=False cor.parmdb='+ms+'/instrument cor.correction=gain', log=ms+'_corG.log', cmd_type='NDPPP')
     s.run(check=True)
     
+    # briggs: -1.2 for virgo
     logger.info('Cleaning (cycle %i)...' % c)
     imagename = 'img/wideM-c'+str(c)
     s.add('wsclean -reorder -name ' + imagename + ' -size 1700 1700 -trim 1500 1500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 1.5 \
-            -scale 2arcsec -weight briggs -1.2 -niter 100000 -no-update-model-required -mgain 0.7 \
+            -scale 2arcsec -weight briggs -1.5 -niter 100000 -no-update-model-required -mgain 0.7 \
             -multiscale -multiscale-scale-bias 0.5 -multiscale-scales 0,4,8,16,32 -auto-mask 5\
             -pol I -joinchannels -fit-spectral-pol 3 -channelsout 15 -threshold 0.005 '+' '.join(mss), \
             log='wscleanB-c'+str(c)+'.log', cmd_type='wsclean', processors='max')

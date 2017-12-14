@@ -2,7 +2,7 @@
 # demix of a set of SBs from a given dir, output is in the local dir
 
 parset_dir = '/home/fdg/scripts/autocal/parset_demix/'
-origmss_dir = '../tgts-full'
+origmss_dir = './uv/'
 
 ###################################################
 
@@ -16,13 +16,7 @@ s = Scheduler(dry=False, max_threads = 4) # set here max number of threads here
 mss = sorted(glob.glob(origmss_dir+'/*MS'))
 
 ##############################################
-# Initial processing (2/2013->2/2014)
-#logger.warning('Fix beam table')
-#for ms in mss:
-#    s.add('/home/fdg/scripts/fixinfo/fixbeaminfo '+ms, log=ms+'_fixbeam.log')
-#s.run(check=False)
-
-##############################################
+#TODO: add flag?
 # Demix
 logger.info('Demixing...')
 for ms in mss:
