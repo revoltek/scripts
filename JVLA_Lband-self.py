@@ -85,3 +85,11 @@ for active_ms in active_mss:
                 plotrange=[], figfile=prefix+"_plots/"+figure_name+str(i+1)+'.png', showgui=False)
 
 clean(active_mss, '4')
+
+# then clean with all configurations combined and selfcal with 10min on Gap to aligh amp and phases
+gaincal(vis='A1_final.MS', caltable='cals/A1.Gap',solint='10min',calmode='ap')
+gaincal(vis='A2_final.MS', caltable='cals/A2.Gap',solint='10min',calmode='ap')
+gaincal(vis='B1_final.MS', caltable='cals/B1.Gap',solint='10min',calmode='ap')
+gaincal(vis='B2_final.MS', caltable='cals/B2.Gap',solint='10min',calmode='ap')
+gaincal(vis='C1_final.MS', caltable='cals/C1.Gap',solint='10min',calmode='ap')
+gaincal(vis='C2_final.MS', caltable='cals/C2.Gap',solint='10min',calmode='ap')
