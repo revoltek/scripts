@@ -115,7 +115,7 @@ for c in xrange(maxniter):
     os.makedirs('img')
 
     lsm = lsmtool.load(mosaic_image.skymodel_cut)
-    lsm.group('tessellate', targetFlux='20Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
+    lsm.group('tessellate', targetFlux='10Jy', root='Dir', applyBeam=False, method = 'wmean', pad_index=True)
     directions_clusters = lsm.getPatchPositions()
     patches = lsm.getPatchNames()
     logger.info("Created %i directions." % len(patches))
@@ -151,12 +151,12 @@ for c in xrange(maxniter):
 
     ################################################################
     # Calibration
-#    logger.info('Calibrating...')
-#    for ms in mss:
-#        check_rm(ms+'/cal-c'+str(c)+'.h5')
-#        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
-#                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
-#    s.run(check=True)
+    logger.info('Calibrating...')
+    for ms in mss:
+        check_rm(ms+'/cal-c'+str(c)+'.h5')
+        s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-solDD.parset msin='+ms+' ddecal.h5parm='+ms+'/cal-c'+str(c)+'.h5 ddecal.sourcedb='+skymodel_cl_skydb, \
+                log=ms+'_solDD-c'+str(c)+'.log', cmd_type='NDPPP')
+    s.run(check=True)
 
     # Plot solutions
     # TODO: concat h5parm into a single file
@@ -186,7 +186,7 @@ for c in xrange(maxniter):
         # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction=['+p+']', \
                  log=ms+'_corrupt1-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -219,7 +219,7 @@ for c in xrange(maxniter):
         # corrupt - ms:MODEL_DATA -> ms:MODEL_DATA
         logger.info('Patch '+p+': corrupt...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-corrupt.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction=['+p+']', \
                  log=ms+'_corrupt2-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 
@@ -245,7 +245,7 @@ for c in xrange(maxniter):
         # DD-correct - ms:CORRECTED_DATA -> ms:CORRECTED_DATA
         logger.info('Patch '+p+': correct...')
         for ms in mss:
-            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction='+p, \
+            s.add('run_env.sh NDPPP '+parset_dir+'/NDPPP-cor.parset msin='+ms+' cor1.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor1.direction=['+p+'] cor2.parmdb='+ms+'/cal-c'+str(c)+'.h5 cor2.direction=['+p+']', \
                log=ms+'_cor-c'+str(c)+'-p'+str(p)+'.log', cmd_type='NDPPP')
         s.run(check=True)
 

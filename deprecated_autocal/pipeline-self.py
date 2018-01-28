@@ -156,7 +156,7 @@ concat_ms = 'mss/concat.MS'
 
 # make beam
 phasecentre = get_phase_centre(mss[0])
-make_beam_reg(phasecentre[0], phasecentre[1], 12, 'self/beam.reg') # go to 7 deg, first null
+make_beam_reg(phasecentre[0], phasecentre[1], 12, 'self/beam.reg') # go to 12 deg, first null
 #make_beam_reg(phasecentre[0], phasecentre[1], 8, 'self/beam.reg') # go to 7 deg, first null
 
 ###############################################################################################
@@ -447,12 +447,14 @@ for c in xrange(niter):
         logger.info('Cleaning low resolution...')
         imagename_lr = 'img/wide-lr'
         if cc_predict:
-            s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            #s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            s.add('wsclean -reorder -name ' + imagename_lr + ' -size 6000 6000 -trim 5500 5500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -minuv-l 100 -save-source-list '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
         else:
-            s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            #s.add('wsclean -reorder -name ' + imagename_lr + ' -size 4500 4500 -trim 4000 4000 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
+            s.add('wsclean -reorder -name ' + imagename_lr + ' -size 6000 6000 -trim 5500 5500 -mem 90 -j '+str(s.max_processors)+' -baseline-averaging 2.0 \
                 -scale 20arcsec -weight briggs 0.0 -niter 100000 -no-update-model-required -maxuv-l 2000 -mgain 0.8 \
                 -pol I -joinchannels -fit-spectral-pol 2 -channelsout 10 -auto-threshold 1 -minuv-l 100 '+' '.join(mss), \
                 log='wsclean-lr.log', cmd_type='wsclean', processors='max')
