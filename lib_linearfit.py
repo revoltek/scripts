@@ -61,7 +61,7 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
     return mean, err
 
 
-def linear_fit_bootstrap(x, y, yerr=None, niter=1000, tolog=False):
+def linear_fit_bootstrap(x, y, yerr, niter=1000, tolog=False):
     # An issue arises with scipy.curve_fit when errors in the y data points
     # are given.  Only the relative errors are used as weights, so the fit
     # parameter errors, determined from the covariance do not depended on the
@@ -89,15 +89,15 @@ def linear_fit_bootstrap(x, y, yerr=None, niter=1000, tolog=False):
     # tolog : convert in log space x, y, and yerr before doing linear regression
     # use: (a, b, sa, sb) = linear_fit_bootstrap(x, y, yerr)
 
-    x = np.array(x)
-    y = np.array(y)
-    yerr = np.array(yerr)
-
     from scipy import optimize
     errfunc = lambda B, x, y: f(x, B[0], B[1]) - y
 
+    x = np.array(x)
+    y = np.array(y)
+    if yerr is not None: yerr = np.array(yerr)
+
     if tolog:
-        yerr=0.434*yerr/y
+        if yerr is not None: yerr = 0.434*yerr/y
         x=np.log10(x)
         y=np.log10(y)
 
@@ -132,10 +132,16 @@ def linear_fit_bootstrap(x, y, yerr=None, niter=1000, tolog=False):
 
 
 # extimate errors and accept errors on ydata
-def linear_fit(x, y, yerr=None):
-#    print "Using OLS (X|Y)" # for more algo read: Isobe et al 1990
+def linear_fit(x, y, yerr=None, tolog=False):
+    # Using OLS (X|Y)" # for more algo read: Isobe et al 1990
+    # tolog : convert in log space x, y, and yerr before doing linear regression
     from scipy.optimize import curve_fit
-    if yerr == None: yerr = np.ones(len(y))
+    if tolog:
+        print yerr, yerr is None
+        if not yerr is None: yerr = 0.434*yerr/y
+        x=np.log10(x)
+        y=np.log10(y)
+    if yerr is None: yerr = np.ones(len(y))
     for i,e in enumerate(yerr):
         if e == 0: yerr[i] = 1
     out = curve_fit(f, x, y, [-1. ,0.], yerr)
@@ -300,3 +306,6 @@ if __name__ == "__main__":
         plotlinax(data, output)
     else:
         plotlogax(data, output)
+
+
+

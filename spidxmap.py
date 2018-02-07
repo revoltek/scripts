@@ -19,7 +19,7 @@
 
 import os, sys, argparse, logging
 import numpy as np
-from lib_linearfit import linear_fit_bootstrap as linearfit
+from lib_linearfit import linear_fit_bootstrap
 from lib_fits import flatten
 from lib_beamdeconv import findCommonBeam
 from astropy.io import fits as pyfits
@@ -240,7 +240,7 @@ for i in xrange(xsize):
     for j in xrange(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any(): continue
-        (a, b, sa, sb) = linearfit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+        (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
 
