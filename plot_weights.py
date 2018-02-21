@@ -51,7 +51,7 @@ plt.savefig('weightVSchan.png', bbox_inches='tight', bbox_extra_artists=(lgd,))
 
 print "selecting on time"
 #t=taql('select TIME, MEANS(GAGGR(WEIGHT_SPECTRUM), 0) as WEIGHT, mscal.azel1()[1] as ELEV from $t1 group by TIME')
-t=taql('select TIME, WEIGHT, mscal.azel1()[1] as ELEV from $t group by TIME')
+t=taql('select TIME, WEIGHT, means(gaggr(mscal.azel1()[1]),0) as ELEV from $t group by TIME')
 time=t.getcol('TIME')
 elev=t.getcol('ELEV')
 weights=t.getcol('WEIGHT')[:,0,0]
