@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 """ Provides acces to the weights of an MS file. """
-from __future__ import division
 
-import matplotlib.colors as colors
-import matplotlib.patheffects as pe
+import math
+import os
+import sys
+
 import numpy as np
 
 from casacore.tables import taql
 from matplotlib import cm
-from matplotlib.pyplot import subplots
+from matplotlib.pyplot import figure, show
 from matplotlib import ticker
-from matplotlib.pyplot import show
 
 __author__ = 'Frits Sweijen'
 __credits__= 'Francesco de Gasperin'
@@ -23,377 +23,371 @@ def normalize(x, nmin, nmax):
     normed = (x - nmin) / (nmax - nmin)
     return normed
 
-class WeightPlotter:
-    def __init__(self, msfile):
-        if msfile.endswith('/'):
-            self.msfile = msfile[:-1]
+def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False, threshold=1e5):
+    ''' Plot the weights in the WEIGHT_SPECTRUM column of an MS file as function of frequency.
+
+    Args:
+        msfile (str): MS file to use.
+        pol (int): integer value of 0, 1, 2 or 3 (as applicable) denoting which polarization to use.
+        delta (int): the number of channels to use when calculating the variance.
+        threshold (int, float): upper limit for plotting weights to deal with outliers. Selects only weights below this value. This does not affect calculations.
+    Returns:
+        None
+    '''
+    # Polarization indices are 0, 1, 2, 3 = XX, YY, XY, YX, respectively.
+    print 'Plotting weights vs. channels for %s' % (msfile,)
+    # Select only rows where not all data is flagged.
+    t1 = taql('SELECT TIME, ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG FROM $msfile WHERE ALL(FLAG)==False && ALL(ISNAN(DATA))==False')
+    # Average over all baselines (axis 0) and group the resulting data by antenna.
+    t = taql('SELECT ANTENNA, MEANS(GAGGR(DATA), 0) AS DATA_REAL, MEANS(GAGGR(WEIGHT_SPECTRUM),0), FLAG AS WEIGHT FROM $t1 GROUPBY TIME')
+    #t = taql('SELECT TIME, ANTENNA, BOXEDMEAN(GAGGR(REAL(DATA)), 10, 1, 1) AS DATAR FROM $t1 WHERE !ANY(ISNAN(REAL(DATA))) GROUPBY TIME')
+    # Get the polarization setup; X/Y or R/L.
+    temp = taql('SELECT CORR_TYPE from '+msfile+'/POLARIZATION')
+    if temp.getcol('CORR_TYPE')[0] in np.asarray([5, 6, 7, 8]):
+        # Circular polarization.
+        polarization = ['RR', 'LL', 'RL', 'LR']
+    elif temp.getcol('CORR_TYPE')[0] in np.asarray([9, 10, 11, 12]):
+        polarization = ['XX', 'YY', 'XY', 'YX']
+    # Average the data over all time stamps.
+    flags = t.getcol('FLAG')
+    datar = t.getcol('DATA_REAL')
+    datar = np.ma.MaskedArray(data=datar, mask=flags)
+    datar = datar[:,:,pol]
+    data_taverage = datar.mean(axis=0)
+    print datar.shape
+    weights = t.getcol('WEIGHT')
+    weights = np.ma.MaskedArray(data=weights, mask=flags)
+    weights = weights[:, :, pol]
+    # Obtain channel frequencies in Hz.
+    chan_freq = taql('SELECT CHAN_FREQ FROM '+msfile+'/SPECTRAL_WINDOW')
+    # Select the first table, column CHAN_FREQ and convert to MHz.
+    freq = chan_freq[0]['CHAN_FREQ'] * 1e-6
+    #print 'Frequencies [MHz]: '
+    #print freq
+    # Calculate the variance in the visibilities over channels.
+    print 'Calculating visibility variance.'
+    #variance = np.ones(shape=(weights.shape[0], weights.shape[1]//delta, weights.shape[2]))
+    variance = np.zeros(shape=(data_taverage.shape[0]//delta))
+    # Subtract adjacent channels to eliminate physical signal.
+    data_shifted = np.roll(data_taverage, -1, axis=0)
+    datas = data_taverage - data_shifted
+    print datas.shape
+    datar = datas.real
+    datai = datas.imag
+    for i in xrange(datas.shape[0]//delta):
+        # Take a frequency bin of delta channels.
+        vr = np.nanvar(datar[delta*i: delta*i+delta], axis=0)
+        vi = np.nanvar(datai[delta*i: delta*i+delta], axis=0)
+        v = (vr + vi) / 2.
+        print np.any(np.isfinite(v))
+        if not np.any(np.isfinite(v)):
+            variance[i] = np.nan
         else:
-            self.msfile = msfile
+            variance[i] = np.where(np.isfinite(1. / v), 1. / v, 0)
+    print variance
+    print variance.shape
+    # Plot the results.
+    print 'Plotting weights...'
+    if not per_antenna:
+        weights = np.mean(weights, axis=0, keepdims=True)
+    imgname ='weight_chan_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
+    fig = figure()
+    fig.suptitle(msfile, fontweight='bold')
+    ax = fig.add_subplot(111)
+    colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
+    weights = normalize(weights, np.min(weights), np.max(weights))
 
-        self.colors = ['C1', 'C2', 'C3', 'C4']
-        # Open the table and ignore rows that are completely flagged.
-        print 'Loading '+msfile+'...'
-        mstable_init = taql('SELECT TIME, ANTENNA1, FIELD_ID, DATA, WEIGHT_SPECTRUM, FLAG FROM $msfile WHERE !ALL(FLAG)')
-        self.mstable = taql('SELECT TIME, MEANS(GAGGR(DATA), 0) AS DATA, MEANS(GAGGR(WEIGHT_SPECTRUM),0) AS WEIGHTS, MEANS(GAGGR(MSCAL.AZEL1()[1]), 0) AS ELEV, FLAG FROM $mstable_init GROUPBY TIME')
+    for w in weights:
+        if len(freq) > weights.shape[1]:
+            ax.scatter(freq[:-1], w, color='k', marker='.')
+        elif len(freq) == weights.shape[1]:
+            ax.scatter(freq, w, color='k', marker='.')
+    ax.set_xlim(min(freq), max(freq))
+    ax.set_ylim(np.min(weights), np.max(weights))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    major_formatter = ticker.FuncFormatter(lambda x, pos: '%.2f'%(x,))
+    ax.xaxis.set_major_formatter(major_formatter)
+    ax.set_xlabel('Frequency [MHz]')
+    ax.set_ylabel('Normalized Weights')
+    leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
+    print 'Saving plot as %s' % (imgname,)
+    fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
+    
+    print 'Plotting variance weights...'
+    imgname ='var_chan_tavg_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
+    fig = figure()
+    fig.suptitle(msfile, fontweight='bold')
+    ax = fig.add_subplot(111)
+    colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
+    #variance = variance[:, :, pol]
+    #variance = normalize(variance, np.nanmin(variance), np.nanmax(variance))
+    #f = freq[indices]
+    f = np.zeros(data_taverage.shape[0]//delta)
+    for i in xrange(data_taverage.shape[0]//delta):
+        f[i] = np.mean(freq[delta*i:delta*i + delta])
 
-        # Additional processing before we can use the data.
-        self.flags = self.mstable.getcol('FLAG')
-        self.time = self.mstable.getcol('TIME')
-        self.elevation = self.mstable.getcol('ELEV')
+    ax.plot(f, variance, 'd--', color='k')
+    ax.set_xlim(min(freq), max(freq))
+    ax.set_ylim(np.nanmin(variance), np.nanmax(variance))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    major_formatter = ticker.FuncFormatter(lambda x, pos: '%.2f'%(x,))
+    ax.xaxis.set_major_formatter(major_formatter)
+    ax.set_xlabel('Frequency [MHz]')
+    ax.set_ylabel('Variance Normalized w.r.t. '+polarization[0])
+    leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
+    print 'Saving plot as %s' % (imgname,)
+    fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
+    return 
 
-        data_um = self.mstable.getcol('DATA')
-        self.data = np.ma.MaskedArray(data=data_um, mask=self.flags)
+def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e5):
+    ''' Plot the weights in the WEIGHT_SPECTRUM column of an MS file as function of frequency.
 
-        weights_um = self.mstable.getcol('WEIGHTS')
-        self.weights = np.ma.MaskedArray(data=weights_um, mask=self.flags)
-        print 'FLAG table applied to DATA and WEIGHT_SPECTRUM.'
-        # Obtain polarization setup.
-        temp = taql('SELECT CORR_TYPE from '+msfile+'/POLARIZATION')
-        if temp.getcol('CORR_TYPE')[0] in np.asarray([5, 6, 7, 8]):
-            # Circular polarization.
-            self.polarization = ['RR', 'LL', 'RL', 'LR']
-        elif temp.getcol('CORR_TYPE')[0] in np.asarray([9, 10, 11, 12]):
-            self.polarization = ['XX', 'YY', 'XY', 'YX']
-        print 'Polarzation setup:', ', '.join(self.polarization)
+    Args:
+        msfile (str): MS file to use.
+        pol (int): integer value of 0, 1, 2 or 3 (as applicable) denoting which polarization to use.
+        delta (int): the number of channels to use when calculating the variance.
+        threshold (int, float): upper limit for plotting weights to deal with outliers. Selects only weights below this value. This does not affect calculations.
+    Returns:
+        None
+    '''
+    # Polarization indices are 0, 1, 2, 3 = XX, YY, XY, YX, respectively.
+    print 'Plotting weights vs. channels for %s' % (msfile,)
+    # Select only rows where not all data is flagged.
+    t1 = taql('SELECT TIME, ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG FROM $msfile WHERE ALL(FLAG)==False && ALL(ISNAN(DATA))==False')
+    # Average over all baselines (axis 0) and group the resulting data by antenna.
+    t = taql('SELECT ANTENNA, MEANS(GAGGR(DATA), 0) AS DATA_REAL, MEANS(GAGGR(WEIGHT_SPECTRUM),0) AS WEIGHT, FLAG FROM $t1 GROUPBY ANTENNA')
+    #t = taql('SELECT TIME, ANTENNA, BOXEDMEAN(GAGGR(REAL(DATA)), 10, 1, 1) AS DATAR FROM $t1 WHERE !ANY(ISNAN(REAL(DATA))) GROUPBY TIME')
+    # Get the polarization setup; X/Y or R/L.
+    temp = taql('SELECT CORR_TYPE from '+msfile+'/POLARIZATION')
+    if temp.getcol('CORR_TYPE')[0] in np.asarray([5, 6, 7, 8]):
+        # Circular polarization.
+        polarization = ['RR', 'LL', 'RL', 'LR']
+    elif temp.getcol('CORR_TYPE')[0] in np.asarray([9, 10, 11, 12]):
+        polarization = ['XX', 'YY', 'XY', 'YX']
+    flags = t.getcol('FLAG')
+    datar = t.getcol('DATA_REAL')
+    datar = np.ma.MaskedArray(data=datar, mask=flags)
+    datar = datar[:,:,pol]
+    print datar.shape
+    weights = t.getcol('WEIGHT')
+    weights = np.ma.MaskedArray(data=weights, mask=flags)
+    weights = weights[:, :, pol]
 
-        # Obtain channel frequencies.
-        chan_freq = taql('SELECT CHAN_FREQ FROM '+msfile+'/SPECTRAL_WINDOW')
-        # Select the first table, column CHAN_FREQ and convert to MHz.
-        self.freq = chan_freq[0]['CHAN_FREQ'] * 1e-6
-
-        print self.msfile+' loaded.'
-
-    def plot_data_2D(self):
-        print 'Plotting data matrix...'
-        fig, axes = subplots(nrows=2, ncols=2, sharex=True, sharey=True)
-        fig.suptitle('Normalized log10(1 + |DATA|) '+self.msfile, fontweight='bold')
-        axes = axes.ravel()
-
-        for (pol, pol_label) in enumerate(self.polarization):
-            axes[pol].set_title(pol_label)
-            axes[pol].set(xlabel='Frequency [MHz]', ylabel='Time')
-            axes[pol].label_outer()
-            #print np.min(np.mean(weights[:, :, pol], axis=0)), np.max(np.mean(weights[:, :, pol], axis=0))
-            #weights = np.ma.masked_where(self.weights > 1e5, self.weights)
-            data = np.log10(1 + np.abs(self.data))
-            if pol == 0:
-                nmin = np.nanmin(data[:, :, pol])
-                nmax = np.nanmax(data[:, :, pol])
-            nweights = normalize(data[:, :, pol], nmin, nmax)
-            #print nmin, nmax
-            #print nweights
-            #im = axes[pol].imshow(nweights, extent=[freq[0], freq[-1], time[0], time[-1]])
-            X, Y = np.meshgrid(self.freq, self.time - self.time[0])
-            im = axes[pol].pcolor(X, Y, nweights, vmin=0.0, vmax=1.0)
-            axes[pol].set_aspect('auto')
-            axes[pol].label_outer()
-            fig.colorbar(im, ax=axes[pol])
-        imgname = 'data_2D.png'
-        fig.savefig(imgname, bbox_inches='tight', dpi=250)
-        print 'Saved plot '+imgname
-
-    def plot_variance_2D(self, delta=3):
-        print 'Plotting variance matrix...'
-        fig, axes = subplots(nrows=2, ncols=2, sharex=True, sharey=True)
-        fig.suptitle('Inverse Variance '+self.msfile+', box =%dx%d'%(delta, delta), fontweight='bold')
-        axes = axes.ravel()
-        for (pol, pol_label) in enumerate(self.polarization):
-            print 'Processing polarization '+pol_label
-            axes[pol].set_title(pol_label)
-            axes[pol].set(xlabel='Frequency [MHz]', ylabel='Time')
-            axes[pol].label_outer()
-            # Calculate variance in the visibilities.
-            var = np.abs(self.visibility_variance2D(self.data, self.weights, pol, delta=delta))
-            var = np.ma.MaskedArray(data=var, mask=self.flags[:, :, pol])
-            if pol == 0:
-                nmin = np.nanmin(var)#; print nmin
-                nmax = np.nanmax(var)#; print nmax
-                #print np.median(var)
-                #print np.percentile(var, 10)
-                nmax = np.percentile(var, 99)
-            nvar = normalize(var, nmin, nmax)
-            #im = axes[pol].imshow(nvar, extent=[freq[0], freq[-1], time[0], time[-1]])
-            #im = axes[pol].imshow(nvar, extent=[freq[0], freq[-1], time[0], time[-1]], norm=colors.LogNorm(vmin=1e-4, vmax=1.0), origin='lower')
-            X, Y = np.meshgrid(self.freq, self.time - self.time[0])
-            im = axes[pol].pcolor(X, Y, nvar, norm=colors.LogNorm(vmin=1e-4, vmax=1.0))
-            axes[pol].set_aspect('auto')
-            fig.colorbar(im, ax=axes[pol])
-            #break
-        imgname = 'variance_2D_box_%dx%d.png' % (delta, delta)
-        fig.savefig(imgname, bbox_inches='tight', dpi=250)
-        print 'Saved plot '+imgname
-
-    def plot_weight_2D(self):
-        print 'Plotting weight matrix...'
-        fig, axes = subplots(nrows=2, ncols=2, sharex=True, sharey=True)
-        fig.suptitle('Normalized Weights '+self.msfile, fontweight='bold')
-        axes = axes.ravel()
-
-        for (pol, pol_label) in enumerate(self.polarization):
-            axes[pol].set_title(pol_label)
-            axes[pol].set(xlabel='Frequency [MHz]', ylabel='Time')
-            axes[pol].label_outer()
-            weights = self.weights[:, :, pol]
-            # Deal with outliers in the weights to avoid plotting issues/biases.
-            Q1 = np.percentile(weights, 25)
-            Q3 = np.percentile(weights, 75)
-            IQR = Q3 - Q1
-            wmedian = np.median(weights)
-            # Treat weights that are further away than 3 times the IQR from the median as outliers.
-            outlier_thresh_max = (wmedian + 5*IQR)
-            outlier_thresh_min = (wmedian - 5*IQR)
-            if np.max(weights) > outlier_thresh_max or np.min(weights) < outlier_thresh_min:
-                fig.suptitle('Normalized Weights '+self.msfile+' (IQR filtered)', fontweight='bold')
-                weights = np.ma.masked_where(weights > outlier_thresh_max, weights)
-                weights = np.ma.masked_where(weights < outlier_thresh_min, weights)
-            if pol == 0:
-                nmin = np.nanmin(weights[:, :])
-                nmax = np.nanmax(weights[:, :])
-            nweights = normalize(weights[:, :], nmin, nmax)
-            #print nmin, nmax
-            #print nweights
-            #im = axes[pol].imshow(nweights, extent=[freq[0], freq[-1], time[0], time[-1]])
-            X, Y = np.meshgrid(self.freq, self.time - self.time[0])
-            im = axes[pol].pcolor(X, Y, nweights, vmin=0.0, vmax=1.0)
-            axes[pol].set_aspect('auto')
-            axes[pol].label_outer()
-            fig.colorbar(im, ax=axes[pol])
-        imgname = 'weight_2D.png'
-        fig.savefig(imgname, bbox_inches='tight', dpi=250)
-        print 'Saved plot '+imgname
-
-    def plot_weight_frequency(self, delta=10):
-        print 'Plotting weights vs. frequency...'
-        fig, axes = subplots(nrows=2, ncols=2, sharex=True, sharey=True)
-        fig.suptitle('Time-mean Weights ' + self.msfile + ' $\\Delta=%d$'%(delta,), fontweight='bold')
-        axes = axes.ravel()
-        handles = []
-        labels = []
-
-        for (pol, pol_label) in enumerate(self.polarization):
-            data_shift = np.roll(self.data, -1, axis=1)
-            data_sub = self.data - data_shift
-            # Calculate the variance in frequency space.
-            fdata = np.nanmean(data_sub[:, :, pol], axis=0)
-            fvar = np.zeros(shape=fdata.shape[0] // delta)
-            f_axis = np.empty(shape=fdata.shape[0] // delta)
-            for i in xrange(fdata.shape[0] // delta):
-                vr = np.nanvar(fdata.real[delta * i:delta * (i+1)])
-                vi = np.nanvar(fdata.imag[delta * i:delta * (i+1)])
-                v = (vr + vi) / 2.
-                if v != 0 and np.isfinite(v):
-                    fvar[i] = 1. / v
-                f_axis[i] = np.mean(self.freq[delta * i:delta * (i+1)])
-            nmin = np.nanmin(fvar)
-            nmax = np.nanmax(fvar)
-            nvar = normalize(fvar, nmin, nmax)
-            # Deal with outliers in the weights to avoid plotting issues/biases.
-            Q1 = np.percentile(self.weights, 25)
-            Q3 = np.percentile(self.weights, 75)
-            IQR = Q3 - Q1
-            wmedian = np.median(self.weights)
-            # Treat weights that are further away than 3 times the IQR from the median as outliers.
-            outlier_thresh_high = (wmedian + 5*IQR)
-            outlier_thresh_low = (wmedian - 5*IQR)
-            if np.max(self.weights) > outlier_thresh_high or np.min(self.weights) < outlier_thresh_low:
-                weights = np.ma.masked_where(self.weights > outlier_thresh_high, self.weights)
-                weights = np.ma.masked_where(weights < outlier_thresh_low, weights)
-                axes[pol].set_title(pol_label+' (IQR filtered)')
-            else:
-                weights = self.weights
-                axes[pol].set_title(pol_label)
-            fweights = np.mean(weights, axis=0)
-            # Normalize w.r.t. XX or RR.
-            nmin = np.nanmin(fweights[:, 0])
-            nmax = np.nanmax(fweights[:, 0])
-            nweights = normalize(fweights[:, pol], nmin, nmax)
-            # Take mean in time to plot weights as a function of frequency.
-            #tweights = np.mean(weights[:, :, :], axis=0)
-            axes[pol].set(xlabel='Frequency [MHz]', ylabel=self.polarization[0]+' Normalized Weight')
-            axes[pol].label_outer()
-            axes[pol].plot(self.freq, nweights, color=self.colors[pol], label=pol_label+' MS Weights')
-            axes[pol].plot(f_axis, nvar, '--d', color=self.colors[pol], label=pol_label+' Variance', linewidth=2, path_effects=[pe.Stroke(linewidth=4, foreground='k'), pe.Normal()])
-
-            lhandle, llabel = axes[pol].get_legend_handles_labels()
-            handles.append(lhandle)
-            labels.append(llabel)
-        leg = axes[3].legend(np.ravel(handles), np.ravel(labels), loc='upper center', bbox_to_anchor=(-0.1, -0.3), ncol=2, borderaxespad=0.0)
-        imgname = 'weight_frequency_mean_%s.png' % (self.msfile,)
-        fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
-        print 'Saved plot '+imgname
-
-        fig, axes = subplots(nrows=2, ncols=2, sharex=True, sharey=True)
-        fig.suptitle('Time-median Weights ' + self.msfile + ', $\\Delta=%d$'%(delta,), fontweight='bold')
-        axes = axes.ravel()
-        handles = []
-        labels = []
-        for (pol, pol_label) in enumerate(self.polarization):
-            # Deal with outliers.
-            Q1 = np.percentile(self.weights, 25)
-            Q3 = np.percentile(self.weights, 75)
-            IQR = Q3 - Q1
-            wmedian = np.median(self.weights)
-            # Treat weights that are further away than 3 times the IQR from the median as outliers.
-            outlier_thresh_high = (wmedian + 5*IQR)
-            outlier_thresh_low = (wmedian - 5*IQR)
-            if np.max(self.weights) > outlier_thresh_high or np.min(self.weights) < outlier_thresh_low:
-                weights = np.ma.masked_where(self.weights > outlier_thresh_high, self.weights)
-                weights = np.ma.masked_where(weights < outlier_thresh_low, weights)
-                fweights = np.median(weights, axis=0)
-                axes[pol].set_title(pol_label+' (IQR filtered)')
-            else:
-                fweights = np.median(self.weights, axis=0)
-                axes[pol].set_title(pol_label)
-
-            # Normalize w.r.t. XX or RR.
-            nmin = np.nanmin(fweights[:, 0])
-            nmax = np.nanmax(fweights[:, 0])
-            nweights = normalize(fweights[:, pol], nmin, nmax)
-            axes[pol].set(xlabel='Frequency [MHz]', ylabel=self.polarization[0]+' Normalized Weight')
-            axes[pol].label_outer()
-            axes[pol].plot(self.freq, nweights, color=self.colors[pol], label=pol_label+' MS Weights')
-            axes[pol].plot(f_axis, nvar, '--d', color=self.colors[pol], label=pol_label+' Variance', linewidth=2, path_effects=[pe.Stroke(linewidth=4, foreground='k'), pe.Normal()])
-            lhandle, llabel = axes[pol].get_legend_handles_labels()
-            handles.append(lhandle)
-            labels.append(llabel)
-        leg = axes[3].legend(np.ravel(handles), np.ravel(labels), loc='upper center', bbox_to_anchor=(-0.1, -0.3), ncol=2, borderaxespad=0.0)
-        imgname = 'weight_frequency_median_%s.png' % (self.msfile,)
-        fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
-        print 'Saved plot '+imgname
-
-    def plot_weight_time(self, mode='mean', delta=100):
-        print 'Plotting weights vs. time...'
-        fig, axes = subplots(nrows=1, ncols=1)
-        fig.suptitle('Weights ('+mode+') for '+self.msfile+', $\\Delta=100$', fontweight='bold')
-        axes.set(xlabel='Time', ylabel=self.polarization[0]+' Normalized Weight')
-        axes.label_outer()
-        axes_elev = axes.twinx()
-        axes_elev.set(ylabel='Elevation [deg]')
-
-        # Subtract adjacent channels to remove any signal. This should leave us with noise.
-        data_shift = np.roll(self.data, -1, axis=1)
-        data_sub = self.data - data_shift
-
-        # Take the mean or median over frequency to marginalize into the time domain.
-        if mode == 'median':
-            tdata = np.median(data_sub, axis=1)
-        elif mode == 'mean':
-            tdata = np.mean(data_sub, axis=1)
+    antennas = t.getcol('ANTENNA')
+    print len(antennas), ' antennas'
+    antenna_names = taql('SELECT NAME FROM '+msfile+'/ANTENNA')
+    antenna_names = antenna_names.getcol('NAME')
+    print antenna_names
+    # Obtain channel frequencies in Hz.
+    chan_freq = taql('SELECT CHAN_FREQ FROM '+msfile+'/SPECTRAL_WINDOW')
+    # Select the first table, column CHAN_FREQ and convert to MHz.
+    freq = chan_freq[0]['CHAN_FREQ'] * 1e-6
+    #print 'Frequencies [MHz]: '
+    #print freq
+    # Calculate the variance in the visibilities over channels.
+    print 'Calculating visibility variance.'
+    #variance = np.ones(shape=(weights.shape[0], weights.shape[1]//delta, weights.shape[2]))
+    variance = np.ones(shape=(weights.shape[0], weights.shape[1]//delta))
+    # Subtract adjacent channels to eliminate physical signal.
+    datar_shifted = np.roll(datar, -1, axis=1)
+    datars = datar - datar_shifted
+    datar = datars.real
+    datai = datars.imag
+    if not per_antenna:
+        datar = np.mean(datar, axis=0, keepdims=True)
+        datai = np.mean(datai, axis=0, keepdims=True)
+        antenna_names = [{'NAME':''}]
+    for i in xrange(datar.shape[1]//delta):
+        # Take a frequency bin of delta channels.
+        vr = np.nanvar(datar[:,delta*i: delta*i+delta], axis=1)
+        vi = np.nanvar(datai[:,delta*i: delta*i+delta], axis=1)
+        v = (vr + vi) / 2.
+        print np.any(np.isfinite(v))
+        if not np.any(np.isfinite(v)):
+            variance[:,i] = np.nan
         else:
-            print 'Unknown mode, using median.'
-            tdata = np.median(data_sub, axis=1)
-        variance = np.zeros(shape=(tdata.shape[0] // delta, tdata.shape[1]))
+            variance[:,i] = np.where(np.isfinite(1. / v), 1. / v, 0)
+    
+    # Plot the results.
+    print 'Plotting weights...'
+    if not per_antenna:
+        weights = np.mean(weights, axis=0, keepdims=True)
+    imgname ='weight_chan_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
+    fig = figure()
+    fig.suptitle(msfile, fontweight='bold')
+    ax = fig.add_subplot(111)
+    colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
+    weights = normalize(weights, np.min(weights), np.max(weights))
 
-        tdatar = tdata.real
-        tdatai = tdata.imag
-        tdataf = np.abs(tdata)
-        t_axis = []
-        for i in xrange(tdata.shape[0] // delta):
-            t = np.mean(self.time[delta * i: delta * (i+1)])
-            t_axis.append(t)
-            vr = np.nanvar(tdatar[delta * i: delta * (i+1), :], axis=0)
-            vi = np.nanvar(tdatai[delta * i: delta * (i+1), :], axis=0)
-            v = (vr + vi) / 2.
-            variance[i] = np.where(np.isfinite(1. / v), 1. / v, np.nan)
+    for w, c, a in zip(weights, colors, antennas):
+        if len(freq) > weights.shape[1]:
+            ax.scatter(freq[:-1], w, color=c, marker='.', label=antenna_names[a]['NAME'])
+        elif len(freq) == weights.shape[1]:
+            ax.scatter(freq, w, color=c, marker='.', label=antenna_names[a]['NAME'])
+    ax.set_xlim(min(freq), max(freq))
+    ax.set_ylim(np.min(weights), np.max(weights))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    major_formatter = ticker.FuncFormatter(lambda x, pos: '%.2f'%(x,))
+    ax.xaxis.set_major_formatter(major_formatter)
+    ax.set_xlabel('Frequency [MHz]')
+    ax.set_ylabel('Normalized Weights')
+    leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
+    print 'Saving plot as %s' % (imgname,)
+    fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
+    
+    print 'Plotting variance weights...'
+    imgname ='var_chan_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
+    fig = figure()
+    fig.suptitle(msfile, fontweight='bold')
+    ax = fig.add_subplot(111)
+    colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
+    #variance = variance[:, :, pol]
+    variance = normalize(variance, np.nanmin(variance), np.nanmax(variance))
 
-        for (pol, pol_label) in enumerate(self.polarization):
-            Q1 = np.percentile(self.weights[:, :, pol], 25)
-            Q3 = np.percentile(self.weights[:, :, pol], 75)
-            IQR = Q3 - Q1
-            wmedian = np.median(self.weights[:, :, pol])
-            outlier_thresh_high = (wmedian + 5*IQR)
-            outlier_thresh_low = (wmedian - 5*IQR)
-            if np.max(self.weights[:, :, pol]) > outlier_thresh_high or np.min(self.weights[:, :, pol]) < outlier_thresh_low:
-                weights = np.ma.masked_where(self.weights[:, :, pol] > outlier_thresh_high, self.weights[:, :, pol])
-                weights = np.ma.masked_where(weights < outlier_thresh_low, weights)
-                fig.suptitle('Weights ('+mode+') for '+self.msfile+', $\\Delta=100$ (IQR filtered)', fontweight='bold')
-            else:
-                weights = self.weights[:, :, pol]
+    #f = freq[indices]
+    f = freq[::delta]
+    f = np.zeros(shape=(weights.shape[1]//delta))
+    for i in xrange(weights.shape[1]//delta):
+        f[i] = np.mean(freq[delta*i:delta*i + delta])
+    for v, c, a in zip(variance, colors, antennas):
+        print antenna_names[a]['NAME']
+        ax.plot(f, v, '--.', color=c, label=antenna_names[a]['NAME'])        
+        '''
+        if len(f) > variance.shape[1]:
+            #ax.scatter(f[:-1], v, color=c, marker='.', label=antenna_names[a]['NAME'])
+            ax.plot(f[:-1], v, '--.', color=c, label=antenna_names[a]['NAME'])
+        elif len(f) == variance.shape[1]:
+            #ax.scatter(f, v, color=c, marker='.', label=antenna_names[a]['NAME'])
+            ax.plot(f, v, '--.', color=c, label=antenna_names[a]['NAME'])
+        '''
+    ax.set_xlim(min(freq), max(freq))
+    ax.set_ylim(np.nanmin(variance), np.nanmax(variance))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    major_formatter = ticker.FuncFormatter(lambda x, pos: '%.2f'%(x,))
+    ax.xaxis.set_major_formatter(major_formatter)
+    ax.set_xlabel('Frequency [MHz]')
+    ax.set_ylabel('Variance Normalized w.r.t. '+polarization[0])
+    leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
+    
+    print 'Saving plot as %s' % (imgname,)
+    fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
+    return 
 
-            # Take median or mean in frequency to plot weights as a function of time.
-            if mode == 'median':
-                tweights = np.median(weights, axis=1)
-            elif mode == 'mean':
-                tweights = np.mean(weights, axis=1)
-            else:
-                print 'Unknown mode, using median.'
-                tweights = np.median(weights, axis=1)
-            #if mask_threshold is not None:
-                # Deal with some extreme outliers that screw with the median in this case.
-            tweights = np.ma.masked_where(tweights > 1e3, tweights)
-            # Normalize w.r.t. XX or RR.
-            if pol == 0:
-                nmin = np.nanmin(tweights); nmax = np.nanmax(tweights)
-            nweights = normalize(tweights, nmin, nmax)
-            nvar = normalize(variance[:, pol], np.nanmin(variance[:, 0]), np.nanmax(variance[:, 0]))
+def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
+    ''' Plot the weights in the WEIGHT_SPECTRUM column of an MS file as function of time for each polarization.
 
-            axes.plot(self.time, nweights, label=pol_label, alpha=0.5, color=self.colors[pol])
-            axes.plot(t_axis, nvar, '--d', label='Variance '+pol_label, color=self.colors[pol])
-        axes_elev.plot(self.time, self.elevation * 180/np.pi, '-k', linewidth=2, label='Elevation')
-        handles, labels = axes.get_legend_handles_labels()
-        handles2, labels2 = axes_elev.get_legend_handles_labels()
-        leg = axes.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, borderaxespad=0.0)
-        imgname = 'weight_'+mode+'_time_%s.png' % (self.msfile,)
-        fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
-        print 'Saved plot '+imgname
+    Args:
+        msfile (str): MS file to use.
+        delta (int): bin width in timestamps to use for calculating the variance in the visibilities.
+        plot_time_unit (str): either 'h' (implemented) or 's' (not implemented) to use hours or seconds on the time axis.
+    Returns:
+        None
+    '''
+    print 'Plotting weights vs. time for %s' % (msfile,)
+    imgname ='weight_time_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+'_'+str(delta)+'.png'
+    # Select the time, weights and elevation of ANTENNA1 averaging over baselines/antennas.
+    # Select only unflagged data.
+    t1 = taql('select ANTENNA1, ANTENNA2, DATA, WEIGHT_SPECTRUM, TIME, FIELD_ID, FLAG from $msfile where ALL(FLAG)==False')
+    # Get the polarization setup; X/Y or R/L.
+    temp = taql('SELECT CORR_TYPE from '+msfile+'/POLARIZATION')
+    if temp.getcol('CORR_TYPE')[0] in np.asarray([5, 6, 7, 8]):
+        # Circular polarization.
+        polarization = ['RR', 'LL', 'RL', 'LR']
+    elif temp.getcol('CORR_TYPE')[0] in np.asarray([9, 10, 11, 12]):
+        polarization = ['XX', 'YY', 'XY', 'YX']
+    # Select time, weights and elevation.
+    # This gets the average elevation w.r.t. to antenna 1, where the average is taken over all baselines.
+    t = taql('SELECT TIME, MEANS(GAGGR(WEIGHT_SPECTRUM),0) AS WEIGHT, MEANS(GAGGR(MSCAL.AZEL1()[1]), 0) AS ELEV FROM $t1 GROUPBY TIME')
+    t2 = taql('SELECT TIME, MEANS(GAGGR(DATA),0) AS DATA_REAL FROM $t1 GROUPBY TIME')
+    time = t.getcol('TIME')
+    elevation = t.getcol('ELEV')
 
-    def visibility_variance2D(self, vis, msweights, pol=None, delta=3):
-        if delta % 2 == 0:
-            raise Exception('Box size must be odd!')
-        s = delta // 2
-        if pol is not None:
-            vis = vis[:, :, pol]
-            weight = np.copy(msweights[:, :, pol])
-            msweights = msweights[:, :, pol]
-        max_x = vis.shape[1] - 1
-        max_y = vis.shape[0] - 1
+    flags = t2.getcol('FLAG')
+    datar = t2.getcol('DATA_REAL')
+    datar = np.ma.MaskedArray(data=datar, mask=flags)
+    weights = t.getcol('WEIGHT')
+    weights = np.ma.MaskedArray(data=weights, mask=flags)
 
-        for (y, x), _ in np.ndenumerate(vis):
-            #if x == 0:
-            #    print 'At row', y
-            # Horizontal bounds.
-            if (x - s) <= 0:
-                bound_left = 0
-            else:
-                bound_left = (x - s)
-            if (x + s) >= max_x:
-                bound_right = max_x
-            else:
-                bound_right = (x + s) + 1
-            # Vertical bounds.
-            if (y - s) <= 0:
-                bound_low = 0
-            else:
-                bound_low = (y - s)
-            if (y + s) >= max_y:
-                bound_high = max_y
-            else:
-                bound_high = (y + s) + 1
-            box_vis = vis[bound_low:bound_high, bound_left:bound_right]
-            if np.any(box_vis) and not np.all(box_vis.mask):
-                v = np.nanvar(box_vis)
-                if v != 0.0:
-                    w = 1. / v
-                else:
-                    w = 0.
-            else:
-                w = 0.
-            if np.isfinite(w):
-                weight[y, x] = w
-        return weight
+    # Calculate variance over 10 timestamp intervals. The last interval may be shorter.
+    # datar shape is (timestamps, channels, polarizations)
+    variance = np.ones(shape=(len(time)//delta, weights.shape[1], weights.shape[2]))
+    datar_shifted = np.roll(datar, -1, axis=1)
+    datars = datar - datar_shifted
+    datar = datars.real
+    datai = datars.imag
+    for i in xrange(len(time)//delta):
+        vr = np.nanvar(datar[delta*i: delta*i+delta,:,:], axis=0)
+        vi = np.nanvar(datai[delta*i: delta*i+delta,:,:], axis=0)
+        v = (vr + vi) / 2.
+        if np.any(np.isfinite(v)):
+            variance[i] = np.where(np.isfinite(1. / v), 1. / v, 0)
+        else:
+            variance[i] = np.nan
+
+    # Select the weights for all timestamps one channel and one polarization (in that order).
+    weights = t.getcol('WEIGHT')
+    # Plot weights for elevation and save the image.
+    print 'Plotting...'
+    colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
+    fig = figure()
+    fig.suptitle(msfile, fontweight='bold')
+    ax = fig.add_subplot(111)
+
+    if plot_time_unit.lower() == 'h':
+        time_h = time / 3600
+        time_h = (time_h - math.floor(time_h[0]/24) * 24)
+        
+        # Deal with outlier weights if necessary.        
+        wexponents = np.floor(np.log10(weights)).astype(int)
+        print np.unique(wexponents)
+        weights = np.where(wexponents < 0, weights, 1e-10)
+        
+        # Normalize the weights w.r.t. the XX/RR polarization.
+        nmin = np.nanmin(weights[:, :, 0])
+        nmax = np.nanmax(weights[:, :, 0])
+        
+        ax.scatter(time_h, normalize(weights[:, 5, 0], nmin, nmax), marker='.', color='C1', alpha=0.25, label=polarization[0]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 5, 1], nmin, nmax), marker='.', color='C2', alpha=0.25, label=polarization[1]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 5, 2], nmin, nmax), marker='.', color='C3', alpha=0.25, label=polarization[2]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 5, 3], nmin, nmax), marker='.', color='C4', alpha=0.25, label=polarization[3]+' Weights')
+        del nmin, nmax
+        
+        # Normalize the statistic w.r.t. the XX/RR polarization.
+        print variance[:, :, 0]
+        nmin = np.nanmin(variance[:, :, 0])
+        nmax = np.nanmax(variance[:, :, 0])
+        print nmin, nmax
+        indices = ((np.asarray(range(0, len(variance[:, 5, 0]))) + 0.5) * delta).astype(int)
+        ax.plot(time_h[indices], normalize(variance[:, 5, 0], nmin, nmax), '--d', color='C1', label=polarization[0]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 5, 1], nmin, nmax), '--d', color='C2', label=polarization[1]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 5, 2], nmin, nmax), '--d', color='C3', label=polarization[2]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 5, 3], nmin, nmax), '--d', color='C4', label=polarization[3]+' Boxed variance $\\Delta=%d$'%(delta,))
+        # Plot the elevation as a function of time.
+        ax_elev = ax.twinx()
+        ax_elev.plot(time_h, elevation * 180/np.pi, 'k', linewidth=2, label='Elevation')
+
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: '%.2d:%.2d:%.2d' % (int(x), (x%1)*60, (((x%1)*60)%1 * 60))))
+        ax.set_xlim(min(time_h), max(time_h))
+        ax.set_ylim(0, 1.5)
+        ax.set_xlabel('Time [h]')
+    elif plot_time_unit.lower() == 's':
+        # To do.
+        pass
+    ax.set_ylabel('Weights Normalized w.r.t. '+polarization[0])
+    ax_elev.set_ylabel('Elevation [deg]')
+
+    # Deal with the legend.
+    handles, labels = ax.get_legend_handles_labels()
+    handles2, labels2 = ax_elev.get_legend_handles_labels()
+    leg = ax.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, borderaxespad=0.0)
+    print 'Saving plot as %s' % (imgname,)
+    fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
+    #show()
+    return
 
 if __name__ == '__main__':
-    import sys
     # Get the MS filename.
     msfile = sys.argv[1]
-    wp = WeightPlotter(msfile)
-    wp.plot_weight_time(mode='mean')
-    wp.plot_weight_time(mode='median')
-    wp.plot_weight_frequency(delta=10)
-    wp.plot_weight_2D()
-    wp.plot_variance_2D(delta=3)
-    #wp.plot_variance_2D(delta=7)
-    #wp.plot_variance_2D(delta=9)
-    wp.plot_data_2D()
-    #from matplotlib.pyplot import show
-    #show()
+    #plot_weight_channel_time_average(msfile, delta=32)
+    plot_weight_channel(msfile, delta=32)
+    #plot_weight_time(msfile, delta=100)
