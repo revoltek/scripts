@@ -248,3 +248,4 @@ spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
 spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
 spidx.writeto(args.output, overwrite=True)
 spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
+
