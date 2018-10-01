@@ -128,6 +128,7 @@ for pol in pols:
     
         if ant[0] >= ant[1]: continue
         if stddevs[i] == 0: continue # fix for missing anstennas
+        if stddevs[i] < 1: continue # avoid small smoothing and quantization problems
     
         sel = (ant1 == ant[0]) & (ant2 == ant[1])
     
