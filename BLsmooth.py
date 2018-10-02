@@ -68,10 +68,10 @@ freq = freqtab.getcol('REF_FREQUENCY')
 freqtab.close()
 wav = 299792458. / freq
 timepersample = ms.getcell('INTERVAL',0)
-all_time = ms.getcol('TIME_CENTROID')
 
 # check if ms is time-ordered
-if not all(all_time[i] <= all_time[i+1] for i in xrange(len(all_time)-1)):
+times = ms.getcol('TIME_CENTROID')
+if not all(times[i] <= times[i+1] for i in xrange(len(times)-1)):
     logging.critical('This code cannot handle MS that are not time-sorted.')
     sys.exit(1)
 
@@ -85,96 +85,72 @@ if 'WEIGHT_SPECTRUM_ORIG' in ms.colnames() and options.restore:
 elif options.weight and not options.nobackup:
     addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG')
 
-ant1 = ms.getcol('ANTENNA1')
-ant2 = ms.getcol('ANTENNA2')
-
-all_uvw = ms.getcol('UVW')
 # iteration on baseline combination
-# do for loop twice to remove all_uvw and save memory
-stddevs = np.zeros( len(set(ant1)) * len(set(ant2)) )
-for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
-
-    if ant[0] >= ant[1]: continue
-    sel = (ant1 == ant[0]) & (ant2 == ant[1])
+for ms_bl in ms.iter(["ANTENNA1","ANTENNA2"]):
+    uvw = ms_bl.getcol('UVW')
+    ant1 = ms_bl.getcol('ANTENNA1')[0]
+    ant2 = ms_bl.getcol('ANTENNA2')[0]
 
     # compute the FWHM
-    uvw = all_uvw[sel,:]
     uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
     dist = np.mean(uvw_dist) / 1.e3
-    if np.isnan(dist): continue # fix for missing anstennas
+    if np.isnan(dist) or dist == 0: continue # fix for missing anstennas and autocorr
     
     stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
     stddev = stddev/timepersample # in samples
-    logging.debug("For BL %i - %i (dist = %.1f km): sigma=%.2f samples." % (ant[0], ant[1], dist, stddev))
-    stddevs[i] = stddev
+    logging.debug("%s - %s: dist = %.1f km: sigma=%.2f samples." % (ant1, ant2, dist, stddev))
 
-del all_uvw
+    if stddev == 0: continue # fix for missing anstennas
+    if stddev < 0.5: continue # avoid very small smoothing
 
-nchans = len(pt.table(msfile+"/SPECTRAL_WINDOW",ack=False)[0]["CHAN_FREQ"])
-pols = [0,1,2,3] # full-pol smoothing
-for pol in pols:
-    logging.debug("Workign on pol %i" % pol)
-    all_data = ms.getcolslice(options.outcol, [0,pol], [nchans-1,pol])
-    all_weights = ms.getcolslice('WEIGHT_SPECTRUM', [0,pol], [nchans-1,pol])
-    all_flags = ms.getcolslice('FLAG', [0,pol], [nchans-1,pol])
+    #logging.debug('Reading data')
+    data = ms_bl.getcol(options.outcol)
+    #logging.debug('Reading weights')
+    weights = ms_bl.getcol('WEIGHT_SPECTRUM')
+    #logging.debug('Reading flag')
+    flags = ms_bl.getcol('FLAG')
 
-    all_flags[ np.isnan(all_data) ] = True # flag NaNs
-    all_weights[all_flags] = 0 # set weight of flagged data to 0
-    del all_flags
+    flags[ np.isnan(data) ] = True # flag NaNs
+    weights[flags] = 0 # set weight of flagged data to 0
+    del flags
     
-    # iteration on baseline combination
-    logging.info('Smoothing baselines')
-    for i, ant in enumerate(itertools.product(set(ant1), set(ant2))):
+    #logging.info('Smoothing baseline')
     
-        if ant[0] >= ant[1]: continue
-        if stddevs[i] == 0: continue # fix for missing anstennas
-        if stddevs[i] < 1: continue # avoid small smoothing and quantization problems
+    # Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
+    # divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
+    # running weighted average with a Gaussian window function.
     
-        sel = (ant1 == ant[0]) & (ant2 == ant[1])
+    # set bad data to 0 so nans do not propagate
+    data = np.nan_to_num(data*weights)
     
-        #Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
-        #divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
-        #running weighted average with a Gaussian window function.
-    
-        # get cycle values
-        weights = all_weights[sel]
-        data = all_data[sel]
-    
-        # set bad data to 0 so nans do not propagate
-        data = np.nan_to_num(data*weights)
-    
-        # smear weighted data and weights
-        if options.onlyamp:
-            dataAMP = gfilter(np.abs(data), stddevs[i], axis=0)
-            dataPH = np.angle(data)
-        else:
-            dataR = gfilter(np.real(data), stddevs[i], axis=0)#, truncate=4.)
-            dataI = gfilter(np.imag(data), stddevs[i], axis=0)#, truncate=4.)
+    # smear weighted data and weights
+    if options.onlyamp:
+        dataAMP = gfilter(np.abs(data), stddev, axis=0)
+        dataPH = np.angle(data)
+    else:
+        dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
+        dataI = gfilter(np.imag(data), stddev, axis=0)#, truncate=4.)
 
-        weights = gfilter(weights, stddevs[i], axis=0)#, truncate=4.)
-    
-        # re-create data
-        if options.onlyamp:
-            data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
-        else:
-            data = (dataR + 1j * dataI)
-        data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
-        all_data[sel] = data
-        all_weights[sel] = weights
-    
-        #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
-        #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
-        #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
-        #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
-    
-    logging.warning('Writing %s column.' % options.outcol)
-    ms.putcolslice(options.outcol, all_data, [0,pol], [nchans-1,pol])
-    del all_data
+    weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
+
+    # re-create data
+    if options.onlyamp:
+        data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
+    else:
+        data = (dataR + 1j * dataI)
+    data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
+
+    #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
+    #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
+    #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
+    #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
+
+    #logging.info('Writing %s column.' % options.outcol)
+    ms_bl.putcol(options.outcol, data)
 
     if options.weight:
-        logging.warning('Writing WEIGHT_SPECTRUM column.')
-        ms.putcol('WEIGHT_SPECTRUM', all_weights, [0,pol], [nchans-1,pol])
-        del all_weights
+        #logging.warning('Writing WEIGHT_SPECTRUM column.')
+        ms_bl.putcol('WEIGHT_SPECTRUM', weights)
 
 ms.close()
 logging.info("Done.")
