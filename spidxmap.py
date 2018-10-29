@@ -33,7 +33,7 @@ from reproject import reproject_interp, reproject_exact
 reproj = reproject_exact
 logging.root.setLevel(logging.DEBUG)
 
-parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
+parser = argparse.ArgumentParser(description='Make spectral index maps, e.g. spidxmap.py --region ds9.reg --noise --sigma 5 --save *fits')
 parser.add_argument('images', nargs='+', help='List of images to use for spidx')
 parser.add_argument('--beam', dest='beam', nargs='+', type=float, help='3 parameters final beam to convolve all images (BMAJ (arcsec), BMIN (arcsec), BPA (deg))')
 parser.add_argument('--region', dest='region', help='Ds9 region to restrict analysis')
@@ -206,15 +206,27 @@ logging.info('Image size: %f deg (%i %i pixels)' % (args.size,xsize,ysize))
 # regrid, convolve and only after apply mask and find noise
 for image in all_images:
 
-    image.convolve(target_beam)
-    if args.save:
-        intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
-        intermediate.writeto(image.imagefile+'-conv.fits', overwrite=True)
+    if os.path.exists(image.imagefile+'-conv.fits'):
+        data, hdr = pyfits.getdata(image.imagefile+'-conv.fits', 0, header=True)
+        image.img_data = data
+        image.img_hdr = hdr
+        image.set_beam([hdr['BMAJ'], hdr['BMIN'], hdr['BPA']])
+    else:
+        image.convolve(target_beam)
+        if args.save:
+            intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
+            intermediate.writeto(image.imagefile+'-conv.fits', overwrite=True)
 
-    image.regrid(regrid_hdr) # regrid initially to speed up convolution
-    if args.save:
-        intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
-        intermediate.writeto(image.imagefile+'-regrid-conv.fits', overwrite=True)
+    if os.path.exists(image.imagefile+'-regrid-conv.fits'):
+        data, hdr = pyfits.getdata(image.imagefile+'-regrid-conv.fits', 0, header=True)
+        image.img_data = data
+        image.img_hdr = hdr
+        image.set_beam([hdr['BMAJ'], hdr['BMIN'], hdr['BPA']])
+    else:
+        image.regrid(regrid_hdr)
+        if args.save:
+            intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
+            intermediate.writeto(image.imagefile+'-regrid-conv.fits', overwrite=True)
  
     if args.region is not None:
         image.apply_region(args.region, invert=True) # after convolution to minimise bad pixels
