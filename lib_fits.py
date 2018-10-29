@@ -127,7 +127,7 @@ class Image(object):
     def apply_region(self, regionfile, blankvalue=np.nan, invert=False):
         """
         Blank inside mask
-        invert: blank outside mask
+        invert: blank outside region
         """
         import pyregion
         if not os.path.exists(regionfile):
@@ -139,6 +139,17 @@ class Image(object):
         mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
         if invert: self.img_data[~mask] = blankvalue
         else: self.img_data[mask] = blankvalue
+
+
+    def apply_mask(self, mask, blankvalue=np.nan, invert=False):
+        """
+        Blank inside mask
+        invert: blank outside mask
+        """
+        logging.debug('%s: Apply mask' % self.imagefile)
+        if invert: self.img_data[~mask] = blankvalue
+        else: self.img_data[mask] = blankvalue
+
 
     def calc_noise(self, niter=1000, eps=None):
         """

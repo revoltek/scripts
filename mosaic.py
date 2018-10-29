@@ -35,7 +35,8 @@ tgss_catalog = '/home/fdg/scripts/autocal/TGSSADR1_5sigma_catalog_v3.fits'
 
 parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
-parser.add_argument('--masks', dest='masks', nargs='+', help='List of masks/regions to blank images')
+parser.add_argument('--regions', dest='regions', nargs='+', help='List of regions to blank images')
+parser.add_argument('--mask', dest='mask', help='One mask with a number per direction, numbers must be in the same order of those given in the "images" parameter.')
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
 parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
 parser.add_argument('--beamcorr', dest='beamcorr', action='store_true', help='Pre-correct for beam before combining (default: do not apply)')
@@ -67,6 +68,10 @@ if args.noises is not None:
 if args.images is None or len(args.images) < 2:
     logging.error('Requires at lest 2 images.')
     sys.exit(1)
+
+if args.mask is not None:
+    logging.debug('Reading mask: %s.' % args.mask)
+    mask_n = pyfits.open(args.mask)[0]
 
 if args.shift and not args.beamcorr:
     logging.warning('Attempting shift calculation on beam corrected images, this is not the best.')
@@ -177,8 +182,8 @@ for i, d in enumerate(directions):
         d.set_beam_file(args.beams[i])
         d.apply_beam_cut(beamcut = args.beamcut)
 
-    if args.masks is not None:
-        d.apply_region(args.masks[i], blankvalue=0, invert=True)
+    if args.regions is not None:
+        d.apply_region(args.regions[i], blankvalue=0, invert=True)
 
     if args.noises is not None: d.noise = args.noises[i]
     elif args.find_noise: d.calc_noise() # after beam cut/mask
@@ -260,7 +265,19 @@ logging.info('Making mosaic...')
 isum = np.zeros([ysize,xsize])
 wsum = np.zeros_like(isum)
 mask = np.zeros_like(isum,dtype=np.bool)
-for d in directions:
+if args.mask is not None:
+    logging.debug('Reprojecting mask...')
+    outname = args.mask.replace('.fits','-reproj.fits')
+    if os.path.exists(outname):
+        logging.debug('Loading %s...' % outname)
+        mask_n = pyfits.open(outname)[0]
+    else:
+        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor')#, parallel=True)
+        if args.save:
+            hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=mask_n.data)
+            hdu.writeto(outname, overwrite=True)
+
+for i, d in enumerate(directions):
     logging.info('Working on: %s' % d.imagefile)
 
     outname = d.imagefile.replace('.fits','-reproj.fits')
@@ -270,10 +287,9 @@ for d in directions:
     else:
         logging.debug('Reprojecting data...')
         r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
-        r[ np.isnan(r) ] = 0
-        hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
         if args.save:
-            hdu.writeto(outname, clobber=True)
+            hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
+            hdu.writeto(outname, overwrite=True)
 
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
@@ -285,9 +301,11 @@ for d in directions:
         w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr)#, parallel=True)
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
-        hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
+        if args.mask is not None:
+            w[mask_n.data != i] = 0
         if args.save:
-            hdu.writeto(outname, clobber=True)
+            hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
+            hdu.writeto(outname, overwrite=True)
     logging.debug('Add to mosaic...')
     isum += r*w
     wsum += w
@@ -303,6 +321,6 @@ for ch in ('BMAJ', 'BMIN', 'BPA'):
     regrid_hdr['UNITS'] = 'Jy/beam'
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
-hdu.writeto(args.output, clobber=True)
+hdu.writeto(args.output, overwrite=True)
 
 logging.debug('Done.')
