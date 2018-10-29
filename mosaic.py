@@ -287,6 +287,7 @@ for i, d in enumerate(directions):
     else:
         logging.debug('Reprojecting data...')
         r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
+        r[ np.isnan(r) ] = 0
         if args.save:
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
             hdu.writeto(outname, overwrite=True)
@@ -307,6 +308,7 @@ for i, d in enumerate(directions):
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
             hdu.writeto(outname, overwrite=True)
     logging.debug('Add to mosaic...')
+    print r,w
     isum += r*w
     wsum += w
 
