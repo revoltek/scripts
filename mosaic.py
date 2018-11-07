@@ -308,7 +308,6 @@ for i, d in enumerate(directions):
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
             hdu.writeto(outname, overwrite=True)
     logging.debug('Add to mosaic...')
-    print r,w
     isum += r*w
     wsum += w
 
