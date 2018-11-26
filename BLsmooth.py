@@ -97,6 +97,7 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
     a_flags = ms_ant1.getcol('FLAG')
  
     for ant2 in set(a_ant2):
+        if ant1 == ant2: continue # skip autocorr
         idx = np.where(a_ant2 == ant2)
         
         uvw = a_uvw[idx]
@@ -107,13 +108,13 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         # compute the FWHM
         uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
         dist = np.mean(uvw_dist) / 1.e3
-        if np.isnan(dist) or dist == 0: continue # fix for missing anstennas and autocorr
+        if np.isnan(dist): continue # fix for missing anstennas
     
         stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
         stddev = stddev/timepersample # in samples
         logging.debug("%s - %s: dist = %.1f km: sigma=%.2f samples." % (ant1, ant2, dist, stddev))
     
-        if stddev == 0: continue # fix for missing anstennas
+        if stddev == 0: continue # fix for flagged anstennas
         if stddev < 0.5: continue # avoid very small smoothing
     
         flags[ np.isnan(data) ] = True # flag NaNs
