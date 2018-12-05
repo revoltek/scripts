@@ -356,10 +356,10 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
         nmin = np.nanmin(weights[:, :, 0])
         nmax = np.nanmax(weights[:, :, 0])
         
-        ax.scatter(time_h, normalize(weights[:, 0, 0], nmin, nmax), marker='.', color='C1', alpha=0.25, label=polarization[0]+' Weights')
-        ax.scatter(time_h, normalize(weights[:, 0, 1], nmin, nmax), marker='.', color='C2', alpha=0.25, label=polarization[1]+' Weights')
-        ax.scatter(time_h, normalize(weights[:, 0, 2], nmin, nmax), marker='.', color='C3', alpha=0.25, label=polarization[2]+' Weights')
-        ax.scatter(time_h, normalize(weights[:, 0, 3], nmin, nmax), marker='.', color='C4', alpha=0.25, label=polarization[3]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 0, 0], nmin, nmax), marker='.', color='red', alpha=0.25, label=polarization[0]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 0, 1], nmin, nmax), marker='.', color='green', alpha=0.25, label=polarization[1]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 0, 2], nmin, nmax), marker='.', color='blue', alpha=0.25, label=polarization[2]+' Weights')
+        ax.scatter(time_h, normalize(weights[:, 0, 3], nmin, nmax), marker='.', color='orange', alpha=0.25, label=polarization[3]+' Weights')
         del nmin, nmax
         
         # Normalize the statistic w.r.t. the XX/RR polarization.
@@ -368,10 +368,10 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
         nmax = np.nanmax(variance[:, :, 0])
         print nmin, nmax
         indices = ((np.asarray(range(0, len(variance[:, 0, 0]))) + 0.5) * delta).astype(int)
-        ax.plot(time_h[indices], normalize(variance[:, 0, 0], nmin, nmax), '--d', color='C1', label=polarization[0]+' Boxed variance $\\Delta=%d$'%(delta,))
-        ax.plot(time_h[indices], normalize(variance[:, 0, 1], nmin, nmax), '--d', color='C2', label=polarization[1]+' Boxed variance $\\Delta=%d$'%(delta,))
-        ax.plot(time_h[indices], normalize(variance[:, 0, 2], nmin, nmax), '--d', color='C3', label=polarization[2]+' Boxed variance $\\Delta=%d$'%(delta,))
-        ax.plot(time_h[indices], normalize(variance[:, 0, 3], nmin, nmax), '--d', color='C4', label=polarization[3]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 0, 0], nmin, nmax), '--d', color='red', label=polarization[0]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 0, 1], nmin, nmax), '--d', color='green', label=polarization[1]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 0, 2], nmin, nmax), '--d', color='blue', label=polarization[2]+' Boxed variance $\\Delta=%d$'%(delta,))
+        ax.plot(time_h[indices], normalize(variance[:, 0, 3], nmin, nmax), '--d', color='orange', label=polarization[3]+' Boxed variance $\\Delta=%d$'%(delta,))
         # Plot the elevation as a function of time.
         ax_elev = ax.twinx()
         ax_elev.plot(time_h, elevation * 180/np.pi, 'k', linewidth=2, label='Elevation')
