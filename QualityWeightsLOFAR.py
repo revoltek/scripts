@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import os
 from pyrap.tables import table
 import numpy as np
@@ -12,7 +10,7 @@ import math
 import argparse
 
 class CovWeights:
-    def __init__(self,MSName,ntsol=1,SaveDataProducts=0,uvcut=[0,2000],gainfile=None,phaseonly=False):
+    def __init__(self,MSName,ntsol=1,SaveDataProducts=0,uvcut=[0,2000],gainfile=None,phaseonly=False,nfreqsol=1,norm=False):
         if MSName[-1]=="/":
             self.MSName=MSName[0:-1]
         else:
@@ -20,9 +18,12 @@ class CovWeights:
         self.MaxCorrTime=0
         self.SaveDataProducts=SaveDataProducts
         self.ntSol=ntsol
+        self.nfreqsol=nfreqsol
         self.uvcut=uvcut
         self.gainfile=gainfile
         self.phaseonly=phaseonly
+        self.normalise=norm
+
         
     def FindWeights(self,tcorr=0,colname=""):
         ms=table(self.MSName,readonly=False)
@@ -88,12 +89,14 @@ class CovWeights:
 #                rarray=residualdata[resmask]
 #                CoeffArray[i,ant] = np.mean(np.abs(rarray*rarray.conj()))
 #            PrintProgress(i,nt)
-        
+
+
         if self.ntSol>1:
             tspill=nt%self.ntSol
             nt1=nt+self.ntSol-tspill
             for i in range(nt1/self.ntSol):
-                residualdata[i*self.ntSol:(i+1)*self.ntSol,:,:,:]=np.mean(residualdata[i*self.ntSol:(i+1)*self.ntSol,:,:,:],axis=0)
+                for j in range(self.nfreqsol):
+                    residualdata[i*self.ntSol:(i+1)*self.ntSol,:,self.nfreqsol*j:(j+1)*nfreqsol,:]=np.mean(residualdata[i*self.ntSol:(i+1)*self.ntSol,:,:,:],axis=0)
         A0=A0.reshape((nt,nbl))
         A1=A1.reshape((nt,nbl))
         ant1=np.arange(nAnt)
@@ -108,7 +111,7 @@ class CovWeights:
         residuals[:,:,:,0]=darray[:,:,:,0]
         residuals[:,:,:,1]=darray[:,:,:,3]
         # antenna coefficient array
-        CoeffArray=np.zeros((nt,nAnt))
+        CoeffArray=np.zeros((nt,nAnt,2))
         # start calculating the weights
         print "Begin calculating antenna-based coefficients"
         warnings.filterwarnings("ignore")
@@ -120,16 +123,24 @@ class CovWeights:
                 set1=np.where(A0[t_i]==ant1)[0]
                 # set of vis for baselines ant_i-ant
                 set2=np.where(A1[t_i]==ant)[0]
-                CoeffArray[t_i,ant] = np.sqrt(np.mean(np.append(residuals[t_i,set1,:,:],residuals[t_i,set2,:,:])*np.append(residuals[t_i,set1,:,:],residuals[t_i,set2,:,:]).conj())\
+                CoeffArray[t_i,ant,0] = (np.mean(np.append(residuals[t_i,set1,:,:],residuals[t_i,set2,:,:])*np.append(residuals[t_i,set1,:,:],residuals[t_i,set2,:,:]).conj())\
                                               - np.std( (np.append(rmsarray[t_i,set1,:,:], rmsarray[t_i,set2,:,:]))) )
+                CoeffArray[t_i,ant,1] = np.mean(np.append(residuals[t_i,set1,:,:],residuals[t_i,set2,:,:]))*(np.mean(np.append(residuals[t_i,set1,:,:],residuals[t_i,set2,:,:]))).conj()
             PrintProgress(t_i,nt)
         warnings.filterwarnings("default")
         for i in range(nAnt):
             # get rid of NaN
             CoeffArray[np.isnan(CoeffArray)]=np.inf
-            tempars=CoeffArray[:,i]
+            tempars=CoeffArray[:,i,0]
+            gtempars=CoeffArray[:,i,1]
             thres=0.25*np.median(tempars)
-            CoeffArray[:,i][tempars<thres]=thres
+            gthres=0.25*np.median(gtempars)
+            CoeffArray[:,i,0][tempars<thres]=thres
+            CoeffArray[:,i,0][gtempars<gthres]=gthres
+            # normalise per antenna
+            if self.normalise==True:
+                CoeffArray[:,i,0]=CoeffArray[:,i,0]/CoeffArray[:,i,1]**2
+#            CoeffArray[:,i,1]=CoeffArray[:,i,1]/np.mean(CoeffArray[:,i,1])
         if colname=="":
             coeffFilename=self.MSName+"/CoeffArray.ntsol%i.npy"%(ntsol)
         else:
@@ -174,8 +185,14 @@ class CovWeights:
         # do gains stuff
         ant1gainarray,ant2gainarray=readGainFile(self.gainfile, ms, nt, nchan, nbl,tarray,nAnt,self.MSName,self.phaseonly)
         for i in range(nbl):
-            for j in range(nchan):
-                w[:,i,j]=1./(CoeffArray[:,A0ind[i]]*ant2gainarray[i,j]+CoeffArray[:,A1ind[i]]*ant1gainarray[i,j]+CoeffArray[:,A0ind[i]]*CoeffArray[:,A1ind[i]] + 0.1)
+            for j in range(nchan):               
+                #w[:,i,j]=1./(CoeffArray[:,A0ind[i]]*ant2gainarray[i,j]+CoeffArray[:,A1ind[i]]*ant1gainarray[i,j]+CoeffArray[:,A0ind[i]]*CoeffArray[:,A1ind[i]] + 0.1)
+                if self.normalise==True:
+                    ga=CoeffArray[:,A0ind[i],1]**2
+                    gb=CoeffArray[:,A1ind[i],1]**2
+                    w[:,i,j]=1./( ga*gb*(CoeffArray[:,A0ind[i],0]+CoeffArray[:,A1ind[i],0]+CoeffArray[:,A0ind[i],0]*CoeffArray[:,A1ind[i],0]) + 0.1)
+                else:
+                    w[:,i,j]=1./(CoeffArray[:,A0ind[i],0]*CoeffArray[:,A1ind[i],1]+CoeffArray[:,A1ind[i],0]*CoeffArray[:,A0ind[i],1]+CoeffArray[:,A0ind[i],0]*CoeffArray[:,A1ind[i],0] + 0.1)
             PrintProgress(i,nbl)
         warnings.filterwarnings("default")
         w=w.reshape(nt*nbl,nchan)
@@ -251,6 +268,11 @@ def readGainFile(gainfile,ms,nt,nchan,nbl,tarray,nAnt,msname,phaseonly):
                             freqmask=(gfreqs==k)
                             ant1gainarray[mask1,k]=np.mean(gains[:,0,j,freqmask],axis=0)
                             ant2gainarray[mask2,k]=np.mean(gains[:,0,j,freqmask],axis=0)
+            else:
+                print "Gain file type not currently supported. Assume all gain amplitudes are 1."
+                ant1gainarray=np.ones((nt*nbl,nchan))
+                ant2gainarray=np.ones((nt*nbl,nchan))
+                                
 
     return ant1gainarray1,ant2gainarray1
 
@@ -276,12 +298,13 @@ def readArguments():
     parser.add_argument("-v","--verbose",help="Be verbose, say everything program does. Default is False",required=False,action="store_true")
     parser.add_argument("--filename",type=str,help="Name of the measurement set for which weights want to be calculated",required=True,nargs="+")
     parser.add_argument("--ntsol",type=int,help="Solution interval, in timesteps, for your calibration",required=True)
+    parser.add_argument("--nfreqsol",type=int,help="Frequency interval, in channels, for your calibration. Default is 8.",required=False,default=8)
     parser.add_argument("--colname",type=str,help="Name of the weights column name you want to save the weights to. Default is CAL_WEIGHT.",required=False,default="CAL_WEIGHT")
     parser.add_argument("--gainfile",type=str,help="Name of the gain file you want to read to rebuild the calibration quality weights."+\
                         " If no file is given, equivalent to rebuilding weights for phase-only calibration.",required=False,default="")
     parser.add_argument("--uvcutkm",type=float,nargs=2,default=[0,2000],required=False,help="uvcut used during calibration, in km.")
     parser.add_argument("--phaseonly",help="Use if calibration was phase-only; this means that gain information doesn't need to be read.",required=False,action="store_true")
-#    parser.add_argument("--nchansol",type=int,help="Solution interval, in channels, for your calibration",required=True)
+    parser.add_argument("--normalise",help="Normalise gains to avoid suppressing long baselines",required=False,action="store_true")
     args=parser.parse_args()
     return vars(args)
 
@@ -293,13 +316,15 @@ if __name__=="__main__":
     args        = readArguments()
     mslist      = args["filename"]
     ntsol       = args["ntsol"]
+    nfreqsol    = args["nfreqsol"]
     colname     = args["colname"]
     gainfile    = args["gainfile"]
     uvcut       = args["uvcutkm"]
     phaseonly   = args["phaseonly"]
+    normalise   = args["normalise"]
     for msname in mslist:
         print "Finding time-covariance weights for: %s"%msname
-        covweights=CovWeights(MSName=msname,ntsol=ntsol,gainfile=gainfile,uvcut=uvcut,phaseonly=phaseonly)
+        covweights=CovWeights(MSName=msname,ntsol=ntsol,gainfile=gainfile,uvcut=uvcut,phaseonly=phaseonly,norm=normalise)
         coefficients=covweights.FindWeights(tcorr=0,colname=colname)
         covweights.SaveWeights(coefficients,colname=colname,AverageOverChannels=True,tcorr=0)
         print "Total runtime: %f min"%((time.time()-start_time)/60.)
