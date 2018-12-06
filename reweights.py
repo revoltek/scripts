@@ -4,91 +4,203 @@
 # Update LOFAR weights using residual visibilities
 #
 # Author: Francesco de Gasperin
+# Credits: Frits Sweijen, Etienne Bonnassieux
 
 import os, sys, logging, time
 import numpy as np
 from casacore.tables import taql
-logging.basicConfig(level=logging.DEBUG)
+import matplotlib as mpl
+mpl.use("Agg")
+import matplotlib.pyplot as plt
 
 class MShandler():
-    def __init__(self, ms_files, wcolname, rcolname):
+    def __init__(self, ms_files, wcolname, dcolname):
         """
         ms_files: a list of MeasurementSet files
         wcolname: name of the weight column
-        rcolname: name of the residual column
+        dcolname: name of the residual column
         """
         logging.debug('Reading: %s', ','.join(ms_files))
         logging.debug('Weight column: %s', wcolname)
-        logging.debug('Residual column: %s', rcolname)
+        logging.debug('Data column: %s', dcolname)
         self.ms_files = ms_files
+        self.wcolname = wcolname
+        self.dcolname = dcolname
 
         # if more than one MS, virtualconcat
         if len(ms_files) > 1:
-            self.ms = taql('select FLAG, ANTENNA1, ANTENNA2, %s, %s from %s where ANTENNA1 != ANTENNA2' % ( wcolname, rcolname, ','.join(ms_files) ))
+            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s where ANTENNA1 != ANTENNA2' % ( wcolname, dcolname, ','.join(ms_files) ))
         else:
-            self.ms = taql('select FLAG, ANTENNA1, ANTENNA2, %s, %s from %s where ANTENNA1 != ANTENNA2' % ( wcolname, rcolname, ms_files[0] ))
+            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s where ANTENNA1 != ANTENNA2' % ( wcolname, dcolname, ms_files[0] ))
+
+        self.antennas = taql('select NAME from %s/ANTENNA' % self.ms_files[0])
+
+    def get_freqs(self):
+        # TODO: check if there is a smarter way to do it with concat.MS
+        freqs = []
+        for ms_file in self.ms_files:
+            freqs += list( taql('SELECT CHAN_FREQ FROM %s/SPECTRAL_WINDOW' % ms_file)[0]['CHAN_FREQ'] * 1e-6 ) # in MHz
+        return freqs
+
+    def get_time(self):
+        # TODO: fix if multiple time MSs passed
+        ms_avgbl = taql('SELECT TIME FROM %s GROUPBY TIME' %(self.ms_files[0]))
+        return ms_avgbl.getcol('TIME')
+
+    def get_elev(self):
+        # TODO: fix if multiple time MSs passed
+        ms_avgbl = taql('SELECT TIME, MEANS(GAGGR(MSCAL.AZEL1()[1]), 0) AS ELEV FROM %s GROUPBY TIME' %(self.ms_files[0]))
+        return ms_avgbl.getcol('ELEV')
 
     def iter_antenna(self):
         """
         Iterator to get all visibilities of each antenna
         It should return an array of Ntimes x Nfreqs
         """
-        antennas = taql('select NAME from %s/ANTENNA' % self.ms[0])
-        for antenna in antennas:
-            yield taql('select FLAG, ANTENNA1, ANTENNA2, %s from $self.ms where ANTENNA1=%i or ANTENNA2=%i' % (rcolname, antenna, antenna) )
+        ms = self.ms # to use the "$" in taql
 
-    def plot(self, time=None, freq=None):
-        pass
+        for ant_id, ant_name in enumerate(self.antennas.getcol('NAME')):
+            logging.debug('Workign on antenna: %s', ant_name)
+            yield ant_id, ant_name, taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from $ms where ANTENNA1=%i or ANTENNA2=%i' % (self.dcolname, self.wcolname, ant_id, ant_id) )
 
-def reweight(ms_files, wcolname='WEIGHT_SPECTRUM', rcolname='RESIDUAL_DATA'):
 
-    # read residuals
-    logging.info('Reading MSs...')
-    MSh = MShandler(ms_files, wcolname, rcolname)
+def reweight(MSh, mode):
 
-    # get residuals per antenna
-    logging.info('Computing weights...')
+    # get data per antenna
     var_antenna = {}
-    for ms_ant in MSh.iter_antenna():
+    for ant_id, ant_name, ms_ant in MSh.iter_antenna():
 
-        residuals = ms_ant.getcol(rcolname)
+        data = ms_ant.getcol(MSh.dcolname) # axis: time, freq, pol
 
         # put flagged data to NaNs
-        residuals[ms_ant.getcol('FLAG')] = np.nan
+        data[ms_ant.getcol('FLAG')] = np.nan
 
         # if completely flagged set variance to 1 and continue
-        if np.isnan(residuals).all():
-            var_antenna[ant] = 1.
+        if np.isnan(data).all():
+            var_antenna[ant_id] = 1.
             continue
 
+        # data column is updated subtracting adjacent channels
+        # in case of mode=residuals there's nothing to do
+        if mode == 'subchan':
+            data_shifted = np.roll(data, -1, axis=1)
+            data_shifted[:,-1,:] = data_shifted[:,-3,:] # last chan uses the one but last (they switch)
+            data = data_shifted
+
         # find variance per time/freq for each antenna
-        var_times = np.nanvar(residuals, axis=0)
-        var_freqs = np.nanvar(residuals, axis=1)
-        var_antenna[ant] = var_times[:, np.newaxis]+var_freqs # sum of the time/freq variances
+        var_times = np.nanvar(data, axis=(0,2)) # TODO: this is wrong, we miss the antenna axis here which is now in the fist index (time)
+        var_freqs = np.nanvar(data, axis=(1,2))
+        var_antenna[ant_id] = var_times[:, np.newaxis]+var_freqs # sum of the time/freq variances
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
-        ant1 = ms_bl['ANTENNA1'][0]
-        ant2 = ms_bl['ANTENNA2'][0]
-        w = var_antenna[ant1] var_antenna[ant2]
-        ms_bl[wcolname] = w
+        ant_id1 = ms_bl['ANTENNA1'][0]
+        ant_id2 = ms_bl['ANTENNA2'][0]
+        w = 1./(var_antenna[ant_id1] + var_antenna[ant_id2]) # what is the right equation here?
+        ms_bl[MSh.wcolname] = w
+
+def plot(MSh):
+
+    logging.debug('Getting time/freq aggregated values...')
+    freqs = MSh.get_freqs()
+    elev = MSh.get_elev()
+    time = MSh.get_time()
+    time -= time[0]
+    time /= 3600. # in h from the beginning of the obs
+
+    fig = plt.figure(figsize=(15,10))
+
+    for ant_id, ant_name, ms_ant in MSh.iter_antenna():
+        
+        fig.suptitle(ant_name, fontweight='bold')
+        fig.subplots_adjust(wspace=0)
+        axt = fig.add_subplot(211)
+        axf = fig.add_subplot(212)
+
+        ms_ant_avgbl = taql('SELECT TIME, MEANS(GAGGR(%s),0) AS WEIGHT, ALL(GAGGR(FLAG)) AS FLAG \
+                FROM $ms_ant GROUPBY TIME' % (MSh.wcolname))
+
+        w = ms_ant_avgbl.getcol('WEIGHT') # axis: time, freq, pol
+        # put flagged data to NaNs and skip if completely flagged
+        w[ms_ant_avgbl.getcol('FLAG')] = np.nan
+        if np.isnan(w).all():
+            continue
+
+        logging.info('Plotting %s...' % ant_name)
+
+        w_f = np.nanmean(w, axis=0) # average in time
+        w_t = np.nanmean(w, axis=1) # average in freq
+
+        # Elevation
+        ax_elev = axt.twinx()
+        ax_elev.plot(time, elev * 180/np.pi, 'k', linestyle=':', linewidth=1, label='Elevation')
+        ax_elev.set_ylabel('Elevation [deg]')
+
+        axt.scatter(time, w_t[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
+        axt.scatter(time, w_t[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
+        axt.scatter(time, w_t[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
+        axt.scatter(time, w_t[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
+        axt.set_xlim(np.min(time), np.max(time))
+        axt.set_ylim(np.min(w_t), np.max(w_t))
+        axt.set_xlabel('Time [h]')
+        #axt.set_ylabel('Weight')
+
+        axf.scatter(freqs, w_f[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
+        axf.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
+        axf.scatter(freqs, w_f[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
+        axf.scatter(freqs, w_f[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
+        axf.set_xlim(np.min(freqs), np.max(freqs))
+        axf.set_ylim(np.min(w_f), np.max(w_f))
+        axf.set_xlabel('Frequency [MHz]')
+        #axf.set_ylabel('Weight')
+
+        handles, labels = axt.get_legend_handles_labels()
+        handles2, labels2 = ax_elev.get_legend_handles_labels()
+        leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=5, borderaxespad=0.0)
+
+        imagename = ant_name+'.png'
+        logging.info('Save file: %s' % (imagename))
+        fig.savefig(imagename, bbox_inches='tight', additional_artists=leg, dpi=250)
+        fig.clf()
 
 def readArguments():
     import argparse
     parser=argparse.ArgumentParser("Plot/Update weights for LOFAR")
     parser.add_argument("-v", "--verbose", help="Be verbose. Default is False", required=False, action="store_true")
+    parser.add_argument("-p", "--plot", help="Plot the weights. Default is False", required=False, action="store_true")
+    parser.add_argument("-m", "--mode", type=str, help="Mode can be: 'residual' if dcolname contain residual data; 'subchan' if adjacent-channel subtraction has to be performed to remove the signal in dcolname. If not given do not update weights. Default: do not update", required=False, default=None)
+    parser.add_argument("-d", "--dcolname", type=str, help="Name of the data column. Default: DATA.", required=False, default='DATA')
     parser.add_argument("-w", "--wcolname", type=str, help="Name of the weights column. Default: WEIGHT_SPECTRUM.", required=False, default="WEIGHT_SPECTRUM")
-    parser.add_argument("-r", "--rcolname", type=str, help="Name of the residuals column. Default: RESIDUAL_DATA.", required=False, default="RESIDUAL_DATA")
     parser.add_argument("ms_files", type=str, help="MeasurementSet name(s).", nargs="+")
     args=parser.parse_args()
     return vars(args)
 
 if __name__=="__main__":
+    start_time = time.time()
+
     args         = readArguments()
+    verbose      = args["verbose"]
+    do_plot      = args["plot"]
+    mode         = args["mode"]
     ms_files     = args["ms_files"]
     wcolname     = args["wcolname"]
-    rcolname     = args["rcolname"]
+    dcolname     = args["dcolname"]
 
-    start_time = time.time()
-    reweight(ms_files, wcolname, rcolname)
+    if mode != 'residual' and mode != 'subchan' and mode is not None:
+        logging.error('Unknown mode: %s' % mode)
+        sys.exit()
+
+    if verbose: logging.basicConfig(level=logging.DEBUG)
+
+    logging.info('Reading MSs...')
+    MSh = MShandler(ms_files, wcolname, dcolname)
+
+    if mode is not None:
+        logging.info('Computing weights...')
+        reweight(MSh, mode)
+
+    if do_plot:
+        logging.info('Plotting...')
+        plot(MSh)
+
     logging.debug('Running time %.0f s' % (time.time()-start_time))
