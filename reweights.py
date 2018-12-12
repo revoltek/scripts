@@ -29,9 +29,9 @@ class MShandler():
 
         # if more than one MS, virtualconcat
         if len(ms_files) > 1:
-            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s where ANTENNA1 != ANTENNA2' % ( wcolname, dcolname, ','.join(ms_files) ))
+            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s' % ( wcolname, dcolname, ','.join(ms_files) ))
         else:
-            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s where ANTENNA1 != ANTENNA2' % ( wcolname, dcolname, ms_files[0] ))
+            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s' % ( wcolname, dcolname, ms_files[0] ))
 
         self.antennas = taql('select NAME from %s/ANTENNA' % self.ms_files[0])
 
@@ -61,7 +61,11 @@ class MShandler():
 
         for ant_id, ant_name in enumerate(self.antennas.getcol('NAME')):
             logging.debug('Workign on antenna: %s', ant_name)
-            yield ant_id, ant_name, taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from $ms where ANTENNA1=%i or ANTENNA2=%i' % (self.dcolname, self.wcolname, ant_id, ant_id) )
+            yield ant_id, ant_name, taql('select TIME, GAGGR(FLAG) as GFLAG, ANTENNA1, ANTENNA2, GAGGR(%s) as GDATA, GAGGR(%s) as GWEIGHT \
+                                          from $ms \
+                                          where (ANTENNA1=%i or ANTENNA2=%i) and (ANTENNA1 != ANTENNA2) \
+                                          groupby TIME' \
+                    % (self.dcolname, self.wcolname, ant_id, ant_id) )
 
 
 def reweight(MSh, mode):
@@ -70,10 +74,10 @@ def reweight(MSh, mode):
     var_antenna = {}
     for ant_id, ant_name, ms_ant in MSh.iter_antenna():
 
-        data = ms_ant.getcol(MSh.dcolname) # axis: time, freq, pol
+        data = ms_ant.getcol('GDATA') # axis: time, ant, freq, pol
 
         # put flagged data to NaNs
-        data[ms_ant.getcol('FLAG')] = np.nan
+        data[ms_ant.getcol('GFLAG')] = np.nan
 
         # if completely flagged set variance to 1 and continue
         if np.isnan(data).all():
@@ -84,13 +88,19 @@ def reweight(MSh, mode):
         # in case of mode=residuals there's nothing to do
         if mode == 'subchan':
             data_shifted = np.roll(data, -1, axis=1)
-            data_shifted[:,-1,:] = data_shifted[:,-3,:] # last chan uses the one but last (they switch)
+            # if only 2 freq it's aleady ok, subtracting one from the other
+            if data.shape[1] > 2:
+                data_shifted[:,-1,:] = data_shifted[:,-3,:] # last chan uses the one but last (they switch)
             data = data_shifted
 
         # find variance per time/freq for each antenna
-        var_times = np.nanvar(data, axis=(0,2)) # TODO: this is wrong, we miss the antenna axis here which is now in the fist index (time)
-        var_freqs = np.nanvar(data, axis=(1,2))
+        var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
+        print var_times.shape
+        var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
+        print var_freqs.shape
+        # TODO: do it per pol
         var_antenna[ant_id] = var_times[:, np.newaxis]+var_freqs # sum of the time/freq variances
+        print var_antenna[ant_id].shape
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
@@ -107,6 +117,7 @@ def plot(MSh):
     time = MSh.get_time()
     time -= time[0]
     time /= 3600. # in h from the beginning of the obs
+    print len(time), len(freqs)
 
     fig = plt.figure(figsize=(15,10))
 
@@ -117,12 +128,11 @@ def plot(MSh):
         axt = fig.add_subplot(211)
         axf = fig.add_subplot(212)
 
-        ms_ant_avgbl = taql('SELECT TIME, MEANS(GAGGR(%s),0) AS WEIGHT, ALL(GAGGR(FLAG)) AS FLAG \
-                FROM $ms_ant GROUPBY TIME' % (MSh.wcolname))
+        ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
-        w = ms_ant_avgbl.getcol('WEIGHT') # axis: time, freq, pol
+        w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
         # put flagged data to NaNs and skip if completely flagged
-        w[ms_ant_avgbl.getcol('FLAG')] = np.nan
+        w[ms_ant_avgbl.getcol('FLAG')[0]] = np.nan
         if np.isnan(w).all():
             continue
 
