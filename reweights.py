@@ -20,9 +20,9 @@ class MShandler():
         wcolname: name of the weight column
         dcolname: name of the residual column
         """
-        logging.debug('Reading: %s', ','.join(ms_files))
-        logging.debug('Weight column: %s', wcolname)
-        logging.debug('Data column: %s', dcolname)
+        logging.info('Reading: %s', ','.join(ms_files))
+        logging.info('Weight column: %s', wcolname)
+        logging.info('Data column: %s', dcolname)
         self.ms_files = ms_files
         self.wcolname = wcolname
         self.dcolname = dcolname
@@ -61,7 +61,7 @@ class MShandler():
         ms = self.ms # to use the "$" in taql
 
         for ant_id, ant_name in enumerate(self.antennas.getcol('NAME')):
-            logging.debug('Workign on antenna: %s', ant_name)
+            logging.info('Workign on antenna: %s', ant_name)
             yield ant_id, ant_name, taql('select TIME, GAGGR(FLAG) as GFLAG, ANTENNA1, ANTENNA2, GAGGR(%s) as GDATA, GAGGR(%s) as GWEIGHT \
                                           from $ms \
                                           where (ANTENNA1=%i or ANTENNA2=%i) and (ANTENNA1 != ANTENNA2) \
@@ -110,13 +110,13 @@ def reweight(MSh, mode):
         if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
 
         w = 1./(var_antenna[ant_id1] + var_antenna[ant_id2]) # TODO: what is the right equation here?
-        print 'nan count (BL: %i - %i): %i' % ( ant_id1, ant_id2, np.sum(np.isnan(w)))
+        logging.debug( 'nan count (BL: %i - %i): %i' % ( ant_id1, ant_id2, np.sum(np.isnan(w))) )
         ms_bl.putcol(MSh.wcolname, w)
         ms_bl.flush()
 
 def plot(MSh):
 
-    logging.debug('Getting time/freq aggregated values...')
+    logging.info('Getting time/freq aggregated values...')
     freqs = MSh.get_freqs()
     elev = MSh.get_elev()
     time = MSh.get_time()
