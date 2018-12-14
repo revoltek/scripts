@@ -8,7 +8,7 @@
 
 import os, sys, logging, time
 import numpy as np
-from casacore.tables import taql
+from casacore.tables import taql, table
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
@@ -28,10 +28,11 @@ class MShandler():
         self.dcolname = dcolname
 
         # if more than one MS, virtualconcat
-        if len(ms_files) > 1:
-            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s' % ( wcolname, dcolname, ','.join(ms_files) ))
-        else:
-            self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s' % ( wcolname, dcolname, ms_files[0] ))
+        #if len(ms_files) > 1:
+        #    self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s' % ( wcolname, dcolname, ','.join(ms_files) ))
+        #else:
+        #    self.ms = taql('select TIME, FLAG, ANTENNA1, ANTENNA2, %s, %s from %s' % ( wcolname, dcolname, ms_files[0] ))
+        self.ms = table(ms_files[0], readonly=False, ack=False)
 
         self.antennas = taql('select NAME from %s/ANTENNA' % self.ms_files[0])
 
@@ -74,40 +75,44 @@ def reweight(MSh, mode):
     var_antenna = {}
     for ant_id, ant_name, ms_ant in MSh.iter_antenna():
 
-        data = ms_ant.getcol('GDATA') # axis: time, ant, freq, pol
+        data = ms_ant.getcol('GDATA') # axes: time, ant, freq, pol
+        print data.shape
 
         # put flagged data to NaNs
         data[ms_ant.getcol('GFLAG')] = np.nan
 
         # if completely flagged set variance to 1 and continue
         if np.isnan(data).all():
-            var_antenna[ant_id] = 1.
+            var_antenna[ant_id] = None
             continue
 
         # data column is updated subtracting adjacent channels
         # in case of mode=residuals there's nothing to do
+        # TODO: get the best var from the sub on the right and on the left - this shoudl avoid contamination from a bed channel
         if mode == 'subchan':
-            data_shifted = np.roll(data, -1, axis=1)
+            data_shifted = np.roll(data, -1, axis=2)
             # if only 2 freq it's aleady ok, subtracting one from the other
-            if data.shape[1] > 2:
-                data_shifted[:,-1,:] = data_shifted[:,-3,:] # last chan uses the one but last (they switch)
-            data = data_shifted
+            if data.shape[2] > 2:
+                data_shifted[:,:,-1,:] = data_shifted[:,:,-3,:] # last chan uses the one but last (they switch)
+            data -= data_shifted
 
         # find variance per time/freq for each antenna
-        var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
-        print var_times.shape
         var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
-        print var_freqs.shape
-        # TODO: do it per pol
-        var_antenna[ant_id] = var_times[:, np.newaxis]+var_freqs # sum of the time/freq variances
-        print var_antenna[ant_id].shape
+        var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
+        var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
+        #print var_antenna[ant_id].shape
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
-        ant_id1 = ms_bl['ANTENNA1'][0]
-        ant_id2 = ms_bl['ANTENNA2'][0]
-        w = 1./(var_antenna[ant_id1] + var_antenna[ant_id2]) # what is the right equation here?
-        ms_bl[MSh.wcolname] = w
+        ant_id1 = ms_bl.getcol('ANTENNA1')[0]
+        ant_id2 = ms_bl.getcol('ANTENNA2')[0]
+
+        if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
+
+        w = 1./(var_antenna[ant_id1] + var_antenna[ant_id2]) # TODO: what is the right equation here?
+        print 'nan count (BL: %i - %i): %i' % ( ant_id1, ant_id2, np.sum(np.isnan(w)))
+        ms_bl.putcol(MSh.wcolname, w)
+        ms_bl.flush()
 
 def plot(MSh):
 
@@ -117,7 +122,6 @@ def plot(MSh):
     time = MSh.get_time()
     time -= time[0]
     time /= 3600. # in h from the beginning of the obs
-    print len(time), len(freqs)
 
     fig = plt.figure(figsize=(15,10))
 
@@ -132,8 +136,7 @@ def plot(MSh):
 
         w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
         # put flagged data to NaNs and skip if completely flagged
-        w[ms_ant_avgbl.getcol('FLAG')[0]] = np.nan
-        if np.isnan(w).all():
+        if (ms_ant_avgbl.getcol('FLAG')[0] == True).all():
             continue
 
         logging.info('Plotting %s...' % ant_name)
@@ -150,8 +153,8 @@ def plot(MSh):
         axt.scatter(time, w_t[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
         axt.scatter(time, w_t[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
         axt.scatter(time, w_t[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
-        axt.set_xlim(np.min(time), np.max(time))
-        axt.set_ylim(np.min(w_t), np.max(w_t))
+        axt.set_xlim(np.nanmin(time), np.nanmax(time))
+        axt.set_ylim(np.nanmin(w_t), np.nanmax(w_t))
         axt.set_xlabel('Time [h]')
         #axt.set_ylabel('Weight')
 
@@ -159,8 +162,8 @@ def plot(MSh):
         axf.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
         axf.scatter(freqs, w_f[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
         axf.scatter(freqs, w_f[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
-        axf.set_xlim(np.min(freqs), np.max(freqs))
-        axf.set_ylim(np.min(w_f), np.max(w_f))
+        axf.set_xlim(np.nanmin(freqs), np.nanmax(freqs))
+        axf.set_ylim(np.nanmin(w_f), np.nanmax(w_f))
         axf.set_xlabel('Frequency [MHz]')
         #axf.set_ylabel('Weight')
 
