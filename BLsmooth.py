@@ -21,7 +21,7 @@
 # Load a MS, average visibilities according to the baseline lenght,
 # i.e. shorter BLs are averaged more, and write a new MS
 
-import os, sys
+import os, sys, time
 import optparse, itertools
 import logging
 import numpy as np
@@ -85,72 +85,80 @@ if 'WEIGHT_SPECTRUM_ORIG' in ms.colnames() and options.restore:
 elif options.weight and not options.nobackup:
     addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG')
 
-# iteration on baseline combination
-for ms_bl in ms.iter(["ANTENNA1","ANTENNA2"]):
-    uvw = ms_bl.getcol('UVW')
-    ant1 = ms_bl.getcol('ANTENNA1')[0]
-    ant2 = ms_bl.getcol('ANTENNA2')[0]
+# iteration on antenna1
+for ms_ant1 in ms.iter(["ANTENNA1"]):
+    ant1 = ms_ant1.getcol('ANTENNA1')[0]
+    a_ant2 = ms_ant1.getcol('ANTENNA2')
+    logging.debug('Working on antenna: %s' % ant1)
 
-    # compute the FWHM
-    uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
-    dist = np.mean(uvw_dist) / 1.e3
-    if np.isnan(dist) or dist == 0: continue # fix for missing anstennas and autocorr
+    a_uvw = ms_ant1.getcol('UVW')
+    a_data = ms_ant1.getcol(options.outcol)
+    a_weights = ms_ant1.getcol('WEIGHT_SPECTRUM')
+    a_flags = ms_ant1.getcol('FLAG')
+ 
+    for ant2 in set(a_ant2):
+        if ant1 == ant2: continue # skip autocorr
+        idx = np.where(a_ant2 == ant2)
+        
+        uvw = a_uvw[idx]
+        data = a_data[idx]
+        weights = a_weights[idx]
+        flags = a_flags[idx]
+   
+        # compute the FWHM
+        uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
+        dist = np.mean(uvw_dist) / 1.e3
+        if np.isnan(dist): continue # fix for missing anstennas
     
-    stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
-    stddev = stddev/timepersample # in samples
-    logging.debug("%s - %s: dist = %.1f km: sigma=%.2f samples." % (ant1, ant2, dist, stddev))
-
-    if stddev == 0: continue # fix for missing anstennas
-    if stddev < 0.5: continue # avoid very small smoothing
-
-    #logging.debug('Reading data')
-    data = ms_bl.getcol(options.outcol)
-    #logging.debug('Reading weights')
-    weights = ms_bl.getcol('WEIGHT_SPECTRUM')
-    #logging.debug('Reading flag')
-    flags = ms_bl.getcol('FLAG')
-
-    flags[ np.isnan(data) ] = True # flag NaNs
-    weights[flags] = 0 # set weight of flagged data to 0
-    del flags
+        stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
+        stddev = stddev/timepersample # in samples
+        logging.debug("%s - %s: dist = %.1f km: sigma=%.2f samples." % (ant1, ant2, dist, stddev))
     
-    #logging.info('Smoothing baseline')
+        if stddev == 0: continue # fix for flagged anstennas
+        if stddev < 0.5: continue # avoid very small smoothing
     
-    # Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
-    # divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
-    # running weighted average with a Gaussian window function.
+        flags[ np.isnan(data) ] = True # flag NaNs
+        weights[flags] = 0 # set weight of flagged data to 0
+        del flags
+        
+        # Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
+        # divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
+        # running weighted average with a Gaussian window function.
+        
+        # set bad data to 0 so nans do not propagate
+        data = np.nan_to_num(data*weights)
+        
+        # smear weighted data and weights
+        if options.onlyamp:
+            dataAMP = gfilter(np.abs(data), stddev, axis=0)
+            dataPH = np.angle(data)
+        else:
+            dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
+            dataI = gfilter(np.imag(data), stddev, axis=0)#, truncate=4.)
     
-    # set bad data to 0 so nans do not propagate
-    data = np.nan_to_num(data*weights)
+        weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
     
-    # smear weighted data and weights
-    if options.onlyamp:
-        dataAMP = gfilter(np.abs(data), stddev, axis=0)
-        dataPH = np.angle(data)
-    else:
-        dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
-        dataI = gfilter(np.imag(data), stddev, axis=0)#, truncate=4.)
+        # re-create data
+        if options.onlyamp:
+            data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
+        else:
+            data = (dataR + 1j * dataI)
+        data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
+    
+        #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
+        #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
+        #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
+        #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
 
-    weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
-
-    # re-create data
-    if options.onlyamp:
-        data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
-    else:
-        data = (dataR + 1j * dataI)
-    data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
-
-    #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
-    #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
-    #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
-    #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
-
+        a_data[idx] = data
+        if options.weight: a_weights[idx] = weights
+    
     #logging.info('Writing %s column.' % options.outcol)
-    ms_bl.putcol(options.outcol, data)
+    ms_ant1.putcol(options.outcol, a_data)
 
     if options.weight:
         #logging.warning('Writing WEIGHT_SPECTRUM column.')
-        ms_bl.putcol('WEIGHT_SPECTRUM', weights)
+        ms_ant1.putcol('WEIGHT_SPECTRUM', a_weights)
 
 ms.close()
 logging.info("Done.")
