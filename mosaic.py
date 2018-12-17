@@ -33,7 +33,7 @@ reproj = reproject_interp
 
 tgss_catalog = '/home/fdg/scripts/autocal/TGSSADR1_5sigma_catalog_v3.fits'
 
-parser = argparse.ArgumentParser(description='Mosaic ddf-pipeline directories')
+parser = argparse.ArgumentParser(description='Mosaic for LiLF dd-pipeline.')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
 parser.add_argument('--regions', dest='regions', nargs='+', help='List of regions to blank images')
 parser.add_argument('--mask', dest='mask', help='One mask with a number per direction, numbers must be in the same order of those given in the "images" parameter.')
