@@ -22,7 +22,7 @@
 import sys, os
 import numpy as np
 
-print "Flux following Scaife and Heald 2012."
+print "Flux following Scaife and Heald 2012 (for A-team see source code)."
 freq = float(sys.argv[1]) # in MHz
 
 par = {'3C48':[ 64.768,-0.387,-0.420,0.181],
@@ -59,4 +59,4 @@ print "Cygnus A: ",flux('CygA', freq)
 print "Cassiopeia A: ~",flux('CasA', freq)
 print "Taurus A: ~",flux('TauA', freq)
 print "Sun (avg): ~",flux('Sun', freq)
-if freq < 39.5: print "At this freq Jupiter might be ~1e6 Jy."
+if freq < 39.5: print "At this freq Jupiter might be >1e6 Jy."
