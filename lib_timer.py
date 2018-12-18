@@ -15,7 +15,7 @@ class Timer(object):
         self.step = step
 
     def __enter__(self):
-        self.log.info("--> Starting \'" + self.step + "\'.")
+        self.log.debug("--> Starting \'" + self.step + "\'.")
         self.start = time.time()
         self.startcpu = time.clock()
 
@@ -23,4 +23,4 @@ class Timer(object):
 
         # if not an error
         if exit_type is None:
-            self.log.debug("Time for this step: %i s (cpu: %i s)." % ( ( time.time() - self.start), (time.clock() - self.startcpu) ))
+            self.log.debug("<-- Time for this step: %i s (cpu: %i s)." % ( ( time.time() - self.start), (time.clock() - self.startcpu) ))
