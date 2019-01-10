@@ -82,12 +82,13 @@ def reweight(MSh, mode):
 
         with Timer('Get data'):
             data = ms_ant.getcol('GDATA') # axes: time, ant, freq, pol
+            flags = ms_ant.getcol('GFLAG') # axes: time, ant, freq, pol
 
             # put flagged data to NaNs
-            data[ms_ant.getcol('GFLAG')] = np.nan
+            data[flags] = np.nan
 
             # if completely flagged set variance to 1 and continue
-            if np.isnan(data).all():
+            if np.all(flags):
                 var_antenna[ant_id] = None
                 med_antenna[ant_id] = None
                 continue
@@ -101,10 +102,30 @@ def reweight(MSh, mode):
                 # if only 2 freq it's aleady ok, subtracting one from the other
                 if data.shape[2] > 2:
                     data_shifted_l[:,:,-1,:] = data_shifted_l[:,:,-3,:] # last chan uses the one but last
-                    data_shifted_r[:,:,0,:] = data_shifted_r[:,:,3,:] # first chan uses third
+                    data_shifted_r[:,:,0,:] = data_shifted_r[:,:,2,:] # first chan uses third
                 # get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
-                condition = ( np.nanvar(data_shifted_l, axis=(0,1,3))/np.nanmean(data_shifted_l, axis=(0,1,3)) < np.nanvar(data_shifted_r, axis=(0,1,3))/np.nanmean(data_shifted_r, axis=(0,1,3)) )
+                ratio_l = np.nanvar(data_shifted_l, axis=(0,1,3))/np.nanmean(data_shifted_l, axis=(0,1,3))
+                ratio_l[ np.isnan(ratio_l) ] = np.inf
+                ratio_r = np.nanvar(data_shifted_l, axis=(0,1,3))/np.nanmean(data_shifted_l, axis=(0,1,3))
+                ratio_r[ np.isnan(ratio_r) ] = np.inf
+                condition = ( ratio_l < ratio_r )
                 data = np.where(condition[np.newaxis,np.newaxis,:,np.newaxis], data - data_shifted_l, data - data_shifted_r)
+
+            # data column is updated subtracting adjacent times
+            if mode == 'subtime':
+                data_shifted_l = np.roll(data, -1, axis=0)
+                data_shifted_r = np.roll(data, +1, axis=0)
+                # if only 2 freq it's aleady ok, subtracting one from the other
+                if data.shape[2] > 2:
+                    data_shifted_l[-1,:,:,:] = data_shifted_l[-3,:,:,:] # last timeslot uses the one but last
+                    data_shifted_r[0,:,:,:] = data_shifted_r[2,:,:,:] # first timeslot uses third
+                # get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
+                ratio_l = np.nanvar(data_shifted_l, axis=(1,2,3))/np.nanmean(data_shifted_l, axis=(1,2,3))
+                ratio_l[ np.isnan(ratio_l) ] = np.inf
+                ratio_r = np.nanvar(data_shifted_l, axis=(1,2,3))/np.nanmean(data_shifted_l, axis=(1,2,3))
+                ratio_r[ np.isnan(ratio_r) ] = np.inf
+                condition = ( ratio_l < ratio_r )
+                data = np.where(condition[:,np.newaxis,np.newaxis,np.newaxis], data - data_shifted_l, data - data_shifted_r)
 
             # use residual data, nothing to do here
             elif mode == 'residual':
@@ -115,11 +136,9 @@ def reweight(MSh, mode):
             var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
             var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
             var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
-            #print var_antenna[ant_id].shape
             med_freqs = np.abs( np.nanmean( data, axis=(1,2) )**2 ) # time x pol
             med_times = np.abs( np.nanmean( data, axis=(0,1) )**2 ) # freq x pol
             med_antenna[ant_id] = med_freqs[:, np.newaxis]+med_times # sum of the time/freq means - axes: time,freq,pol
-            #print med_antenna[ant_id].shape
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
@@ -128,10 +147,16 @@ def reweight(MSh, mode):
 
         if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
 
-        w = 1./( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
+        w = 1.e-11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
                + var_antenna[ant_id1]*var_antenna[ant_id2] )
-        logging.debug( 'nan count (BL: %i - %i): %i' % ( ant_id1, ant_id2, np.sum(np.isnan(w))) )
+        f = ms_bl.getcol('FLAG')
+        # find how many unflagged weights are nans
+        ntoflag = np.count_nonzero(np.isnan(w[~f]))
+        logging.debug( 'BL: %i - %i: created %i new flags (%f%%)' % ( ant_id1, ant_id2, ntoflag, (100.*ntoflag)/np.size(w) ) )
         ms_bl.putcol(MSh.wcolname, w)
+        ms_bl.flush()
+        # flag weights that are nans
+        taql('update $ms_bl set WEIGHT_SPECTRUM[isnan(WEIGHT_SPECTRUM)]=0')
         ms_bl.flush()
 
 def plot(MSh, antennas):
@@ -149,20 +174,31 @@ def plot(MSh, antennas):
         
         fig.suptitle(ant_name, fontweight='bold')
         fig.subplots_adjust(wspace=0)
-        axt = fig.add_subplot(211)
-        axf = fig.add_subplot(212)
+        #figgrid, axa = plt.subplots(Nr, Nc, sharex=True, sharey=True, figsize=figSize)
+        axt = fig.add_subplot(311)
+        axf = fig.add_subplot(312)
+        ax2 = fig.add_subplot(313)
 
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
         w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
         # put flagged data to NaNs and skip if completely flagged
-        if (ms_ant_avgbl.getcol('FLAG')[0] == True).all():
+        if np.all(ms_ant_avgbl.getcol('FLAG')[0]):
             continue
 
         logging.info('Plotting %s...' % ant_name)
 
         w_f = np.nanmean(w, axis=0) # average in time
         w_t = np.nanmean(w, axis=1) # average in freq
+
+        # 3D plot for XX
+        bbox = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
+
+        im = ax2.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+        ax2.set_xlabel('Time [h]')
+        ax2.set_ylabel('Frequency [MHz]')
 
         # Elevation
         ax_elev = axt.twinx()
@@ -201,7 +237,7 @@ def readArguments():
     parser=argparse.ArgumentParser("Plot/Update weights for LOFAR")
     parser.add_argument("-v", "--verbose", help="Be verbose. Default is False", required=False, action="store_true")
     parser.add_argument("-p", "--plot", help="Plot the weights. Default is False", required=False, action="store_true")
-    parser.add_argument("-m", "--mode", type=str, help="Mode can be: 'residual' if dcolname contain residual data; 'subchan' if adjacent-channel subtraction has to be performed to remove the signal in dcolname. If not given do not update weights. Default: do not update", required=False, default=None)
+    parser.add_argument("-m", "--mode", type=str, help="Mode can be: 'residual' if dcolname contain residual data; 'subchan'/'subtime' if adjacent-channel or adjacent-time subtraction has to be performed to remove the signal in dcolname. If not given do not update weights. Default: do not update", required=False, default=None)
     parser.add_argument("-d", "--dcolname", type=str, help="Name of the data column. Default: DATA.", required=False, default='DATA')
     parser.add_argument("-w", "--wcolname", type=str, help="Name of the weights column. Default: WEIGHT_SPECTRUM.", required=False, default="WEIGHT_SPECTRUM")
     parser.add_argument("-a", "--antennas", type=str, help="List of antennas to plot (comma separated). Default: all antennas", required=False, default=None)
@@ -223,7 +259,7 @@ if __name__=="__main__":
         antennas = args["antennas"].replace(' ','').split(',')
     else: antennas = None
 
-    if mode != 'residual' and mode != 'subchan' and mode is not None:
+    if mode != 'residual' and mode != 'subchan' and mode != 'subtime' and mode is not None:
         logging.error('Unknown mode: %s' % mode)
         sys.exit()
 
