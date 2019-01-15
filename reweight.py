@@ -168,16 +168,19 @@ def plot(MSh, antennas):
     time -= time[0]
     time /= 3600. # in h from the beginning of the obs
 
-    fig = plt.figure(figsize=(15,10))
+    fig = plt.figure(figsize=(15,15))
 
     for ant_id, ant_name, ms_ant in MSh.iter_antenna(antennas):
         
         fig.suptitle(ant_name, fontweight='bold')
         fig.subplots_adjust(wspace=0)
         #figgrid, axa = plt.subplots(Nr, Nc, sharex=True, sharey=True, figsize=figSize)
-        axt = fig.add_subplot(311)
-        axf = fig.add_subplot(312)
-        ax2 = fig.add_subplot(313)
+        axt = plt.subplot2grid((4, 2), (0, 0), colspan=2)
+        axf = plt.subplot2grid((4, 2), (1, 0), colspan=2)
+        ax1 = plt.subplot2grid((4, 2), (2, 0))
+        ax2 = plt.subplot2grid((4, 2), (2, 1))
+        ax3 = plt.subplot2grid((4, 2), (3, 0))
+        ax4 = plt.subplot2grid((4, 2), (3, 1))
 
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
@@ -191,14 +194,25 @@ def plot(MSh, antennas):
         w_f = np.nanmean(w, axis=0) # average in time
         w_t = np.nanmean(w, axis=1) # average in freq
 
-        # 3D plot for XX
-        bbox = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        # 3D plot
+        bbox = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
 
-        im = ax2.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+        im = ax1.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
-        ax2.set_xlabel('Time [h]')
-        ax2.set_ylabel('Frequency [MHz]')
+        im = ax2.imshow(w[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+        im = ax3.imshow(w[...,2].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+        im = ax4.imshow(w[...,3].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+
+        ax2.tick_params(labelleft='off')
+        ax4.tick_params(labelleft='off')
+        ax3.set_xlabel('Time [h]')
+        ax4.set_xlabel('Time [h]')
+        ax1.set_ylabel('Frequency [MHz]')
+        ax3.set_ylabel('Frequency [MHz]')
 
         # Elevation
         ax_elev = axt.twinx()
@@ -225,7 +239,7 @@ def plot(MSh, antennas):
 
         handles, labels = axt.get_legend_handles_labels()
         handles2, labels2 = ax_elev.get_legend_handles_labels()
-        leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=5, borderaxespad=0.0)
+        leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=5, borderaxespad=0.0)
 
         imagename = ant_name+'.png'
         logging.info('Save file: %s' % (imagename))
