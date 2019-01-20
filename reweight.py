@@ -108,8 +108,7 @@ def reweight(MSh, mode):
                 ratio_l[ np.isnan(ratio_l) ] = np.inf
                 ratio_r = np.nanvar(data_shifted_l, axis=(0,1,3))/np.nanmean(data_shifted_l, axis=(0,1,3))
                 ratio_r[ np.isnan(ratio_r) ] = np.inf
-                condition = ( ratio_l < ratio_r )
-                data = np.where(condition[np.newaxis,np.newaxis,:,np.newaxis], data - data_shifted_l, data - data_shifted_r)
+                data = np.where( ( ratio_l < ratio_r )[np.newaxis,np.newaxis,:,np.newaxis], data - data_shifted_l, data - data_shifted_r)
 
             # data column is updated subtracting adjacent times
             if mode == 'subtime':
@@ -124,8 +123,7 @@ def reweight(MSh, mode):
                 ratio_l[ np.isnan(ratio_l) ] = np.inf
                 ratio_r = np.nanvar(data_shifted_l, axis=(1,2,3))/np.nanmean(data_shifted_l, axis=(1,2,3))
                 ratio_r[ np.isnan(ratio_r) ] = np.inf
-                condition = ( ratio_l < ratio_r )
-                data = np.where(condition[:,np.newaxis,np.newaxis,np.newaxis], data - data_shifted_l, data - data_shifted_r)
+                data = np.where( ( ratio_l < ratio_r )[:,np.newaxis,np.newaxis,np.newaxis], data - data_shifted_l, data - data_shifted_r)
 
             # use residual data, nothing to do here
             elif mode == 'residual':
@@ -138,7 +136,7 @@ def reweight(MSh, mode):
             var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
             med_freqs = np.abs( np.nanmean( data, axis=(1,2) )**2 ) # time x pol
             med_times = np.abs( np.nanmean( data, axis=(0,1) )**2 ) # freq x pol
-            med_antenna[ant_id] = med_freqs[:, np.newaxis]+med_times # sum of the time/freq means - axes: time,freq,pol
+            med_antenna[ant_id] = med_freqs[:, np.newaxis]+med_times # sum of the time/freq mean - axes: time,freq,pol
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
