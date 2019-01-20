@@ -267,6 +267,11 @@ if __name__=="__main__":
     ms_files     = args["ms_files"]
     wcolname     = args["wcolname"]
     dcolname     = args["dcolname"]
+
+    if len(ms_files) > 1:
+        logging.error('More than 1 MS not implemented.')
+        sys.exit()
+
     if args["antennas"] is not None:
         antennas = args["antennas"].replace(' ','').split(',')
     else: antennas = None
