@@ -112,15 +112,13 @@ def mergeflags(outms):
   """
   Merge flags (if a pol is flagged, flag everything)
   """
+  #taql("UPDATE $outms set FLAG=True where any(FLAG)")
   tc = pt.table(outms,readonly=False, ack=False)
   flag = tc.getcol('FLAG')
   print "Initial flags:", numpy.count_nonzero(flag)
   shape = flag.shape
   # find if any data is flagged along the pol axis and then expand the array
   flag = numpy.repeat( numpy.any(flag, axis=2), 4, axis=1).reshape(shape)
-  #for time in xrange(flag.shape[0]):
-  #    for chan in xrange(flag.shape[1]):
-  #        flag[time][chan] = numpy.count_nonzero(flag[time][chan]) > 0
   print "Final flags:", numpy.count_nonzero(flag)
   tc.putcol('FLAG',flag)
   tc.close()
