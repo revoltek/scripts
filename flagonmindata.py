@@ -24,14 +24,21 @@ class MShandler():
         self.ms_file = ms_file
         self.ms = table(ms_files[0], readonly=False, ack=False)
 
-    def flag_tfstep(self):
+    def get_flags_aggr(self):
         """
         """
         ms = self.ms_file
         return taql('select NTRUES(GAGGR(FLAG), [0, 2]) as FLAG, SHAPE(GAGGR(FLAG)) as N from $ms where ANTENNA1 != ANTENNA2 groupby TIME')
 
+    def get_flags(self):
+        """
+        """
+        ms = self.ms_file
+        return taql('select FLAG from $ms where ANTENNA1 != ANTENNA2')
+
+
 def flagonmindata(MSh, mode, fract):
-    t = MSh.flag_tfstep()
+    t = MSh.get_flags_aggr()
     f = t.getcol('FLAG').astype(float)
     n = t.getcol('N')
     ntime = len(n)
@@ -45,9 +52,11 @@ def flagonmindata(MSh, mode, fract):
     ff = np.repeat(ff, nbl, axis=0) # repeat time axis for nbl times
     ff = np.expand_dims(ff, axis=2) # add pol axis
     ff = np.repeat(ff, npol, axis=2) # repeat new pol axis for npol times
-    ff = np.array(ff | MSh.ms.getcol('FLAG'), dtype=bool)
-    MSh.ms.putcol('FLAG', ff)
-    MSh.ms.flush()
+    msflag = MSh.get_flags()
+    ff = np.array(ff | msflag.getcol('FLAG'), dtype=bool)
+    msflag.putcol('FLAG', ff)
+    msflag.flush()
+
 
 def readArguments():
     import argparse
