@@ -145,7 +145,7 @@ def reweight(MSh, mode):
 
         if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
 
-        w = 1.e-11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
+        w = 1.e11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
                + var_antenna[ant_id1]*var_antenna[ant_id2] )
         f = ms_bl.getcol('FLAG')
         # find how many unflagged weights are nans
@@ -154,7 +154,7 @@ def reweight(MSh, mode):
         ms_bl.putcol(MSh.wcolname, w)
         ms_bl.flush()
         # flag weights that are nans
-        taql('update $ms_bl set WEIGHT_SPECTRUM[isnan(WEIGHT_SPECTRUM)]=0')
+        taql('update $ms_bl set FLAG[isnan(WEIGHT_SPECTRUM)]=True, WEIGHT_SPECTRUM[isnan(WEIGHT_SPECTRUM)]=0')
         ms_bl.flush()
 
 def plot(MSh, antennas):
@@ -268,6 +268,9 @@ if __name__=="__main__":
     wcolname     = args["wcolname"]
     dcolname     = args["dcolname"]
 
+    if verbose: logging.basicConfig(level=logging.DEBUG)
+    else: logging.basicConfig(level=logging.INFO)
+
     if len(ms_files) > 1:
         logging.error('More than 1 MS not implemented.')
         sys.exit()
@@ -279,9 +282,8 @@ if __name__=="__main__":
     if mode != 'residual' and mode != 'subchan' and mode != 'subtime' and mode is not None:
         logging.error('Unknown mode: %s' % mode)
         sys.exit()
-
-    if verbose: logging.basicConfig(level=logging.DEBUG)
-    else: logging.basicConfig(level=logging.INFO)
+    elif mode is not None:
+        logging.info('Mode: %s' % mode)
 
     logging.info('Reading MSs...')
     MSh = MShandler(ms_files, wcolname, dcolname)
