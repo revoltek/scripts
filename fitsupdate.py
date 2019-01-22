@@ -19,7 +19,8 @@
 
 # Usage: updatefits.py -setbeam max min pa -setkeyword name=value fitsfile
 
-import pyfits,sys,optparse,re
+import sys,optparse,re
+from astropy.io import fits as pyfits
 
 def isfloat(x):
     try:
