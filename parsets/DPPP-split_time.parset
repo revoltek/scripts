@@ -1,0 +1,9 @@
+msin = 
+msin.datacolumn = DATA
+msin.ntimes = 10
+
+msout = split.MS
+msout.datacolumn = DATA
+
+steps = [count]
+
