@@ -59,7 +59,7 @@ class MShandler():
     def iter_antenna(self, antennas=None):
         """
         Iterator to get all visibilities of each antenna
-        It should return an array of Ntimes x Nfreqs
+        For GFLAG, GDATA and GWEIGHTS it returns arrays of Ntimes x Nbl x Nfreqs x Npol
         """
         ms = self.ms # to use the "$" in taql
 
@@ -183,7 +183,7 @@ def plot(MSh, antennas):
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
         w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
-        # put flagged data to NaNs and skip if completely flagged
+        # skip if completely flagged
         if np.all(ms_ant_avgbl.getcol('FLAG')[0]):
             continue
 
