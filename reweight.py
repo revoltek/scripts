@@ -172,7 +172,6 @@ def plot(MSh, antennas):
         
         fig.suptitle(ant_name, fontweight='bold')
         fig.subplots_adjust(wspace=0)
-        #figgrid, axa = plt.subplots(Nr, Nc, sharex=True, sharey=True, figsize=figSize)
         axt = plt.subplot2grid((4, 2), (0, 0), colspan=2)
         axf = plt.subplot2grid((4, 2), (1, 0), colspan=2)
         ax1 = plt.subplot2grid((4, 2), (2, 0))
@@ -183,9 +182,13 @@ def plot(MSh, antennas):
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
         w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
+        flag = ms_ant_avgbl.getcol('FLAG')[0]
+
         # skip if completely flagged
-        if np.all(ms_ant_avgbl.getcol('FLAG')[0]):
+        if np.all(flag):
             continue
+
+        w[flag] = np.nan
 
         logging.info('Plotting %s...' % ant_name)
 
