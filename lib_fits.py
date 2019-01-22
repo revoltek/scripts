@@ -1,7 +1,7 @@
 from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
 import numpy as np
-import os, sys, logging
+import os, sys, logging, re
 
 def flatten(filename, channel=0, freqaxis=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -26,8 +26,8 @@ def flatten(filename, channel=0, freqaxis=0):
 
     header = wn.to_header()
     header["NAXIS"]=2
-    header["NAXIS1"]=f[0].header['NAXIS1'] # Test
-    header["NAXIS2"]=f[0].header['NAXIS2'] # Test
+    header["NAXIS1"]=f[0].header['NAXIS1']
+    header["NAXIS2"]=f[0].header['NAXIS2']
     copy=('EQUINOX','EPOCH')
     for k in copy:
         r=f[0].header.get(k)
@@ -51,7 +51,6 @@ def correct_beam_header(header):
     """ 
     Find the primary beam headers following AIPS convenction
     """
-    import pyfits, re
     if ('BMAJ' in header) and ('BMIN' in header) and ('PA' in header): return header
     elif 'HISTORY' in header:
         for hist in header['HISTORY']:
