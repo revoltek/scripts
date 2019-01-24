@@ -86,6 +86,7 @@ def reweight(MSh, mode):
 
             # put flagged data to NaNs
             data[flags] = np.nan
+            print data.shape
 
             # if completely flagged set variance to 1 and continue
             if np.all(flags):
@@ -106,7 +107,7 @@ def reweight(MSh, mode):
                 # get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
                 ratio_l = np.nanvar(data_shifted_l, axis=(0,1,3))/np.nanmean(data_shifted_l, axis=(0,1,3))
                 ratio_l[ np.isnan(ratio_l) ] = np.inf
-                ratio_r = np.nanvar(data_shifted_l, axis=(0,1,3))/np.nanmean(data_shifted_l, axis=(0,1,3))
+                ratio_r = np.nanvar(data_shifted_r, axis=(0,1,3))/np.nanmean(data_shifted_r, axis=(0,1,3))
                 ratio_r[ np.isnan(ratio_r) ] = np.inf
                 data = np.where( ( ratio_l < ratio_r )[np.newaxis,np.newaxis,:,np.newaxis], data - data_shifted_l, data - data_shifted_r)
 
@@ -121,7 +122,7 @@ def reweight(MSh, mode):
                 # get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
                 ratio_l = np.nanvar(data_shifted_l, axis=(1,2,3))/np.nanmean(data_shifted_l, axis=(1,2,3))
                 ratio_l[ np.isnan(ratio_l) ] = np.inf
-                ratio_r = np.nanvar(data_shifted_l, axis=(1,2,3))/np.nanmean(data_shifted_l, axis=(1,2,3))
+                ratio_r = np.nanvar(data_shifted_r, axis=(1,2,3))/np.nanmean(data_shifted_r, axis=(1,2,3))
                 ratio_r[ np.isnan(ratio_r) ] = np.inf
                 data = np.where( ( ratio_l < ratio_r )[:,np.newaxis,np.newaxis,np.newaxis], data - data_shifted_l, data - data_shifted_r)
 
