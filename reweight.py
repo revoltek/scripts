@@ -116,7 +116,7 @@ def reweight(MSh, mode):
                 data_shifted_l = np.roll(data, -1, axis=0)
                 data_shifted_r = np.roll(data, +1, axis=0)
                 # if only 2 freq it's aleady ok, subtracting one from the other
-                if data.shape[2] > 2:
+                if data.shape[0] > 2:
                     data_shifted_l[-1,:,:,:] = data_shifted_l[-3,:,:,:] # last timeslot uses the one but last
                     data_shifted_r[0,:,:,:] = data_shifted_r[2,:,:,:] # first timeslot uses third
                 # get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
@@ -146,6 +146,12 @@ def reweight(MSh, mode):
 
         if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
 
+        print '### BL: %i - %i' % (ant_id1, ant_id2)
+        print var_antenna[ant_id1]*med_antenna[ant_id2]
+        print ''
+        print var_antenna[ant_id2]*med_antenna[ant_id1]
+        print ''
+        print var_antenna[ant_id1]*var_antenna[ant_id2]
         w = 1.e11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
                + var_antenna[ant_id1]*var_antenna[ant_id2] )
         f = ms_bl.getcol('FLAG')
@@ -173,17 +179,36 @@ def plot(MSh, antennas):
         
         fig.suptitle(ant_name, fontweight='bold')
         fig.subplots_adjust(wspace=0)
-        axt = plt.subplot2grid((4, 2), (0, 0), colspan=2)
-        axf = plt.subplot2grid((4, 2), (1, 0), colspan=2)
-        ax1 = plt.subplot2grid((4, 2), (2, 0))
-        ax2 = plt.subplot2grid((4, 2), (2, 1))
-        ax3 = plt.subplot2grid((4, 2), (3, 0))
-        ax4 = plt.subplot2grid((4, 2), (3, 1))
+        axt = plt.subplot2grid((6, 2), (0, 0), colspan=2)
+        axf = plt.subplot2grid((6, 2), (1, 0), colspan=2)
+        ax1 = plt.subplot2grid((6, 2), (2, 0))
+        ax2 = plt.subplot2grid((6, 2), (2, 1))
+        ax3 = plt.subplot2grid((6, 2), (3, 0))
+        ax4 = plt.subplot2grid((6, 2), (3, 1))
+        # TEST
+        axtv = plt.subplot2grid((6, 2), (4, 0), colspan=2)
+        axfv = plt.subplot2grid((6, 2), (4, 0), colspan=2)
 
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
         w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
         flag = ms_ant_avgbl.getcol('FLAG')[0]
+
+        ### TEST
+        #w = np.abs(w)
+        #data_shifted_l = np.roll(w, -1, axis=1)
+        #data_shifted_r = np.roll(w, +1, axis=1)
+        ## if only 2 times it's aleady ok, subtracting one from the other
+        #if w.shape[0] > 2:
+        #    data_shifted_l[:,-1,:] = data_shifted_l[:,-3,:] # last timeslot uses the one but last
+        #    data_shifted_r[:,0,:] = data_shifted_r[:,2,:] # first timeslot uses third
+        ## get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
+        #ratio_l = np.nanvar(data_shifted_l, axis=(0,2))/np.nanmean(data_shifted_l, axis=(0,2))
+        #ratio_l[ np.isnan(ratio_l) ] = np.inf
+        #ratio_r = np.nanvar(data_shifted_r, axis=(0,2))/np.nanmean(data_shifted_r, axis=(0,2))
+        #ratio_r[ np.isnan(ratio_r) ] = np.inf
+        #w = np.where( ( ratio_l < ratio_r )[np.newaxis,:,np.newaxis], w - data_shifted_l, w - data_shifted_r)
+        ###
 
         # skip if completely flagged
         if np.all(flag):
@@ -242,6 +267,26 @@ def plot(MSh, antennas):
         handles, labels = axt.get_legend_handles_labels()
         handles2, labels2 = ax_elev.get_legend_handles_labels()
         leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=5, borderaxespad=0.0)
+
+        # TEST
+        w_f = np.nanvar(w, axis=0) # average in time
+        w_t = np.nanmvar(w, axis=1) # average in freq
+        axtv.scatter(time, w_t[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
+        axtv.scatter(time, w_t[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
+        axtv.scatter(time, w_t[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
+        axtv.scatter(time, w_t[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
+        axtv.set_xlim(np.min(time), np.max(time))
+        axtv.set_ylim(np.nanmin(w_t), np.nanmax(w_t))
+        axtv.set_xlabel('Time [h]')
+
+        axfv.scatter(freqs, w_f[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
+        axfv.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
+        axfv.scatter(freqs, w_f[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
+        axfv.scatter(freqs, w_f[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
+        axfv.set_xlim(np.min(freqs), np.max(freqs))
+        axfv.set_ylim(np.nanmin(w_f), np.nanmax(w_f))
+        axfv.set_xlabel('Frequency [MHz]')
+        ###
 
         imagename = ant_name+'.png'
         logging.info('Save file: %s' % (imagename))
