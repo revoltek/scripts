@@ -131,13 +131,15 @@ def reweight(MSh, mode):
                 pass
 
         with Timer('Calc variances'):
-            # find variance per time/freq for each antenna
-            var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
-            var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
-            var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
+            # find mean/variance per time/freq for each antenna
+
             med_freqs = np.abs( np.nanmean( data, axis=(1,2) )**2 ) # time x pol
             med_times = np.abs( np.nanmean( data, axis=(0,1) )**2 ) # freq x pol
             med_antenna[ant_id] = med_freqs[:, np.newaxis]+med_times # sum of the time/freq mean - axes: time,freq,pol
+
+            var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
+            var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
+            var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
@@ -146,12 +148,12 @@ def reweight(MSh, mode):
 
         if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
 
-        print '### BL: %i - %i' % (ant_id1, ant_id2)
-        print var_antenna[ant_id1]*med_antenna[ant_id2]
-        print ''
-        print var_antenna[ant_id2]*med_antenna[ant_id1]
-        print ''
-        print var_antenna[ant_id1]*var_antenna[ant_id2]
+#        print '### BL: %i - %i' % (ant_id1, ant_id2)
+#        print var_antenna[ant_id1]*med_antenna[ant_id2]
+#        print ''
+#        print var_antenna[ant_id2]*med_antenna[ant_id1]
+#        print ''
+#        print var_antenna[ant_id1]*var_antenna[ant_id2]
         w = 1.e11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
                + var_antenna[ant_id1]*var_antenna[ant_id2] )
         f = ms_bl.getcol('FLAG')
@@ -187,7 +189,8 @@ def plot(MSh, antennas):
         ax4 = plt.subplot2grid((6, 2), (3, 1))
         # TEST
         axtv = plt.subplot2grid((6, 2), (4, 0), colspan=2)
-        axfv = plt.subplot2grid((6, 2), (4, 0), colspan=2)
+        axfv = plt.subplot2grid((6, 2), (5, 0), colspan=2)
+        ###
 
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
 
@@ -195,6 +198,7 @@ def plot(MSh, antennas):
         flag = ms_ant_avgbl.getcol('FLAG')[0]
 
         ### TEST
+        ## subchan
         #w = np.abs(w)
         #data_shifted_l = np.roll(w, -1, axis=1)
         #data_shifted_r = np.roll(w, +1, axis=1)
@@ -207,8 +211,30 @@ def plot(MSh, antennas):
         #ratio_l[ np.isnan(ratio_l) ] = np.inf
         #ratio_r = np.nanvar(data_shifted_r, axis=(0,2))/np.nanmean(data_shifted_r, axis=(0,2))
         #ratio_r[ np.isnan(ratio_r) ] = np.inf
+        #w = w - data_shifted_l
         #w = np.where( ( ratio_l < ratio_r )[np.newaxis,:,np.newaxis], w - data_shifted_l, w - data_shifted_r)
-        ###
+        ####
+        ### TEST
+        ## subtime
+        #w = np.abs(w)
+        #data_shifted_l = np.roll(w, -1, axis=0)
+        #data_shifted_r = np.roll(w, +1, axis=0)
+        ## if only 2 times it's aleady ok, subtracting one from the other
+        #if w.shape[1] > 2:
+        #    data_shifted_l[-1,:,:] = data_shifted_l[-3,:,:] # last timeslot uses the one but last
+        #    data_shifted_r[0,:,:] = data_shifted_r[2,:,:] # first timeslot uses third
+        ## get the "best" shift, either on the right or left. This is to avoid propagating bad channels (e.g. with RFI)
+        #ratio_l = np.nanvar(data_shifted_l, axis=(1,2))/np.nanmean(data_shifted_l, axis=(1,2))
+        #ratio_l[ np.isnan(ratio_l) ] = np.inf
+        #ratio_r = np.nanvar(data_shifted_r, axis=(1,2))/np.nanmean(data_shifted_r, axis=(1,2))
+        #ratio_r[ np.isnan(ratio_r) ] = np.inf
+        #print 'subtime'
+        #print ( ratio_l < ratio_r )[np.newaxis,:,np.newaxis]
+        #print 'subtime'
+        #print w - data_shifted_l
+        #w = np.where( ( ratio_l < ratio_r )[:,np.newaxis,np.newaxis], w - data_shifted_l, w - data_shifted_r)
+        ####
+
 
         # skip if completely flagged
         if np.all(flag):
@@ -218,8 +244,8 @@ def plot(MSh, antennas):
 
         logging.info('Plotting %s...' % ant_name)
 
-        w_f = np.nanmean(w, axis=0) # average in time
-        w_t = np.nanmean(w, axis=1) # average in freq
+        w_f = np.nanmedian(w, axis=0) # average in time
+        w_t = np.nanmedian(w, axis=1) # average in freq
 
         # 3D plot
         bbox = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
@@ -253,7 +279,6 @@ def plot(MSh, antennas):
         axt.set_xlim(np.min(time), np.max(time))
         axt.set_ylim(np.nanmin(w_t), np.nanmax(w_t))
         axt.set_xlabel('Time [h]')
-        #axt.set_ylabel('Weight')
 
         axf.scatter(freqs, w_f[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
         axf.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
@@ -262,15 +287,14 @@ def plot(MSh, antennas):
         axf.set_xlim(np.min(freqs), np.max(freqs))
         axf.set_ylim(np.nanmin(w_f), np.nanmax(w_f))
         axf.set_xlabel('Frequency [MHz]')
-        #axf.set_ylabel('Weight')
 
         handles, labels = axt.get_legend_handles_labels()
         handles2, labels2 = ax_elev.get_legend_handles_labels()
         leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=5, borderaxespad=0.0)
 
         # TEST
-        w_f = np.nanvar(w, axis=0) # average in time
-        w_t = np.nanmvar(w, axis=1) # average in freq
+        w_f = np.nanvar(w, axis=0) # variance in time
+        w_t = np.nanvar(w, axis=1) # variance in freq
         axtv.scatter(time, w_t[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
         axtv.scatter(time, w_t[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
         axtv.scatter(time, w_t[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
@@ -278,6 +302,7 @@ def plot(MSh, antennas):
         axtv.set_xlim(np.min(time), np.max(time))
         axtv.set_ylim(np.nanmin(w_t), np.nanmax(w_t))
         axtv.set_xlabel('Time [h]')
+        axtv.set_yscale("log")
 
         axfv.scatter(freqs, w_f[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
         axfv.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
@@ -286,6 +311,7 @@ def plot(MSh, antennas):
         axfv.set_xlim(np.min(freqs), np.max(freqs))
         axfv.set_ylim(np.nanmin(w_f), np.nanmax(w_f))
         axfv.set_xlabel('Frequency [MHz]')
+        axfv.set_yscale("log")
         ###
 
         imagename = ant_name+'.png'
