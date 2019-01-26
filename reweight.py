@@ -131,13 +131,15 @@ def reweight(MSh, mode):
                 pass
 
         with Timer('Calc variances'):
-            # find variance per time/freq for each antenna
-            var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
-            var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
-            var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
+            # find mean/variance per time/freq for each antenna
+
             med_freqs = np.abs( np.nanmean( data, axis=(1,2) )**2 ) # time x pol
             med_times = np.abs( np.nanmean( data, axis=(0,1) )**2 ) # freq x pol
             med_antenna[ant_id] = med_freqs[:, np.newaxis]+med_times # sum of the time/freq mean - axes: time,freq,pol
+
+            var_freqs = np.nanvar( data, axis=(1,2) ) # time x pol
+            var_times = np.nanvar( data, axis=(0,1) ) # freq x pol
+            var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
 
     # reconstruct BL weights from antenna variance
     for ms_bl in MSh.ms.iter(["ANTENNA1","ANTENNA2"]):
@@ -146,12 +148,12 @@ def reweight(MSh, mode):
 
         if var_antenna[ant_id1] is None or var_antenna[ant_id2] is None: continue
 
-        print '### BL: %i - %i' % (ant_id1, ant_id2)
-        print var_antenna[ant_id1]*med_antenna[ant_id2]
-        print ''
-        print var_antenna[ant_id2]*med_antenna[ant_id1]
-        print ''
-        print var_antenna[ant_id1]*var_antenna[ant_id2]
+#        print '### BL: %i - %i' % (ant_id1, ant_id2)
+#        print var_antenna[ant_id1]*med_antenna[ant_id2]
+#        print ''
+#        print var_antenna[ant_id2]*med_antenna[ant_id1]
+#        print ''
+#        print var_antenna[ant_id1]*var_antenna[ant_id2]
         w = 1.e11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
                + var_antenna[ant_id1]*var_antenna[ant_id2] )
         f = ms_bl.getcol('FLAG')
@@ -197,8 +199,8 @@ def plot(MSh, antennas):
 
         ### TEST
         ## subchan
-        w = np.angle(w)
-        data_shifted_l = np.roll(w, -1, axis=1)
+        #w = np.abs(w)
+        #data_shifted_l = np.roll(w, -1, axis=1)
         #data_shifted_r = np.roll(w, +1, axis=1)
         ## if only 2 times it's aleady ok, subtracting one from the other
         #if w.shape[0] > 2:
@@ -209,14 +211,9 @@ def plot(MSh, antennas):
         #ratio_l[ np.isnan(ratio_l) ] = np.inf
         #ratio_r = np.nanvar(data_shifted_r, axis=(0,2))/np.nanmean(data_shifted_r, axis=(0,2))
         #ratio_r[ np.isnan(ratio_r) ] = np.inf
-        #print 'subchan'
-        #print ( ratio_l < ratio_r )[np.newaxis,:,np.newaxis]
-        print 'subchan'
-        print w - data_shifted_l
-        w = w - data_shifted_l
         #w = np.where( ( ratio_l < ratio_r )[np.newaxis,:,np.newaxis], w - data_shifted_l, w - data_shifted_r)
         ####
-        ### TEST
+        #### TEST
         ## subtime
         #w = np.abs(w)
         #data_shifted_l = np.roll(w, -1, axis=0)
