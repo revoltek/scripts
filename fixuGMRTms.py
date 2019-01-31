@@ -129,15 +129,15 @@ class MS( object ):
         logging.debug("dataManagerInfo (updated):")
         logging.debug(dataManagerInfo)
 
-        logging.info("Removing column '" + columnNameVisibilitiesNew + "', if it exists...")
-        if self.columnExists(columnNameVisibilitiesNew):
-            self.t.removecols(columnNameVisibilitiesNew)
+        logging.info("Removing column 'DATA', if it exists...")
+        if self.columnExists('DATA'):
+            self.t.removecols('DATA')
 
-        logging.info("Adding column '" + columnNameVisibilitiesNew + "'...")
-        self.t.addcols(tables.makecoldesc(columnNameVisibilitiesNew, columnDescription), dataManagerInfo)
+        logging.info("Adding column 'DATA'...")
+        self.t.addcols(tables.makecoldesc('DATA', columnDescription), dataManagerInfo)
 
-        logging.info("Filling column '" + columnNameVisibilitiesNew + "'...")
-        self.t.putcol(columnNameVisibilitiesNew, visibilitiesNew)
+        logging.info("Filling column 'DATA'...")
+        self.t.putcol('DATA', visibilitiesNew)
 
         logging.info("Visibilities flipped along frequency axis and placeholder polarisations added!")
 
@@ -172,15 +172,15 @@ class MS( object ):
         logging.debug("dataManagerInfo (updated):")
         logging.debug(dataManagerInfo)
 
-        logging.info("Removing column '" + columnNameFlagsNew + "', if it exists...")
-        if self.columnExists(columnNameFlagsNew):
-            self.t.removecols(columnNameFlagsNew)
+        logging.info("Removing column 'FLAG', if it exists...")
+        if self.columnExists('FLAG'):
+            self.t.removecols('FLAG')
 
-        logging.info("Adding column '" + columnNameFlagsNew + "'...")
-        self.t.addcols(tables.makecoldesc(columnNameFlagsNew, columnDescription), dataManagerInfo)
+        logging.info("Adding column 'FLAG'...")
+        self.t.addcols(tables.makecoldesc('FLAG', columnDescription), dataManagerInfo)
 
-        logging.info("Filling column '" + columnNameFlagsNew + "'...")
-        self.t.putcol(columnNameFlagsNew, flagsNew)
+        logging.info("Filling column 'FLAG'...")
+        self.t.putcol('FLAG', flagsNew)
 
         logging.info("Flags flipped along frequency axis and placeholder polarisations added!")
 
@@ -213,15 +213,15 @@ class MS( object ):
         logging.debug("dataManagerInfo (updated):")
         logging.debug(dataManagerInfo)
 
-        logging.info("Removing column '" + columnNameWeightsNew + "', if it exists...")
-        if self.columnExists(columnNameWeightsNew):
-            self.t.removecols(columnNameWeightsNew)
+        logging.info("Removing column 'WEIGHT_SPECTRUM', if it exists...")
+        if self.columnExists('WEIGHT_SPECTRUM'):
+            self.t.removecols('WEIGHT_SPECTRUM')
 
-        logging.info("Adding column '" + columnNameWeightsNew + "'...")
-        self.t.addcols(tables.makecoldesc(columnNameWeightsNew, columnDescription), dataManagerInfo)
+        logging.info("Adding column 'WEIGHT_SPECTRUM'...")
+        self.t.addcols(tables.makecoldesc('WEIGHT_SPECTRUM', columnDescription), dataManagerInfo)
 
-        logging.info("Filling column '" + columnNameWeightsNew + "'...")
-        self.t.putcol(columnNameWeightsNew, weightsNew)
+        logging.info("Filling column 'WEIGHT_SPECTRUM'...")
+        self.t.putcol('WEIGHT_SPECTRUM', weightsNew)
 
         logging.info("Weights flipped along frequency axis and placeholder polarisations added!")
 
