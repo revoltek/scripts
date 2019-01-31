@@ -181,15 +181,15 @@ def plot(MSh, antennas):
         
         fig.suptitle(ant_name, fontweight='bold')
         fig.subplots_adjust(wspace=0)
-        axt = plt.subplot2grid((6, 2), (0, 0), colspan=2)
-        axf = plt.subplot2grid((6, 2), (1, 0), colspan=2)
-        ax1 = plt.subplot2grid((6, 2), (2, 0))
-        ax2 = plt.subplot2grid((6, 2), (2, 1))
-        ax3 = plt.subplot2grid((6, 2), (3, 0))
-        ax4 = plt.subplot2grid((6, 2), (3, 1))
+        axt = plt.subplot2grid((4, 2), (0, 0), colspan=2)
+        axf = plt.subplot2grid((4, 2), (1, 0), colspan=2)
+        ax1 = plt.subplot2grid((4, 2), (2, 0))
+        ax2 = plt.subplot2grid((4, 2), (2, 1))
+        ax3 = plt.subplot2grid((4, 2), (3, 0))
+        ax4 = plt.subplot2grid((4, 2), (3, 1))
         # TEST
-        axtv = plt.subplot2grid((6, 2), (4, 0), colspan=2)
-        axfv = plt.subplot2grid((6, 2), (5, 0), colspan=2)
+        #axtv = plt.subplot2grid((6, 2), (4, 0), colspan=2)
+        #axfv = plt.subplot2grid((6, 2), (5, 0), colspan=2)
         ###
 
         ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
@@ -292,26 +292,26 @@ def plot(MSh, antennas):
         leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=5, borderaxespad=0.0)
 
         # TEST
-        w_f = np.nanvar(w, axis=0) # variance in time
-        w_t = np.nanvar(w, axis=1) # variance in freq
-        axtv.scatter(time, w_t[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
-        axtv.scatter(time, w_t[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
-        axtv.scatter(time, w_t[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
-        axtv.scatter(time, w_t[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
-        axtv.set_xlim(np.min(time), np.max(time))
-        axtv.set_ylim(np.nanmin(w_t), np.nanmax(w_t))
-        axtv.set_xlabel('Time [h]')
-        axtv.set_yscale("log")
+        #w_f = np.nanvar(w, axis=0) # variance in time
+        #w_t = np.nanvar(w, axis=1) # variance in freq
+        #axtv.scatter(time, w_t[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
+        #axtv.scatter(time, w_t[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
+        #axtv.scatter(time, w_t[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
+        #axtv.scatter(time, w_t[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
+        #axtv.set_xlim(np.min(time), np.max(time))
+        #axtv.set_ylim(np.nanmin(w_t), np.nanmax(w_t))
+        #axtv.set_xlabel('Time [h]')
+        #axtv.set_yscale("log")
 
-        axfv.scatter(freqs, w_f[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
-        axfv.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
-        axfv.scatter(freqs, w_f[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
-        axfv.scatter(freqs, w_f[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
-        axfv.set_xlim(np.min(freqs), np.max(freqs))
-        axfv.set_ylim(np.nanmin(w_f), np.nanmax(w_f))
-        axfv.set_xlabel('Frequency [MHz]')
-        axfv.set_yscale("log")
-        ###
+        #axfv.scatter(freqs, w_f[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
+        #axfv.scatter(freqs, w_f[:,1], marker='.', alpha=0.25, color='green', label='XY Weights')
+        #axfv.scatter(freqs, w_f[:,2], marker='.', alpha=0.25, color='orange', label='YX Weights')
+        #axfv.scatter(freqs, w_f[:,3], marker='.', alpha=0.25, color='blue', label='YY Weights')
+        #axfv.set_xlim(np.min(freqs), np.max(freqs))
+        #axfv.set_ylim(np.nanmin(w_f), np.nanmax(w_f))
+        #axfv.set_xlabel('Frequency [MHz]')
+        #axfv.set_yscale("log")
+        ####
 
         imagename = ant_name+'.png'
         logging.info('Save file: %s' % (imagename))
