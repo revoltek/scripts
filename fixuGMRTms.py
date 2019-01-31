@@ -9,7 +9,7 @@ Adapt the MS format of uGMRT data to one usable by LOFAR software.
 
 import os, sys, logging, time
 import numpy as np
-from casacore.tables import taql, table
+from casacore import tables
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ class MS( object ):
         self.tpol = tables.table(ms_file+"/POLARIZATION", readonly=False, ack=False)
         self.tspect = tables.table(ms_file+"/SPECTRAL_WINDOW", readonly=False, ack=False)
 
-        logging.info("Starting work on MS at '" + pathMSNew + "'...")
+        logging.info("Starting work on MS at '" + ms_file + "'...")
 
     def columnExists(self, columnName):
         '''
@@ -49,21 +49,22 @@ class MS( object ):
         correlationProductsNew   = np.array([[[0, 0], [0, 1], [1, 0], [1, 1]]])
         numberOfCorrelationsNew  = 4
 
-        tpol.putcol("CORR_TYPE",    correlationTypesNew)
-        tpol.putcol("CORR_PRODUCT", correlationProductsNew)
-        tpol.putcol("NUM_CORR",     numberOfCorrelationsNew)
+        self.tpol.putcol("CORR_TYPE",    correlationTypesNew)
+        self.tpol.putcol("CORR_PRODUCT", correlationProductsNew)
+        self.tpol.putcol("NUM_CORR",     numberOfCorrelationsNew)
 
     def updateFreqMetadata(self):
-        logging.info("- Adaptation of frequency metadata -")
 
-        frequencies             = tspect.getcol("CHAN_FREQ")
-        frequenciesNew          = np.fliplr(frequencies)
-        tspect.putcol("CHAN_FREQ",   frequenciesNew)
+        frequencies = self.tspect.getcol("CHAN_FREQ")
 
-        logging.debug("frequencies:")
-        logging.debug(frequencies)
-        logging.debug("frequencies (updated):")
-        logging.debug(frequenciesNew)
+        # reorder if flipped
+        if frequencies[0,0] > frequencies[0,-1]:
+            logging.info("- Adaptation of frequency metadata -")
+            self.tspect.putcol("CHAN_FREQ", np.fliplr(frequencies) )
+            return True
+        else:
+            logging.info('Frequency already correct.')
+            return False
 
     def updateFieldMetadata(self):
         logging.info("- Adaptation of field information -")
@@ -72,7 +73,7 @@ class MS( object ):
         pathMSField = self.ms_file + "/FIELD"
 
         # Remove metadata of other fields in the FIELD subtable
-        tables.taql("delete from $pathMSField where rownr() not in (select distinct FIELD_ID from $pathMSNew)")
+        tables.taql("delete from $pathMSField where rownr() not in (select distinct FIELD_ID from $pathMS)")
 
         # Set 'SOURCE_ID' to 0 in the FIELD subtable
         tables.taql("update $pathMSField set SOURCE_ID=0")
@@ -95,7 +96,7 @@ class MS( object ):
         logging.debug("Time intervals (should be equal):")
         logging.debug(times[1:] - times[:-1])
 
-    def updateColumns(self):
+    def updateColumns(self, updateFreq):
         logging.info("- Change existing (or create alternative) columns for data, flags and weights -")
 
         # First, change the 'direction' of the frequency axis.
@@ -103,11 +104,14 @@ class MS( object ):
         # they are converted to ascending frequency order. Note: applying this operation twice returns the MS to its old state!
         logging.info("Loading visibilities...")
         visibilities = self.t.getcol("DATA")
+        print visibilities[200,2]
 
-        visibilities             = np.fliplr(visibilities)
-        visibilitiesNew          = np.zeros((visibilities.shape[0], visibilities.shape[1], 4), dtype = np.complex128)
-        visibilitiesNew[:, :, 0] = visibilities[:, :, 0]
-        visibilitiesNew[:, :, 3] = visibilities[:, :, 1]
+        if updateFreq: visibilities = visibilities[:,::-1,:]
+        if len(visibilities.shape) == 2:
+            visibilitiesNew          = np.zeros((visibilities.shape[0], visibilities.shape[1], 4), dtype = np.complex128)
+            visibilitiesNew[:, :, 0] = visibilities[:, :, 0]
+            visibilitiesNew[:, :, 3] = visibilities[:, :, 1]
+            visibilities = visibilitiesNew
 
         keywordNames             = self.t.colkeywordnames("DATA")
         columnDescription        = self.t.getcoldesc("DATA")
@@ -137,24 +141,24 @@ class MS( object ):
         self.t.addcols(tables.makecoldesc('DATA', columnDescription), dataManagerInfo)
 
         logging.info("Filling column 'DATA'...")
-        self.t.putcol('DATA', visibilitiesNew)
+        self.t.putcol('DATA', visibilities)
 
-        logging.info("Visibilities flipped along frequency axis and placeholder polarisations added!")
-
-
+        ###
         logging.info("Loading flags...")
         flags = self.t.getcol("FLAG")
 
-        flags                    = np.fliplr(flags)
-        flagsNew                 = np.zeros((flags.shape[0], flags.shape[1], 4), dtype = np.bool_)
-        flagsNew[:, :, 0]        = flags[:, :, 0]
-        flagsNew[:, :, 1]        = flags[:, :, 0] # Take over flags from LL correlation
-        flagsNew[:, :, 2]        = flags[:, :, 0] # Take over flags from LL correlation
-        flagsNew[:, :, 3]        = flags[:, :, 1]
+        if updateFreq: flags = flags[:,::-1,:]
+        if len(flags.shape) == 2:
+            flagsNew                 = np.zeros((flags.shape[0], flags.shape[1], 4), dtype = np.bool_)
+            flagsNew[:, :, 0]        = flags[:, :, 0]
+            flagsNew[:, :, 1]        = flags[:, :, 0] # Take over flags from LL correlation
+            flagsNew[:, :, 2]        = flags[:, :, 0] # Take over flags from LL correlation
+            flagsNew[:, :, 3]        = flags[:, :, 1]
+            flags = flagsNew
 
-        keywordNames             = t.colkeywordnames("FLAG")
-        columnDescription        = t.getcoldesc("FLAG")
-        dataManagerInfo          = t.getdminfo("FLAG")
+        keywordNames             = self.t.colkeywordnames("FLAG")
+        columnDescription        = self.t.getcoldesc("FLAG")
+        dataManagerInfo          = self.t.getdminfo("FLAG")
 
         logging.debug("keywordNames:")
         logging.debug(keywordNames)
@@ -180,22 +184,22 @@ class MS( object ):
         self.t.addcols(tables.makecoldesc('FLAG', columnDescription), dataManagerInfo)
 
         logging.info("Filling column 'FLAG'...")
-        self.t.putcol('FLAG', flagsNew)
+        self.t.putcol('FLAG', flags)
 
-        logging.info("Flags flipped along frequency axis and placeholder polarisations added!")
-
-
+        ###
         logging.info("Loading weights...")
         weights = self.t.getcol("WEIGHT_SPECTRUM")
 
-        weights                  = np.fliplr(weights)
-        weightsNew               = np.zeros((weights.shape[0], weights.shape[1], 4), dtype = np.float64)
-        weightsNew[:, :, 0]      = weights[:, :, 0]
-        weightsNew[:, :, 3]      = weights[:, :, 1]
+        if updateFreq: weights = weights[:,::-1,:]
+        if len(flags.shape) == 2:
+            weightsNew               = np.zeros((weights.shape[0], weights.shape[1], 4), dtype = np.float64)
+            weightsNew[:, :, 0]      = weights[:, :, 0]
+            weightsNew[:, :, 3]      = weights[:, :, 1]
+            weights = weightsNew
 
-        keywordNames             = t.colkeywordnames("WEIGHT_SPECTRUM")
-        columnDescription        = t.getcoldesc("WEIGHT_SPECTRUM")
-        dataManagerInfo          = t.getdminfo("WEIGHT_SPECTRUM")
+        keywordNames             = self.t.colkeywordnames("WEIGHT_SPECTRUM")
+        columnDescription        = self.t.getcoldesc("WEIGHT_SPECTRUM")
+        dataManagerInfo          = self.t.getdminfo("WEIGHT_SPECTRUM")
 
         logging.debug("keywordNames:")
         logging.debug(keywordNames)
@@ -221,9 +225,7 @@ class MS( object ):
         self.t.addcols(tables.makecoldesc('WEIGHT_SPECTRUM', columnDescription), dataManagerInfo)
 
         logging.info("Filling column 'WEIGHT_SPECTRUM'...")
-        self.t.putcol('WEIGHT_SPECTRUM', weightsNew)
-
-        logging.info("Weights flipped along frequency axis and placeholder polarisations added!")
+        self.t.putcol('WEIGHT_SPECTRUM', weights)
 
 
 
@@ -253,10 +255,10 @@ if __name__=="__main__":
     for MS in MSs:
         MS.removeColumns()
         MS.updatePolarisation()
-        MS.updateFreqMetadata()
+        updateFreq = MS.updateFreqMetadata()
         MS.updateFieldMetadata()
         MS.updateIntervals()
-        MS.updateColumns()
+        MS.updateColumns(updateFreq)
 
     logging.debug('Running time %.0f s' % (time.time()-start_time))
     logging.info('Done.')
