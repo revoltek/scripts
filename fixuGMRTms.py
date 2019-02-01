@@ -9,7 +9,11 @@ Adapt the MS format of uGMRT data to one usable by LOFAR software.
 
 import os, sys, logging, time
 import numpy as np
+<<<<<<< HEAD
 from casacore import tables
+=======
+from casacore.tables import taql, table
+>>>>>>> 8f250ab50079e4b823e74bd34776a11910ee3135
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
