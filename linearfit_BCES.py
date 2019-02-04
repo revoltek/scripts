@@ -152,11 +152,11 @@ def bces(x1, x2, x1err=None, x2err=None, cerr=None, nsim=5000, model='yx', \
 
   npts = len(x1)
   # are the errors defined?
-  if x1err == None:
+  if x1err is None:
     x1err = scipy.zeros(npts)
-  if x2err == None:
+  if x2err is None:
     x2err = scipy.zeros(npts)
-  if cerr == None:
+  if cerr is None:
     from scipy import random
     cerr = scipy.zeros(npts)
     #cerr = scipy.cov(x1err, x2err)[1][0] * scipy.ones(npts)
