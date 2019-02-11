@@ -9,11 +9,7 @@ Adapt the MS format of uGMRT data to one usable by LOFAR software.
 
 import os, sys, logging, time
 import numpy as np
-<<<<<<< HEAD
 from casacore import tables
-=======
-from casacore.tables import taql, table
->>>>>>> 8f250ab50079e4b823e74bd34776a11910ee3135
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
@@ -108,7 +104,6 @@ class MS( object ):
         # they are converted to ascending frequency order. Note: applying this operation twice returns the MS to its old state!
         logging.info("Loading visibilities...")
         visibilities = self.t.getcol("DATA")
-        print visibilities[200,2]
 
         if updateFreq: visibilities = visibilities[:,::-1,:]
         if len(visibilities.shape) == 2:
