@@ -48,7 +48,8 @@ def flagonmindata(MSh, mode, fract):
     ff = f/(nbl*npol) # fraction of flagged data per timestep and chan
     fffullyflag = np.array(ff == 1.)
     ff = np.array(ff > fract, dtype=bool)
-    logging.info( "Fully flagged timestep/chan: %i -> %i (%f%%)" % ( np.sum(fffullyflag), np.sum(ff), 100*np.sum(ff)/float(np.size(ff)) ) ) 
+    logging.info( "Fully flagged timestep/chan: %i (%f%%) -> %i (%f%%)" % \
+            ( np.sum(fffullyflag), 100*np.sum(fffullyflag)/float(np.size(fffullyflag)), np.sum(ff), 100*np.sum(ff)/float(np.size(ff)) ) ) 
     ff = np.repeat(ff, nbl, axis=0) # repeat time axis for nbl times
     ff = np.expand_dims(ff, axis=2) # add pol axis
     ff = np.repeat(ff, npol, axis=2) # repeat new pol axis for npol times

@@ -251,13 +251,13 @@ def plot(MSh, antennas):
         aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
 
         im = ax1.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
-                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax2.imshow(w[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
-                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax3.imshow(w[...,2].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
-                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax4.imshow(w[...,3].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
-                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=0, vmax=1e-17)
+                        extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
 
         ax2.tick_params(labelleft='off')
         ax4.tick_params(labelleft='off')
