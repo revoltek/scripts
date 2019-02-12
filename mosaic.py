@@ -277,6 +277,9 @@ if args.mask is not None:
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=mask_n.data)
             hdu.writeto(outname, overwrite=True)
 
+    # get numbers into mask in increasing order
+    mask_numbers = sorted(np.unique(mask_n.data))
+
 for i, d in enumerate(directions):
     logging.info('Working on: %s' % d.imagefile)
 
@@ -303,7 +306,7 @@ for i, d in enumerate(directions):
         mask |= ~np.isnan(w)
         w[ np.isnan(w) ] = 0
         if args.mask is not None:
-            w[mask_n.data != i] = 0
+            w[mask_n.data != mask_numbers[i]] = 0
         if args.save:
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
             hdu.writeto(outname, overwrite=True)
