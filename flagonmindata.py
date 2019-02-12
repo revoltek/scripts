@@ -39,7 +39,8 @@ class MShandler():
 
 def flagonmindata(MSh, mode, fract):
     t = MSh.get_flags_aggr()
-    f = t.getcol('FLAG').astype(float)
+    f = t.getcol('FLAG').astype(float) # shape: time/chan
+    print f, f.shape
     n = t.getcol('N')
     ntime = len(n)
     nbl = n[0,0]
@@ -54,7 +55,11 @@ def flagonmindata(MSh, mode, fract):
     ff = np.expand_dims(ff, axis=2) # add pol axis
     ff = np.repeat(ff, npol, axis=2) # repeat new pol axis for npol times
     msflag = MSh.get_flags()
+    print "count before:", np.count_nonzero(msflag.getcol('FLAG'))
+    print msflag.getcol('FLAG').shape, ff.shape
     ff = np.array(ff | msflag.getcol('FLAG'), dtype=bool)
+    print "count after:", np.count_nonzero(ff)
+    print "Bad:", np.count_nonzero(~ff.flatten() & msflag.getcol('FLAG').flatten())
     msflag.putcol('FLAG', ff)
     msflag.flush()
 
