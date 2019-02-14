@@ -192,10 +192,17 @@ def plot(MSh, antennas):
         #axfv = plt.subplot2grid((6, 2), (5, 0), colspan=2)
         ###
 
-        ms_ant_avgbl = taql('SELECT MEANS(GAGGR(GWEIGHT[GFLAG]),1) AS WEIGHT, ALLS(GAGGR(GFLAG),1) as FLAG from $ms_ant') # return (1,time,freq,pol)
+#        w = ms_ant.getcol('GWEIGHT')
+#        f = ms_ant.getcol('GFLAG')
+#        print w[3403,22,1,2]
+#        print f[3403,22,1,2]
+#        w[f] = np.nan
+#        print np.where(w==np.nanmax(w))
+#        print np.nanmax(w)
+#        sys.exit()
 
-        w = ms_ant_avgbl.getcol('WEIGHT')[0] # axis: time, freq, pol
-        flag = ms_ant_avgbl.getcol('FLAG')[0]
+        w = np.nanmean(ms_ant.getcol('GWEIGHT'), axis=1) # time,freq,pol
+        flag = np.all(ms_ant.getcol('GFLAG'), axis=1) # time,freq,pol
 
         ### TEST
         ## subchan
@@ -234,7 +241,6 @@ def plot(MSh, antennas):
         #w = np.where( ( ratio_l < ratio_r )[:,np.newaxis,np.newaxis], w - data_shifted_l, w - data_shifted_r)
         ####
 
-
         # skip if completely flagged
         if np.all(flag):
             continue
@@ -250,6 +256,7 @@ def plot(MSh, antennas):
         bbox = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
 
+        print w[...,0], np.nanmax(w[...,0])
         im = ax1.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax2.imshow(w[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
