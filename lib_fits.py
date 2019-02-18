@@ -108,6 +108,11 @@ class Image(object):
         self.ra = self.img_hdr['CRVAL1']
         self.dec = self.img_hdr['CRVAL2']
 
+    def write(self, filename=None):
+        if filename is None:
+            filename = self.imagefile
+        pyfits.writeto(filename, self.img_data, self.img_hdr, overwrite=True)
+
     def set_beam(self, beam):
         self.img_hdr['BMAJ'] = beam[0]
         self.img_hdr['BMIN'] = beam[1]

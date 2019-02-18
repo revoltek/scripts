@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 # Parallelizator
 # USAGE:
 # def funct(funct_param, outQueue=None):
