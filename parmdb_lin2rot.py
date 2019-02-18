@@ -21,15 +21,15 @@ ants = set(ants)
 cI = numpy.complex(0.,1.)
 
 for ant in ants:
-  print 'updating ', ant
+  print('updating ', ant)
   xx = parms['Gain:0:0:Real:'+ant]['values'] + cI * parms['Gain:0:0:Imag:'+ant]['values']
   yy = parms['Gain:1:1:Real:'+ant]['values'] + cI * parms['Gain:1:1:Imag:'+ant]['values']
   xy = parms['Gain:0:1:Real:'+ant]['values'] + cI * parms['Gain:0:1:Imag:'+ant]['values']
   yx = parms['Gain:1:0:Real:'+ant]['values'] + cI * parms['Gain:1:0:Imag:'+ant]['values'] 
-  print xx
-  print yy
-  print xy
-  print yx
+  print(xx)
+  print(yy)
+  print(xy)
+  print(yx)
   sys.exit()
   rr = xx - cI * xy + cI * yx + yy
   rl = xx + cI * xy + cI * yx - yy
@@ -44,5 +44,5 @@ for ant in ants:
   parms['Gain:1:0:Real:'+ant]['values'][::] = lr.real
   parms['Gain:1:0:Imag:'+ant]['values'][::] = lr.imag
 
-print "Writing..."
+print("Writing...")
 lofar.expion.parmdbmain.store_parms('test', parms, create_new = True)

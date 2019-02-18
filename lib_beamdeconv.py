@@ -213,7 +213,7 @@ def convolve(A1,B1,C1,A2,B2,C2):
         print ("Can't convolve...")
         return (None,None,None)
     if (D3 < 0):#always imaginary
-        print ("D3 < 0, Imaginary solution",D3)
+        print(("D3 < 0, Imaginary solution",D3))
         return (None,None,None)
     factor = 2.*np.pi*np.sqrt(D1 + 0j)*np.sqrt(D2 + 0j)/np.sqrt(D3/D4 + 0j)/np.sqrt(D4/(D1*D2) + 0j)
     if np.abs(np.imag(factor)) > 10.*(7./3 - 4./3 - 1.):
@@ -440,7 +440,7 @@ def test_timing():
         Ak,Bk,Ck = deconvolve(Ac,Bc,Cc,A1,B1,C1)
         
         bmaj2_,bmin2_,bpa2_ = quadratic2elliptic(Ak,Bk,Ck)
-    print("Time avg. ~ {} seconds".format((clock()-t1)/10000))
+    print(("Time avg. ~ {} seconds".format((clock()-t1)/10000)))
         
 def test_findCommonBeam():
     np.random.seed(1234)
@@ -452,4 +452,4 @@ def test_findCommonBeam():
             bmin = np.random.uniform()*bmaj
             beams.append((bmaj,bmin,bpa))
         commonBeam = findCommonBeam(beams,debugplots=True)
-        print("Common beam amongst {} is {}".format(beams,commonBeam))
+        print(("Common beam amongst {} is {}".format(beams,commonBeam)))

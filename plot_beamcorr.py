@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import casacore.tables as pt
 
 msname = sys.argv[1]
-print "Plotting beam of "+msname
+print("Plotting beam of "+msname)
 
 # get time
 t = pt.table(msname)
@@ -19,14 +19,14 @@ t.close()
 # get direction
 t = pt.table(msname+'/FIELD')
 direction = t.getcol('PHASE_DIR')[0][0]
-print "Direction:", direction
+print("Direction:", direction)
 t.close()
 
 # get stations
 t = pt.table(msname+'/ANTENNA')
 stations = t.getcol('NAME')
 t.close()
-print "Stations:", stations
+print("Stations:", stations)
 
 import lofar.stationresponse as st
 s = st.stationresponse( msname=msname, inverse=True, useElementResponse=True, useArrayFactor=False, useChanFreq=False )
@@ -38,8 +38,8 @@ f_a, axa_a = plt.subplots(Nc, Nr, sharey=True, sharex=True, figsize=(15,12))
 f_p, axa_p = plt.subplots(Nc, Nr, sharey=True, sharex=True, figsize=(15,12))
 axa_a = axa_a.flatten()
 axa_p = axa_p.flatten()
-for idx_station in xrange(len(stations)):
-    print "Working on station: %s", stations[idx_station]
+for idx_station in range(len(stations)):
+    print("Working on station: %s", stations[idx_station])
     beam_matrix = []
     for time in times:
         beam_matrix_ch0 = s.evaluateStation(time=time,station=idx_station)[0,:,:] # only first chan

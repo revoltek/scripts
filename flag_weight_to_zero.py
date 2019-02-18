@@ -30,11 +30,11 @@ msfile = sys.argv[1]
 ms = pt.table(msfile, readonly=False, ack=False)
  
 all_weights = ms.getcol('WEIGHT_SPECTRUM')
-print 'Sum weights before: %f' % np.sum(all_weights)
+print('Sum weights before: %f' % np.sum(all_weights))
 all_flags = ms.getcol('FLAG')
-print 'Resetting %f values' % np.sum(all_flags)
+print('Resetting %f values' % np.sum(all_flags))
 all_weights[all_flags] = 0
-print 'Sum weights after: %f' % np.sum(all_weights)
+print('Sum weights after: %f' % np.sum(all_weights))
 ms.putcol('WEIGHT_SPECTRUM', all_weights)
 
 # needs recent casacore

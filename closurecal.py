@@ -235,7 +235,7 @@ for t, ts in enumerate(tms.iter('TIME')):
                 if plotph and ( antNames[antSol] == 'CS002LBA' or antNames[antSol] == 'RS310LBA' or antNames[antSol] == 'RS106LBA' ):
                     fig.clf()
                     ax = fig.add_subplot(111)
-                    ax.plot(xrange(len(sols)), sols, 'ro')
+                    ax.plot(range(len(sols)), sols, 'ro')
                     ax.set_title( "Antenna "+antNames[antSol]+" rms: "+str(1./solsblock_w['phase'][t%timeavg,f,s]) )
                     ax.plot([0,36],[solsblock['phase'][t%timeavg,f,s],solsblock['phase'][t%timeavg,f,s]], 'k-')
                     ax.set_ylim(ymin=-np.pi, ymax=np.pi)
@@ -277,8 +277,8 @@ for t, ts in enumerate(tms.iter('TIME')):
             if plotamp and ( antNames[antSol] == 'CS002LBA' or antNames[antSol] == 'RS310LBA' or antNames[antSol] == 'RS106LBA' ):
                 fig.clf()
                 ax = fig.add_subplot(111)
-                for a in xrange(len(sols)):
-                    ax.plot(xrange(len(sols[a][(sols_w[a] != 0)])), sols[a][(sols_w[a] != 0)], 'bo')
+                for a in range(len(sols)):
+                    ax.plot(range(len(sols[a][(sols_w[a] != 0)])), sols[a][(sols_w[a] != 0)], 'bo')
                 ax.set_title( "Antenna "+antNames[antSol]+" rms: "+str(1./solsblock_w['amp'][t%timeavg,f,s]) )
                 ax.plot([0,36],[solsblock['amp'][t%timeavg,f,s],solsblock['amp'][t%timeavg,f,s]], 'k-')
                 logging.debug('Plotting amp_T%d_F%d_%s.png' % (time, freq, antNames[antSol]))
@@ -288,12 +288,12 @@ for t, ts in enumerate(tms.iter('TIME')):
 
     # save actual solutions by re-averaging inside the freq/time steps
     if (t+1) % timeavg == 0:
-        for s in xrange(Nant):
+        for s in range(Nant):
 
             if plotavg: 
                 fig.clf()
 
-            for f in xrange(Nfreq/freqavg):
+            for f in range(Nfreq/freqavg):
                 if solvetec:
                     solall['phase'][t/timeavg,f,s] = findtec( solsblock['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten(),\
                         weights=solsblock_w['phase'][:,f*freqavg:(f+1)*freqavg,s].flatten(), freq=chans, time = t/timeavg, ant = antNames[s])
@@ -307,17 +307,17 @@ for t, ts in enumerate(tms.iter('TIME')):
                 # Debug plots
                 # color: freq, xaxis: time, table: ant
                 if plotph or plotamp: 
-                    times = range(solsblock['amp'].shape[0])
+                    times = list(range(solsblock['amp'].shape[0]))
                     ax = fig.add_subplot(121)
                     ax.set_title("PHASE - Antenna "+antNames[s])
                     ax.set_xlim(xmin=-0.5, xmax=len(times)-0.5)
-                    for i in xrange(f*freqavg,(f+1)*freqavg):
+                    for i in range(f*freqavg,(f+1)*freqavg):
                         ax.errorbar(times, solsblock['phase'][:,i,s], yerr=1./solsblock_w['phase'][:,i,s], c=cmap(float(i)/freqavg), fmt='o')
                     ax.plot([times[0],times[-1]], [solall['phase'][t/timeavg,f,s], solall['phase'][t/timeavg,f,s]], 'k-')
             
                     ax = fig.add_subplot(122)
                     ax.set_title("AMP - Antenna "+antNames[s])
-                    for i in xrange(f*freqavg,(f+1)*freqavg):
+                    for i in range(f*freqavg,(f+1)*freqavg):
                         ax.errorbar(times, solsblock['amp'][:,i,s], yerr=1./solsblock_w['amp'][:,i,s], c=cmap(float(i)/freqavg), fmt='o')
                     ax.plot([times[0],times[-1]], np.log10([solall['amp'][t/timeavg,f,s], solall['amp'][t/timeavg,f,s]]), 'k-')
 

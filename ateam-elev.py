@@ -22,8 +22,8 @@ targets = [ {'name' : 'CasA', 'ra' : 6.123487680622104,  'dec' : 1.0265153995604
 if len(sys.argv) == 2:
    msname = sys.argv[1]
 else:
-   print "Usage"
-   print "   plot_Ateam_elevation.py <msname>"
+   print("Usage")
+   print("   plot_Ateam_elevation.py <msname>")
    
 
 # Create a measures object
@@ -54,8 +54,8 @@ ra = direction[ ant_no, field_no, 0 ]
 if ra<0: ra += 2*numpy.pi
 dec = direction[ ant_no, field_no, 1 ]
 targets.insert(0, {'name' : 'Pointing', 'ra' : ra, 'dec' : dec})
-print "Target ra/dec (deg):", targets[0]['ra']*180/numpy.pi, targets[0]['dec']*180/numpy.pi
-print targets
+print(("Target ra/dec (deg):", targets[0]['ra']*180/numpy.pi, targets[0]['dec']*180/numpy.pi))
+print(targets)
 field_table.close()
 
 
@@ -78,11 +78,11 @@ for target in targets:
    t1 = me.epoch('utc', t)
    me.doframe(t1)
 
-   if 'ra' in target.keys():
+   if 'ra' in list(target.keys()):
       ra_qa  = qa.quantity( target['ra'], 'rad' )
       dec_qa = qa.quantity( target['dec'], 'rad' )
       direction =  me.direction('j2000', ra_qa, dec_qa)
-      print ra_qa, dec_qa
+      print((ra_qa, dec_qa))
    else :
       direction =  me.direction(target['name'])
       

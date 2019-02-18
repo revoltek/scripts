@@ -30,11 +30,11 @@ log += '\nAntenna, '
 for k in sorted(t['antenna']):
     log += k +': %d.2%% - ' % (100.*t['antenna'][k]['flagged']/t['antenna'][k]['total'])
 log += '\nCorrelation, '
-for k, v in t['correlation'].items():
+for k, v in list(t['correlation'].items()):
     log += k +': %d.2%% - ' % (100.*v['flagged']/v['total'])
 log += '\nSpw, '
-for k, v in t['spw'].items():
+for k, v in list(t['spw'].items()):
     log += k +': %d.2%% - ' % (100.*v['flagged']/v['total'])
 log += '\nTotal: %d.2%%' % (100.*t['flagged']/t['total'])
 
-print log.replace(' - \n','\n')
+print(log.replace(' - \n','\n'))

@@ -10,7 +10,7 @@ def pbcorrGMRT(imgname, obsfreq=0, phaseCentre=None):
 
     # find the correct freq
     freq = min([153,235,325,610,1400], key=lambda x:abs(x-obsfreq/1.e6))
-    print "Frequency is", freq, "MHz"
+    print("Frequency is", freq, "MHz")
 
     # from http://gmrt.ncra.tifr.res.in/gmrt_hpage/Users/doc/manual/UsersManual/node27.html
     # 150 from TGSS
@@ -22,11 +22,11 @@ def pbcorrGMRT(imgname, obsfreq=0, phaseCentre=None):
 
     # if not specified assuming pointing in the centre of the image
     if phaseCentre == None:
-        print "Assume pointing in the image centre."
+        print("Assume pointing in the image centre.")
         pixPhaseCentre = ia.topixel( () )['numeric'][0:2]
     else: 
         pixPhaseCentre = ia.topixel( qa.quantity(str(phaseCentre[0])+'deg'), qa.quantity(str(phaseCentre[1])+'deg') )['numeric'][0:2]
-        print "Phase centre is at pix: ", pixPhaseCentre
+        print("Phase centre is at pix: ", pixPhaseCentre)
 
     # function to initialize the beam-array
     assert abs(cs.increment()['numeric'][0]) == abs(cs.increment()['numeric'][1])
@@ -56,15 +56,15 @@ def pbcorrWSRT(imgname, freq=0, phaseCentre=None):
     cs = ia.coordsys()
     if freq == 0: freq = cs.restfrequency()['value'][0]
 
-    print "Frequency is", freq/1.e6, "MHz"
+    print("Frequency is", freq/1.e6, "MHz")
 
     # if not specified assuming pointing in the centre of the image
     if phaseCentre == None:
         pixPhaseCentre = ia.topixel( () )['numeric'][0:2]
-        print "Assume pointing in the image centre. Pix: ", pixPhaseCentre
+        print("Assume pointing in the image centre. Pix: ", pixPhaseCentre)
     else: 
         pixPhaseCentre = ia.topixel( qa.quantity(str(phaseCentre[0])+'deg'), qa.quantity(str(phaseCentre[1])+'deg') )['numeric'][0:2]
-        print "Phase centre is at pix: ", pixPhaseCentre
+        print("Phase centre is at pix: ", pixPhaseCentre)
 
     # function to initialize the beam-array
     assert abs(cs.increment()['numeric'][0]) == abs(cs.increment()['numeric'][1])
@@ -94,18 +94,18 @@ def pbcorrWSRT2(imgname, freq=0, phaseCentre=None):
     if freq == 0: freq = cs.restfrequency()['value'][0]
 
     # find the correct freq
-    print "Frequency is", freq/1.e9, "GHz"
+    print("Frequency is", freq/1.e9, "GHz")
 
     # from http://user.astro.columbia.edu/~keejo/wsrtpbcor.html
     parm = [-1.174,6.124,-1.877,0.3772,-0.04951]
 
     # if not specified assuming pointing in the centre of the image
     if phaseCentre == None:
-        print "Assume pointing in the image centre."
+        print("Assume pointing in the image centre.")
         pixPhaseCentre = ia.topixel( () )['numeric'][0:2]
     else:
         pixPhaseCentre = ia.topixel( qa.quantity(str(phaseCentre[0])+'deg'), qa.quantity(str(phaseCentre[1])+'deg') )['numeric'][0:2]
-        print "Phase centre is at pix: ", pixPhaseCentre
+        print("Phase centre is at pix: ", pixPhaseCentre)
 
     # function to initialize the beam-array
     assert abs(cs.increment()['numeric'][0]) == abs(cs.increment()['numeric'][1])

@@ -312,12 +312,12 @@ if __name__ == '__main__':
     LOGGER.info('Successfully opened %s', FILENAME)
 
     SOLSETS = H5FILE.getSolsetNames()
-    print('Found solset(s) '+ ', '.join(SOLSETS))
+    print(('Found solset(s) '+ ', '.join(SOLSETS)))
     for solset in SOLSETS:
-        print('SolTabs in ' + solset + ':')
+        print(('SolTabs in ' + solset + ':'))
         ss = H5FILE.getSolset(solset)
         soltabs = ss.getSoltabNames()
-        print('\t'+', '.join(soltabs))
+        print(('\t'+', '.join(soltabs)))
 
     # Initialize the GUI.
     APP = QApplication(sys.argv)

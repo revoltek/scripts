@@ -33,34 +33,34 @@ clean = True
 
 todelete = []
 
-print "##########################################"
-print "# Converting:"
+print("##########################################")
+print("# Converting:")
 for i, img in enumerate(images):
     # if it is a fits file transform it into an MS image
     if img[-5:] == '.fits':
-        print "Convert to MS: "+img
+        print("Convert to MS: "+img)
         importfits(fitsimage=img, overwrite=True, imagename=img.replace('.fits','.image'))
         images[i] = img.replace('.fits','.image')
 
-print "##########################################"
-print "# Compute Beam:"
+print("##########################################")
+print("# Compute Beam:")
 bmaxmaj = 0
 for i, img in enumerate(images):
     bmaj = qa.convert(imhead(imagename=img,mode='get',hdkey='beammajor'),'arcsec')
     bmin = qa.convert(imhead(imagename=img,mode='get',hdkey='beamminor'),'arcsec')
     bpa = imhead(imagename=img,mode='get',hdkey='beampa')
-    print img, ": Major:", bmaj['value'], bmaj['unit'], "- Minor:", bmin['value'], bmin['unit']
+    print(img, ": Major:", bmaj['value'], bmaj['unit'], "- Minor:", bmin['value'], bmin['unit'])
     if bmaxmaj < bmaj['value']:
         bmaxmaj = math.ceil(bmaj['value'])
         bmaxmaj_img = img
-print "Max beam is: ", bmaxmaj
+print("Max beam is: ", bmaxmaj)
 
 if do_convolve:
-    print "##########################################"
-    print "# Do Beam:"
+    print("##########################################")
+    print("# Do Beam:")
     # armonize beams to the biggest
     for i, img in enumerate(images):
-        print "Convolving (to", bmaxmaj, "arcsec):", img
+        print("Convolving (to", bmaxmaj, "arcsec):", img)
         imsmooth(imagename=img, kernel='gauss', beam={"major":str(bmaxmaj)+"arcsec","minor":str(bmaxmaj)+"arcsec","pa":"0deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj), region=region_file)
         # test
         #imsmooth(imagename=img, kernel='gauss', beam={"major":"28arcsec","minor":"22arcsec","pa":"22deg"}, targetres=True, overwrite=True, outfile=img+'-conv'+str(bmaxmaj), region=region_file)
@@ -74,11 +74,11 @@ if do_convolve:
 #        todelete.append(img)
 
 if do_cut:
-    print "##########################################"
-    print "# Do Cut:"
-    print "Region:", region_file
+    print("##########################################")
+    print("# Do Cut:")
+    print("Region:", region_file)
     for i, img in enumerate(images):
-        print "Cutting:", img
+        print("Cutting:", img)
         ia.open(img)   # casa image class
         #ia.summary()   # will print out some info
         im2 = ia.subimage(outfile=img+'-cut', region=region_file, overwrite=True)
@@ -87,16 +87,16 @@ if do_cut:
         ia.close()
 
 if do_regrid:
-    print "##########################################"
-    print "# Do Regrid:"
+    print("##########################################")
+    print("# Do Regrid:")
     # regrid to the first image size and pixel-size 1/4 of the beam if not set
     if not type(newincr) is int:
         newincr = np.floor(bmaxmaj/4.)
-    print "Setting pixel to", newincr, "arcsec"
+    print("Setting pixel to", newincr, "arcsec")
     newincr = qa.convert({'unit':'arcsec', 'value':newincr},'rad')['value']
 
     for i, img in enumerate(images):
-        print "Regridding:", img
+        print("Regridding:", img)
 
         # pre-check: set ref pix to 0,0 and consequently the refval
         ia.open(img)
@@ -145,11 +145,11 @@ if do_regrid:
         # if missing beam: use ia.setrestoringbeam()
 
 if do_cut:
-    print "##########################################"
-    print "# Do Cut:"
-    print "Region:", region_file
+    print("##########################################")
+    print("# Do Cut:")
+    print("Region:", region_file)
     for i, img in enumerate(images):
-        print "Cutting:", img
+        print("Cutting:", img)
         ia.open(img)   # casa image class
         #ia.summary()   # will print out some info
         #box = rg.box([10,10], [50,50])   # casa regionmanager class
@@ -159,18 +159,18 @@ if do_cut:
         ia.close()
 
 if to_fits:
-    print "##########################################"
-    print "# Do To_FITS:"
+    print("##########################################")
+    print("# Do To_FITS:")
     for i, img in enumerate(images):
 #        os.system('image2fits in='+img+' out='+img+'.fits')
         exportfits(imagename=img, fitsimage=img+'.fits', overwrite=True)
 #        todelete.append(img)
 
 if clean:
-    print "##########################################"
-    print "# Cleaning up..."
+    print("##########################################")
+    print("# Cleaning up...")
     os.system('rm *log')
     for img in todelete:
         os.system('rm -r '+img)
 
-print "Done."
+print("Done.")

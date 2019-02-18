@@ -22,7 +22,7 @@
 import sys, os
 import numpy as np
 
-print "Flux following Scaife and Heald 2012 (for A-team see source code)."
+print("Flux following Scaife and Heald 2012 (for A-team see source code).")
 freq = float(sys.argv[1]) # in MHz
 
 par = {'3C48':[ 64.768,-0.387,-0.420,0.181],
@@ -47,16 +47,16 @@ def prod(sou, freq, i=1):
 def flux(sou, freq):
     return par[sou][0]*prod(sou, freq)
 
-print "Flux at", str(freq), 'MHz'
-print "3C48: ",flux('3C48', freq)
-print "3C147: ",flux('3C147', freq)
-print "3C196: ",flux('3C196', freq)
-print "3C286: ",flux('3C286', freq)
-print "3C295: ",flux('3C295', freq)
-print "3C380: ",flux('3C380', freq)
-print "Virgo A: ",flux('VirA', freq)
-print "Cygnus A: ",flux('CygA', freq)
-print "Cassiopeia A: ~",flux('CasA', freq)
-print "Taurus A: ~",flux('TauA', freq)
-print "Sun (avg): ~",flux('Sun', freq)
-if freq < 39.5: print "At this freq Jupiter might be >1e6 Jy."
+print("Flux at", str(freq), 'MHz')
+print("3C48: ",flux('3C48', freq))
+print("3C147: ",flux('3C147', freq))
+print("3C196: ",flux('3C196', freq))
+print("3C286: ",flux('3C286', freq))
+print("3C295: ",flux('3C295', freq))
+print("3C380: ",flux('3C380', freq))
+print("Virgo A: ",flux('VirA', freq))
+print("Cygnus A: ",flux('CygA', freq))
+print("Cassiopeia A: ~",flux('CasA', freq))
+print("Taurus A: ~",flux('TauA', freq))
+print("Sun (avg): ~",flux('Sun', freq))
+if freq < 39.5: print("At this freq Jupiter might be >1e6 Jy.")

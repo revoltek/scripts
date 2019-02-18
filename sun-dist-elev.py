@@ -39,12 +39,12 @@ sun_elevation=sun.transform_to(AltAz(obstime=time,location=lofar)).alt
 T = Time(time, format='iso', scale='utc')
 
 for i, t in enumerate(T):
-        print "Sun elevation at time %s is: %s" %(t, str(sun_elevation[i]))
+        print("Sun elevation at time %s is: %s" %(t, str(sun_elevation[i])))
 
 tb=tables.table(sys.argv[1]+'/FIELD', ack=False)
 phase_dir=tb.getcol('PHASE_DIR')[0,0]
 
 coord=SkyCoord(float(phase_dir[0]*180./np.pi)*u.degree, float(phase_dir[1]*180./np.pi)*u.degree)
 dist=coord.separation(sun)
-print "Minimum distance from the Sun:", np.min(dist)
+print("Minimum distance from the Sun:", np.min(dist))
 

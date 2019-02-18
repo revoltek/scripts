@@ -29,17 +29,17 @@ def main(args):
    pbdata[:,:,ny-k,nx-j]=0.
    k -= 1
   if k == ny:
-   print j,nx
+   print(j,nx)
    break
- print pbcounter,'x 4 =',pbcounter*4,'zeros replaced'
+ print(pbcounter,'x 4 =',pbcounter*4,'zeros replaced')
  if args.output == '':
   outim = image.rstrip('/')+'z'
  else:
   outim = args.output
- print 'Writing',outim
+ print('Writing',outim)
  pout = pim.image(outim,values=pbdata,coordsys=pb.coordinates())
  
-print "AVGPB editor"
+print("AVGPB editor")
 parser = argparse.ArgumentParser(description="Zero corners of avgpb images")
 parser.add_argument('image',help="Image to adjust")
 parser.add_argument('-o','--output',help="Output image name [default is to add a 'z' to the end of the input filename",default='')

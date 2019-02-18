@@ -27,7 +27,7 @@ lb.clf()
 
 def phase(antenna1,antenna2):
 	t1=t.query('ANTENNA1= '+str(antenna1) +' '+'AND ANTENNA2= '+str(antenna2))
-	print '***FLAG ANALYSIS***'
+	print('***FLAG ANALYSIS***')
 	datapoint=0
 	noflags=0
 	flag=t1.getcolslice("FLAG", [start_chan,pol], [end_chan,pol])
@@ -37,7 +37,7 @@ def phase(antenna1,antenna2):
 	timehr=(timed-timed[0])*24 #Hours since observation start
 	ant1=t1.getcell("ANTENNA1",0)
 	ant2=t1.getcell("ANTENNA2",0)
-	print 'Baseline = '+str(ant1)+' ' +str(ant2)
+	print('Baseline = '+str(ant1)+' ' +str(ant2))
 	length=len(flag)
 	mphase=[]
 	elevation=[]
@@ -65,13 +65,13 @@ def phase(antenna1,antenna2):
 		phase_element=arctan2(spectral_mean.imag,spectral_mean.real)
 		mphase.append(phase_element)
 	    else: mphase.append(nan)   
-	print len(mphase)
-	print len(time)	
-	print len(elevation)
-	print 'Total number of datapoints = '+str(datapoint)
-	print 'Total number of flags = '+str(noflags)
+	print(len(mphase))
+	print(len(time))	
+	print(len(elevation))
+	print('Total number of datapoints = '+str(datapoint))
+	print('Total number of flags = '+str(noflags))
 	percentage=(float(noflags)/float(datapoint))*100
-	print 'Percentage baseline flagged for correlation '+str(pol)+' = '+str(percentage)+'%'
+	print('Percentage baseline flagged for correlation '+str(pol)+' = '+str(percentage)+'%')
 
 	return elevation,timehr,mphase
 

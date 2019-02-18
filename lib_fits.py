@@ -71,7 +71,7 @@ def find_freq(header):
     elif not header.get('FREQ') is None and not header.get('FREQ') == 0:
         return header.get('FREQ')
     else:
-        for i in xrange(5):
+        for i in range(5):
             type_s = header.get('CTYPE%i' % i)
             if type_s is not None and type_s[0:4] == 'FREQ':
                 return header.get('CRVAL%i' % i)

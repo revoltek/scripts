@@ -8,7 +8,7 @@ from pyrap.quanta import quantity
 
 def checkfile(inms):
   if inms == '':
-     print 'Error: give an input MS'
+     print('Error: give an input MS')
      sys.exit()
   #Check feed polarization
   t = pt.table(inms,ack=False)
@@ -18,10 +18,10 @@ def checkfile(inms):
   t.close() 
   if options.reverse == True:
     if poltyp[0] != 'R' and poltyp[0] != 'L':
-       print "WARNING: Data is not from circularly polarized feed but I'm converting a column from circular"
+       print("WARNING: Data is not from circularly polarized feed but I'm converting a column from circular")
   else: 
     if poltyp[0] != 'X' and poltyp[0] != 'Y':
-       print "WARNING: Data is not from linearly polarized feed but I'm converting a column from linear."
+       print("WARNING: Data is not from linearly polarized feed but I'm converting a column from linear.")
 
 def setupiofiles(inms, outms, incolumn, outcolumn):
   """
@@ -33,7 +33,7 @@ def setupiofiles(inms, outms, incolumn, outcolumn):
      t = pt.table(inms)
      t.copy(outms, True, True)
      t.close()
-     print "Finished copy."
+     print("Finished copy.")
   # create output column if doesn't exist
   to = pt.table(outms, readonly=False)
   if not outcolumn in to.colnames():
@@ -98,7 +98,7 @@ def mergeweights(outms):
   """
   Merge weights (weights become the average across the 4 polarizations)
   """
-  print "WARNING: updating weights, cannot reverse to original."
+  print("WARNING: updating weights, cannot reverse to original.")
   tc = pt.table(outms,readonly=False, ack=False)
   weights = tc.getcol('WEIGHT_SPECTRUM')
   shape = weights.shape
@@ -115,11 +115,11 @@ def mergeflags(outms):
   #taql("UPDATE $outms set FLAG=True where any(FLAG)")
   tc = pt.table(outms,readonly=False, ack=False)
   flag = tc.getcol('FLAG')
-  print "Initial flags:", numpy.count_nonzero(flag)
+  print("Initial flags:", numpy.count_nonzero(flag))
   shape = flag.shape
   # find if any data is flagged along the pol axis and then expand the array
   flag = numpy.repeat( numpy.any(flag, axis=2), 4, axis=1).reshape(shape)
-  print "Final flags:", numpy.count_nonzero(flag)
+  print("Final flags:", numpy.count_nonzero(flag))
   tc.putcol('FLAG',flag)
   tc.close()
 
@@ -162,8 +162,8 @@ outms = options.outms.split(':')[0]
 checkfile(inms)
 outms = setupiofiles(inms, outms, incolumn, outcolumn)
 
-print "INFO: inms: "+inms+" (column: "+incolumn+")"
-print "INFO: outms: "+outms+" (column: "+outcolumn+")"
+print("INFO: inms: "+inms+" (column: "+incolumn+")")
+print("INFO: outms: "+outms+" (column: "+outcolumn+")")
 
 if options.reverse == True:
    mscirc2lin(incolumn, outcolumn, outms, options.skipmetadata)

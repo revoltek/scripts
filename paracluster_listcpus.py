@@ -51,7 +51,7 @@ qjobuserlist_BatchHold = [item.strip().split()[1] for item in qlines if re.searc
   
 
 if len(jobslist) != len(nodelist):
-    print "Error: jobslist doesn't match nodelist"
+    print("Error: jobslist doesn't match nodelist")
     sys.exit()
 
 for i in range(len(nodelist)):
@@ -69,8 +69,8 @@ for i in range(len(nodelist)):
             
     tally = [joblist.count(job)  for job in uniquejoblist]
     
-    print
-    print "NODE = {node} - {nused} used ({nfree} free)".format(node=nodelist[i],nused=len(joblist),nfree=64-len(joblist))
+    print()
+    print("NODE = {node} - {nused} used ({nfree} free)".format(node=nodelist[i],nused=len(joblist),nfree=64-len(joblist)))
     #print "JOBS = "
     for j in range(len(uniquejoblist)):
         if uniquejoblist[j] in qjobnamelist:
@@ -79,7 +79,7 @@ for i in range(len(nodelist)):
             user = qjobuserlist_BatchHold[qjobnamelist_BatchHold.index(uniquejoblist[j])] + " - BatchHold"
         else:
             user = "?"
-        print " {job:10s} - {count:3d} ({user})".format(job=uniquejoblist[j], count=tally[j], user=user)
+        print(" {job:10s} - {count:3d} ({user})".format(job=uniquejoblist[j], count=tally[j], user=user))
         
         
 os.system("rm -rf tempnodelist")

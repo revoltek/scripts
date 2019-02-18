@@ -313,7 +313,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
         if not bad_source:
           outfile.write(strline)
         else:
-          print 'Error in source '+strline
+          print('Error in source '+strline)
        else:
          v=pp3.search(eachline)
          if v!= None:
@@ -344,7 +344,7 @@ def convert_sky_bbs_lsm(infilename,outfilename):
           if not bad_source:
             outfile.write(strline)
           else:
-            print 'Error in source '+strline
+            print('Error in source '+strline)
 
 def convert_sky_lsm_bbs(infilename,outfilename):
   # LSM format

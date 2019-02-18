@@ -41,7 +41,7 @@ def main(outfile, fitsfiles, clobber=False):
     freqs = [fits.freq for fits in fits_list]
     fits_list = [fits for (freq, fits) in sorted(zip(freqs, fits_list))]
     freqs = sorted(freqs)
-    print "Frequencies:", freqs
+    print("Frequencies:", freqs)
 
     # Get cube dimensions from first image
     nx = fits_list[0].nx

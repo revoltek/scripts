@@ -43,14 +43,14 @@ fluxerr = options.fluxerr
 rmsmask = options.rmsmask
 n_sigma = options.Nsigma
 rescalefile = options.rescale
-print "Output file: "+outimg
+print("Output file: "+outimg)
 
 # Read images one by one.
 values = []
 frequencies = []
 rmsvalues = []
 for name in imglist:
-    print "--- Reading file: "+name
+    print("--- Reading file: "+name)
     image = pyrap.images.image(name)
     # workaround for getting correct axes
     index = np.where(np.array(image.coordinates().get_names())=='direction')[0][0]
@@ -64,10 +64,10 @@ for name in imglist:
         if name in rescaleData['img']:
             r = rescaleData['rescale'][np.where(rescaleData['img'] == name)][0]
             val *= r
-            print "Rescaling", name, "flux by", r
+            print("Rescaling", name, "flux by", r)
 
     # remove nested useless axes
-    for i in xrange(index):
+    for i in range(index):
         val = val[0]
         maskval = maskval[0]
     values.append(val)
@@ -90,10 +90,10 @@ for name in imglist:
             _null = t.getkeyword('coords.spectral1')
             frequencies.append(t.getkeyword('coords.worldreplace1')[0])
         except:
-            print "Cannot find spectral axis."
+            print("Cannot find spectral axis.")
             sys.exit(1)
     t.close()
-    print "Freq: ", frequencies[-1]
+    print("Freq: ", frequencies[-1])
 
     # mask negative values
     maskval[np.where(val < 0.)] = 0
@@ -105,7 +105,7 @@ for name in imglist:
         del image
         linearized_val = val[np.where(rmsmaskval == 1)]
         rms = np.sqrt(sum(n*n for n in linearized_val)/len(linearized_val))
-        print "Rms:", rms
+        print("Rms:", rms)
         maskval[np.where(val < n_sigma*rms)] = 0
         rmsvalues.append(rms)
     else:
@@ -148,10 +148,10 @@ for i in range(0, imgsizeX):
   pbar.update(i)
 pbar.finish()
 
-print "\n\n"
+print("\n\n")
   
 # Write data (go back to mask convenction: 1=bad, 0=good)
-print "Writing spidx data."
+print("Writing spidx data.")
 spidximg = pyrap.images.image(imglist[-1])
 spidximg.saveas(outimg)
 spidximg = pyrap.images.image(outimg)
@@ -167,4 +167,4 @@ rmsimg.putmask(~globalmaskval)
 #rmsimg.tofits(outimg + "-rms.fits")
 del rmsimg
 
-print "Done."
+print("Done.")

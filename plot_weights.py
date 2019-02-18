@@ -35,7 +35,7 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
         None
     '''
     # Polarization indices are 0, 1, 2, 3 = XX, YY, XY, YX, respectively.
-    print 'Plotting weights vs. channels for %s' % (msfile,)
+    print('Plotting weights vs. channels for %s' % (msfile,))
     # Select only rows where not all data is flagged.
     t1 = taql('SELECT TIME, ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG FROM $msfile WHERE ALL(FLAG)==False && ALL(ISNAN(DATA))==False')
     # Average over all baselines (axis 0) and group the resulting data by antenna.
@@ -57,7 +57,7 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
     datar = np.ma.MaskedArray(data=datar, mask=flags)
     datar = datar[:,:,pol]
     data_taverage = datar.mean(axis=0)
-    print datar.shape
+    print(datar.shape)
     weights = t.getcol('WEIGHT')
     weights = np.ma.MaskedArray(data=weights, mask=flags)
     weights = weights[:, :, pol]
@@ -68,21 +68,21 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
     #print 'Frequencies [MHz]: '
     #print freq
     # Calculate the variance in the visibilities over channels.
-    print 'Calculating visibility variance.'
+    print('Calculating visibility variance.')
     #variance = np.ones(shape=(weights.shape[0], weights.shape[1]//delta, weights.shape[2]))
     variance = np.zeros(shape=(data_taverage.shape[0]//delta))
     # Subtract adjacent channels to eliminate physical signal.
     data_shifted = np.roll(data_taverage, -1, axis=0)
     datas = data_taverage - data_shifted
-    print datas.shape
+    print(datas.shape)
     datar = datas.real
     datai = datas.imag
-    for i in xrange(datas.shape[0]//delta):
+    for i in range(datas.shape[0]//delta):
         # Take a frequency bin of delta channels.
         vr = np.nanvar(datar[delta*i: delta*i+delta], axis=0)
         vi = np.nanvar(datai[delta*i: delta*i+delta], axis=0)
         v = (vr + vi) / 2.
-        print np.any(np.isfinite(v))
+        print(np.any(np.isfinite(v)))
         if not np.any(np.isfinite(v)):
             variance[i] = np.nan
         else:
@@ -90,7 +90,7 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
     if len(variance) == 0:
         return
     # Plot the results.
-    print 'Plotting weights...'
+    print('Plotting weights...')
     if not per_antenna:
         weights = np.mean(weights, axis=0, keepdims=True)
     imgname ='weight_chan_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
@@ -113,10 +113,10 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
     ax.set_xlabel('Frequency [MHz]')
     ax.set_ylabel('Normalized Weights')
     leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
-    print 'Saving plot as %s' % (imgname,)
+    print('Saving plot as %s' % (imgname,))
     fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
     
-    print 'Plotting variance weights...'
+    print('Plotting variance weights...')
     imgname ='var_chan_tavg_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
     fig = figure()
     fig.suptitle(msfile, fontweight='bold')
@@ -126,7 +126,7 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
     #variance = normalize(variance, np.nanmin(variance), np.nanmax(variance))
     #f = freq[indices]
     f = np.zeros(data_taverage.shape[0]//delta)
-    for i in xrange(data_taverage.shape[0]//delta):
+    for i in range(data_taverage.shape[0]//delta):
         f[i] = np.mean(freq[delta*i:delta*i + delta])
 
     ax.plot(f, variance, 'd--', color='k')
@@ -138,7 +138,7 @@ def plot_weight_channel_time_average(msfile, pol=0, delta=16, per_antenna=False,
     ax.set_xlabel('Frequency [MHz]')
     ax.set_ylabel('Variance Normalized w.r.t. '+polarization[0])
     leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
-    print 'Saving plot as %s' % (imgname,)
+    print('Saving plot as %s' % (imgname,))
     fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
     return 
 
@@ -154,7 +154,7 @@ def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e
         None
     '''
     # Polarization indices are 0, 1, 2, 3 = XX, YY, XY, YX, respectively.
-    print 'Plotting weights vs. channels for %s' % (msfile,)
+    print('Plotting weights vs. channels for %s' % (msfile,))
     # Select only rows where not all data is flagged.
     t1 = taql('SELECT TIME, ANTENNA1 AS ANTENNA, DATA, WEIGHT_SPECTRUM, FLAG FROM $msfile WHERE ALL(FLAG)==False && ALL(ISNAN(DATA))==False')
     # Average over all baselines (axis 0) and group the resulting data by antenna.
@@ -174,16 +174,16 @@ def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e
         flags = np.zeros(shape=datar.shape)
     datar = np.ma.MaskedArray(data=datar, mask=flags)
     datar = datar[:,:,pol]
-    print datar.shape
+    print(datar.shape)
     weights = t.getcol('WEIGHT')
     weights = np.ma.MaskedArray(data=weights, mask=flags)
     weights = weights[:, :, pol]
 
     antennas = t.getcol('ANTENNA')
-    print len(antennas), ' antennas'
+    print(len(antennas), ' antennas')
     antenna_names = taql('SELECT NAME FROM '+msfile+'/ANTENNA')
     antenna_names = antenna_names.getcol('NAME')
-    print antenna_names
+    print(antenna_names)
     # Obtain channel frequencies in Hz.
     chan_freq = taql('SELECT CHAN_FREQ FROM '+msfile+'/SPECTRAL_WINDOW')
     if len(chan_freq) == 1: return
@@ -192,7 +192,7 @@ def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e
     #print 'Frequencies [MHz]: '
     #print freq
     # Calculate the variance in the visibilities over channels.
-    print 'Calculating visibility variance.'
+    print('Calculating visibility variance.')
     #variance = np.ones(shape=(weights.shape[0], weights.shape[1]//delta, weights.shape[2]))
     variance = np.ones(shape=(weights.shape[0], weights.shape[1]//delta))
     # Subtract adjacent channels to eliminate physical signal.
@@ -204,19 +204,19 @@ def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e
         datar = np.mean(datar, axis=0, keepdims=True)
         datai = np.mean(datai, axis=0, keepdims=True)
         antenna_names = [{'NAME':''}]
-    for i in xrange(datar.shape[1]//delta):
+    for i in range(datar.shape[1]//delta):
         # Take a frequency bin of delta channels.
         vr = np.nanvar(datar[:,delta*i: delta*i+delta], axis=1)
         vi = np.nanvar(datai[:,delta*i: delta*i+delta], axis=1)
         v = (vr + vi) / 2.
-        print np.any(np.isfinite(v))
+        print(np.any(np.isfinite(v)))
         if not np.any(np.isfinite(v)):
             variance[:,i] = np.nan
         else:
             variance[:,i] = np.where(np.isfinite(1. / v), 1. / v, 0)
     
     # Plot the results.
-    print 'Plotting weights...'
+    print('Plotting weights...')
     if not per_antenna:
         weights = np.mean(weights, axis=0, keepdims=True)
     imgname ='weight_chan_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
@@ -239,26 +239,26 @@ def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e
     ax.set_xlabel('Frequency [MHz]')
     ax.set_ylabel('Normalized Weights')
     leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
-    print 'Saving plot as %s' % (imgname,)
+    print('Saving plot as %s' % (imgname,))
     fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
     
-    print 'Plotting variance weights...'
+    print('Plotting variance weights...')
     imgname ='var_chan_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+str(delta)+'.png'
     fig = figure()
     fig.suptitle(msfile, fontweight='bold')
     ax = fig.add_subplot(111)
     colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
     #variance = variance[:, :, pol]
-    print variance
+    print(variance)
     variance = normalize(variance, np.nanmin(variance), np.nanmax(variance))
 
     #f = freq[indices]
     f = freq[::delta]
     f = np.zeros(shape=(weights.shape[1]//delta))
-    for i in xrange(weights.shape[1]//delta):
+    for i in range(weights.shape[1]//delta):
         f[i] = np.mean(freq[delta*i:delta*i + delta])
     for v, c, a in zip(variance, colors, antennas):
-        print antenna_names[a]['NAME']
+        print(antenna_names[a]['NAME'])
         ax.plot(f, v, '--.', color=c, label=antenna_names[a]['NAME'])        
         '''
         if len(f) > variance.shape[1]:
@@ -277,7 +277,7 @@ def plot_weight_channel(msfile, pol=0, delta=16, per_antenna=False, threshold=1e
     ax.set_ylabel('Variance Normalized w.r.t. '+polarization[0])
     leg = ax.legend(bbox_to_anchor=(1.05, 1.0), ncol=3, borderaxespad=0.0)
     
-    print 'Saving plot as %s' % (imgname,)
+    print('Saving plot as %s' % (imgname,))
     fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
     return 
 
@@ -291,7 +291,7 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
     Returns:
         None
     '''
-    print 'Plotting weights vs. time for %s' % (msfile,)
+    print('Plotting weights vs. time for %s' % (msfile,))
     imgname ='weight_time_' + msfile[msfile.find('SB'):msfile.find('SB')+5]+'_'+str(delta)+'.png'
     # Select the time, weights and elevation of ANTENNA1 averaging over baselines/antennas.
     # Select only unflagged data.
@@ -325,7 +325,7 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
     datars = datar - datar_shifted
     datar = datars.real
     datai = datars.imag
-    for i in xrange(len(time)//delta):
+    for i in range(len(time)//delta):
         vr = np.nanvar(datar[delta*i: delta*i+delta,:,:], axis=0)
         vi = np.nanvar(datai[delta*i: delta*i+delta,:,:], axis=0)
         v = (vr + vi) / 2.
@@ -337,7 +337,7 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
     # Select the weights for all timestamps one channel and one polarization (in that order).
     weights = t.getcol('WEIGHT')
     # Plot weights for elevation and save the image.
-    print 'Plotting...'
+    print('Plotting...')
     colors = iter(cm.rainbow(np.linspace(0, 1, len(weights))))
     fig = figure()
     fig.suptitle(msfile, fontweight='bold')
@@ -349,7 +349,7 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
         
         # Deal with outlier weights if necessary.        
         wexponents = np.floor(np.log10(weights)).astype(int)
-        print np.unique(wexponents)
+        print(np.unique(wexponents))
         weights = np.where(wexponents < 0, weights, 1e-10)
         
         # Normalize the weights w.r.t. the XX/RR polarization.
@@ -363,11 +363,11 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
         del nmin, nmax
         
         # Normalize the statistic w.r.t. the XX/RR polarization.
-        print variance[:, :, 0]
+        print(variance[:, :, 0])
         nmin = np.nanmin(variance[:, :, 0])
         nmax = np.nanmax(variance[:, :, 0])
-        print nmin, nmax
-        indices = ((np.asarray(range(0, len(variance[:, 0, 0]))) + 0.5) * delta).astype(int)
+        print(nmin, nmax)
+        indices = ((np.asarray(list(range(0, len(variance[:, 0, 0])))) + 0.5) * delta).astype(int)
         ax.plot(time_h[indices], normalize(variance[:, 0, 0], nmin, nmax), '--d', color='red', label=polarization[0]+' Boxed variance $\\Delta=%d$'%(delta,))
         ax.plot(time_h[indices], normalize(variance[:, 0, 1], nmin, nmax), '--d', color='green', label=polarization[1]+' Boxed variance $\\Delta=%d$'%(delta,))
         ax.plot(time_h[indices], normalize(variance[:, 0, 2], nmin, nmax), '--d', color='blue', label=polarization[2]+' Boxed variance $\\Delta=%d$'%(delta,))
@@ -390,7 +390,7 @@ def plot_weight_time(msfile, delta=10, plot_time_unit='h'):
     handles, labels = ax.get_legend_handles_labels()
     handles2, labels2 = ax_elev.get_legend_handles_labels()
     leg = ax.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, borderaxespad=0.0)
-    print 'Saving plot as %s' % (imgname,)
+    print('Saving plot as %s' % (imgname,))
     fig.savefig(imgname, bbox_inches='tight', additional_artists=leg, dpi=250)
     #show()
     return

@@ -21,6 +21,10 @@
 # Example: ./ateam-dist.py 12h30m49.4s +12d23m28s
 # calculate the angular distance between an object and ateams/calibrators
 
+
+
+
+
 import sys, os, re
 import numpy as np
 from lib_coordinates_mode import *
@@ -59,9 +63,9 @@ def distance(ra1, dec1, ra2, dec2):
     return np.arccos(cosdist)*180/np.pi
 
 def printdist(name,d):
-	print name, str(d), "deg",
-	if d<25: print '*CLOSE*'
-	else: print ''
+	print(name, str(d), "deg", end=' ')
+	if d<25: print('*CLOSE*')
+	else: print('')
 
 
 rah, ram, ras = re.sub(r'[h|m|s]', ' ', sys.argv[1]).split()
@@ -69,12 +73,12 @@ decd, decm, decs = re.sub(r'[d|m|s]', ' ', sys.argv[2]).split()
 objra = hmstora(rah, ram, ras)
 objdec = dmstodec(decd, decm, decs)
 
-print "Distance form A-team:"
+print("Distance form A-team:")
 for name in ateam:
 	d=distance(objra,objdec,ateam[name]['ra'],ateam[name]['dec'])
 	printdist(name, d)
 
-print "Distance form Calibrators:"
+print("Distance form Calibrators:")
 for name in cal:
 	d=distance(objra,objdec,cal[name]['ra'],cal[name]['dec'])
 	printdist(name, d)

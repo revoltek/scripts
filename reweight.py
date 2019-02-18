@@ -86,7 +86,7 @@ def reweight(MSh, mode):
 
             # put flagged data to NaNs
             data[flags] = np.nan
-            print data.shape
+            print(data.shape)
 
             # if completely flagged set variance to 1 and continue
             if np.all(flags):
@@ -256,7 +256,7 @@ def plot(MSh, antennas):
         bbox = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
 
-        print w[...,0], np.nanmax(w[...,0])
+        print(w[...,0], np.nanmax(w[...,0]))
         im = ax1.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax2.imshow(w[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \

@@ -71,7 +71,7 @@ timepersample = ms.getcell('INTERVAL',0)
 
 # check if ms is time-ordered
 times = ms.getcol('TIME_CENTROID')
-if not all(times[i] <= times[i+1] for i in xrange(len(times)-1)):
+if not all(times[i] <= times[i+1] for i in range(len(times)-1)):
     logging.critical('This code cannot handle MS that are not time-sorted.')
     sys.exit(1)
 

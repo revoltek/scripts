@@ -74,7 +74,7 @@ def altaz(mjds, ra, dec, lat=core_lat):
     if (ha < 0): ha = ha + 360
 
     #convert degrees to radians
-    ha, dec, lat = map(math.radians, (ha, dec, lat))
+    ha, dec, lat = list(map(math.radians, (ha, dec, lat)))
 
     #compute altitude in radians
     sin_alt = math.sin(dec)*math.sin(lat) + math.cos(dec)*math.cos(lat)*math.cos(ha)
@@ -86,7 +86,7 @@ def altaz(mjds, ra, dec, lat=core_lat):
     az = math.acos(cos_az)
 
     #convert radians to degrees
-    hrz_altitude, hrz_azimuth = map(math.degrees, (alt, az))
+    hrz_altitude, hrz_azimuth = list(map(math.degrees, (alt, az)))
 
     #choose hemisphere
     if (math.sin(ha) > 0): hrz_azimuth = 360 - hrz_azimuth;
@@ -341,7 +341,7 @@ def m(ra,dec,cra,cdec,incr):
 # field centre
 
 def lm_to_radec(ra0,dec0,l,m):
-    print 'This function should be the inverse of radec_to_lmn, but it is not.  There is likely an error here.'
+    print('This function should be the inverse of radec_to_lmn, but it is not.  There is likely an error here.')
     sind0=math.sin(dec0)
     cosd0=math.cos(dec0)
     dl=l

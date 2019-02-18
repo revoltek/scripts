@@ -90,9 +90,9 @@ class MS( object ):
         pathMS = self.ms_file
         times = (tables.taql("select distinct TIME from $pathMS")).getcol("TIME")
         intervals = times[1:] - times[:-1]
-        print np.max(intervals)
+        print(np.max(intervals))
         intervals = intervals[intervals < 1.5*np.min(intervals)] # remove jumps
-        print np.max(intervals)
+        print(np.max(intervals))
         intervalPrecise = np.mean(intervals)
         logging.info('Interval set to %f' % intervalPrecise)
 

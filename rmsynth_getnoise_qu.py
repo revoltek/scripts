@@ -79,20 +79,20 @@ def main(args):
   qmeannoise = median(qnoisevals[abs(qnoisevals)<1.])
   qstdnoise = std(qnoisevals[abs(qnoisevals)<1.])
   #print 'Q median, std:',qmeannoise,qstdnoise
-  print qmeannoise,qstdnoise
+  print(qmeannoise,qstdnoise)
   umeannoise = median(unoisevals[abs(unoisevals)<1.])
   ustdnoise = std(unoisevals[abs(unoisevals)<1.])
   #print 'U median, std:',umeannoise,ustdnoise
-  print umeannoise,ustdnoise
+  print(umeannoise,ustdnoise)
   qbadones = logical_or(qnoisevals>(qmeannoise+args.cliplev*qstdnoise),qnoisevals==-1.)
   ubadones = logical_or(unoisevals>(umeannoise+args.cliplev*ustdnoise),unoisevals==-1.)
   #print sum(asarray(qbadones,dtype=int)),'of',len(qfitslist),'are bad (Q)'
   #print sum(asarray(ubadones,dtype=int)),'of',len(ufitslist),'are bad (U)'
   totalbad = logical_or(qbadones,ubadones)
   #print sum(asarray(totalbad,dtype=int)),'of',len(qfitslist),'are bad in Q -or- U'
-  print sum(asarray(totalbad,dtype=int))
+  print(sum(asarray(totalbad,dtype=int)))
   #print fitslist[asarray(badones,dtype=int)]
-  if not args.delete: print 'Nothing will be deleted, but these are the files that would be with the -d option activated:'
+  if not args.delete: print('Nothing will be deleted, but these are the files that would be with the -d option activated:')
   for i,f in enumerate(qfitslist):
     if totalbad[i]:
 	#print qfitslist[i],ufitslist[i]
@@ -100,7 +100,7 @@ def main(args):
 		os.remove(qfitslist[i])
 		os.remove(ufitslist[i])
 		#os.remove(ifitslist[i]) # added by Shane
-  if not args.delete: print 'Nothing in the above list was deleted, use -d to take that action'
+  if not args.delete: print('Nothing in the above list was deleted, use -d to take that action')
 
   sys.stdout = old_stdout
   log_file.close()
