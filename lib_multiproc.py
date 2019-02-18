@@ -1,5 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 
 # Parallelizator
 # USAGE:
@@ -61,7 +78,7 @@ class multiprocManager(object):
         self.runs = 0
         
         logging.debug('Spawning %i threads...' % self.procs)
-        for proc in xrange(self.procs):
+        for proc in range(self.procs):
             t = self.multiThread(self.inQueue, self.outQueue, funct)
             self._threads.append(t)
             t.start()
@@ -79,7 +96,7 @@ class multiprocManager(object):
         """
         # NOTE: do not use queue.empty() check which is unreliable
         # https://docs.python.org/2/library/multiprocessing.html
-        for run in xrange(self.runs):
+        for run in range(self.runs):
             yield self.outQueue.get()
 
     def wait(self):

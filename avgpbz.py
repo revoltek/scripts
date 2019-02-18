@@ -1,5 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """
 Script to zero the corners of avgpb images
@@ -29,17 +45,17 @@ def main(args):
    pbdata[:,:,ny-k,nx-j]=0.
    k -= 1
   if k == ny:
-   print j,nx
+   print(j,nx)
    break
- print pbcounter,'x 4 =',pbcounter*4,'zeros replaced'
+ print(pbcounter,'x 4 =',pbcounter*4,'zeros replaced')
  if args.output == '':
   outim = image.rstrip('/')+'z'
  else:
   outim = args.output
- print 'Writing',outim
+ print('Writing',outim)
  pout = pim.image(outim,values=pbdata,coordsys=pb.coordinates())
  
-print "AVGPB editor"
+print("AVGPB editor")
 parser = argparse.ArgumentParser(description="Zero corners of avgpb images")
 parser.add_argument('image',help="Image to adjust")
 parser.add_argument('-o','--output',help="Output image name [default is to add a 'z' to the end of the input filename",default='')

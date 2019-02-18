@@ -56,9 +56,9 @@ c4 = 2/3.
 
 # Magnetic field [G]
 B = ( ( 4*pi * (2.*a+1) * (K0+1) * Inu * Ep**(1.-2*a) * (nu/(2*c1))**a ) / ( (2.*a-1) * c2(a) * l * c4 ) )**(1./(a+3))
-print "B_eq", B*1e6, "uG"
-print "B_min", B*((a+1)/2.)**(1./(a+3))*1e6, "uG"
+print("B_eq", B*1e6, "uG")
+print("B_min", B*((a+1)/2.)**(1./(a+3))*1e6, "uG")
 # 2 times the magnetic field energy density times a volume of a sphere with diameter l
-print "E_mag", B**2/(8*pi)*4/3.*pi*(l/2.)**3, "erg"
-print "E_tot", 2*B**2/(8*pi)*4/3.*pi*(l/2.)**3, "erg"
-print "p", B**2/(8*pi)/3., "dyne/cm^2"
+print("E_mag", B**2/(8*pi)*4/3.*pi*(l/2.)**3, "erg")
+print("E_tot", 2*B**2/(8*pi)*4/3.*pi*(l/2.)**3, "erg")
+print("p", B**2/(8*pi)/3., "dyne/cm^2")

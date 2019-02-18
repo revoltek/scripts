@@ -43,9 +43,9 @@ omega = 2*np.pi/(23*3600.0+56*60) # One rotation in one sidereal day. Rad/sec.
 if add_delayloss:
     # Calculate position offset from delay and add this to FoV stated in imoffset
     delayoff_as = 3600.0*(180.0/np.pi)*np.arcsin(maxdelay*c/b)
-    print 'Adding delay error of ' + str(round(delayoff_as)) + ' to desired FoV radius of ' + str(imoffset) + '.' 
+    print('Adding delay error of ' + str(round(delayoff_as)) + ' to desired FoV radius of ' + str(imoffset) + '.') 
     imoffset = imoffset + delayoff_as
-    print 'New FoV radius required is ' + str(round(imoffset)) + ' arcsec.'
+    print('New FoV radius required is ' + str(round(imoffset)) + ' arcsec.')
     imoffset_rad = (imoffset/3600.0)*(np.pi/180.0)
 
 # Calculate the loss due to averaging in fourier space, over a phase change dtheta.
@@ -57,23 +57,23 @@ def print_freqloss():
     path = bw * b/c
     avgangle = path*2*np.pi*np.sin(imoffset_rad)
     if avgangle > np.pi:
-        print 'Warning: Too much averaging in frequency!'
-    print 'Loss due to frequency averaging is <' + str(np.round(100*loss(avgangle),2)) + '%.'
+        print('Warning: Too much averaging in frequency!')
+    print('Loss due to frequency averaging is <' + str(np.round(100*loss(avgangle),2)) + '%.')
 
 # Calculate loss due to time
 def print_timeloss():
     path = (b/lam) * time * omega
     avgangle = path * 2*np.pi * np.sin(imoffset_rad)
     if avgangle > np.pi:
-        print 'Warning: Too much averaging in time!'
-    print 'Loss due to time averaging is <' + str(np.round(100*loss(avgangle),2)) + '%.'
+        print('Warning: Too much averaging in time!')
+    print('Loss due to time averaging is <' + str(np.round(100*loss(avgangle),2)) + '%.')
 
 # Calculate loss due to residual rates
 def print_rateloss():
     avgangle = maxrate * time * 2*np.pi
     if avgangle > np.pi:
-        print 'Warning: Too high rate!!'
-    print 'Loss due to rate is  <' + str(np.round(100*loss(avgangle),2)) + '%.'
+        print('Warning: Too high rate!!')
+    print('Loss due to rate is  <' + str(np.round(100*loss(avgangle),2)) + '%.')
 
 print_freqloss()
 print_timeloss()

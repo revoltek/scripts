@@ -30,16 +30,16 @@ col = t.getcol('UVW')
 t = table(sys.argv[1]+'/SPECTRAL_WINDOW')
 
 wavelenght = c/t.getcol('REF_FREQUENCY')[0]
-print 'Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1.e6)+' MHz)'
+print('Wavelenght:', wavelenght,'m (Freq: '+str(t.getcol('REF_FREQUENCY')[0]/1.e6)+' MHz)')
 
 dist = np.sqrt(col[:,0]**2 + col[:,1]**2)
 maxdist = np.max( dist )
 mindist = np.min( dist[(dist != 0)] )
 
-print 'MaxUVdist (wavelenght): ', maxdist/wavelenght
-print 'MaxUVdist (meters): ', maxdist
-print 'MinUVdist (wavelenght): ', mindist/wavelenght
-print 'MinUVdist (meters): ', mindist
-print 'Max Scale: ~',wavelenght/mindist*(180/np.pi), 'deg'
-print 'Min scale: ~',wavelenght/maxdist*(180/np.pi)*3600, 'arcsec'
+print('MaxUVdist (wavelenght): ', maxdist/wavelenght)
+print('MaxUVdist (meters): ', maxdist)
+print('MinUVdist (wavelenght): ', mindist/wavelenght)
+print('MinUVdist (meters): ', mindist)
+print('Max Scale: ~',wavelenght/mindist*(180/np.pi), 'deg')
+print('Min scale: ~',wavelenght/maxdist*(180/np.pi)*3600, 'arcsec')
 

@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
 import numpy as np
 
 # Imports for the custom kernels - https://github.com/radio-astro-tools/radio_beam/blob/master/radio_beam/beam.py
@@ -213,7 +233,7 @@ def convolve(A1,B1,C1,A2,B2,C2):
         print ("Can't convolve...")
         return (None,None,None)
     if (D3 < 0):#always imaginary
-        print ("D3 < 0, Imaginary solution",D3)
+        print(("D3 < 0, Imaginary solution",D3))
         return (None,None,None)
     factor = 2.*np.pi*np.sqrt(D1 + 0j)*np.sqrt(D2 + 0j)/np.sqrt(D3/D4 + 0j)/np.sqrt(D4/(D1*D2) + 0j)
     if np.abs(np.imag(factor)) > 10.*(7./3 - 4./3 - 1.):
@@ -440,7 +460,7 @@ def test_timing():
         Ak,Bk,Ck = deconvolve(Ac,Bc,Cc,A1,B1,C1)
         
         bmaj2_,bmin2_,bpa2_ = quadratic2elliptic(Ak,Bk,Ck)
-    print("Time avg. ~ {} seconds".format((clock()-t1)/10000))
+    print(("Time avg. ~ {} seconds".format((clock()-t1)/10000)))
         
 def test_findCommonBeam():
     np.random.seed(1234)
@@ -452,4 +472,4 @@ def test_findCommonBeam():
             bmin = np.random.uniform()*bmaj
             beams.append((bmaj,bmin,bpa))
         commonBeam = findCommonBeam(beams,debugplots=True)
-        print("Common beam amongst {} is {}".format(beams,commonBeam))
+        print(("Common beam amongst {} is {}".format(beams,commonBeam)))

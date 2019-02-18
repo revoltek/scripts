@@ -1,5 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """
 Bivariate, Correlated Errors and intrinsic Scatter (BCES)
@@ -119,13 +135,13 @@ def bces(x1, x2, x1err=None, x2err=None, cerr=None, nsim=5000, model='yx', \
     xi.append((xi[0] / b[0] ** 2 + xi[1]) * b[3] / \
               scipy.sqrt(4 + (b[1] - 1 / b[0]) ** 2))
     zeta = []
-    for i in xrange(4):
+    for i in range(4):
       zeta.append(x2 - b[i] * x1 - x1av * xi[i])
 
     # calculate  variance for all a and b
     bvar = scipy.zeros(4)
     avar = scipy.zeros(4)
-    for i in xrange(4):
+    for i in range(4):
       bvar[i] = scipy.std(xi[i]) ** 2 / npts
       avar[i] = scipy.std(zeta[i]) ** 2 / npts
 
@@ -162,15 +178,15 @@ def bces(x1, x2, x1err=None, x2err=None, cerr=None, nsim=5000, model='yx', \
     #cerr = scipy.cov(x1err, x2err)[1][0] * scipy.ones(npts)
 
   if verbose == 'debug':
-    print 'x1 =', x1
-    print 'x1err =', x1err
-    print 'x2 =', x2
-    print 'x2err =', x2err
-    print 'cerr =', cerr
-    print '\n ** Returning values for', models[1][j], '**'
+    print('x1 =', x1)
+    print('x1err =', x1err)
+    print('x2 =', x2)
+    print('x2err =', x2err)
+    print('cerr =', cerr)
+    print('\n ** Returning values for', models[1][j], '**')
     if bootstrap is not False:
-      print '    with errors from %d bootstrap resamplings' %bootstrap
-    print ''
+      print('    with errors from %d bootstrap resamplings' %bootstrap)
+    print('')
 
   # calculate nominal fits
   bessresults = _bess(npts, x1, x2, x1err, x2err, cerr)
@@ -188,7 +204,7 @@ def bces(x1, x2, x1err=None, x2err=None, cerr=None, nsim=5000, model='yx', \
     bssum = scipy.zeros(4)
     sda = scipy.zeros(4)
     sdb = scipy.zeros(4)
-    for i in xrange(nsim):
+    for i in range(nsim):
       samples = _bootspbec(npts, x1, x2, x1err, x2err, cerr)
       (x1sim, x2sim, x1errsim, x2errsim, cerrsim) = samples
       besssim = _bess(npts, x1sim, x2sim, x1errsim, x2errsim, cerrsim)
@@ -209,19 +225,19 @@ def bces(x1, x2, x1err=None, x2err=None, cerr=None, nsim=5000, model='yx', \
         sdb[i] = scipy.sqrt(sdtest / (nsim - 1))
 
   if verbose in ('normal', 'debug'):
-    print '%s   B          err(B)' %('Fit'.ljust(19)),
-    print '         A          err(A)'
+    print('%s   B          err(B)' %('Fit'.ljust(19)), end=' ')
+    print('         A          err(A)')
     for i in range(4):
-      print '%s  %9.2e +/- %8.2e    %10.3e +/- %9.3e' \
+      print('%s  %9.2e +/- %8.2e    %10.3e +/- %9.3e' \
             %(models[1][i].ljust(16), b[i], 
-              scipy.sqrt(bvar[i]), a[i], scipy.sqrt(avar[i]))
+              scipy.sqrt(bvar[i]), a[i], scipy.sqrt(avar[i])))
       if bootstrap is not False:
-        print '%s  %9.2e +/- %8.2e    %10.3e +/- %9.3e' \
-              %('bootstrap'.ljust(16), bavg[i], sdb[i], aavg[i], sda[i])
-      print ''
+        print('%s  %9.2e +/- %8.2e    %10.3e +/- %9.3e' \
+              %('bootstrap'.ljust(16), bavg[i], sdb[i], aavg[i], sda[i]))
+      print('')
     if verbose == 'debug':
-      print 'cov[%s] =' %models[model]
-      print covar_ab
+      print('cov[%s] =' %models[model])
+      print(covar_ab)
 
   if bootstrap is not False:
     if full_output:

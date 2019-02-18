@@ -53,11 +53,11 @@ noiseregionfile = sys.argv[6]
 # get the right freq not the rest freq
 def getFreq(image):
     h = imhead(imagename=image, mode='list')
-    for i in xrange(10):
+    for i in range(10):
         if h['ctype'+str(i+1)] == 'Frequency':
             return float(h['crval'+str(i+1)])
 
-print "Split region file"
+print("Split region file")
 lines = sum(1 for line in open(regionfile))
 with open(regionfile) as f:
     for i, l in enumerate(f):
@@ -67,24 +67,24 @@ with open(regionfile) as f:
                 fo.write(head)
                 fo.write(l)
 
-print "Calculate RMSs:"
+print("Calculate RMSs:")
 rms = []
 freqs = []
 lelexpr = []
 for i, image in enumerate(images):
     rms.append(imstat(imagename=image, region=noiseregionfile)['rms'][0])
     freqs.append(getFreq(image))
-    print image+ "(freq:", freqs[i], ") - rms:", rms[i], 'Jy/b'
+    print(image+ "(freq:", freqs[i], ") - rms:", rms[i], 'Jy/b')
     # make mask that selects only pixels above the noise in all or one of the images
     lelexpr.append('"'+image+'" > '+str(nsigma)+'*'+str(rms[i]))
 
-print "Calculate fluxes:"
+print("Calculate fluxes:")
 flux = {}
 err = {}
 for region in sorted(glob.glob('__reg*crtf')):
     flux[region] = []
     err[region] = []
-    print "### Working region:", region
+    print("### Working region:", region)
     for i, image in enumerate(images):
 
         # get beam in pixel
@@ -104,17 +104,17 @@ for region in sorted(glob.glob('__reg*crtf')):
         #stat = imstat(imagename=image, region=region, mask='&&'.join(lelexpr)) # cut at 3 sigma in all images
         #print "Use this cut:"+str(lelexpr)
         stat = imstat(imagename=image, region=region, mask=lelexpr[0]) # cut at 3 sigma in THIS image
-        print "Cut on this image"
+        print("Cut on this image")
         flux[region].append(stat['flux'][0])
         err[region].append(rms[i]*np.sqrt(stat['npts'][0]/pixperbeam)) 
-        print image+ " - flux:", flux[region][i], '±', err[region][i], 'Jy'
+        print(image+ " - flux:", flux[region][i], '±', err[region][i], 'Jy')
         lelexpr[i], lelexpr[0] = lelexpr[0], lelexpr[i]
 
 if len(images) > 1:
-    print "Calculate spidx"
+    print("Calculate spidx")
     for region in sorted(glob.glob('__reg*crtf')):
         (a, b, sa, sb) = linearfit.linear_fit_bootstrap(x=np.log10(freqs), y=np.log10(flux[region]), yerr=0.434*np.array(err[region])/np.array(flux[region]))
-        print region+" - spidx:", a, '±', sa
+        print(region+" - spidx:", a, '±', sa)
         fig = plt.figure(figsize=(8, 8))
         fig.subplots_adjust(wspace=0)
         ax = fig.add_subplot(110)
@@ -127,4 +127,4 @@ if len(images) > 1:
         fig.clf()
 
 os.system('rm __reg*crtf')
-print "Done."
+print("Done.")

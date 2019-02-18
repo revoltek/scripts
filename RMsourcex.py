@@ -163,10 +163,10 @@ def createSkymodel(cube):
 	"""
 	dtypes = np.dtype({'names':['name','ra','dec'],'formats':['S100',np.float,np.float]})
 	skymodel_data = np.ndarray((cube.x_max*cube.y_max),dtype=dtypes)
-	for i in xrange(cube.x_max):
+	for i in range(cube.x_max):
 		sys.stdout.write("\rPopulating skymodel: %d%%" % ((i+1)*100./cube.x_max))
 		sys.stdout.flush()
-		for j in xrange(cube.y_max):
+		for j in range(cube.y_max):
 			skymodel_data['name'][j+i*cube.x_max] = str(i)+' - '+str(j)
 			ra, dec  = cube.xy2radec(i,j)
 			x, y = cube.radec2xy(ra,dec)
@@ -254,13 +254,13 @@ if not os.access(imgdir, os.W_OK):
 	sys.exit("ERROR: image directory not writable")
 
 # Open RMcube (if it is a dir arrumes MSfile, otherwise a fits file)
-print "Loading cube...",
+print("Loading cube...", end=' ')
 sys.stdout.flush()
 if os.path.isdir(cube_file) == True:
 	cube = CubeMS(cube_file)
 else:
 	cube = CubeFits(cube_file)
-print "done."
+print("done.")
 sys.stdout.flush()
 
 # remove from faraday depths
@@ -272,20 +272,20 @@ if options.ignore != '':
 			ignore = ignore + list(np.arange(float(init),float(end)+cube.fd_step,cube.fd_step))
 		else:
 			ignore = ignore + [float(i)]
-	print "Ignoring: ", ignore
+	print("Ignoring: ", ignore)
 
 if skymodel == '':
-	print "No skymodel, using the whole datacube."
+	print("No skymodel, using the whole datacube.")
 	sys.stdout.flush()
 	# create an artificial skymodel
 	skymodel_data = createSkymodel(cube)
 else:
-	print "Loading skymodel...",
+	print("Loading skymodel...", end=' ')
 	sys.stdout.flush()
 	skymodel_data = readPyBDSM(skymodel)
 	# Remove sources outside the RM cube
 	skymodel_data = fixSkymodel(cube, skymodel_data)
-	print "done."
+	print("done.")
 	sys.stdout.flush()
 
 detections = dict((idx,[]) for idx in skymodel_data['name'])
@@ -317,7 +317,7 @@ for i, source in enumerate(skymodel_data):
 			pl.ylabel(r'F [Rad m$^{-2}$]')
 			pl.title(source['name']+'-'+str(source['ra'])+' '+str(source['dec']))
 			pl.savefig(imgdir+'/'+source['name']+'.png', format='png')
-print "\n",
+print("\n", end=' ')
 
 if detects_fd == []: sys.exit("No detections :(")
 

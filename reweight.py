@@ -1,4 +1,21 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # Plot LOFAR weights
 # Update LOFAR weights using residual visibilities
@@ -86,7 +103,7 @@ def reweight(MSh, mode):
 
             # put flagged data to NaNs
             data[flags] = np.nan
-            print data.shape
+            print(data.shape)
 
             # if completely flagged set variance to 1 and continue
             if np.all(flags):
@@ -256,7 +273,7 @@ def plot(MSh, antennas):
         bbox = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
 
-        print w[...,0], np.nanmax(w[...,0])
+        print(w[...,0], np.nanmax(w[...,0]))
         im = ax1.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax2.imshow(w[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \

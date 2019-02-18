@@ -31,47 +31,47 @@ axis = options.axis
 try:
 	hdulist = pyfits.open(img[0], mode='update')
 except:
-	print "ERROR: problems opening file "+img[0]
+	print("ERROR: problems opening file "+img[0])
 	sys.exit(1)
 
 if ( axis is None ):
-	print "ERROR: no axis selected, use '-a x' or '-a y'."
+	print("ERROR: no axis selected, use '-a x' or '-a y'.")
 	sys.exit(1)
 
 try:
     axis = str(int(axis))
 except:
-	print "ERROR: axis option must be an integer"
+	print("ERROR: axis option must be an integer")
 	sys.exit(1)
 
 # flip data
 data = hdulist[0].data
 if len(data.shape) > 2:
-	print "ERROR: this program works only with 2D data, here we have: "+str(data.shape)
+	print("ERROR: this program works only with 2D data, here we have: "+str(data.shape))
 	sys.exit(1)
 
-print "Image shape:", data.shape
+print("Image shape:", data.shape)
 
 if axis == '1':
     hdulist[0].data = np.copy(data[:,::-1])
 elif axis == '2':
     hdulist[0].data = np.copy(data[::-1])
 else:
-    print "ERROR: axis must be 1 or 2"
+    print("ERROR: axis must be 1 or 2")
     sys.exit(1)
 
 prihdr = hdulist[0].header
-print "Flipping axis "+axis+" ("+prihdr.get('CTYPE'+axis).split('-')[0]+")"
+print("Flipping axis "+axis+" ("+prihdr.get('CTYPE'+axis).split('-')[0]+")")
 
 # reset reference pixel
 refpix = prihdr['CRPIX'+axis]
 axlen = prihdr['NAXIS'+axis]
-print "updating "+'CRPIX'+axis
+print("updating "+'CRPIX'+axis)
 prihdr['CRPIX'+axis] = axlen-refpix # mirror reference pixel
 
 # invert axis increase value
-print "updating: "+'CD'+axis+'_'+axis
+print("updating: "+'CD'+axis+'_'+axis)
 prihdr['CD'+axis+'_'+axis] = -1 * prihdr['CD'+axis+'_'+axis]
 
 hdulist.flush()
-print "Done!"
+print("Done!")

@@ -47,14 +47,14 @@ def flag_stat(ms):
   for k in sorted(t['antenna']):
       log += k +': %d.2%% - ' % (100.*t['antenna'][k]['flagged']/t['antenna'][k]['total'])
   log += '\nCorrelation, '
-  for k, v in t['correlation'].items():
+  for k, v in list(t['correlation'].items()):
       log += k +': %d.2%% - ' % (100.*v['flagged']/v['total'])
   log += '\nSpw, '
-  for k, v in t['spw'].items():
+  for k, v in list(t['spw'].items()):
       log += k +': %d.2%% - ' % (100.*v['flagged']/v['total'])
   log += '\nTotal: %d.2%%' % (100.*t['flagged']/t['total'])
   
-  print log.replace(' - \n','\n')
+  print(log.replace(' - \n','\n'))
 
 # delete and re-create MS-specific paths
 if os.path.exists(path_plot): os.system('rm -r '+path_plot)
@@ -71,7 +71,7 @@ listobs( vis=basevis, listfile=basevis.replace('MS', 'listobs') )
 
 for spw_id in spwlist:
 
-  print "Working on SPW", spw_id
+  print("Working on SPW", spw_id)
 
   path_plot_spw = path_plot+'/spw%02i/' % int(spw_id)
   os.makedirs(path_plot_spw)
@@ -132,10 +132,10 @@ for spw_id in spwlist:
   gencal(vis=hsmooth_file,caltable=calantpos,caltype='antpos',spw="",antenna="",pol="",parameter=[])
   
   if os.path.isdir(calantpos):  
-     print 'Antenna position corrections found'
+     print('Antenna position corrections found')
      applycal(vis=hsmooth_file, gaintable=[calgceff,calantpos], calwt=False, flagbackup=False)	
   else:  
-     print 'Antenna position corrections NOT found'
+     print('Antenna position corrections NOT found')
      applycal(vis=hsmooth_file, gaintable=calgceff, calwt=False, flagbackup=False)	
 
   # BANDPASS

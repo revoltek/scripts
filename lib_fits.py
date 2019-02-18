@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
 from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
 import numpy as np
@@ -71,7 +91,7 @@ def find_freq(header):
     elif not header.get('FREQ') is None and not header.get('FREQ') == 0:
         return header.get('FREQ')
     else:
-        for i in xrange(5):
+        for i in range(5):
             type_s = header.get('CTYPE%i' % i)
             if type_s is not None and type_s[0:4] == 'FREQ':
                 return header.get('CRVAL%i' % i)
@@ -107,6 +127,11 @@ class Image(object):
         self.set_freq(self.freq)
         self.ra = self.img_hdr['CRVAL1']
         self.dec = self.img_hdr['CRVAL2']
+
+    def write(self, filename=None):
+        if filename is None:
+            filename = self.imagefile
+        pyfits.writeto(filename, self.img_data, self.img_hdr, overwrite=True)
 
     def set_beam(self, beam):
         self.img_hdr['BMAJ'] = beam[0]

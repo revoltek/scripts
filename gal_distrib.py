@@ -49,9 +49,9 @@ data = np.loadtxt(sdss_file, comments='#', unpack=False, converters={}, dtype=ty
 
 # create fits file (1 pixel is 100 kpc)
 cell_size = cosmo.arcsec_per_kpc_proper(z).value * 100.
-print "Cell size in arcesc:", cell_size
+print("Cell size in arcesc:", cell_size)
 npix = int(cosmo.arcsec_per_kpc_proper(z).value * 2*cluster_size*1e3 / cell_size)
-print "Number of pixel of final image:", npix, "x", npix
+print("Number of pixel of final image:", npix, "x", npix)
 fits_data = np.zeros([npix,npix])
 # set WCS
 wcs = pywcs.WCS(naxis=2)
@@ -79,7 +79,7 @@ for s in data:
     fits_data[dec_pix-1][ra_pix-1] += 1
     good_z.append(s['z'])
 
-print "Total number of good galaxies: ",len(good_z)
+print("Total number of good galaxies: ",len(good_z))
 
 # put fits_data and wcs
 header = wcs.to_header()
@@ -97,7 +97,7 @@ ax.label_outer()
 v=ax.hist(good_z,9,alpha=0.3,facecolor='blue')
 ax.set_ylim(ymin=0,ymax=max(v[0])+1)
 # plot vertical line on mean
-print "Mean z:", np.mean(good_z), "pm", np.std(good_z)
+print("Mean z:", np.mean(good_z), "pm", np.std(good_z))
 ax.axvline(np.mean(good_z), c='r', ls='--', lw=2)
 fig.savefig('z-distrib.pdf', bbox_inches='tight')
 fig.clf()

@@ -23,12 +23,12 @@ import sys, os
 import numpy as np
 
 if len(sys.argv) == 1:
-    print "flux2lum.py redshift flux(in Jy) [error=0] [alpha=-1]"
+    print("flux2lum.py redshift flux(in Jy) [error=0] [alpha=-1]")
     sys.exit(0)
 
 from astropy.cosmology import FlatLambdaCDM
 cosmo = FlatLambdaCDM(H0=71, Om0=0.27)
-print "Using Flat LmbdaCDM H0=0.71 Om0=0.27"
+print("Using Flat LmbdaCDM H0=0.71 Om0=0.27")
 #cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
 #print "Using Flat LmbdaCDM H0=0.7 Om0=0.3"
 
@@ -44,25 +44,25 @@ try:flux_err = float(sys.argv[3])
 except: flux_err = 0.
 
 
-print "z=",z
-print "flux=",flux," Jy"
-print "err=",flux_err," Jy"
-print "alpha=",alpha
+print("z=",z)
+print("flux=",flux," Jy")
+print("err=",flux_err," Jy")
+print("alpha=",alpha)
 
 dist = cosmo.luminosity_distance(z).value # in Mpc
-print "Distance: ", dist, "Mpc"
+print("Distance: ", dist, "Mpc")
 
 # 1 pc = 3.08567758e16 m
-print flux * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "±", flux_err * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "W/Hz"
-print flux * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "±", flux_err * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "erg/s/Hz"
-print "with K-correction: (alpha:"+str(alpha)+")"
-print kcorr(flux,z,alpha) * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "±", kcorr(flux_err,z,alpha) * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "W/Hz"
-print kcorr(flux,z,alpha) * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "±", kcorr(flux_err,z,alpha) * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2),
-print "erg/s/Hz"
+print(flux * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("±", flux_err * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("W/Hz")
+print(flux * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("±", flux_err * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("erg/s/Hz")
+print("with K-correction: (alpha:"+str(alpha)+")")
+print(kcorr(flux,z,alpha) * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("±", kcorr(flux_err,z,alpha) * 1e-26 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("W/Hz")
+print(kcorr(flux,z,alpha) * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("±", kcorr(flux_err,z,alpha) * 1e-26 * 1e7 * ( 4*np.pi * (dist * 1e6 * 3.08567758e16)**2), end=' ')
+print("erg/s/Hz")

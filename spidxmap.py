@@ -134,7 +134,7 @@ logging.info('Final beam: %.1f" %.1f" (pa %.1f deg)' \
 if args.shift:
     ref_cat = all_images[0].cat
     # keep only point sources
-    print ref_cat
+    print(ref_cat)
     for image in all_images[1:]:
         # cross match
         idx_match, sep, _ = match_coordinates_sky(SkyCoord(ref_cat['RA'], ref_cat['DEC']),\
@@ -246,10 +246,10 @@ spidx_data[:] = np.nan
 spidx_err_data = np.empty(shape=(xsize, ysize))
 spidx_err_data[:] = np.nan
 
-for i in xrange(xsize):
-    print '.',
+for i in range(xsize):
+    print('.', end=' ')
     sys.stdout.flush()
-    for j in xrange(ysize):
+    for j in range(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any(): continue
         (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)

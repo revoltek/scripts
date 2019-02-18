@@ -1,4 +1,21 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import sys
 import pydal as dal
@@ -8,17 +25,17 @@ from scipy import *
 
 # check usage
 if len(sys.argv) < 4 or len(sys.argv) > 10:
-        print "Usage:"
-        print "\tbaseline.py <file> <antenna1> <antenna2> " + \
+        print("Usage:")
+        print("\tbaseline.py <file> <antenna1> <antenna2> " + \
               "[sub-band] ['channel' or 'time'] [channel/time range] " + \
-              "['p'hase or 'a'mplitude] [polarization (0-3,4-6)] [plot range xmin,xmax,ymin,ymax (no spaces)]"
-        print "\t<> required"
-        print "\t E.g., baseline.py /lifs006/SB3.MS 1 10 0 channel 3:10 a 6 4.69e9,4.7e9,0,0.001"
-        print "\tSingle or range of channels and times for averaging (in relative bin coordinates; ranges colon-delimited);"
-        print "\tPolarization 0-3 plots individually, 4 plots xx and xy, 5 plots xx and yx, 6 plots xx and yy."
-        print "\t-1 means plot all.  Default plots the closure phase of the xx for all channels as function of time."
-        print "Note that antenna numbers are zero-based and must be given in order from lowest to highest."
-        print ""
+              "['p'hase or 'a'mplitude] [polarization (0-3,4-6)] [plot range xmin,xmax,ymin,ymax (no spaces)]")
+        print("\t<> required")
+        print("\t E.g., baseline.py /lifs006/SB3.MS 1 10 0 channel 3:10 a 6 4.69e9,4.7e9,0,0.001")
+        print("\tSingle or range of channels and times for averaging (in relative bin coordinates; ranges colon-delimited);")
+        print("\tPolarization 0-3 plots individually, 4 plots xx and xy, 5 plots xx and yx, 6 plots xx and yy.")
+        print("\t-1 means plot all.  Default plots the closure phase of the xx for all channels as function of time.")
+        print("Note that antenna numbers are zero-based and must be given in order from lowest to highest.")
+        print("")
         sys.exit(1)
 
 # other customizations
@@ -31,7 +48,7 @@ if len(sys.argv) < 6:  quantity_plot = 'channel'
 else: quantity_plot = sys.argv[5]
 if len(sys.argv) < 7:  range_plot = -1
 elif len((sys.argv[6]).split(':')) > 1:
-        range_plot = range(int((sys.argv[6]).split(':')[0]),int((sys.argv[6]).split(':')[1]))
+        range_plot = list(range(int((sys.argv[6]).split(':')[0]),int((sys.argv[6]).split(':')[1])))
 else: range_plot = [int(sys.argv[6])]
 if len(sys.argv) < 8:  data_plot = 'a'
 else:	data_plot = sys.argv[7]
@@ -45,16 +62,16 @@ else:
 if pol > 3:
         pol2 = pol-3
         pol = 0
-        print "plotting pols %i and %i" % (pol, pol2)
+        print("plotting pols %i and %i" % (pol, pol2))
 else:
         pol2 = 0
-        print "plotting pol %i" % (pol)
+        print("plotting pol %i" % (pol))
 
 # open file
 msds= dal.dalDataset()
 if ( True != msds.open(sys.argv[1]) ):
-        print "ERROR: Could not open file: " + sys.argv[1]
-        print "       Please check the file and try again."
+        print("ERROR: Could not open file: " + sys.argv[1])
+        print("       Please check the file and try again.")
         sys.exit(1)
 
 # open table
@@ -69,9 +86,9 @@ time_col = maintable.getColumn("TIME")
 time = time_col.data()
 time = time/(24*3600)    # convert from MJD in seconds to days
 
-print 'Start of data (MJD from 1Oct2007): ' + str(time[0]-54374)
-print 'Fractional day is ' + str(24*(time[0]-int(time[0]))) + ' hrs'
-print 'Total length of data (integrations): ' + str(len(time)) + ', (hrs): ' + str((time[-1]-time[0])*24)
+print('Start of data (MJD from 1Oct2007): ' + str(time[0]-54374))
+print('Fractional day is ' + str(24*(time[0]-int(time[0]))) + ' hrs')
+print('Total length of data (integrations): ' + str(len(time)) + ', (hrs): ' + str((time[-1]-time[0])*24))
 #event_time = 54379+(06+(41/60.))/24.      # 071006, obs L3907, el=-50
 #event_time = 54381+(21+(55/60.))/24.      # 071008, obs L3914, el=+8       ## look at SB1, ch34 for best rfi (38.6009216 MHz)
 #event_time = 54383+(03+(41/60.))/24.      # 071010A, obs L3917, el=-60

@@ -40,8 +40,8 @@ import numpy
 import pyrap.tables as pt
 
 version_string = 'v1.4, 7 July 2011'
-print 'uvcov.py',version_string
-print ''
+print('uvcov.py',version_string)
+print('')
 
 def main(options):
 
@@ -55,13 +55,13 @@ def main(options):
                 for msname in glob.iglob(inmspart):
 	                MSlist.append(msname)
 	if len(MSlist) == 0:
-		print 'Error: You must specify at least one MS name.'
-		print '       Use "uvplot.py -h" to get help.'
+		print('Error: You must specify at least one MS name.')
+		print('       Use "uvplot.py -h" to get help.')
 		return
         if len(MSlist) > 1:
-                print 'WARNING: Antenna selection (other than all) may not work well'
-                print '         when plotting more than one MS. Carefully inspect the'
-                print '         listings of antenna numbers/names!'
+                print('WARNING: Antenna selection (other than all) may not work well')
+                print('         when plotting more than one MS. Carefully inspect the')
+                print('         listings of antenna numbers/names!')
         if options.title == '':
                 plottitle = options.inms
         else:
@@ -70,16 +70,16 @@ def main(options):
 	if len(axlimits) == 4:
 		xmin,xmax,ymin,ymax = axlimits
 	else:
-		print 'Error: You must specify four axis limits'
+		print('Error: You must specify four axis limits')
 		return
 	timeslots = options.timeslots.split(',')
 	if len(timeslots) != 3:
-		print 'Error: Timeslots format is start,skip,end'
+		print('Error: Timeslots format is start,skip,end')
 		return
 	for i in range(len(timeslots)):
 		timeslots[i] = int(timeslots[i])
 		if timeslots[i] < 0:
-			print 'Error: timeslots values must not be negative'
+			print('Error: timeslots values must not be negative')
 			return
         doPlotColors = options.colors
         antToPlotSpl = options.antennas.split(',')
@@ -92,7 +92,7 @@ def main(options):
                         for j in range(int(tmpspl[0]),int(tmpspl[1])+1):
                                 antToPlot.append(j)
                 else:
-                        print 'Error: Could not understand antenna list.'
+                        print('Error: Could not understand antenna list.')
                         return
 	queryMode = options.query
         plotLambda = options.kilolambda
@@ -126,19 +126,19 @@ def main(options):
         ptcolor = 0
         for inputMS in MSlist:
 	        # open the main table and print some info about the MS
-                print 'Getting info for', inputMS
+                print('Getting info for', inputMS)
 	        t = pt.table(inputMS, readonly=True, ack=False)
                 tfreq = pt.table(t.getkeyword('SPECTRAL_WINDOW'),readonly=True,ack=False)
                 ref_freq = tfreq.getcol('REF_FREQUENCY',nrow=1)[0]
                 ch_freq = tfreq.getcol('CHAN_FREQ',nrow=1)[0]
-                print 'Reference frequency:\t%f MHz' % (ref_freq/1.e6)
+                print('Reference frequency:\t%f MHz' % (ref_freq/1.e6))
                 if options.wideband:
                         ref_wavelength = 2.99792458e8/ch_freq
                 else:
                         ref_wavelength = [2.99792458e8/ref_freq]
-                print 'Reference wavelength:\t%f m' % (ref_wavelength[0])
+                print('Reference wavelength:\t%f m' % (ref_wavelength[0]))
                 if options.sameuv and numPlotted > 0:
-                        print 'Assuming same uvw as first MS!'
+                        print('Assuming same uvw as first MS!')
                         if plotLambda:
                                 for w in ref_wavelength:
                                         xaxisvals0 = numpy.append(xaxisvals0,[savex0/w/1000.,-savex0/w/1000.])
@@ -154,7 +154,7 @@ def main(options):
                                         xaxisvals5 = numpy.append(xaxisvals5,[savex5/w/1000.,-savex5/w/1000.])
                                         yaxisvals5 = numpy.append(yaxisvals5,[savey5/w/1000.,-savey5/w/1000.])
                         else:
-                                print 'Plotting more than one MS with same uv, all in meters... do you want -k?'
+                                print('Plotting more than one MS with same uv, all in meters... do you want -k?')
                                 xaxisvals0 = numpy.append(xaxisvals0,[savex0,-savex0])
                                 yaxisvals0 = numpy.append(yaxisvals0,[savey0,-savey0])
                                 xaxisvals1 = numpy.append(xaxisvals1,[savex1,-savex1])
@@ -172,9 +172,9 @@ def main(options):
 	        firstTime = t.getcell("TIME", 0)
 	        lastTime = t.getcell("TIME", t.nrows()-1)
 	        intTime = t.getcell("INTERVAL", 0)
-	        print 'Integration time:\t%f sec' % (intTime)
+	        print('Integration time:\t%f sec' % (intTime))
 	        nTimeslots = (lastTime - firstTime) / intTime
-	        print 'Number of timeslots:\t%d' % (nTimeslots)
+	        print('Number of timeslots:\t%d' % (nTimeslots))
                 if timeslots[1] == 0:
                         if nTimeslots >= 100:
                                 timeskip = int(nTimeslots/100)
@@ -182,7 +182,7 @@ def main(options):
                                 timeskip = 1
                 else:
                         timeskip = int(timeslots[1])
-                print 'For each baseline, plotting one point every %d samples' % (timeskip)
+                print('For each baseline, plotting one point every %d samples' % (timeskip))
        	        if timeslots[2] == 0:
         		timeslots[2] = nTimeslots
         	# open the antenna subtable
@@ -191,12 +191,12 @@ def main(options):
         	# Station names
         	antList = tant.getcol('NAME')
                 if len(antToPlot)==1 and antToPlot[0]==-1:
-                        antToPlot = range(len(antList))
-        	print 'Station list (only starred stations will be plotted):'
+                        antToPlot = list(range(len(antList)))
+        	print('Station list (only starred stations will be plotted):')
         	for i in range(len(antList)):
                         star = ' '
                         if i in antToPlot: star = '*'
-        		print '%s %2d\t%s' % (star, i, antList[i])
+        		print('%s %2d\t%s' % (star, i, antList[i]))
         
         	# Bail if we're in query mode
         	if queryMode:
@@ -290,7 +290,7 @@ def main(options):
                 sys.stdout.write(' Done!\n')
                 numPlotted += 1
 
-        print 'Plotting uv points ...'
+        print('Plotting uv points ...')
 	# open the graphics device, using only one panel
 	ppgplot.pgbeg(device, 1, 1)
 	# set the font size
@@ -307,8 +307,8 @@ def main(options):
         tmpvals5 = numpy.sqrt(xaxisvals5**2+yaxisvals5**2)
 	# Plot the data
         if debug:
-                print xaxisvals0[tmpvals0!=badval]
-                print yaxisvals0[tmpvals0!=badval]
+                print(xaxisvals0[tmpvals0!=badval])
+                print(yaxisvals0[tmpvals0!=badval])
 	ppgplot.pgsci(1)
         uvmax = max(xaxisvals.max(),yaxisvals.max())
         uvmin = min(xaxisvals.min(),yaxisvals.min())

@@ -33,6 +33,6 @@ ia.close()
 ia.open(region+'.mask')
 ia.set(pixels='0')
 ia.set(pixels='1', region=reg)
-print "Output: "+region+".mask"
+print("Output: "+region+".mask")
 ia.close()
 

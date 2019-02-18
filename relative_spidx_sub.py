@@ -31,20 +31,20 @@ import numpy as np
 t = pt.table(sys.argv[1]+'/SPECTRAL_WINDOW',ack=False,readonly=True)
 freq_ref = t.getcell('REF_FREQUENCY', 0)
 freq_chans = t.getcell('CHAN_FREQ', 0)
-print "Central freq:", freq_ref
+print("Central freq:", freq_ref)
 
 t = pt.table(sys.argv[1],ack=False,readonly=False)
 data = t.getcol('CORRECTED_DATA')
 for i, freq_chan in enumerate(freq_chans):
-	print "Working on chan:", freq_chan,
+	print("Working on chan:", freq_chan, end=' ')
 	# find factor
 	fact = 10.**(0.7 * np.log10(freq_chan/freq_ref))
-	print "(factor:", fact, ")", " - ",
+	print("(factor:", fact, ")", " - ", end=' ')
 	amp = np.absolute(data[:,i,:])
 	ph = np.angle(data[:,i,:])
-	print np.mean(amp), " -> ",
+	print(np.mean(amp), " -> ", end=' ')
 	amp *= fact
-	print np.mean(amp)
+	print(np.mean(amp))
 	data[:,i,:] = amp * np.exp(1j*ph)
 
 # write MS

@@ -34,7 +34,7 @@ ann_separation = 0.003 # in deg
 hdulist = pyfits.open(filename, mode='readonly')
 wcs = pywcs.WCS(hdulist[0].header)
 data = hdulist[0].data
-print "Image size is: ", data.shape
+print("Image size is: ", data.shape)
 
 # create sampling point for function
 
@@ -45,13 +45,13 @@ elif centre == 'centroid': centre_p = sm.center_of_mass(data)
 elif type(centre) is list: centre_p = wcs.wcs_sky2pix([centre], 1)[0] # centre in pixels
 else: sys.exit('centre must be [coord,inates],\'max\' or \'centroid\'')
 
-print "Central pixel is", centre_p
+print("Central pixel is", centre_p)
 x, y = np.indices((wcs.naxis2, wcs.naxis1))
 r = np.sqrt( (x-centre_p[0])**2 + (y-centre_p[1])**2 ) # radial distance of each pixel
 
 # create ann_radii from the pixels size
 assert abs(hdulist[0].header['CDELT1']) == abs(hdulist[0].header['CDELT2'])
-print "Annului are", ann_separation/abs(hdulist[0].header['CDELT1']), 'pixels wide'
+print("Annului are", ann_separation/abs(hdulist[0].header['CDELT1']), 'pixels wide')
 ann_radii = np.arange(0, np.max(r), ann_separation/abs(hdulist[0].header['CDELT1'])) # CDELT in in deg
 
 # cycle on annuli
@@ -62,7 +62,7 @@ ann_means_radii.append(0.)
 ann_means_val.append(data[centre_p[0]][centre_p[1]])
 ann_std_radii.append(0.)
 ann_std_val.append(0.)
-for i in xrange(1,len(ann_radii)):
+for i in range(1,len(ann_radii)):
     s = np.where( np.logical_and(ann_radii[i-1] < r, r < ann_radii[i]) )
     if s == []: break # safety, if the max radius was too large
     ann_means_val.append(np.mean(data[s]))
@@ -75,7 +75,7 @@ ann_std_radii.append(0.)
 ann_std_val.append(0.)
 
 # create function
-print min(ann_means_radii)
+print(min(ann_means_radii))
 f = sp.interp1d(ann_means_radii, ann_means_val, kind='linear') # 'cubic'?
 
 # plot function
@@ -95,7 +95,7 @@ def azavg_creator(x, y):
     r = np.sqrt( (x-centre_p[0])**2 + (y-centre_p[1])**2 )
     return f(r)
 azavg = np.fromfunction(azavg_creator, [wcs.naxis2, wcs.naxis1])
-print azavg.shape
+print(azavg.shape)
 
 # subtract and write a new file
 hdulist[0].data = data / azavg

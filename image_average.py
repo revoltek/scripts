@@ -32,16 +32,16 @@ outimg = options.outimg
 rmsfile = options.rmsfile
 do_keyword = not options.skip_keyword
 do_rms = False
-print "Output file = "+outimg
+print("Output file = "+outimg)
 
 # Read RMS values from file
 if (rmsfile != None):
     do_rms = True
-    print "Reading RMSs:"
+    print("Reading RMSs:")
     try:
 	    rmsdata = np.loadtxt(rmsfile, comments='#', dtype=np.dtype({'names':['file','rms'], 'formats':['S50',float]}))
     except IOError:
-	    print "ERROR: error opening RMSs file, probably a wring name/format"
+	    print("ERROR: error opening RMSs file, probably a wring name/format")
 	    exit(1)
 
     rmsvalues=[]
@@ -58,7 +58,7 @@ if do_keyword:
     bmajs = img.imageinfo()['restoringbeam']['major']['value']
     bmins = img.imageinfo()['restoringbeam']['minor']['value']
     pas = img.imageinfo()['restoringbeam']['positionangle']['value']
-print "Averaging freq: "+str(freqs)+"(max:"+str(np.max(pixels))+",min:"+str(np.min(pixels))+",rms:"+str(np.std(pixels))+")"
+print("Averaging freq: "+str(freqs)+"(max:"+str(np.max(pixels))+",min:"+str(np.min(pixels))+",rms:"+str(np.std(pixels))+")")
 sys.stdout.flush()
 
 # Add pixel data of other images one by one.
@@ -66,7 +66,7 @@ for i, name in enumerate(imglist[1:]):
     tmp = pyrap.images.image(name)
     if do_rms: pixels_i = tmp.getdata()/rmsvalues[i]
     else: pixels_i = tmp.getdata()
-    print "Averaging freq:",str(tmp.coordinates().get_referencevalue()[0])+"(max:"+str(np.max(pixels_i))+",min:"+str(np.min(pixels_i))+",rms:"+str(np.std(pixels_i))+")"
+    print("Averaging freq:",str(tmp.coordinates().get_referencevalue()[0])+"(max:"+str(np.max(pixels_i))+",min:"+str(np.min(pixels_i))+",rms:"+str(np.std(pixels_i))+")")
     pixels += pixels_i
     freqs += tmp.coordinates().get_referencevalue()[0]
     if do_keyword:
@@ -81,8 +81,8 @@ if do_keyword:
     bmaj_mean = bmajs / float(len(imglist))
     bmin_mean = bmins / float(len(imglist))
     pa_mean = pas / float(len(imglist))
-    print "Mean freq:",str(freq_mean)
-    print "Mean beam (maj, min, pa):",str(bmaj_mean),str(bmin_mean),str(pa_mean)
+    print("Mean freq:",str(freq_mean))
+    print("Mean beam (maj, min, pa):",str(bmaj_mean),str(bmin_mean),str(pa_mean))
 
 # Write averaged pixel data
 img.saveas(outimg + ".img")
@@ -102,5 +102,5 @@ if do_keyword:
     t.putkeyword('imageinfo.restoringbeam.minor.value',bmin_mean)
     t.putkeyword('imageinfo.restoringbeam.positionangle.value',pa_mean)
 
-print "done."
+print("done.")
 sys.stdout.flush()

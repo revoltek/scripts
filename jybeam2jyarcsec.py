@@ -37,12 +37,12 @@ def jybeam2jyarcsec(flux, beam):
     return flux/(g*beam[0]*beam[1])
 
 if len(sys.argv) < 3:
-    print "Use", sys.argv[0], " flux [jy], bmaj [arcsec], bmin [arcsec]"
+    print("Use", sys.argv[0], " flux [jy], bmaj [arcsec], bmin [arcsec]")
     sys.exit(0)
 
 flux = float(sys.argv[1])
 bmaj = float(sys.argv[2])
 bmin = float(sys.argv[3])
 
-print "Flux in Jy/beam: %f (beam: %f arcsec x %f arcsec)" % (flux, bmaj, bmin)
-print "Flux in Jy/arcsec: %f" % jybeam2jyarcsec(flux, [bmaj,bmin])
+print("Flux in Jy/beam: %f (beam: %f arcsec x %f arcsec)" % (flux, bmaj, bmin))
+print("Flux in Jy/arcsec: %f" % jybeam2jyarcsec(flux, [bmaj,bmin]))
