@@ -1,9 +1,26 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin & Bas Van Der Tol
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-#
-# Written by Bas van der Tol (vdtol@strw.leidenuniv.nl), March 2011.
-#
+# Usage: ./ateam-dist.py RA (00h00m00s) DEC (+/-00d00m00s)
+# Example: ./ateam-dist.py 12h30m49.4s +12d23m28s
+# calculate the angular distance between an object and ateams/calibrators
+
 
 from pylab import *
 import pyrap.quanta as qa

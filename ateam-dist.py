@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 - Francesco de Gasperin
+# Copyright (C) 2019 - Francesco de Gasperin
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,6 @@
 # Usage: ./ateam-dist.py RA (00h00m00s) DEC (+/-00d00m00s)
 # Example: ./ateam-dist.py 12h30m49.4s +12d23m28s
 # calculate the angular distance between an object and ateams/calibrators
-
-
-
 
 
 import sys, os, re
