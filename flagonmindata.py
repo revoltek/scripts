@@ -66,7 +66,6 @@ def flagonmindata(MSh, mode, fract):
     ff = np.repeat(ff, npol, axis=2) # repeat new pol axis for npol times
     msflag = MSh.get_flags()
     print("count before:", np.count_nonzero(msflag.getcol('FLAG')))
-    print(msflag.getcol('FLAG').shape, ff.shape)
     ff = np.array(ff | msflag.getcol('FLAG'), dtype=bool)
     print("count after:", np.count_nonzero(ff))
     msflag.putcol('FLAG', ff)

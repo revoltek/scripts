@@ -54,7 +54,7 @@ class MShandler():
         self.ms = table(ms_files[0], readonly=False, ack=False)
 
     def get_antennas(self):
-        return taql('select NAME from %s/ANTENNA' % (self.ms_files[0]) )
+        return taql('select NAME from %s/ANTENNA' % (self.ms_files[0]) ).getcol('NAME')
 
     def get_freqs(self):
         # TODO: check if there is a smarter way to do it with concat.MS
@@ -80,7 +80,7 @@ class MShandler():
         """
         ms = self.ms # to use the "$" in taql
 
-        for ant_id, ant_name in enumerate(self.get_antennas().getcol('NAME')):
+        for ant_id, ant_name in enumerate(self.get_antennas()):
             if antennas is not None and ant_name not in antennas: continue
             logging.info('Workign on antenna: %s', ant_name)
             yield ant_id, ant_name, taql('select TIME, GAGGR(FLAG) as GFLAG, ANTENNA1, ANTENNA2, GAGGR(%s) as GDATA, GAGGR(%s) as GWEIGHT \
@@ -185,6 +185,11 @@ def reweight(MSh, mode):
 
 def plot(MSh, antennas):
 
+    for antenna in antennas:
+        if antenna not in MSh.get_antennas():
+            logging.error('Missing antenna %s' % antenna)
+            sys.exit(1)
+
     logging.info('Getting time/freq aggregated values...')
     freqs = MSh.get_freqs()
     elev = MSh.get_elev()
@@ -209,17 +214,16 @@ def plot(MSh, antennas):
         #axfv = plt.subplot2grid((6, 2), (5, 0), colspan=2)
         ###
 
-#        w = ms_ant.getcol('GWEIGHT')
-#        f = ms_ant.getcol('GFLAG')
+        w = ms_ant.getcol('GWEIGHT') # time,freq,pol
+        flag = ms_ant.getcol('GFLAG') # time,freq,pol
+        w[flag] = np.nan
 #        print w[3403,22,1,2]
 #        print f[3403,22,1,2]
-#        w[f] = np.nan
-#        print np.where(w==np.nanmax(w))
-#        print np.nanmax(w)
-#        sys.exit()
+        print np.where(w==np.nanmax(w))
+        print np.nanmax(w)
 
-        w = np.nanmean(ms_ant.getcol('GWEIGHT'), axis=1) # time,freq,pol
-        flag = np.all(ms_ant.getcol('GFLAG'), axis=1) # time,freq,pol
+        w = np.nanmean(w, axis=1)
+        flag = np.all(flag, axis=1)
 
         ### TEST
         ## subchan
@@ -262,8 +266,6 @@ def plot(MSh, antennas):
         if np.all(flag):
             continue
 
-        w[flag] = np.nan
-
         logging.info('Plotting %s...' % ant_name)
 
         w_f = np.nanmedian(w, axis=0) # average in time
@@ -273,7 +275,6 @@ def plot(MSh, antennas):
         bbox = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         aspect = (time[-1]-time[0])*bbox.height/((freqs[-1]-freqs[0])*bbox.width)
 
-        print(w[...,0], np.nanmax(w[...,0]))
         im = ax1.imshow(w[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax2.imshow(w[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
