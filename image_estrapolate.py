@@ -49,7 +49,7 @@ def linear_fit(x, y, xerr=None, yerr=None):
 
 # if values is > 5 sigma for each map then OK, otherwise do not perform regression
 def badrms(values, rmsvalues):
-  for t in xrange(len(values)):
+  for t in range(len(values)):
     if (values[t] < 5*rmsvalues[t]): 
       return False # TURN TO TRUE TO ACTIVATE
   return False
@@ -65,16 +65,16 @@ rmsfile = options.rmsfile
 maskimg = options.maskimg
 try: freq = float(options.freq)
 except: exit("ERROR: wrong final frequency")
-print "Output file = "+outimg
+print("Output file = "+outimg)
 sys.stdout.flush()
 
 # Read RMS values from file
 if (rmsfile != None):
-	print "Reading RMS file: "+rmsfile
+	print("Reading RMS file: "+rmsfile)
 	try:
 	    rmsdata = np.loadtxt(rmsfile, comments='#', dtype=np.dtype({'names':['file','rms'], 'formats':['S50',float]}))
 	except IOError:
-	    print "ERROR: error opening RMSs file, probably a wring name/format"
+	    print("ERROR: error opening RMSs file, probably a wring name/format")
 	    exit(1)
 
 # Read images one by one.
@@ -82,27 +82,27 @@ values = []
 frequencies = []
 rmsvalues = []
 for name in imglist:
-    print "--- Reading file: "+name
+    print("--- Reading file: "+name)
     try:
       image = pyrap.images.image(name)
       # workaround for getting correct axes
       index = np.where(np.array(image.coordinates().get_names())=='direction')[0][0]
       imgdata = np.array(image.getdata())
-      for i in xrange(index):
+      for i in range(index):
         imgdata = imgdata[0]
       values.append(imgdata)
       frequencies.append(image.coordinates().get_referencevalue()[0])
     except:
-      print "ERROR: error accessing iamges data, probably wrong name or data format"
+      print("ERROR: error accessing iamges data, probably wrong name or data format")
       exit(1)
 
-    print "Freq: ", image.coordinates().get_referencevalue()[0]
+    print("Freq: ", image.coordinates().get_referencevalue()[0])
     if (rmsfile != None):
       try:
 	rmsvalues.append([rms for (file, rms) in rmsdata  if file == name][0])
-        print "RMS: ", [rms for (file, rms) in rmsdata  if file == name][0]
+        print("RMS: ", [rms for (file, rms) in rmsdata  if file == name][0])
       except IndexError:
-	print "ERROR: error accessing RMSs data, probably wrong names in the file"
+	print("ERROR: error accessing RMSs data, probably wrong names in the file")
 	exit(1)
     else:
 	rmsvalues.append(0)
@@ -120,7 +120,7 @@ zonepixelnum=0
 
 # Read mask image
 if (maskimg):
-  print "Reading mask-image = "+maskimg
+  print("Reading mask-image = "+maskimg)
   sys.stdout.flush()
   image = pyrap.images.image(maskimg)
   maskimgval = np.array(image.getdata()[0][0])
@@ -128,8 +128,8 @@ else:
   maskimgval = np.ones(imgsizeX*imgsizeY)
   maskimgval = maskimgval.reshape(imgsizeX, imgsizeY)
 
-print ""
-print "Performing regression",
+print("")
+print("Performing regression", end=' ')
 sys.stdout.flush()
 
 # Make regression pixel by pixel
@@ -152,11 +152,11 @@ for i in range(0, imgsizeX):
 
     estrap[i][j] = np.power(10,(a*np.log10(freq)+b))
     err[i][j] = -100*sa/a # error in %
-  print ".",
+  print(".", end=' ')
   sys.stdout.flush()
 
 # Write data
-print "Writing spidx data."
+print("Writing spidx data.")
 estrapimg = pyrap.images.image(imglist[0])
 estrapimg.saveas(outimg)
 estrapimg = pyrap.images.image(outimg)
@@ -171,5 +171,5 @@ rmsimg.putdata(err)
 #rmsimg.tofits(outimg + "-rms.fits")
 del rmsimg
 
-print "Done."
+print("Done.")
 sys.stdout.flush()

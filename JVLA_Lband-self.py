@@ -24,7 +24,7 @@ num_plots = (num_ant/4)
 ref_ant = 'ea20'
 
 def clean(active_mss, i):
-    print "Cleaning..."
+    print("Cleaning...")
     tclean(vis=active_mss, imagename=prefix+"_img/self"+i, imsize=size, cell=cell, gridder='wproject', wprojplanes=-1, \
         pblimit=0., deconvolver='mtmfs', nterms=3, weighting='briggs', robust=0.5, niter=10000, usemask='auto-multithresh', \
         pbcor=False, savemodel='modelcolumn')
@@ -36,7 +36,7 @@ def clean(active_mss, i):
 
 clean(active_mss, '1')
 # PHASE 5m
-print "5m P cal"
+print("5m P cal")
 for active_ms in active_mss:
     gaintable = prefix+"_cals/"+active_ms+".Gp1"
     gaincal(vis=active_ms, caltable=gaintable, solint="5min", refant="", minblperant=4, minsnr=3.0, gaintype="G", calmode="p")
@@ -50,7 +50,7 @@ for active_ms in active_mss:
 
 clean(active_mss, '2')
 # PHASE 1m
-print "1m P cal"
+print("1m P cal")
 for active_ms in active_mss:
     gaintable = prefix+"_cals/"+active_ms+".Gp2"
     gaincal(vis=active_ms, caltable=gaintable, solint="1min", refant="", minblperant=4, minsnr=3.0, gaintype="G", calmode="p")
@@ -64,7 +64,7 @@ for active_ms in active_mss:
 
 clean(active_mss, '3')
 # PHASE 30s + AMP 10m
-print "30s P + 10m A cal"
+print("30s P + 10m A cal")
 for active_ms in active_mss:
     gaintable1 = prefix+"_cals/"+active_ms+".Gp3"
     gaincal(vis=active_ms, caltable=gaintable1, solint="30s", refant="", minblperant=4, minsnr=3.0, gaintype="G", calmode="p")

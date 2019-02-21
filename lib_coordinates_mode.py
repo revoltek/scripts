@@ -1,4 +1,22 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 # LOFAR Transients Key Project
 #
 # General purpose astronomical coordinate handling routines.
@@ -74,7 +92,7 @@ def altaz(mjds, ra, dec, lat=core_lat):
     if (ha < 0): ha = ha + 360
 
     #convert degrees to radians
-    ha, dec, lat = map(math.radians, (ha, dec, lat))
+    ha, dec, lat = list(map(math.radians, (ha, dec, lat)))
 
     #compute altitude in radians
     sin_alt = math.sin(dec)*math.sin(lat) + math.cos(dec)*math.cos(lat)*math.cos(ha)
@@ -86,7 +104,7 @@ def altaz(mjds, ra, dec, lat=core_lat):
     az = math.acos(cos_az)
 
     #convert radians to degrees
-    hrz_altitude, hrz_azimuth = map(math.degrees, (alt, az))
+    hrz_altitude, hrz_azimuth = list(map(math.degrees, (alt, az)))
 
     #choose hemisphere
     if (math.sin(ha) > 0): hrz_azimuth = 360 - hrz_azimuth;
@@ -341,7 +359,7 @@ def m(ra,dec,cra,cdec,incr):
 # field centre
 
 def lm_to_radec(ra0,dec0,l,m):
-    print 'This function should be the inverse of radec_to_lmn, but it is not.  There is likely an error here.'
+    print('This function should be the inverse of radec_to_lmn, but it is not.  There is likely an error here.')
     sind0=math.sin(dec0)
     cosd0=math.cos(dec0)
     dl=l

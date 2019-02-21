@@ -77,20 +77,20 @@ import ppgplot
 # Note, for documentation on ppgplot, see
 # http://www.astro.rug.nl/~breddels/python/ppgplot/ppgplot-doc.txt
 import numpy.ma
-from Tkinter import *
-import tkFileDialog
+from tkinter import *
+import tkinter.filedialog
 
 try:
         import pyrap.tables as pt
 except ImportError:
-        print "Error: The pyrap tables module is not available."
-        print "Perhaps you need to first type \'use LofIm\'?"
+        print("Error: The pyrap tables module is not available.")
+        print("Perhaps you need to first type \'use LofIm\'?")
         exit()
 
 
 version_string = 'v1.26, 2 September 2011\nWritten by George Heald, modified by Oscar Martinez'
-print 'uvplot.py',version_string
-print ''
+print('uvplot.py',version_string)
+print('')
 
 keepPlotting = True
 
@@ -101,8 +101,8 @@ def main(options):
         debug = options.debug
         inputMS = options.inms
         if inputMS == '':
-                print 'Error: You must specify a MS name.'
-                print '       Use "uvplot.py -h" to get help.'
+                print('Error: You must specify a MS name.')
+                print('       Use "uvplot.py -h" to get help.')
                 return
             
         if inputMS.endswith('/'):
@@ -118,16 +118,16 @@ def main(options):
                 return
         xaxis = options.xaxis
         if xaxis == 'ha':
-            print 'Adding derived columns to allow plotting hour angle...'
+            print('Adding derived columns to allow plotting hour angle...')
             try:
                 pt.addDerivedMSCal(inputMS)
             except:
-                print 'Failed, trying to remove and add columns...'
+                print('Failed, trying to remove and add columns...')
                 try:
                     pt.removeDerivedMSCal(inputMS)
                     pt.addDerivedMSCal(inputMS)
                 except:
-                    print 'That failed too... plotting HA seems to not be possible.'
+                    print('That failed too... plotting HA seems to not be possible.')
                     return
         yaxis = options.yaxis
         column = options.column
@@ -136,7 +136,7 @@ def main(options):
         if len(axlimits) == 4:
                 xmin,xmax,ymin,ymax = axlimits
         else:
-                print 'Error: You must specify four axis limits'
+                print('Error: You must specify four axis limits')
                 return
         showFlags = options.flag
         flagCol = options.colflag
@@ -144,7 +144,7 @@ def main(options):
         showStats = options.statistics
         timeslots = options.timeslots.split(',')
         if len(timeslots) != 2:
-                print 'Error: Timeslots format is start,end'
+                print('Error: Timeslots format is start,end')
                 return
         for i in range(len(timeslots)): timeslots[i] = int(timeslots[i])
         antToPlotSpl = options.antennas.split(',')
@@ -157,7 +157,7 @@ def main(options):
                         for j in range(int(tmpspl[0]),int(tmpspl[1])+1):
                                 antToPlot.append(j)
                 else:
-                        print 'Error: Could not understand antenna list.'
+                        print('Error: Could not understand antenna list.')
                         return
         polarizations = options.polar.split(',')
         for i in range(len(polarizations)):
@@ -169,12 +169,12 @@ def main(options):
         if operation != '':
             operation = int(operation)
             if convertStokes:
-                print 'Error: Stokes conversion is not compatible with special operations'
+                print('Error: Stokes conversion is not compatible with special operations')
                 return
         
         channels = options.channels.split(',')
         if len(channels) != 2:
-                print 'Error: Channels format is start,end'
+                print('Error: Channels format is start,end')
                 return
         for i in range(len(channels)): channels[i] = int(channels[i])
         if channels[1] == -1:
@@ -197,29 +197,29 @@ def main(options):
         firstTime = t.getcell("TIME", 0)
         lastTime = t.getcell("TIME", t.nrows()-1)
         intTime = t.getcell("INTERVAL", 0)
-        print 'Integration time:\t%f sec' % (intTime)
+        print('Integration time:\t%f sec' % (intTime))
         nTimeslots = (lastTime - firstTime) / intTime
         if timeslots[1] == -1:
                 timeslots[1] = nTimeslots
         else:
                 timeslots[1] += 1
-        print 'Number of timeslots:\t%d' % (nTimeslots)
+        print('Number of timeslots:\t%d' % (nTimeslots))
         # open the antenna and spectral window subtables
         tant = pt.table(t.getkeyword('ANTENNA'), readonly=True, ack=False)
         tsp = pt.table(t.getkeyword('SPECTRAL_WINDOW'), readonly=True, ack=False)
         numChannels = len(tsp.getcell('CHAN_FREQ',0))
-        print 'Number of channels:\t%d' % (numChannels)
-        print 'Reference frequency:\t%5.2f MHz' % (tsp.getcell('REF_FREQUENCY',0)/1.e6)
+        print('Number of channels:\t%d' % (numChannels))
+        print('Reference frequency:\t%5.2f MHz' % (tsp.getcell('REF_FREQUENCY',0)/1.e6))
 
         # Station names
         antList = tant.getcol('NAME')
         if len(antToPlot)==1 and antToPlot[0]==-1:
-                antToPlot = range(len(antList))
-        print 'Station list (only starred stations will be plotted):'
+                antToPlot = list(range(len(antList)))
+        print('Station list (only starred stations will be plotted):')
         for i in range(len(antList)):
                 star = ' '
                 if i in antToPlot: star = '*'
-                print '%s %2d\t%s' % (star, i, antList[i])
+                print('%s %2d\t%s' % (star, i, antList[i]))
 
         # Bail if we're in query mode
         if queryMode:
@@ -265,16 +265,16 @@ def main(options):
                         xaxisvals = getXAxisVals(tsp, xaxis, channels)
                         yaxisvals = getYAxisVals(tpart, yaxis, column, operation, showFlags, flagCol, channels, doUnwrap, convertStokes, xaxistype=1)
                 if xaxisvals == None: # This baseline must be empty, go to next one
-                        print 'No good data on baseline %s - %s' % (antList[ant1],antList[ant2])
+                        print('No good data on baseline %s - %s' % (antList[ant1],antList[ant2]))
                         continue
                     
                 if debug:
-                        print xaxisvals.shape
-                        print yaxisvals.shape
+                        print(xaxisvals.shape)
+                        print(yaxisvals.shape)
                         for r in range(len(xaxisvals)):
-                                print '%s'%yaxisvals[r]
+                                print('%s'%yaxisvals[r])
                 if len(xaxisvals) != len(yaxisvals): # something is wrong
-                        print 'Error: X and Y axis types incompatible'
+                        print('Error: X and Y axis types incompatible')
                         return
 
                 # Plot the data, each polarization in a different color
@@ -290,7 +290,7 @@ def main(options):
                 if ymin == '':
                         miny = yaxisvals.min()
                         if numpy.ma.getmaskarray(yaxisvals.min()):
-                                print 'All data flagged on baseline %s - %s' % (antList[ant1],antList[ant2])
+                                print('All data flagged on baseline %s - %s' % (antList[ant1],antList[ant2]))
                                 continue
                 else:
                         miny = float(ymin)
@@ -332,12 +332,12 @@ def main(options):
                     elif operation == 2:
                         label = 'XY.YX*'
                     else:
-                        print 'Special operation not defined'
+                        print('Special operation not defined')
                         return
             
                     ppgplot.pgsci(plotColors[0])
                     tmpvals = yaxisvals
-                    print 'Baseline',antList[ant1],'-',antList[ant2],': Plotting',len(tmpvals[~tmpvals.mask]),'points of ' + label
+                    print('Baseline',antList[ant1],'-',antList[ant2],': Plotting',len(tmpvals[~tmpvals.mask]),'points of ' + label)
                     ppgplot.pgpt(xaxisvals[~tmpvals.mask], tmpvals[~tmpvals.mask], 1)
                             
                     addInfo(showStats, tmpvals[~tmpvals.mask], label, labXPositions[1], labYPositions[1])
@@ -346,7 +346,7 @@ def main(options):
                         ppgplot.pgsci(plotColors[j])
                         tmpvals = yaxisvals[:,j]
                         if j == polarizations[0]:
-                                print 'Baseline',antList[ant1],'-',antList[ant2],': Plotting',len(tmpvals[~tmpvals.mask]),'points per polarization'
+                                print('Baseline',antList[ant1],'-',antList[ant2],': Plotting',len(tmpvals[~tmpvals.mask]),'points per polarization')
                         ppgplot.pgpt(xaxisvals[~tmpvals.mask], tmpvals[~tmpvals.mask], 1)
                         
                         addInfo(showStats, tmpvals[~tmpvals.mask], polLabels[j], labXPositions[j], labYPositions[j])
@@ -356,7 +356,7 @@ def main(options):
         ppgplot.pgclos()
 
         if xaxis=='ha':
-            print 'Removing derived columns...'
+            print('Removing derived columns...')
             pt.removeDerivedMSCal(inputMS)
                 
 # Add information, i.e. the label inte plot and the statistics if required
@@ -367,7 +367,7 @@ def addInfo(showStats, values, label, xPosition, yPosition):
                 mean = values.mean()
                 std = values.std()
 
-                print "   " + label + ":" + " mean = %.5f" % mean + "\t std = %.5f" % std
+                print("   " + label + ":" + " mean = %.5f" % mean + "\t std = %.5f" % std)
 
 
         ppgplot.pgmtxt('T', yPosition, xPosition, 0.5, label)
@@ -389,7 +389,7 @@ def getData(table,column):
             return (columnAData+columnBData)
     
     # If we reach this point it means that the column is not correct
-    print 'Column to plot: ' + column + ' is not correct!'
+    print('Column to plot: ' + column + ' is not correct!')
     return None
     
 def getDataDescription(column):
@@ -421,7 +421,7 @@ def getXAxisVals(table, axisname, channels):
     elif axisname == 'chan':
         tmp = table.getcol('CHAN_FREQ')[0]
         if tmp != None:
-            return numpy.array(range(len(tmp))[channels[0]:channels[1]],dtype=numpy.float)+1
+            return numpy.array(list(range(len(tmp)))[channels[0]:channels[1]],dtype=numpy.float)+1
         return None
     elif axisname == 'freq':
         tmp = table.getcol('CHAN_FREQ')[0]
@@ -429,7 +429,7 @@ def getXAxisVals(table, axisname, channels):
             return numpy.array(tmp[channels[0]:channels[1]],dtype=numpy.float)/1.e6
         return None
     else:
-        print 'Error: Requested axis not implemented'
+        print('Error: Requested axis not implemented')
         return None
     
 def rangephase(phase):
@@ -523,7 +523,7 @@ def getYAxisVals(table, axisname, column, operation, showFlags, flagCol, channel
                     return tmp3
             return None                    
         else:
-            print 'Error: Requested axis not implemented'
+            print('Error: Requested axis not implemented')
             return None
     elif operation == 1:
 
@@ -580,7 +580,7 @@ def getYAxisVals(table, axisname, column, operation, showFlags, flagCol, channel
             else:
                 return numpy.ma.transpose(phaseop)
         else:
-            print 'Error: Requested axis not implemented'
+            print('Error: Requested axis not implemented')
             return None    
     elif operation == 2:
 
@@ -637,10 +637,10 @@ def getYAxisVals(table, axisname, column, operation, showFlags, flagCol, channel
             else:
                 return numpy.ma.transpose(phaseop)
         else:
-            print 'Error: Requested axis not implemented'
+            print('Error: Requested axis not implemented')
             return None     
     else:
-        print 'Error: Requested axis not implemented'
+        print('Error: Requested axis not implemented')
         return None      
 def signal_handler(signal, frame):
         global keepPlotting
@@ -837,7 +837,7 @@ class GuiFrontend:
                 self.myoptions.column = self.columnEntry.get()
                 self.myoptions.timeslots = self.timeEntry.get()
                 self.myoptions.channels = self.chanEntry.get()
-                tmplist = map(int,self.antList.curselection())
+                tmplist = list(map(int,self.antList.curselection()))
                 if tmplist == []:
                         tmpstring = '-1,'
                 else:
@@ -853,25 +853,25 @@ class GuiFrontend:
                 self.myoptions.flag = bool(self.flagvar.get())
                 self.myoptions.autocorr = bool(self.acorvar.get())
                 self.myoptions.statistics = bool(self.statsvar.get())
-                print 'Plotting with GUI-specified options ...\n'
+                print('Plotting with GUI-specified options ...\n')
                 if self.myoptions.debug:
-                        print self.myoptions
+                        print(self.myoptions)
                 main(self.myoptions)
-                print '\nPlotting routine completed.'
-                print 'You can change options and plot again, or quit.\n'
+                print('\nPlotting routine completed.')
+                print('You can change options and plot again, or quit.\n')
 
         def getmslocation(self):
-                dirname = tkFileDialog.askdirectory(initialdir='.',title='Please select the MS to plot')
+                dirname = tkinter.filedialog.askdirectory(initialdir='.',title='Please select the MS to plot')
                 self.inputEntry.delete(0, END)
                 self.inputEntry.insert(0, dirname)
 
         def listdevices(self):
-                print 'Listing of available PGPLOT devices:\n'
+                print('Listing of available PGPLOT devices:\n')
                 ppgplot.pgldev()
-                print '\n'
+                print('\n')
 
         def getantlist(self):
-                print 'Listing antennas in MS '+self.inputEntry.get()+'\n'
+                print('Listing antennas in MS '+self.inputEntry.get()+'\n')
                 ttmp = pt.table(self.inputEntry.get(),readonly=True,ack=False)
                 tant = pt.table(ttmp.getkeyword('ANTENNA'),readonly=True,ack=False)
                 antlist = tant.getcol('NAME')
@@ -885,19 +885,19 @@ class GuiFrontend:
 def loader(options):
         if (options.gui or options.colflag == 'ui') and not options.query:
                 if options.colflag == 'ui':
-                        print 'Warning: You used \'-gui\' instead of \'--gui\'.'
-                        print 'Resetting the colflag parameter to FLAG and using the gui interface.'
-                        print 'If you really have a flag column called ui, this is a problem!\n'
+                        print('Warning: You used \'-gui\' instead of \'--gui\'.')
+                        print('Resetting the colflag parameter to FLAG and using the gui interface.')
+                        print('If you really have a flag column called ui, this is a problem!\n')
                         options.colflag = 'FLAG'
                 root = Tk()
                 root.title('uvplot.py GUI frontend')
                 # initialize the gui with any user-selected options
                 mygui = GuiFrontend(root, options)
                 # start the gui
-                print '--------------------------------------------------------'
-                print 'WARNING!!!! The gui frontend is still under development.'
-                print 'Use caution - double check your inputs!!'
-                print '--------------------------------------------------------\n\n'
+                print('--------------------------------------------------------')
+                print('WARNING!!!! The gui frontend is still under development.')
+                print('Use caution - double check your inputs!!')
+                print('--------------------------------------------------------\n\n')
                 root.mainloop()
                 # update the options with what was specified in the gui
                 options = mygui.myoptions

@@ -1,9 +1,26 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin & Bas Van Der Tol
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-#
-# Written by Bas van der Tol (vdtol@strw.leidenuniv.nl), March 2011.
-#
+# Usage: ./ateam-dist.py RA (00h00m00s) DEC (+/-00d00m00s)
+# Example: ./ateam-dist.py 12h30m49.4s +12d23m28s
+# calculate the angular distance between an object and ateams/calibrators
+
 
 from pylab import *
 import pyrap.quanta as qa
@@ -22,8 +39,8 @@ targets = [ {'name' : 'CasA', 'ra' : 6.123487680622104,  'dec' : 1.0265153995604
 if len(sys.argv) == 2:
    msname = sys.argv[1]
 else:
-   print "Usage"
-   print "   plot_Ateam_elevation.py <msname>"
+   print("Usage")
+   print("   plot_Ateam_elevation.py <msname>")
    
 
 # Create a measures object
@@ -54,8 +71,8 @@ ra = direction[ ant_no, field_no, 0 ]
 if ra<0: ra += 2*numpy.pi
 dec = direction[ ant_no, field_no, 1 ]
 targets.insert(0, {'name' : 'Pointing', 'ra' : ra, 'dec' : dec})
-print "Target ra/dec (deg):", targets[0]['ra']*180/numpy.pi, targets[0]['dec']*180/numpy.pi
-print targets
+print(("Target ra/dec (deg):", targets[0]['ra']*180/numpy.pi, targets[0]['dec']*180/numpy.pi))
+print(targets)
 field_table.close()
 
 
@@ -78,11 +95,11 @@ for target in targets:
    t1 = me.epoch('utc', t)
    me.doframe(t1)
 
-   if 'ra' in target.keys():
+   if 'ra' in list(target.keys()):
       ra_qa  = qa.quantity( target['ra'], 'rad' )
       dec_qa = qa.quantity( target['dec'], 'rad' )
       direction =  me.direction('j2000', ra_qa, dec_qa)
-      print ra_qa, dec_qa
+      print((ra_qa, dec_qa))
    else :
       direction =  me.direction(target['name'])
       

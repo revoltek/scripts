@@ -1,4 +1,21 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import sys
 import pydal as dal
@@ -7,17 +24,17 @@ from scipy import *
 
 # check usage
 if len(sys.argv) < 5 or len(sys.argv) > 9:
-        print "Usage:"
-        print "\tclosure_phase.py <file> <antenna1> <antenna2> <antenna3> " + \
+        print("Usage:")
+        print("\tclosure_phase.py <file> <antenna1> <antenna2> <antenna3> " + \
               "[sub-band] ['channel' or 'time'] [channel/time range] " + \
-              "[polarization (0-6)]"
-        print "\t<> required"
-        print "\tE.g., closure_phase.py /lifs003/SB3.MS 1 5 10 0 channel 100:110 6"
-        print "\tSingle or range of channels and times for averaging (in relative bin coordinates; ranges colon-delimited);"
-        print "\tPolarization 0-3 plots them individually, 4 plots xx and xy, 5 plots xx and yx, 6 plots xx and yy"
-        print "\t-1 means plot all.  Default plots the closure phase of the xx for all channels as function of time for subband 0."
-        print "\tNote that antenna numbers are zero-based and must be given in order from lowest to highest."
-        print ""
+              "[polarization (0-6)]")
+        print("\t<> required")
+        print("\tE.g., closure_phase.py /lifs003/SB3.MS 1 5 10 0 channel 100:110 6")
+        print("\tSingle or range of channels and times for averaging (in relative bin coordinates; ranges colon-delimited);")
+        print("\tPolarization 0-3 plots them individually, 4 plots xx and xy, 5 plots xx and yx, 6 plots xx and yy")
+        print("\t-1 means plot all.  Default plots the closure phase of the xx for all channels as function of time for subband 0.")
+        print("\tNote that antenna numbers are zero-based and must be given in order from lowest to highest.")
+        print("")
         sys.exit(1)
 
 # other customizations
@@ -30,23 +47,23 @@ if len(sys.argv) < 7:  quantity_plot = 'channel'
 else: quantity_plot = sys.argv[6]
 if len(sys.argv) < 8:  range_plot = [0]
 elif len((sys.argv[7]).split(':')) > 1:
-        range_plot = range(int((sys.argv[7]).split(':')[0]),int((sys.argv[7]).split(':')[1]))
+        range_plot = list(range(int((sys.argv[7]).split(':')[0]),int((sys.argv[7]).split(':')[1])))
 else: range_plot = [int(sys.argv[7])]
 if len(sys.argv) < 9:  pol = 0
 else:	pol = int(sys.argv[8])
 if pol > 3:
         pol2 = pol-3
         pol = 0
-        print "plotting pols %i and %i" % (pol, pol2)
+        print("plotting pols %i and %i" % (pol, pol2))
 else:
         pol2 = 0
-        print "plotting pol %i" % (pol)
+        print("plotting pol %i" % (pol))
 
 # open file
 msds= dal.dalDataset()
 if ( True != msds.open(sys.argv[1]) ):
-        print "ERROR: Could not open file: " + sys.argv[1]
-        print "       Please check the file and try again."
+        print("ERROR: Could not open file: " + sys.argv[1])
+        print("       Please check the file and try again.")
         sys.exit(1)
 
 # open tables

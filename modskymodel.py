@@ -68,25 +68,25 @@ patchprefix = options.patch
 shift = options.shift
 verbose = options.verbose
 
-print "Input BBS file = "+inbbs
-print "Output BBS file = "+outbbs
+print("Input BBS file = "+inbbs)
+print("Output BBS file = "+outbbs)
 
-if mask != None: print "Mask = "+mask
-if patchprefix != None: print "Patch prefix = "+patchprefix
-if spidximg != None: print "Spectral index image = "+spidximg
+if mask != None: print("Mask = "+mask)
+if patchprefix != None: print("Patch prefix = "+patchprefix)
+if spidximg != None: print("Spectral index image = "+spidximg)
 
 if shift != None:
   try:
     (rashift, decshift) = shift.replace(' ', '').split(',')
     rashift = float(rashift)
     decshift = float(decshift)
-    print "Ra shift: ", rashift, "arcsec"
-    print "Dec shift: ", decshift, "arcsec"
+    print("Ra shift: ", rashift, "arcsec")
+    print("Dec shift: ", decshift, "arcsec")
   except:
-    print "ERROR: bad formatted Ra,Dec shift. Should be something like \"-s 2,5\""
+    print("ERROR: bad formatted Ra,Dec shift. Should be something like \"-s 2,5\"")
 
 if spidximg == None and mask == None and shift == None:
-  print "Nothing to do!"
+  print("Nothing to do!")
   exit(0)
 
 # Open mask
@@ -95,7 +95,7 @@ if mask != None:
     maskdata = pyrap.images.image(mask)
     maskval = maskdata.getdata()[0][0]
   except:
-    print "ERROR: error opening MASK (",mask,"), probably a wrong name/format"
+    print("ERROR: error opening MASK (",mask,"), probably a wrong name/format")
     exit(1)
 
 # Open spidx image
@@ -104,7 +104,7 @@ if spidximg != None:
     spidxdata = pyrap.images.image(spidximg)
     spidxval = spidxdata.getdata()[0][0]
   except:
-    print "ERROR: error opening SPIDX image (",spidximg,"), probably a wrong name/format"
+    print("ERROR: error opening SPIDX image (",spidximg,"), probably a wrong name/format")
     exit(1)
 
 sys.stdout.flush()
@@ -159,18 +159,18 @@ for i, cc in enumerate(lines):
       if (not maskval[math.floor(pixY)][math.floor(pixX)]) != reverse:
         totFluxMask += ccI
         if patchprefix == None:
-            if verbose: print "Removing component \"",ccname,"\" because it is masked."
+            if verbose: print("Removing component \"",ccname,"\" because it is masked.")
             continue
         else:
-            if verbose: print "Renameing patch for \"",ccname,"\" because it is masked."
+            if verbose: print("Renameing patch for \"",ccname,"\" because it is masked.")
             # add to the list of patches to update
             if ccpatch not in patchtoupdate: patchtoupdate.append(ccpatch)
       else:
         totFluxOutMask += ccI
 
     except:
-      print "WARNING: failed to find a good mask value for component \"", ccname, "\"."
-      print "-> Removing this component"
+      print("WARNING: failed to find a good mask value for component \"", ccname, "\".")
+      print("-> Removing this component")
       continue
    
   if spidximg != None:
@@ -184,8 +184,8 @@ for i, cc in enumerate(lines):
       ccspidx = '[%.2f]' % val
       if isNaN(val): raise ValueError('Nan occurred')
     except:
-      print "WARNING: failed to find a good spidx value for component \"", ccname, "\"."
-      print "-> Set spectral index to [-0.7]"
+      print("WARNING: failed to find a good spidx value for component \"", ccname, "\".")
+      print("-> Set spectral index to [-0.7]")
       ccspidx = '[-0.7]'
 
   cc[PosRA] = ccra
@@ -198,8 +198,8 @@ pbar.finish()
 
 # print tot flux in mask values
 if mask != None:
-    print "Total masked flux:", totFluxMask
-    print "Total UNmasked flux:", totFluxOutMask
+    print("Total masked flux:", totFluxMask)
+    print("Total UNmasked flux:", totFluxOutMask)
 
 # update patches names
 if patchprefix != None:

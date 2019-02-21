@@ -30,18 +30,18 @@ import pywcs
 def pbcorr(mosaicfits, pbfits, mosaicpbfits='', mosaicpbcutfits='', Pcut = 0.4):
     
     if not os.path.exists(mosaicfits):
-        raise Exception, "missing file: {m}".format(m=mosaicfits)
+        raise Exception("missing file: {m}".format(m=mosaicfits))
     if not os.path.exists(pbfits):
-        raise Exception, "missing file: {m}".format(m=pbfits)
+        raise Exception("missing file: {m}".format(m=pbfits))
 
     if mosaicpbfits=='': mosaicpbfits=mosaicfits+'_PBCOR'
     if mosaicpbcutfits=='': mosaicpbcutfits=mosaicfits+'_PBCUT'
     
     if os.path.isfile(mosaicpbfits):
-        print "warning: overwriting {m}".format(m=mosaicpbfits)
+        print("warning: overwriting {m}".format(m=mosaicpbfits))
         os.system("rm -rf %s" %(mosaicpbfits))
     if os.path.isfile(mosaicpbcutfits):
-        print "warning: overwriting {m}".format(m=mosaicpbcutfits)
+        print("warning: overwriting {m}".format(m=mosaicpbcutfits))
         os.system("rm -rf %s" %(mosaicpbcutfits))
         
     # work on image
@@ -62,7 +62,7 @@ def pbcorr(mosaicfits, pbfits, mosaicpbfits='', mosaicpbcutfits='', Pcut = 0.4):
         ny, nx = S
         dim = 2
     else:
-        raise Exception, "I don't know how to handle an image with this shape: "+str(S)
+        raise Exception("I don't know how to handle an image with this shape: "+str(S))
     
     mosaiccut = mosaicdat.copy()
     pbcorout = np.zeros_like(mosaicdat)
@@ -75,27 +75,27 @@ def pbcorr(mosaicfits, pbfits, mosaicpbfits='', mosaicpbcutfits='', Pcut = 0.4):
     
     pbS = pbcordat.shape
     if len(pbS) == 4:
-        print "dim 4"
+        print("dim 4")
         pbnc, pbnf, pbny, pbnx = pbS
         ndim = 4
     elif len(pbS) == 2:
-        print "dim 2"
+        print("dim 2")
         pbny, pbnx = pbS
         ndim = 2
     else:
-        raise Exception, "I don't know how to handle an image with this shape: "+str(pbS)
+        raise Exception("I don't know how to handle an image with this shape: "+str(pbS))
     
     # rescale? 
     if pbnx != nx or pbny != ny:
         #tt[[0,0,1,1,2,2],:][:,[0,0,1,1,2,2]]
-        print nx,ny
-        print pbnx, pbny
+        print(nx,ny)
+        print(pbnx, pbny)
     
         # resample the pb image on the input image grid
         pbcordat_resampled = np.nan*np.ones_like(mosaicdat)
         
         if ndim == 4:
-            print "resampling pb image... this may take a while"
+            print("resampling pb image... this may take a while")
             # loop by column 
             prog = 0
             for xi in range(nx):
@@ -134,7 +134,7 @@ def pbcorr(mosaicfits, pbfits, mosaicpbfits='', mosaicpbcutfits='', Pcut = 0.4):
                         # still a bug... pby and pbx should be transposed
             
         elif ndim == 2:
-            print "resampling pb image... this may take a while"
+            print("resampling pb image... this may take a while")
             # loop by column 
             prog = 0
             for xi in range(nx):
@@ -173,7 +173,7 @@ def pbcorr(mosaicfits, pbfits, mosaicpbfits='', mosaicpbcutfits='', Pcut = 0.4):
         # save rescaled pb for inspection
         pb_rescaled_fits=mosaicfits.replace('.fits','')+'.pb.fits'
         if os.path.isfile(pb_rescaled_fits):
-            print "warning: overwriting {m}".format(m=pb_rescaled_fits)
+            print("warning: overwriting {m}".format(m=pb_rescaled_fits))
             os.system("rm -rf %s" %(pb_rescaled_fits))
         pf.writeto(pb_rescaled_fits, pbcordat_resampled**0.5, header=mosaichead)
 
@@ -190,7 +190,7 @@ def main(opts, args):
     if opts.output == None:
         opts.output = args[1].rstrip('/')+'_PBcor'
     if opts.pbcut > 1 or opts.pbcut < 0:
-        print "ERROR: PBcut must be between 0 and 1."
+        print("ERROR: PBcut must be between 0 and 1.")
         sys.exit(1)
 
     ms = args[0].rstrip('/')
@@ -204,7 +204,7 @@ def main(opts, args):
 
     img_tmp = 'awimg_'+str(random.randint(0,1e9))
     cellsize = np.ceil(fov*3600./npix)
-    print 'running: awimager ms='+ms+' image='+img_tmp+' niter=0 data='+data_col+' weight=briggs robust=0 npix='+str(npix)+' cellsize='+str(cellsize)+'arcsec padding=1. stokes=I operation=mfclark FindNWplanes=True PBCut=1e-2'
+    print('running: awimager ms='+ms+' image='+img_tmp+' niter=0 data='+data_col+' weight=briggs robust=0 npix='+str(npix)+' cellsize='+str(cellsize)+'arcsec padding=1. stokes=I operation=mfclark FindNWplanes=True PBCut=1e-2')
     os.system('awimager ms='+ms+' image='+img_tmp+' niter=0 data='+data_col+' weight=briggs robust=0 npix='+str(npix)+' cellsize='+str(cellsize)+'arcsec padding=1. stokes=I operation=mfclark FindNWplanes=True PBCut=1e-2')
     os.system('avgpbz.py '+img_tmp+'0.avgpb')
     os.system('image2fits in='+img_tmp+'0.avgpbz out='+img_tmp+'.fits')
@@ -224,6 +224,6 @@ opt.add_option('-p','--pbcut',help='Cut at PB value, must be a number from 0 to 
 opt.add_option('-n','--npix',help='Number of pixel in the pb image made by awimager [512]', default='512', type='int')
 opts,args = opt.parse_args()
 if len(args) != 2:
-    print 'Need required argument msname, image'
+    print('Need required argument msname, image')
 else:
     main(opts,args)

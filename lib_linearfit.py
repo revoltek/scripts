@@ -137,7 +137,7 @@ def linear_fit(x, y, yerr=None, tolog=False):
     # tolog : convert in log space x, y, and yerr before doing linear regression
     from scipy.optimize import curve_fit
     if tolog:
-        print yerr, yerr is None
+        print(yerr, yerr is None)
         if not yerr is None: yerr = 0.434*yerr/y
         x=np.log10(x)
         y=np.log10(y)
@@ -216,11 +216,11 @@ def plotlinax(data, plotname):
 #    ax.errorbar(thisdata['freq'], thisdata['flux'], fmt='k-')
     B = linear_fit(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'])
 #    B = linear_fit_odr(thisdata['freq'], thisdata['flux'], yerr=thisdata['rms'])
-    print "Regression:", B
+    print("Regression:", B)
     ax.plot(freqs, [f(freq, B[0], B[1]) for freq in freqs], \
         label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
-    print "Writing "+plotname
+    print("Writing "+plotname)
     fig.savefig(plotname, bbox_inches='tight')
     del fig
 
@@ -257,7 +257,7 @@ def plotlogax(data, plotname):
     B = linear_fit(np.log10(data['freq']), np.log10(data['flux']),\
 #    B = linear_fit_odr(np.log10(data['freq']), np.log10(data['flux']),\
         yerr = 0.434*data['rms']/data['flux'])
-    print "Regression:", B
+    print("Regression:", B)
     ax.plot(freqs, [10**f(np.log10(freq), B[0], B[1]) for freq in freqs], \
         label=r'$\alpha$={:.2f}$\pm${:.2f}'.format(B[0],B[2]))
     ax.legend(loc=1)
@@ -281,7 +281,7 @@ def plotlogax(data, plotname):
             i.set_visible(False)
         count+=1
 
-    print "Writing "+plotname
+    print("Writing "+plotname)
     fig.savefig(plotname, bbox_inches='tight')
     del fig
 
@@ -294,10 +294,10 @@ if __name__ == "__main__":
     options, _null = opt.parse_args()
     datafile = options.datafile
     if datafile == None: sys.exit('missing data file')
-    print "Data file = "+datafile
+    print("Data file = "+datafile)
     output = options.output
     if output == None: output = datafile+'.pdf'
-    print "Output file = "+output
+    print("Output file = "+output)
     log = options.log
 
     data = np.loadtxt(datafile, comments='#', dtype=np.dtype({'names':['freq','flux','rms'], 'formats':[float,float,float]}))

@@ -1,4 +1,21 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2019 - Francesco de Gasperin
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """
 Francesco de Gasperin
@@ -10,9 +27,6 @@ Adapt the MS format of uGMRT data to one usable by LOFAR software.
 import os, sys, logging, time
 import numpy as np
 from casacore import tables
-import matplotlib as mpl
-mpl.use("Agg")
-import matplotlib.pyplot as plt
 
 class MS( object ):
 
@@ -23,6 +37,12 @@ class MS( object ):
         self.tspect = tables.table(ms_file+"/SPECTRAL_WINDOW", readonly=False, ack=False)
 
         logging.info("Starting work on MS at '" + ms_file + "'...")
+
+    def close(self):
+        logging.info("Closing tables...")
+        self.t.close()
+        self.tpol.close()
+        self.tspect.close()
 
     def columnExists(self, columnName):
         '''
@@ -86,15 +106,31 @@ class MS( object ):
 
         pathMS = self.ms_file
         times = (tables.taql("select distinct TIME from $pathMS")).getcol("TIME")
-        intervalPrecise = times[1] - times[0]
+        intervals = times[1:] - times[:-1]
+        print(np.max(intervals))
+        intervals = intervals[intervals < 1.5*np.min(intervals)] # remove jumps
+        print(np.max(intervals))
+        intervalPrecise = np.mean(intervals)
+        logging.info('Interval set to %f' % intervalPrecise)
 
         # Open the MS as a table in a way that changes can be made.
         intervals       = self.t.getcol("INTERVAL")
-        intervalsNew    = np.ones_like(intervals) * intervalPrecise
-        self.t.putcol("INTERVAL", intervalsNew)
+        logging.debug("Old intervals:")
+        logging.debug(intervals)
+        intervals       = np.ones_like(intervals) * intervalPrecise
+        self.t.putcol("INTERVAL", intervals)
 
-        logging.debug("Time intervals (should be equal):")
-        logging.debug(times[1:] - times[:-1])
+        # Adjust times
+        times = self.t.getcol("TIME") 
+        logging.debug("Time intervals (old):")
+        logging.debug(np.unique(times)[1:] - np.unique(times)[:-1])
+
+        times = times[0] + np.round((times-times[0])/intervals, 0)*intervals
+
+        logging.debug("Time intervals (new - should be equal):")
+        logging.debug(np.unique(times)[1:] - np.unique(times)[:-1])
+
+        self.t.putcol("TIME", times)
 
     def updateColumns(self, updateFreq):
         logging.info("- Change existing (or create alternative) columns for data, flags and weights -")
@@ -116,12 +152,12 @@ class MS( object ):
         columnDescription        = self.t.getcoldesc("DATA")
         dataManagerInfo          = self.t.getdminfo("DATA")
 
-        logging.debug("keywordNames:")
-        logging.debug(keywordNames)
-        logging.debug("columnDescription:")
-        logging.debug(columnDescription)
-        logging.debug("dataManagerInfo:")
-        logging.debug(dataManagerInfo)
+        #logging.debug("keywordNames:")
+        #logging.debug(keywordNames)
+        #logging.debug("columnDescription:")
+        #logging.debug(columnDescription)
+        #logging.debug("dataManagerInfo:")
+        #logging.debug(dataManagerInfo)
 
         dataManagerInfo["NAME"]                                  = "TiledDATAFix"
         dataManagerInfo["SPEC"]["DEFAULTTILESHAPE"]              = np.array([4, 40, 819], dtype = np.int32)
@@ -129,8 +165,8 @@ class MS( object ):
         dataManagerInfo["SPEC"]["HYPERCUBES"]["*1"]["CubeShape"] = np.array([4, visibilities.shape[1], visibilities.shape[0]], dtype = np.int32)
         dataManagerInfo["SPEC"]["HYPERCUBES"]["*1"]["CellShape"] = np.array([4, visibilities.shape[1]], dtype = np.int32)
 
-        logging.debug("dataManagerInfo (updated):")
-        logging.debug(dataManagerInfo)
+        #logging.debug("dataManagerInfo (updated):")
+        #logging.debug(dataManagerInfo)
 
         logging.info("Removing column 'DATA', if it exists...")
         if self.columnExists('DATA'):
@@ -159,12 +195,12 @@ class MS( object ):
         columnDescription        = self.t.getcoldesc("FLAG")
         dataManagerInfo          = self.t.getdminfo("FLAG")
 
-        logging.debug("keywordNames:")
-        logging.debug(keywordNames)
-        logging.debug("columnDescription:")
-        logging.debug(columnDescription)
-        logging.debug("dataManagerInfo:")
-        logging.debug(dataManagerInfo)
+        #logging.debug("keywordNames:")
+        #logging.debug(keywordNames)
+        #logging.debug("columnDescription:")
+        #logging.debug(columnDescription)
+        #logging.debug("dataManagerInfo:")
+        #logging.debug(dataManagerInfo)
 
         dataManagerInfo["NAME"]                                  = "TiledFlagMartijn"
         dataManagerInfo["SPEC"]["DEFAULTTILESHAPE"]              = np.array([4, 40, 819], dtype = np.int32)
@@ -172,8 +208,8 @@ class MS( object ):
         dataManagerInfo["SPEC"]["HYPERCUBES"]["*1"]["CubeShape"] = np.array([4, flags.shape[1], flags.shape[0]], dtype = np.int32)
         dataManagerInfo["SPEC"]["HYPERCUBES"]["*1"]["CellShape"] = np.array([4, flags.shape[1]], dtype = np.int32)
 
-        logging.debug("dataManagerInfo (updated):")
-        logging.debug(dataManagerInfo)
+        #logging.debug("dataManagerInfo (updated):")
+        #logging.debug(dataManagerInfo)
 
         logging.info("Removing column 'FLAG', if it exists...")
         if self.columnExists('FLAG'):
@@ -200,12 +236,12 @@ class MS( object ):
         columnDescription        = self.t.getcoldesc("WEIGHT_SPECTRUM")
         dataManagerInfo          = self.t.getdminfo("WEIGHT_SPECTRUM")
 
-        logging.debug("keywordNames:")
-        logging.debug(keywordNames)
-        logging.debug("columnDescription:")
-        logging.debug(columnDescription)
-        logging.debug("dataManagerInfo:")
-        logging.debug(dataManagerInfo)
+        #logging.debug("keywordNames:")
+        #logging.debug(keywordNames)
+        #logging.debug("columnDescription:")
+        #logging.debug(columnDescription)
+        #logging.debug("dataManagerInfo:")
+        #logging.debug(dataManagerInfo)
 
         dataManagerInfo["NAME"]                                  = "TiledWgtSpectrumMartijn"
         dataManagerInfo["SPEC"]["DEFAULTTILESHAPE"]              = np.array([4, 40, 819], dtype = np.int32)
@@ -213,8 +249,8 @@ class MS( object ):
         dataManagerInfo["SPEC"]["HYPERCUBES"]["*1"]["CubeShape"] = np.array([4, weights.shape[1], weights.shape[0]], dtype = np.int32)
         dataManagerInfo["SPEC"]["HYPERCUBES"]["*1"]["CellShape"] = np.array([4, weights.shape[1]], dtype = np.int32)
 
-        logging.debug("dataManagerInfo (updated):")
-        logging.debug(dataManagerInfo)
+        #logging.debug("dataManagerInfo (updated):")
+        #logging.debug(dataManagerInfo)
 
         logging.info("Removing column 'WEIGHT_SPECTRUM', if it exists...")
         if self.columnExists('WEIGHT_SPECTRUM'):
@@ -258,6 +294,7 @@ if __name__=="__main__":
         MS.updateFieldMetadata()
         MS.updateIntervals()
         MS.updateColumns(updateFreq)
+        MS.close()
 
     logging.debug('Running time %.0f s' % (time.time()-start_time))
     logging.info('Done.')

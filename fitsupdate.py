@@ -52,22 +52,22 @@ sys.stdout.flush()
 try:
     hdulist = pyfits.open(img[0], mode='update')
 except:
-    print "ERROR: problems opening file "+img[0]
+    print("ERROR: problems opening file "+img[0])
     sys.exit(1)
 
 if setkeyword is None and setbeam is None and delkeyword is None:
-    print hdulist[0].header
+    print(hdulist[0].header)
     sys.exit(0)
 
 if ( not setkeyword is None ):
     try: keyword, value = setkeyword.split('=')
     except:
-        print "ERROR: the format for \"--setkeyword\" is keyword=value"
+        print("ERROR: the format for \"--setkeyword\" is keyword=value")
         sys.exit(1)
     prihdr = hdulist[0].header
-    print "Setting",keyword,"=",value
+    print("Setting",keyword,"=",value)
     if keyword in prihdr:
-        print "Type is found to be: ", type(prihdr[keyword])
+        print("Type is found to be: ", type(prihdr[keyword]))
         prihdr[keyword] = type(prihdr[keyword])(value)
     else:
         if isint(value) and '.' not in value: # the '.' exclude doubles like 180.0
@@ -81,16 +81,16 @@ if ( not delkeyword is None ):
     prihdr = hdulist[0].header
     for keyword in prihdr[:]:
         if re.match(delkeyword, keyword):
-            print "Deleting",keyword
+            print("Deleting",keyword)
             del prihdr[keyword]
 
 if ( not setbeam is None ):
     try: bmaj,bmin,pa = setbeam.split(',')
     except:
-        print "ERROR: the format for \"--setbeam\" is max,min,pa (arcsec,arcsec,deg)"
+        print("ERROR: the format for \"--setbeam\" is max,min,pa (arcsec,arcsec,deg)")
         sys.exit(1)
     prihdr = hdulist[0].header
-    print "Setting beam to ",bmaj,bmin,pa
+    print("Setting beam to ",bmaj,bmin,pa)
     bmaj = float(bmaj)/3600.
     bmin = float(bmin)/3600.
     pa = float(pa)
@@ -99,4 +99,4 @@ if ( not setbeam is None ):
     prihdr['BPA'] = pa
 
 hdulist.flush()
-print "Done!"
+print("Done!")
