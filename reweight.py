@@ -218,11 +218,6 @@ def plot(MSh, antennas):
         w = ms_ant.getcol('GWEIGHT') # time,freq,pol
         flag = ms_ant.getcol('GFLAG') # time,freq,pol
         w[flag] = np.nan
-#        print w[3403,22,1,2]
-#        print f[3403,22,1,2]
-        print np.where(w==np.nanmax(w))
-        print np.nanmax(w)
-
         w = np.nanmean(w, axis=1)
         flag = np.all(flag, axis=1)
 
