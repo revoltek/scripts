@@ -185,10 +185,11 @@ def reweight(MSh, mode):
 
 def plot(MSh, antennas):
 
-    for antenna in antennas:
-        if antenna not in MSh.get_antennas():
-            logging.error('Missing antenna %s' % antenna)
-            sys.exit(1)
+    if antennas is not None:
+        for antenna in antennas:
+            if antenna not in MSh.get_antennas():
+                logging.error('Missing antenna %s' % antenna)
+                sys.exit(1)
 
     logging.info('Getting time/freq aggregated values...')
     freqs = MSh.get_freqs()
