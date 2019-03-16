@@ -68,7 +68,6 @@ def flagonmindata(MSh, mode, fract):
     print("count before:", np.count_nonzero(msflag.getcol('FLAG')))
     ff = np.array(ff | msflag.getcol('FLAG'), dtype=bool)
     print("count after:", np.count_nonzero(ff))
-    print("Bad:", np.count_nonzero(~ff.flatten() & msflag.getcol('FLAG').flatten()))
     msflag.putcol('FLAG', ff)
     msflag.flush()
 
