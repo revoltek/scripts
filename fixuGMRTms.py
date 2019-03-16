@@ -142,7 +142,7 @@ class MS( object ):
         visibilities = self.t.getcol("DATA")
 
         if updateFreq: visibilities = visibilities[:,::-1,:]
-        if len(visibilities.shape) == 2:
+        if visibilities.shape[2] == 2:
             visibilitiesNew          = np.zeros((visibilities.shape[0], visibilities.shape[1], 4), dtype = np.complex128)
             visibilitiesNew[:, :, 0] = visibilities[:, :, 0]
             visibilitiesNew[:, :, 3] = visibilities[:, :, 1]
@@ -183,7 +183,7 @@ class MS( object ):
         flags = self.t.getcol("FLAG")
 
         if updateFreq: flags = flags[:,::-1,:]
-        if len(flags.shape) == 2:
+        if flags.shape[2] == 2:
             flagsNew                 = np.zeros((flags.shape[0], flags.shape[1], 4), dtype = np.bool_)
             flagsNew[:, :, 0]        = flags[:, :, 0]
             flagsNew[:, :, 1]        = flags[:, :, 0] # Take over flags from LL correlation
@@ -226,7 +226,7 @@ class MS( object ):
         weights = self.t.getcol("WEIGHT_SPECTRUM")
 
         if updateFreq: weights = weights[:,::-1,:]
-        if len(flags.shape) == 2:
+        if weights.shape[2] == 2:
             weightsNew               = np.zeros((weights.shape[0], weights.shape[1], 4), dtype = np.float64)
             weightsNew[:, :, 0]      = weights[:, :, 0]
             weightsNew[:, :, 3]      = weights[:, :, 1]
