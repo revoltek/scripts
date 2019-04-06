@@ -102,6 +102,9 @@ def find_freq(header):
 class Image(object):
 
     def __init__(self, imagefile):
+        """
+        imagefile: name of the fits file
+        """
 
         self.imagefile = imagefile
         header = pyfits.open(imagefile)[0].header

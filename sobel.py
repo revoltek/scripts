@@ -20,8 +20,7 @@
 #./sobel.py name.img
 
 import sys, os
-import pyrap.images
-import pyrap.tables
+from astropy.io import fits
 from scipy import ndimage
 import numpy as np
 
@@ -29,22 +28,20 @@ img_f = sys.argv[1].replace('/','')
 
 # img: a 2-D array
 def sobel(img):
-	dx = ndimage.sobel(img, 0)  # horizontal derivative
-	dy = ndimage.sobel(img, 1)  # vertical derivative
-	mag = np.hypot(dx, dy)  # magnitude
-	mag *= 100. / np.max(mag)  # normalize
-    	return mag
+    dx = ndimage.sobel(img, 0)  # horizontal derivative
+    dy = ndimage.sobel(img, 1)  # vertical derivative
+    mag = np.hypot(dx, dy)  # magnitude
+    mag *= 100. / np.max(mag)  # normalize
+    return mag
 
 
-img = pyrap.images.image(img_f)
-pixels = np.squeeze(img.getdata())#[0][0]
+img = fits.open(img_f)
+pixels = np.squeeze(img[0].data)
 print("Image shape:", pixels.shape)
 
-pixels = ndimage.gaussian_filter(pixels, sigma=3)
-pixels_s = sobel(pixels)
+#pixels = ndimage.gaussian_filter(pixels, sigma=3)
+pixels = sobel(pixels)
 
 # Write sobel filtered pixel data
-img.saveas(img_f + ".sobel")
-img = pyrap.images.image(img_f + ".sobel")
-img.putdata(pixels_s)
-del img
+img[0].data = pixels
+img.writeto(img_f + ".sobel", overwrite=True)

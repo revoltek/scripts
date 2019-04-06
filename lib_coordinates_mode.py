@@ -23,7 +23,7 @@
 #
 # Modified (simplified) by Casey to work with pyDAL scripts
 
-import math, pylab, numpy, scipy, logging, datetime, pytz
+import math, numpy, scipy, logging, datetime, pytz
 
 core_lat = 52.9088
 core_lon = -6.8689 # Note that wcstools takes a +ve longitude as WEST.
