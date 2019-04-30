@@ -61,7 +61,7 @@ if args.radec is not None and len(args.radec) != 2:
     logging.error('--radec must be in the form of "RA DEC" (2 floats).')
     sys.exit(1)
 
-from lib_fits import Image
+from lib_fits import Image, find_freq
 class ImageSpidx(Image):
 
     def __init__(self, imagefile):
@@ -71,7 +71,9 @@ class ImageSpidx(Image):
         logging.debug('%s: regridding' % (self.imagefile))
         self.img_data, __footprint = reproj((self.img_data, self.img_hdr), regrid_hdr, parallel=True)
         beam = self.get_beam()
+        freq = find_freq(self.img_hdr)
         self.img_hdr = regrid_hdr
+        self.img_hdr['FREQ'] = freq
         self.set_beam(beam) # retain beam info if not present in regrd_hdr
 
     def blank_noisy(self, nsigma):
