@@ -54,17 +54,20 @@ def flatten(filename, channel=0, freqaxis=0):
         if r:
             header[k]=r
 
-    slice=[]
+    dataslice=[]
     for i in range(naxis,0,-1):
         if i<=2:
-            slice.append(np.s_[:],)
+            dataslice.append(np.s_[:],)
         elif i==freqaxis:
-            slice.append(channel)
+            dataslice.append(channel)
         else:
-            slice.append(0)
+            dataslice.append(0)
+
+    # add freq
+    header["FREQ"] = find_freq(f[0].header)
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header, f[0].data[slice]
+    return header, f[0].data[dataslice]
 
 
 def correct_beam_header(header):

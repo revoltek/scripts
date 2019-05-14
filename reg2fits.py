@@ -28,4 +28,4 @@ regionfile = sys.argv[1]
 im.apply_region(regionfile, blankvalue=1, invert=False)
 im.apply_region(regionfile, blankvalue=0, invert=True)
 
-im.write('test.fits')
+im.write(sys.argv[1].replace('reg','fits'))
