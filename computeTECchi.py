@@ -21,9 +21,22 @@ import os, sys
 import matplotlib.pyplot as plt
 import numpy as np
 
+def getPhaseWrapBase(freqs):
+    """
+    freqs: frequency grid of the data
+    return the step size from a local minima (2pi phase wrap) to the others [0]: TEC, [1]: clock
+    """
+    freqs = np.array(freqs)
+    nF = freqs.shape[0]
+    A = np.zeros((nF, 2), dtype=np.float)
+    A[:, 1] = freqs * 2 * np.pi * 1e-9
+    A[:, 0] = -8.44797245e9 / freqs
+    steps = np.dot(np.dot(np.linalg.inv(np.dot(A.T, A)), A.T), 2 * np.pi * np.ones((nF, ), dtype=np.float))
+    return steps
+
 TECfixed = 0.1
 freq = np.array(np.arange(40,70,1))*1e6
-tec = np.arange(-0.5,0.5,0.005)
+tec = np.arange(-0.5,0.5,0.001)
 
 def norm(phase):
     out = np.fmod(phase, 2. * np.pi)
@@ -42,4 +55,8 @@ chi = lambda t: sum(DATA-MODEL(t))**2
 
 chi = lambda t: sum(abs(np.cos(MODEL(t))  - np.cos(DATA)) + abs(np.sin(MODEL(t))  - np.sin(DATA)))
 plt.plot(tec, np.log10([chi(t) for t in tec]))
+plt.ylim(0,2.5)
 plt.savefig('test.png')
+
+steps = getPhaseWrapBase(freq)
+print('TEC jumps are of:', steps[0], 'TECU')
