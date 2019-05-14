@@ -22,12 +22,8 @@ addcol2ms.py
 Create a new column in a measumrent set
 """
 
-
-
-
-
 import optparse, logging
-import pyrap.tables as pt
+import casacore.tables as pt
 import numpy
 import logging
 

@@ -103,7 +103,6 @@ def reweight(MSh, mode):
 
             # put flagged data to NaNs
             data[flags] = np.nan
-            print(data.shape)
 
             # if completely flagged set variance to 1 and continue
             if np.all(flags):
@@ -171,8 +170,11 @@ def reweight(MSh, mode):
 #        print var_antenna[ant_id2]*med_antenna[ant_id1]
 #        print ''
 #        print var_antenna[ant_id1]*var_antenna[ant_id2]
-        w = 1.e11/( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
+        w = 1./( var_antenna[ant_id1]*med_antenna[ant_id2] + var_antenna[ant_id2]*med_antenna[ant_id1] \
                + var_antenna[ant_id1]*var_antenna[ant_id2] )
+
+        w -= np.nanmedian(w) # TEST: REMOVE MEDIAN?
+
         f = ms_bl.getcol('FLAG')
         # find how many unflagged weights are nans
         ntoflag = np.count_nonzero(np.isnan(w[~f]))
@@ -215,7 +217,7 @@ def plot(MSh, antennas):
         #axfv = plt.subplot2grid((6, 2), (5, 0), colspan=2)
         ###
 
-        w = ms_ant.getcol('GWEIGHT') # time,freq,pol
+        w = np.abs(ms_ant.getcol('GWEIGHT')) # time,freq,pol
         flag = ms_ant.getcol('GFLAG') # time,freq,pol
         w[flag] = np.nan
         w = np.nanmean(w, axis=1)
@@ -258,6 +260,17 @@ def plot(MSh, antennas):
         #w = np.where( ( ratio_l < ratio_r )[:,np.newaxis,np.newaxis], w - data_shifted_l, w - data_shifted_r)
         ####
 
+        ### TEST           
+        #med_freqs = np.abs( np.nanmean( w, axis=(1) )**2 ) # time x pol
+        #med_times = np.abs( np.nanmean( w, axis=(0) )**2 ) # freq x pol
+        #med_antenna = med_freqs[:, np.newaxis]+med_times # sum of the time/freq mean - axes: time,freq,pol
+        #var_freqs = np.nanvar( w, axis=(1) ) # time x pol
+        #var_times = np.nanvar( w, axis=(0) ) # freq x pol
+        #var_antenna = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
+        #var_antenna = 1/(var_antenna*med_antenna)
+        ###
+
+
         # skip if completely flagged
         if np.all(flag):
             continue
@@ -279,6 +292,17 @@ def plot(MSh, antennas):
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
         im = ax4.imshow(w[...,3].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
                         extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
+
+        ### TEST
+        #im = ax1.imshow(var_antenna[...,0].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+        #                extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
+        #im = ax2.imshow(var_antenna[...,1].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+        #                extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
+        #im = ax3.imshow(var_antenna[...,2].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+        #                extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
+        #im = ax4.imshow(var_antenna[...,3].T, origin='lower', interpolation="none", cmap=plt.cm.jet, \
+        #                extent=[time[0],time[-1],freqs[0],freqs[-1]], aspect=str(aspect))#, vmin=1e5, vmax=1e6)
+        ###
 
         ax2.tick_params(labelleft='off')
         ax4.tick_params(labelleft='off')
@@ -312,7 +336,16 @@ def plot(MSh, antennas):
         handles2, labels2 = ax_elev.get_legend_handles_labels()
         leg = axt.legend(handles+handles2, labels+labels2, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=5, borderaxespad=0.0)
 
-        # TEST
+        ###
+        # TEST on residuals
+        #med_freqs = np.abs( np.nanmean( w, axis=(1,2) )**2 ) # time x pol
+        #med_times = np.abs( np.nanmean( w, axis=(0,1) )**2 ) # freq x pol
+        #med_antenna[ant_id] = med_freqs[:, np.newaxis]+med_times # sum of the time/freq mean - axes: time,freq,pol
+
+        #var_freqs = np.nanvar( w, axis=(1,2) ) # time x pol
+        #var_times = np.nanvar( w, axis=(0,1) ) # freq x pol
+        #var_antenna[ant_id] = var_freqs[:, np.newaxis]+var_times # sum of the time/freq variances - axes: time,freq,pol
+
         #w_f = np.nanvar(w, axis=0) # variance in time
         #w_t = np.nanvar(w, axis=1) # variance in freq
         #axtv.scatter(time, w_t[:,0], marker='.', alpha=0.25, color='red', label='XX Weights')
