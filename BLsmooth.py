@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # Usage: BLavg.py vis.MS
-# Load a MS, average visibilities according to the baseline lenght,
+# Load a MS, smooth visibilities according to the baseline lenght,
 # i.e. shorter BLs are averaged more, and write a new MS
 
 import os, sys, time
