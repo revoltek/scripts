@@ -71,7 +71,7 @@ timepersample = ms.getcell('INTERVAL',0)
 
 # check if ms is time-ordered
 times = ms.getcol('TIME_CENTROID')
-if not all(times[i] <= times[i+1] for i in range(len(times)-1)):
+if not all(np.diff(times) >= 0):
     logging.critical('This code cannot handle MS that are not time-sorted.')
     sys.exit(1)
 
@@ -114,7 +114,7 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         stddev = stddev/timepersample # in samples
         logging.debug("%s - %s: dist = %.1f km: sigma=%.2f samples." % (ant1, ant2, dist, stddev))
     
-        if stddev == 0: continue # fix for flagged anstennas
+        if stddev == 0: continue # fix for flagged antennas
         if stddev < 0.5: continue # avoid very small smoothing
     
         flags[ np.isnan(data) ] = True # flag NaNs
