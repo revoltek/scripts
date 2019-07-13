@@ -31,7 +31,7 @@ from lib_beamdeconv import *
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_interp
 
-tgss_catalog = '/home/fdg/scripts/autocal/TGSSADR1_5sigma_catalog_v3.fits'
+tgss_catalog = '/home/fdg/scripts/TGSSADR1_5sigma_catalog_v3.fits'
 
 parser = argparse.ArgumentParser(description='Mosaic for LiLF dd-pipeline.')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')

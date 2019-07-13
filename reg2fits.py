@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 - Francesco de Gasperin
+# Copyright (C) 2019 - Francesco de Gasperin
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,31 +17,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-#./sobel.py name.img
+# reg2fits.py reg img.fits
 
-import sys, os
-from astropy.io import fits
-from scipy import ndimage
-import numpy as np
+from lib_fits import Image
+import os, sys
 
-img_f = sys.argv[1].replace('/','')
+im = Image(sys.argv[2])
+regionfile = sys.argv[1]
 
-# img: a 2-D array
-def sobel(img):
-    dx = ndimage.sobel(img, 0)  # horizontal derivative
-    dy = ndimage.sobel(img, 1)  # vertical derivative
-    mag = np.hypot(dx, dy)  # magnitude
-    mag *= 100. / np.max(mag)  # normalize
-    return mag
+im.apply_region(regionfile, blankvalue=1, invert=False)
+im.apply_region(regionfile, blankvalue=0, invert=True)
 
-
-img = fits.open(img_f)
-pixels = np.squeeze(img[0].data)
-print("Image shape:", pixels.shape)
-
-#pixels = ndimage.gaussian_filter(pixels, sigma=3)
-pixels = sobel(pixels)
-
-# Write sobel filtered pixel data
-img[0].data = pixels
-img.writeto(img_f + ".sobel", overwrite=True)
+im.write(sys.argv[1].replace('reg','fits'))

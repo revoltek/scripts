@@ -54,17 +54,20 @@ def flatten(filename, channel=0, freqaxis=0):
         if r:
             header[k]=r
 
-    slice=[]
+    dataslice=[]
     for i in range(naxis,0,-1):
         if i<=2:
-            slice.append(np.s_[:],)
+            dataslice.append(np.s_[:],)
         elif i==freqaxis:
-            slice.append(channel)
+            dataslice.append(channel)
         else:
-            slice.append(0)
+            dataslice.append(0)
+
+    # add freq
+    header["FREQ"] = find_freq(f[0].header)
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header, f[0].data[slice]
+    return header, f[0].data[dataslice]
 
 
 def correct_beam_header(header):
@@ -102,6 +105,9 @@ def find_freq(header):
 class Image(object):
 
     def __init__(self, imagefile):
+        """
+        imagefile: name of the fits file
+        """
 
         self.imagefile = imagefile
         header = pyfits.open(imagefile)[0].header
@@ -231,7 +237,7 @@ class Image(object):
         dra, ddec in degree
         """
         # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log!
-        logging.debug('%s: Shift %.2f %.2f (arcsec)' % (self.imagefile, dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600))
+        logging.info('%s: Shift %.2f %.2f (arcsec)' % (self.imagefile, dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600))
         dec = self.img_hdr['CRVAL2']
         self.img_hdr['CRVAL1'] += dra/(np.cos(np.pi*dec/180.))
         self.img_hdr['CRVAL2'] += ddec
