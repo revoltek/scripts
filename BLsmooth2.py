@@ -26,7 +26,7 @@ import optparse, itertools
 import logging
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d as gfilter
-import pyrap.tables as pt
+import casacore.tables as pt
 logging.basicConfig(level=logging.DEBUG)
 
 def addcol(ms, incol, outcol):
@@ -41,8 +41,8 @@ def addcol(ms, incol, outcol):
         pt.taql("update $ms set "+outcol+"="+incol)
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
-opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.2]', type='float', default=0.2)
-opt.add_option('-s', '--bscalefactor', help='Gives an indication on how the smoothing varies with BL-lenght [default: 0.5]', type='float', default=0.5)
+opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.01]', type='float', default=0.01)
+opt.add_option('-s', '--bscalefactor', help='Gives an indication on how the smoothing varies with BL-lenght [default: 1.0]', type='float', default=1.0)
 opt.add_option('-i', '--incol', help='Column name to smooth [default: DATA]', type='string', default='DATA')
 opt.add_option('-o', '--outcol', help='Output column [default: SMOOTHED_DATA]', type="string", default='SMOOTHED_DATA')
 opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, this action permanently modify the MS! [default: False]', action="store_true", default=False)
@@ -65,6 +65,7 @@ ms = pt.table(msfile, readonly=False, ack=False)
         
 freqtab = pt.table(msfile + '/SPECTRAL_WINDOW', ack=False)
 freq = freqtab.getcol('REF_FREQUENCY')[0]
+freqpersample = np.mean(freqtab.getcol('RESOLUTION'))
 freqtab.close()
 wav = 299792458. / freq
 timepersample = ms.getcell('INTERVAL',0)
@@ -110,12 +111,15 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         dist = np.mean(uvw_dist) / 1.e3
         if np.isnan(dist): continue # fix for missing anstennas
     
-        stddev = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
-        stddev = stddev/timepersample # in samples
-        logging.debug("%s - %s: dist = %.1f km: sigma=%.2f samples." % (ant1, ant2, dist, stddev))
+        stddev_t = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
+        stddev_t = stddev_t/timepersample # in samples
+        stddev_f = 1e6/(dist) # Hz
+        stddev_f = stddev_f/freqpersample # in samples
+        logging.debug("%s - %s (dist = %.1f km) >> Time: sigma=%.2f samples (%.1f s) >> Freq: sigma%.2f samples (%.2f MHz)" % \
+                (ant1, ant2, dist, stddev_t, timepersample*stddev_t, stddev_f, freqpersample*stddev_f/1e6))
     
-        if stddev == 0: continue # fix for flagged antennas
-        if stddev < 0.5: continue # avoid very small smoothing
+        if stddev_t == 0: continue # fix for flagged antennas
+        if stddev_t < 0.5: continue # avoid very small smoothing
     
         flags[ np.isnan(data) ] = True # flag NaNs
         weights[flags] = 0 # set weight of flagged data to 0
@@ -130,13 +134,17 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         
         # smear weighted data and weights
         if options.onlyamp:
-            dataAMP = gfilter(np.abs(data), stddev, axis=0)
+            dataAMP = gfilter(np.abs(data), stddev_t, axis=0)
+            dataAMP = gfilter(dataAMP, stddev_f, axis=1)
             dataPH = np.angle(data)
         else:
-            dataR = gfilter(np.real(data), stddev, axis=0)#, truncate=4.)
-            dataI = gfilter(np.imag(data), stddev, axis=0)#, truncate=4.)
+            dataR = gfilter(np.real(data), stddev_t, axis=0)#, truncate=4.)
+            dataI = gfilter(np.imag(data), stddev_t, axis=0)#, truncate=4.)
+            dataR = gfilter(dataR, stddev_f, axis=1)#, truncate=4.)
+            dataI = gfilter(dataI, stddev_f, axis=1)#, truncate=4.)
     
-        weights = gfilter(weights, stddev, axis=0)#, truncate=4.)
+        weights = gfilter(weights, stddev_t, axis=0)#, truncate=4.)
+        weights = gfilter(weights, stddev_f, axis=1)#, truncate=4.)
     
         # re-create data
         if options.onlyamp:
