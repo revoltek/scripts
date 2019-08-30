@@ -117,7 +117,7 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         stddev_t = stddev_t/timepersample # in samples
         # TODO: for freq this is hardcoded, it should be thought better 
         # However, the limitation is probably smearing here
-        stddev_f = 2e6/(dist) # Hz
+        stddev_f = 1e6/(dist) # Hz
         stddev_f = stddev_f/freqpersample # in samples
         logging.debug("%s - %s (dist = %.1f km) >> Time: sigma=%.1f samples (%.1f s) >> Freq: sigma=%.1f samples (%.2f MHz)" % \
                 (ant1, ant2, dist, stddev_t, timepersample*stddev_t, stddev_f, freqpersample*stddev_f/1e6))
