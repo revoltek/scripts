@@ -29,6 +29,8 @@ from scipy.ndimage.filters import gaussian_filter1d as gfilter
 import casacore.tables as pt
 logging.basicConfig(level=logging.DEBUG)
 
+logging.info('BL-based smoother - Francesco de Gasperin')
+
 def addcol(ms, incol, outcol):
     if outcol not in ms.colnames():
         logging.info('Adding column: '+outcol)
@@ -40,7 +42,7 @@ def addcol(ms, incol, outcol):
         logging.info('Set '+outcol+'='+incol)
         pt.taql("update $ms set "+outcol+"="+incol)
 
-opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
+opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 3.0")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.01]', type='float', default=0.01)
 opt.add_option('-s', '--bscalefactor', help='Gives an indication on how the smoothing varies with BL-lenght [default: 1.0]', type='float', default=1.0)
 opt.add_option('-i', '--incol', help='Column name to smooth [default: DATA]', type='string', default='DATA')
@@ -97,7 +99,7 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
     a_weights = ms_ant1.getcol('WEIGHT_SPECTRUM')
     a_flags = ms_ant1.getcol('FLAG')
  
-    for ant2 in set(a_ant2):
+    for ant2 in sorted(set(a_ant2)):
         if ant1 == ant2: continue # skip autocorr
         idx = np.where(a_ant2 == ant2)
         
@@ -113,9 +115,11 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
     
         stddev_t = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
         stddev_t = stddev_t/timepersample # in samples
-        stddev_f = 1e6/(dist) # Hz
+        # TODO: for freq this is hardcoded, it should be thought better 
+        # However, the limitation is probably smearing here
+        stddev_f = 2e6/(dist) # Hz
         stddev_f = stddev_f/freqpersample # in samples
-        logging.debug("%s - %s (dist = %.1f km) >> Time: sigma=%.2f samples (%.1f s) >> Freq: sigma%.2f samples (%.2f MHz)" % \
+        logging.debug("%s - %s (dist = %.1f km) >> Time: sigma=%.1f samples (%.1f s) >> Freq: sigma=%.1f samples (%.2f MHz)" % \
                 (ant1, ant2, dist, stddev_t, timepersample*stddev_t, stddev_f, freqpersample*stddev_f/1e6))
     
         if stddev_t == 0: continue # fix for flagged antennas
