@@ -51,6 +51,8 @@ opt.add_option('-w', '--weight', help='Save the newly computed WEIGHT_SPECTRUM, 
 opt.add_option('-r', '--restore', help='If WEIGHT_SPECTRUM_ORIG exists then restore it before smoothing [default: False]', action="store_true", default=False)
 opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM in WEIGHT_SPECTRUM_ORIG [default: do backup if -w]', action="store_true", default=False)
 opt.add_option('-a', '--onlyamp', help='Smooth only amplitudes [default: smooth real/imag]', action="store_true", default=False)
+opt.add_option('-t', '--notime', help='Do not do smoothing in time [default: False]', action="store_true", default=False)
+opt.add_option('-q', '--nofreq', help='Do not do smoothing in frequency [default: False]', action="store_true", default=False)
 (options, msfile) = opt.parse_args()
 
 if msfile == []:
@@ -138,17 +140,26 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         
         # smear weighted data and weights
         if options.onlyamp:
-            dataAMP = gfilter(np.abs(data), stddev_t, axis=0)
-            dataAMP = gfilter(dataAMP, stddev_f, axis=1)
+            dataAMP = np.abs(data)
             dataPH = np.angle(data)
+            if not options.notime:
+                dataAMP = gfilter(dataAMP, stddev_t, axis=0)
+            if not options.nofreq:
+                dataAMP = gfilter(dataAMP, stddev_f, axis=1)
         else:
-            dataR = gfilter(np.real(data), stddev_t, axis=0)#, truncate=4.)
-            dataI = gfilter(np.imag(data), stddev_t, axis=0)#, truncate=4.)
-            dataR = gfilter(dataR, stddev_f, axis=1)#, truncate=4.)
-            dataI = gfilter(dataI, stddev_f, axis=1)#, truncate=4.)
+            dataR = np.real(data)
+            dataI = np.imag(data)
+            if not options.notime:
+                dataR = gfilter(dataR, stddev_t, axis=0)#, truncate=4.)
+                dataI = gfilter(dataI, stddev_t, axis=0)#, truncate=4.)
+            if not options.nofreq:
+                dataR = gfilter(dataR, stddev_f, axis=1)#, truncate=4.)
+                dataI = gfilter(dataI, stddev_f, axis=1)#, truncate=4.)
     
-        weights = gfilter(weights, stddev_t, axis=0)#, truncate=4.)
-        weights = gfilter(weights, stddev_f, axis=1)#, truncate=4.)
+        if not options.notime:
+            weights = gfilter(weights, stddev_t, axis=0)#, truncate=4.)
+        if not options.nofreq:
+            weights = gfilter(weights, stddev_f, axis=1)#, truncate=4.)
     
         # re-create data
         if options.onlyamp:
