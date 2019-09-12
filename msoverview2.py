@@ -19,9 +19,12 @@
 
 import os, sys
 import casacore.tables as pt
+from astropy.time import Time
 
-t = pt.table(sys.argv[1])
-times = sorted(set(t.getcol('TIME')))
-t.close()
-os.system('msoverview in=%s' % sys.argv[1])
-print("Time step %i seconds." % (times[1]-times[0]))
+for ms in sys.argv[1:]:
+    t = pt.table(ms, ack=False)
+    times = sorted(set(t.getcol('TIME')))
+    #print(ms, Time(times[0]/86400, format='mjd').iso)
+    t.close()
+    os.system('msoverview in=%s' % ms)
+    print("Time step %i seconds." % (times[1]-times[0]))
