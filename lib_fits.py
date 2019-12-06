@@ -197,7 +197,7 @@ class Image(object):
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
-            data = data[np.abs(data)<3*rms]
+            data = data[np.abs(data)<5*rms]
             oldrms = rms
         raise Exception('Noise estimation failed to converge.')
 

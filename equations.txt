@@ -1,0 +1,7 @@
+
+
+# radio emitting frequency at a certain gamma (5uG)
+gamma**2 * 1.60217662e-19 C * 5e-10 T / (m_e * 2* pi)
+
+# energy in eV for a certain gamma
+m_e * c**2 * gamma in eV
