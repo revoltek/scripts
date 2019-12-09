@@ -272,7 +272,7 @@ if args.mask is not None:
         logging.debug('Loading %s...' % outname)
         mask_n = pyfits.open(outname)[0]
     else:
-        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor')#, parallel=True)
+        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor', parallel=True)
         if args.save:
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=mask_n.data)
             hdu.writeto(outname, overwrite=True)
@@ -321,7 +321,7 @@ isum[~mask] = np.nan
 
 for ch in ('BMAJ', 'BMIN', 'BPA'):
     regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
-    regrid_hdr['ORIGIN'] = 'pill-pipe-mosaic'
+    regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
     regrid_hdr['UNITS'] = 'Jy/beam'
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
