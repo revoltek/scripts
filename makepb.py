@@ -6,7 +6,7 @@ from astropy.io import fits
 
 def make_beam(imageroot, outfile='beam.fits'):
 
-    imagefiles = sorted(glob.glob(imageroot+'-[0-9]*-I-image.fits'))
+    imagefiles = sorted(glob.glob(imageroot+'-[0-9]*-image.fits'))
     beamfiles = sorted(glob.glob(imageroot+'-[0-9]*-beam-I.fits'))
 
     if len(beamfiles) < 2 or len(imagefiles) < 2:

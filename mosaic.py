@@ -168,6 +168,7 @@ for i, image in enumerate(args.images):
     beams.append(d.get_beam()) 
     directions.append(d)
 
+
 if args.beamarm:
     common_beam = findCommonBeam(beams)
     logging.debug('Minimum common beam: %.1f" %.1f" (pa %.1f deg)' % \
@@ -201,7 +202,7 @@ for i, d in enumerate(directions):
 # prepare header for final gridding
 if args.header is None:
     logging.warning('Calculate output headers...')
-    mra = np.mean( np.array([d.get_wcs().wcs.crval[0] for d in directions]) )
+    mra = np.mean( np.array([d.get_wcs().wcs.crval[0]%360 for d in directions]) )
     mdec = np.mean( np.array([d.get_wcs().wcs.crval[1] for d in directions]) )
 
     logging.info('Will make mosaic at %f %f' % (mra,mdec))
@@ -272,7 +273,7 @@ if args.mask is not None:
         logging.debug('Loading %s...' % outname)
         mask_n = pyfits.open(outname)[0]
     else:
-        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor')#, parallel=True)
+        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor', parallel=True)
         if args.save:
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=mask_n.data)
             hdu.writeto(outname, overwrite=True)
