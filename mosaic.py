@@ -135,6 +135,8 @@ class Direction(Image):
                 adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
             bdsf_img.write_catalog(outfile=img_cat, catalog_type='srl', format='fits', clobber=True)
 
+        # TODO: add iterations to remove off sources until convergence
+
         # read catlogue
         ref_t = Table.read(ref_cat)
         img_t = Table.read(img_cat)
@@ -273,7 +275,7 @@ if args.mask is not None:
         logging.debug('Loading %s...' % outname)
         mask_n = pyfits.open(outname)[0]
     else:
-        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor', parallel=True)
+        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor')#, parallel=True)
         if args.save:
             hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=mask_n.data)
             hdu.writeto(outname, overwrite=True)

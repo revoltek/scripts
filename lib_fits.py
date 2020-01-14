@@ -185,9 +185,9 @@ class Image(object):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
-        eps : convergency criterion, if None is 0.1% of initial rms
+        eps : convergency criterion, if None is 1% of initial rms
         """
-        if eps == None: eps = np.nanstd(self.img_data)*1e-3
+        if eps == None: eps = np.nanstd(self.img_data)*1e-2
         data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
         oldrms = 1.
         for i in range(niter):
