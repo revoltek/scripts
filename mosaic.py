@@ -21,12 +21,12 @@
 
 import os.path, sys, pickle, glob, argparse, re, logging
 import numpy as np
-from lib_fits import flatten
+from lib_fits import flatten, Image
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.table import Table
 import pyregion
-from lib_beamdeconv import *
+#from lib_beamdeconv import *
 # https://github.com/astrofrog/reproject
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_interp
@@ -78,7 +78,6 @@ if args.shift and not args.beamcorr:
 
 #############################################################
 
-from lib_fits import Image
 class Direction(Image):
 
     def __init__(self, imagefile):
@@ -172,9 +171,12 @@ for i, image in enumerate(args.images):
 
 
 if args.beamarm:
-    common_beam = findCommonBeam(beams)
+    #common_beam = findCommonBeam(beams,0.01)
+    maxmaj = np.max([b[0] for b in beams])
+    common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
     logging.debug('Minimum common beam: %.1f" %.1f" (pa %.1f deg)' % \
              (common_beam[0]*3600., common_beam[1]*3600., common_beam[2]))
+
 
 for i, d in enumerate(directions):
 
@@ -329,5 +331,7 @@ for ch in ('BMAJ', 'BMIN', 'BPA'):
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
 hdu.writeto(args.output, overwrite=True)
+hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=wsum)
+hdu.writeto('w-'+args.output, overwrite=True)
 
 logging.debug('Done.')
