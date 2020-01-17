@@ -23,7 +23,7 @@ import sys
 f = sys.argv[1]
 freq = sys.argv[2]
 
-img = bdsf.process_image(f, advanced_opts=True, detection_image=f.replace('-pb',''), interactive=True, thresh_pix=5., thresh_isl=3., \
+img = bdsf.process_image(f, advanced_opts=True, detection_image=f.replace('-pb',''), interactive=False, thresh_pix=5., thresh_isl=3., \
         adaptive_rms_box=True, rms_box_bright=(100,30), adaptive_thresh=10., frequency=freq)
 img.write_catalog(format='fits',catalog_type='srl', clobber=True)
 img.write_catalog(format='ds9',catalog_type='srl', clobber=True)
