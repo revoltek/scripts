@@ -132,7 +132,7 @@ class Direction(Image):
         if not os.path.exists(img_cat):
             bdsf_img = bdsf.process_image(self.imagefile, rms_box=(100,30), \
                 thresh_pix=5, thresh_isl=3, atrous_do=False, \
-                adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
+                adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10))
             bdsf_img.write_catalog(outfile=img_cat, catalog_type='srl', format='fits', clobber=True)
 
         # TODO: add iterations to remove off sources until convergence
@@ -319,7 +319,7 @@ for i, d in enumerate(directions):
 
 logging.debug('Write mosaic: %s...' % args.output)
 # mask now contains True where a non-nan region was present in either map
-isum /= wsum
+isum[wsum != 0] /= wsum[wsum != 0]
 isum[~mask] = np.nan
 
 for ch in ('BMAJ', 'BMIN', 'BPA'):
