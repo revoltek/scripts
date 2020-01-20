@@ -322,6 +322,7 @@ for i, d in enumerate(directions):
 logging.debug('Write mosaic: %s...' % args.output)
 # mask now contains True where a non-nan region was present in either map
 isum[wsum != 0] /= wsum[wsum != 0]
+isum[wsum == 0] = np.nan
 isum[~mask] = np.nan
 
 for ch in ('BMAJ', 'BMIN', 'BPA'):
