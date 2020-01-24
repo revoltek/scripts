@@ -38,7 +38,7 @@ parser.add_argument('--images', dest='images', nargs='+', help='List of images t
 parser.add_argument('--regions', dest='regions', nargs='+', help='List of regions to blank images')
 parser.add_argument('--mask', dest='mask', help='One mask with a number per direction, numbers must be in the same order of those given in the "images" parameter.')
 parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
-parser.add_argument('--beamcut', dest='beamcut', default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
+parser.add_argument('--beamcut', dest='beamcut', type=float, default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
 parser.add_argument('--beamcorr', dest='beamcorr', action='store_true', help='Pre-correct for beam before combining (default: do not apply)')
 parser.add_argument('--beamarm', dest='beamarm', action='store_true', help='Convolve all images to minimum common beam (default: False)')
 parser.add_argument('--header', dest='header', help='An image/header to use for the output mosaic coordinates')

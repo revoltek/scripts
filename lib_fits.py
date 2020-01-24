@@ -67,7 +67,7 @@ def flatten(filename, channel=0, freqaxis=0):
     header["FREQ"] = find_freq(f[0].header)
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header, f[0].data[dataslice]
+    return header, f[0].data[tuple(dataslice)]
 
 
 def correct_beam_header(header):
@@ -194,10 +194,11 @@ class Image(object):
             rms = np.nanstd(data)
             if np.abs(oldrms-rms)/rms < eps:
                 self.noise = rms
+                print('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
-            data = data[np.abs(data)<5*rms]
+            data = data[np.abs(data)<7*rms]
             oldrms = rms
         raise Exception('Noise estimation failed to converge.')
 
