@@ -19,6 +19,7 @@ def make_beam(imageroot, outfile='beam.fits'):
         with fits.open(imagefile) as imagefits:
             header = imagefits[0].header
             weights.append(header['WSCIMGWG'])
+    print('Weights:', weights)
 
     # combine beams
     with fits.open(beamfiles[0]) as beamfits:
