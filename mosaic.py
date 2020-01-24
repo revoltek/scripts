@@ -335,7 +335,5 @@ for ch in ('BMAJ', 'BMIN', 'BPA'):
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
 hdu.writeto(args.output, overwrite=True)
-hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=wsum)
-hdu.writeto('w-'+args.output, overwrite=True)
 
 logging.debug('Done.')
