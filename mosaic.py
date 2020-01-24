@@ -197,6 +197,9 @@ for i, d in enumerate(directions):
 
     if args.beamcorr: d.apply_beam_corr() # after noise calculation
 
+    #hdu = pyfits.PrimaryHDU(header=d.img_hdr, data=d.img_data)
+    #hdu.writeto(d.imagefile+'-beamcorr', overwrite=True)
+
     d.calc_weight() # after setting: beam, noise, scale
 
     if args.shift:
@@ -332,7 +335,5 @@ for ch in ('BMAJ', 'BMIN', 'BPA'):
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
 hdu.writeto(args.output, overwrite=True)
-hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=wsum)
-hdu.writeto('w-'+args.output, overwrite=True)
 
 logging.debug('Done.')
