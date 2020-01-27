@@ -309,7 +309,7 @@ if [ ! -d $INSTALLDIR/DP3 ]; then
     #export LD_LIBRARY_PATH=/net/lofar1/data1/sweijen/software/HDF5_1.8/lib:/net/lofar1/data1/sweijen/software/LOFAR/2018_11_05_DP3/superlu/lib64:$INSTALLDIR/LOFARBeam/lib:$LD_LIBRARY_PATH
     mkdir -p $INSTALLDIR/DP3/build
     git clone https://github.com/lofar-astron/DP3.git $INSTALLDIR/DP3/src
-    cd $INSTALLDIR/DP3/build && $cmake -DCMAKE_CXX_FLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS" -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so ../src
+    cd $INSTALLDIR/DP3/build && $cmake -DCMAKE_CXX_FLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS" -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DHDF5_DIR:PATH=${INSTALLDIR}/hdf5/hdf5-${HDF5_VERSION} -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so ../src
     cd $INSTALLDIR/DP3/build && $make -j $J
     cd $INSTALLDIR/DP3/build && $make install
     echo Installed DP3.
@@ -327,7 +327,7 @@ if [ ! -d $INSTALLDIR/wsclean ]; then
     mkdir -p $INSTALLDIR/wsclean/build
     if [ "$WSCLEAN_VERSION" != "latest" ]; then cd ${INSTALLDIR}/wsclean && wget http://downloads.sourceforge.net/project/wsclean/wsclean-${WSCLEAN_VERSION}/wsclean-${WSCLEAN_VERSION}.tar.bz2 && tar -xjf wsclean-${WSCLEAN_VERSION}.tar.bz2 && cd wsclean-${WSCLEAN_VERSION}; fi
     if [ "$WSCLEAN_VERSION" = "latest" ]; then cd ${INSTALLDIR}/wsclean && git clone git://git.code.sf.net/p/wsclean/code src && cd src/wsclean; fi
-    cd $INSTALLDIR/wsclean/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/wsclean -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DFFTW3_INCLUDE_DIR:PATH=${INSTALLDIR}/fftw/include -DFFTW3_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3_threads.so ../src/wsclean
+    cd $INSTALLDIR/wsclean/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/wsclean -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DFFTW3_INCLUDE_DIR:PATH=${INSTALLDIR}/fftw/include -DFFTW3_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3_threads.so -DFFTW3F_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3f_threads.so ../src/wsclean
     cd $INSTALLDIR/wsclean/build && $make -j $J
     cd $INSTALLDIR/wsclean/build && $make install
 else
