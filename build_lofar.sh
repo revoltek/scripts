@@ -12,13 +12,6 @@ export INSTALLDIR=$HOME/opt/lofar_200124
 # Hamburg
 export PYTHON_VERSION=3.5
 
-# CEP3
-#export cmake=/home/dijkema/opt/cmake/bin/cmake
-# Leiden
-module load gcc/8.1.0
-module load make/4.2
-module load cmake/3.9
-
 # General compile and build settings.
 export make=`which make`
 export cmake=`which cmake`
@@ -101,10 +94,10 @@ if [ ! -d $INSTALLDIR/boost ]; then
     # Install Boost.Python
     #
     echo Installing Boost.Python...
-    echo "using python : 3.6 : /usr/bin/python3 : /usr/include/python3.6m : /usr/lib ;" > $HOME/user-config.jam
+    echo "using python : ${PYTHON_VERSION} : /usr/bin/python3 : /usr/include/python${PYTHON_VERSION} : /usr/lib ;" > $HOME/user-config.jam
     mkdir -p $INSTALLDIR/boost/src
     cd $INSTALLDIR/boost/ && wget https://dl.bintray.com/boostorg/release/${BOOST_DOT_VERSION}/source/boost_${BOOST_VERSION}.tar.gz && tar xzf boost_${BOOST_VERSION}.tar.gz
-    cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J --python.init.includes=/usr/include/python3.6m
+    cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J
     # CHECK THE PYTHON VERSION HERE
     cd $INSTALLDIR/boost/lib/
     ln -s libboost_python35.a         libboost_python.a
