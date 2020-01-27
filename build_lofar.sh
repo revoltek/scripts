@@ -3,6 +3,13 @@ export J=64
 export INSTALLDIR=$HOME/opt/lofar_200124
 export PYTHON_VERSION=3.6
 
+# CEP3
+#export cmake=/home/dijkema/opt/cmake/bin/cmake
+# Leiden
+module load gcc/8.1.0
+module load make/4.2
+module load cmake/3.9
+
 # General compile and build settings.
 export make=`which make`
 export cmake=`which cmake`
@@ -10,12 +17,6 @@ export CC=`which gcc`
 export CXX=`which g++`
 export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
 export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
-# CEP3
-#export cmake=/home/dijkema/opt/cmake/bin/cmake
-# Leiden
-module load gcc/8.1.0
-module load make/4.2
-module load cmake/3.9
 
 # Path to where the patch for python-casacore's setup is stored.
 #export PYTHON_CASACORE_PATCH=$HOME/opt/src/patch_python-casacore.patch
@@ -91,9 +92,10 @@ if [ ! -d $INSTALLDIR/boost ]; then
     # Install Boost.Python
     #
     echo Installing Boost.Python...
+    echo "using python : 3.6 : /usr/bin/python3 : /usr/include/python3.6m : /usr/lib ;" > $HOME/user-config.jam
     mkdir -p $INSTALLDIR/boost/src
     cd $INSTALLDIR/boost/ && wget https://dl.bintray.com/boostorg/release/${BOOST_DOT_VERSION}/source/boost_${BOOST_VERSION}.tar.gz && tar xzf boost_${BOOST_VERSION}.tar.gz
-    cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J -define=_GLIBCXX_USE_CXX11_ABI=1
+    cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J --python.init.includes=/usr/include/python3.6m
     # CHECK THE PYTHON VERSION HERE
     cd $INSTALLDIR/boost/lib/
     ln -s libboost_python36.a         libboost_python.a
@@ -211,7 +213,7 @@ if [ ! -d $INSTALLDIR/casacore ]; then
     if [ "${CASACORE_VERSION}" != "latest" ]; then cd ${INSTALLDIR}/casacore/src && git checkout tags/${CASACORE_VERSION}; fi
     cd ${INSTALLDIR}/casacore/data && wget --retry-connrefused ftp://anonymous@ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar
     cd ${INSTALLDIR}/casacore/data && tar xf WSRT_Measures.ztar
-    cd ${INSTALLDIR}/casacore/build && /usr/bin/cmake -DCMAKE_CXX_FLAGS=-D_GLIB_USE_CXX_ABI=1 -DCMAKE_LIBRARY_PATH=$CMAKE_LIBRARY -DCMAKE_INCLUDE_PATH=$CMAKE_INCLUDE -DCMAKE_INSTALL_PREFIX=${INSTALLDIR}/casacore/ -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DDATA_DIR=${INSTALLDIR}/casacore/data -DBoost_DIR=$INSTALLDIR/boost -DFFTW3F_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f_threads.so -DFFTW3_INCLUDE_DIR:PATH=$INSTALLDIR/fftw/include -DFFTW3_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3_threads.so -DBUILD_PYTHON=True -DUSE_OPENMP=True -DUSE_FFTW3=TRUE -DUSE_HDF5=True -DBUILD_PYTHON:BOOL=False -DBUILD_PYTHON3:BOOL=True ../src/
+    cd ${INSTALLDIR}/casacore/build && /usr/bin/cmake -DCMAKE_CXX_FLAGS=-D_GLIB_USE_CXX_ABI=1 -DCMAKE_LIBRARY_PATH=$CMAKE_LIBRARY -DCMAKE_INCLUDE_PATH=$CMAKE_INCLUDE -DCMAKE_INSTALL_PREFIX=${INSTALLDIR}/casacore/ -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DDATA_DIR:PATH=${INSTALLDIR}/casacore/data -DBoost_DIR=$INSTALLDIR/boost -DBOOST_PYTHON3_LIBRARY_NAME:STRING=python -DFFTW3F_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f_threads.so -DFFTW3_INCLUDE_DIR:PATH=$INSTALLDIR/fftw/include -DFFTW3_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3_threads.so -DHDF5_hdf5_LIBRARY:FILEPATH=$INSTALLDIR/hdf5/lib/libhdf5.so -DUSE_OPENMP=True -DUSE_FFTW3=TRUE -DUSE_HDF5=True -DBUILD_PYTHON:BOOL=False -DBUILD_PYTHON3:BOOL=True ../src/
     cd ${INSTALLDIR}/casacore/build && $make -j ${J}
     cd ${INSTALLDIR}/casacore/build && $make install
     echo Installed CASAcore.
@@ -302,7 +304,6 @@ if [ ! -d $INSTALLDIR/DP3 ]; then
     # Install DP3.
     #
     echo Installing DP3...
-
     #export LD_LIBRARY_PATH=/net/lofar1/data1/sweijen/software/HDF5_1.8/lib:/net/lofar1/data1/sweijen/software/LOFAR/2018_11_05_DP3/superlu/lib64:$INSTALLDIR/LOFARBeam/lib:$LD_LIBRARY_PATH
     mkdir -p $INSTALLDIR/DP3/build
     git clone https://github.com/lofar-astron/DP3.git $INSTALLDIR/DP3/src
