@@ -1,7 +1,16 @@
 # General environment settings.
 export J=64
 export INSTALLDIR=$HOME/opt/lofar_200124
-export PYTHON_VERSION=3.6
+
+# CEP3
+#export cmake=/home/dijkema/opt/cmake/bin/cmake
+# Leiden
+#module load gcc/8.1.0
+#module load make/4.2
+#module load cmake/3.9
+#export PYTHON_VERSION=3.6
+# Hamburg
+export PYTHON_VERSION=3.5
 
 # General compile and build settings.
 export make=`which make`
@@ -10,12 +19,6 @@ export CC=`which gcc`
 export CXX=`which g++`
 export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
 export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
-# CEP3
-#export cmake=/home/dijkema/opt/cmake/bin/cmake
-# Leiden
-module load gcc/8.1.0
-module load make/4.2
-module load cmake/3.9
 
 # Path to where the patch for python-casacore's setup is stored.
 #export PYTHON_CASACORE_PATCH=$HOME/opt/src/patch_python-casacore.patch
@@ -96,12 +99,12 @@ if [ ! -d $INSTALLDIR/boost ]; then
     cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J -define=_GLIBCXX_USE_CXX11_ABI=1
     # CHECK THE PYTHON VERSION HERE
     cd $INSTALLDIR/boost/lib/
-    ln -s libboost_python36.a         libboost_python.a
-    ln -s libboost_python36.so        libboost_python.so
-    ln -s libboost_python36.so.1.67.0 libboost_python.so.1.67.0
-    ln -s libboost_numpy36.a          libboost_numpy.a
-    ln -s libboost_numpy36.so         libboost_numpy.so
-    ln -s libboost_numpy36.so.1.67.0  libboost_numpy.so.1.67.0
+    ln -s libboost_python35.a         libboost_python.a
+    ln -s libboost_python35.so        libboost_python.so
+    ln -s libboost_python35.so.1.67.0 libboost_python.so.1.67.0
+    ln -s libboost_numpy35.a          libboost_numpy.a
+    ln -s libboost_numpy35.so         libboost_numpy.so
+    ln -s libboost_numpy35.so.1.67.0  libboost_numpy.so.1.67.0
     echo Installed Boost.Python.
 else
     echo Boost.Python already installed.
