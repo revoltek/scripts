@@ -241,10 +241,11 @@ if [ ! -d $INSTALLDIR/python-casacore ]; then
     cd ${INSTALLDIR}/python-casacore && git clone https://github.com/casacore/python-casacore
     if [ "$PYTHON_CASACORE_VERSION" != "latest" ]; then cd ${INSTALLDIR}/python-casacore/python-casacore && git checkout tags/${PYTHON_CASACORE_VERSION}; fi
     # OLD: patch setup.py $PYTHON_CASACORE_PATCH
-    cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py build_ext --swig-cpp -I${INSTALLDIR}/wcslib/include:${INSTALLDIR}/casacore/include/:${INSTALLDIR}/cfitsio/include:${INSTALLDIR}/boost/include -L${INSTALLDIR}/wcslib/lib:${INSTALLDIR}/casacore/lib/:${INSTALLDIR}/cfitsio/lib/:${INSTALLDIR}/boost/lib:/usr/lib/python3.5
-    mkdir -p ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
-    #cp -r ${INSTALLDIR}/python-casacore/python-casacore/build/lib.linux-x86_64-${PYTHON_VERSION}/casacore/ ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
-    cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py install --prefix ${INSTALLDIR}/python-casacore/
+    mkdir -p ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/  ${INSTALLDIR}/python-casacore/lib/python${PYTHON_VERSION}/site-packages/
+    export PYTHONPATH=$INSTALLDIR/python-casacore/lib/python${PYTHON_VERSION}/site-packages/:$INSTALLDIR/DP3/lib/python${PYTHON_VERSION}/site-packages/:$PYTHONPATH
+    export PYTHONPATH=$INSTALLDIR/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/:$INSTALLDIR/DP3/lib64/python${PYTHON_VERSION}/site-packages/:$PYTHONPATH
+    cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py build_ext --swig-cpp -I${INSTALLDIR}/wcslib/include:${INSTALLDIR}/casacore/include/:${INSTALLDIR}/cfitsio/include:${INSTALLDIR}/boost/include -L${INSTALLDIR}/wcslib/lib:${INSTALLDIR}/casacore/lib/:${INSTALLDIR}/cfitsio/lib/:${INSTALLDIR}/boost/lib:/usr/lib/python3.5 install --prefix ${INSTALLDIR}/python-casacore/
+
 else
     echo Python-CASAcore already installed.
 fi
