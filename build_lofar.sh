@@ -101,9 +101,15 @@ if [ ! -d $INSTALLDIR/boost ]; then
     ln -s libboost_python36.a         libboost_python.a
     ln -s libboost_python36.so        libboost_python.so
     ln -s libboost_python36.so.1.67.0 libboost_python.so.1.67.0
+    ln -s libboost_python36.a         libboost_python3.a
+    ln -s libboost_python36.so        libboost_python3.so
+    ln -s libboost_python36.so.1.67.0 libboost_python3.so.1.67.0
     ln -s libboost_numpy36.a          libboost_numpy.a
     ln -s libboost_numpy36.so         libboost_numpy.so
     ln -s libboost_numpy36.so.1.67.0  libboost_numpy.so.1.67.0
+    ln -s libboost_numpy36.a          libboost_numpy3.a
+    ln -s libboost_numpy36.so         libboost_numpy3.so
+    ln -s libboost_numpy36.so.1.67.0  libboost_numpy3.so.1.67.0
     echo Installed Boost.Python.
 else
     echo Boost.Python already installed.
@@ -233,7 +239,8 @@ if [ ! -d $INSTALLDIR/python-casacore ]; then
     # OLD: patch setup.py $PYTHON_CASACORE_PATCH
     cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py build_ext --swig-cpp --cython-cplus --pyrex-cplus -I${INSTALLDIR}/wcslib/include:${INSTALLDIR}/casacore/include/:${INSTALLDIR}/cfitsio/include:${INSTALLDIR}/boost/include -L${INSTALLDIR}/wcslib/lib:${INSTALLDIR}/casacore/lib/:${INSTALLDIR}/cfitsio/lib/:${INSTALLDIR}/boost/lib:/usr/lib64/
     mkdir -p ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
-    cp -r ${INSTALLDIR}/python-casacore/python-casacore/build/lib.linux-x86_64-${PYTHON_VERSION}/casacore/ ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
+    #cp -r ${INSTALLDIR}/python-casacore/python-casacore/build/lib.linux-x86_64-${PYTHON_VERSION}/casacore/ ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
+    cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py install --prefix ${INSTALLDIR}/python-casacore/
 else
     echo Python-CASAcore already installed.
 fi
@@ -355,6 +362,7 @@ ls ${INSTALLDIR}
 #
 echo export INSTALLDIR=$INSTALLDIR > $INSTALLDIR/init.sh
 
+echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib/python3.6/site-packages/:\$INSTALLDIR/DP3/lib/python3.6/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
 echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib64/python3.6/site-packages/:\$INSTALLDIR/DP3/lib64/python3.6/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/aoflagger/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/casacore/bin:\$PATH  >> $INSTALLDIR/init.sh
