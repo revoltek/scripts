@@ -1,14 +1,17 @@
 # General environment settings.
 export J=64
 export INSTALLDIR=$HOME/opt/lofar_200124
-export PYTHON_VERSION=3.6
 
 # CEP3
 #export cmake=/home/dijkema/opt/cmake/bin/cmake
 # Leiden
-module load gcc/8.1.0
-module load make/4.2
-module load cmake/3.9
+#module load gcc/8.1.0
+#module load make/4.2
+#module load cmake/3.9
+#export PYTHON_VERSION=3.6
+# Hamburg
+export PYTHON_VERSION=3.5
+export PYTHON_VERSION_NODOT=35
 
 # General compile and build settings.
 export make=`which make`
@@ -16,7 +19,7 @@ export cmake=`which cmake`
 export CC=`which gcc`
 export CXX=`which g++`
 export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
-export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
+export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS --std=c++11 -W -Wall -Woverloaded-virtual -Wno-unknown-pragmas -D_GLIBCXX_USE_CXX11_ABI=${CXX_ABI} -O3 -march=haswell"
 
 # Path to where the patch for python-casacore's setup is stored.
 #export PYTHON_CASACORE_PATCH=$HOME/opt/src/patch_python-casacore.patch
@@ -92,24 +95,24 @@ if [ ! -d $INSTALLDIR/boost ]; then
     # Install Boost.Python
     #
     echo Installing Boost.Python...
-    echo "using python : 3.6 : /usr/bin/python3 : /usr/include/python3.6m : /usr/lib ;" > $HOME/user-config.jam
+    echo "using python : ${PYTHON_VERSION} : /usr/bin/python3 : /usr/include/python${PYTHON_VERSION} : /usr/lib ;" > $HOME/user-config.jam
     mkdir -p $INSTALLDIR/boost/src
     cd $INSTALLDIR/boost/ && wget https://dl.bintray.com/boostorg/release/${BOOST_DOT_VERSION}/source/boost_${BOOST_VERSION}.tar.gz && tar xzf boost_${BOOST_VERSION}.tar.gz
-    cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J --python.init.includes=/usr/include/python3.6m
+    cd $INSTALLDIR/boost/boost_*/ && ./bootstrap.sh --prefix=$INSTALLDIR/boost --with-python-version=${PYTHON_VERSION} && ./b2 headers && ./b2 install toolset=gcc cxxflags=-std=c++11 --prefix=$INSTALLDIR/boost --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-python --with-signals --with-test --with-thread -j $J
     # CHECK THE PYTHON VERSION HERE
     cd $INSTALLDIR/boost/lib/
-    ln -s libboost_python36.a         libboost_python.a
-    ln -s libboost_python36.so        libboost_python.so
-    ln -s libboost_python36.so.1.67.0 libboost_python.so.1.67.0
-    ln -s libboost_python36.a         libboost_python3.a
-    ln -s libboost_python36.so        libboost_python3.so
-    ln -s libboost_python36.so.1.67.0 libboost_python3.so.1.67.0
-    ln -s libboost_numpy36.a          libboost_numpy.a
-    ln -s libboost_numpy36.so         libboost_numpy.so
-    ln -s libboost_numpy36.so.1.67.0  libboost_numpy.so.1.67.0
-    ln -s libboost_numpy36.a          libboost_numpy3.a
-    ln -s libboost_numpy36.so         libboost_numpy3.so
-    ln -s libboost_numpy36.so.1.67.0  libboost_numpy3.so.1.67.0
+    ln -s libboost_python${PYTHON_VERSION_NODOT}.a         libboost_python.a
+    ln -s libboost_python${PYTHON_VERSION_NODOT}.so        libboost_python.so
+    ln -s libboost_python${PYTHON_VERSION_NODOT}.so.1.67.0 libboost_python.so.1.67.0
+    ln -s libboost_python${PYTHON_VERSION_NODOT}.a         libboost_python3.a
+    ln -s libboost_python${PYTHON_VERSION_NODOT}.so        libboost_python3.so
+    ln -s libboost_python${PYTHON_VERSION_NODOT}.so.1.67.0 libboost_python3.so.1.67.0
+    ln -s libboost_numpy${PYTHON_VERSION_NODOT}.a          libboost_numpy.a
+    ln -s libboost_numpy${PYTHON_VERSION_NODOT}.so         libboost_numpy.so
+    ln -s libboost_numpy${PYTHON_VERSION_NODOT}.so.1.67.0  libboost_numpy.so.1.67.0
+    ln -s libboost_numpy${PYTHON_VERSION_NODOT}.a          libboost_numpy3.a
+    ln -s libboost_numpy${PYTHON_VERSION_NODOT}.so         libboost_numpy3.so
+    ln -s libboost_numpy${PYTHON_VERSION_NODOT}.so.1.67.0  libboost_numpy3.so.1.67.0
     echo Installed Boost.Python.
 else
     echo Boost.Python already installed.
@@ -151,10 +154,11 @@ if [ ! -d $INSTALLDIR/armadillo ]; then
     # Install Armadillo
     #
     echo Installing Armadillo...
+    # check if superlu lib is .../lib or .../lib64
     mkdir -p $INSTALLDIR/armadillo/
     cd $INSTALLDIR/armadillo && wget http://sourceforge.net/projects/arma/files/armadillo-$ARMADILLO_VERSION.tar.xz 
     cd $INSTALLDIR/armadillo && tar xf armadillo-$ARMADILLO_VERSION.tar.xz
-    cd $INSTALLDIR/armadillo/armadillo*/ && ./configure && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/armadillo -Dopenblas_LIBRARY:FILEPATH=$INSTALLDIR/openblas/lib/libopenblas.so  -DSuperLU_INCLUDE_DIR:PATH=$INSTALLDIR/superlu/include -DSuperLU_LIBRARY:FILEPATH=$INSTALLDIR/superlu/lib64/libsuperlu.so	
+    cd $INSTALLDIR/armadillo/armadillo*/ && ./configure && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/armadillo -Dopenblas_LIBRARY:FILEPATH=$INSTALLDIR/openblas/lib/libopenblas.so  -DSuperLU_INCLUDE_DIR:PATH=$INSTALLDIR/superlu/include -DSuperLU_LIBRARY:FILEPATH=$INSTALLDIR/superlu/lib/libsuperlu.so	
     cd $INSTALLDIR/armadillo/armadillo*/ && $make -j $J
     cd $INSTALLDIR/armadillo/armadillo*/ && $make install
     echo Installed Armadillo.
@@ -168,7 +172,7 @@ if [ ! -d $INSTALLDIR/cfitsio ]; then
     #
     echo Installing CFITSIO...
     mkdir -p ${INSTALLDIR}/cfitsio/build
-    cd ${INSTALLDIR}/cfitsio && wget http://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c/cfitsio${CFITSIO_VERSION}.tar.gz
+    cd ${INSTALLDIR}/cfitsio && wget http://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c/cfitsio-${CFITSIO_VERSION}.tar.gz
     cd ${INSTALLDIR}/cfitsio && tar xf cfitsio-${CFITSIO_VERSION}.tar.gz
     cd ${INSTALLDIR}/cfitsio/build && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX=${INSTALLDIR}/cfitsio/ ../cfitsio-${CFITSIO_VERSION}
     cd ${INSTALLDIR}/cfitsio/build && $make -j $J
@@ -219,7 +223,7 @@ if [ ! -d $INSTALLDIR/casacore ]; then
     if [ "${CASACORE_VERSION}" != "latest" ]; then cd ${INSTALLDIR}/casacore/src && git checkout tags/${CASACORE_VERSION}; fi
     cd ${INSTALLDIR}/casacore/data && wget --retry-connrefused ftp://anonymous@ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar
     cd ${INSTALLDIR}/casacore/data && tar xf WSRT_Measures.ztar
-    cd ${INSTALLDIR}/casacore/build && /usr/bin/cmake -DCMAKE_CXX_FLAGS=-D_GLIB_USE_CXX_ABI=1 -DCMAKE_LIBRARY_PATH=$CMAKE_LIBRARY -DCMAKE_INCLUDE_PATH=$CMAKE_INCLUDE -DCMAKE_INSTALL_PREFIX=${INSTALLDIR}/casacore/ -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DDATA_DIR:PATH=${INSTALLDIR}/casacore/data -DBoost_DIR=$INSTALLDIR/boost -DBOOST_PYTHON3_LIBRARY_NAME:STRING=python -DFFTW3F_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f_threads.so -DFFTW3_INCLUDE_DIR:PATH=$INSTALLDIR/fftw/include -DFFTW3_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3_threads.so -DHDF5_hdf5_LIBRARY:FILEPATH=$INSTALLDIR/hdf5/lib/libhdf5.so -DUSE_OPENMP=True -DUSE_FFTW3=TRUE -DUSE_HDF5=True -DBUILD_PYTHON:BOOL=False -DBUILD_PYTHON3:BOOL=True ../src/
+    cd ${INSTALLDIR}/casacore/build && $cmake -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Release -DCMAKE_LIBRARY_PATH=$CMAKE_LIBRARY -DCMAKE_INCLUDE_PATH=$CMAKE_INCLUDE -DCMAKE_INSTALL_PREFIX=${INSTALLDIR}/casacore/ -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DDATA_DIR:PATH=${INSTALLDIR}/casacore/data -DBoost_DIR=$INSTALLDIR/boost -DBOOST_PYTHON3_LIBRARY_NAME:STRING=python -DFFTW3F_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3f_threads.so -DFFTW3_INCLUDE_DIR:PATH=$INSTALLDIR/fftw/include -DFFTW3_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIBRARY:FILEPATH=$INSTALLDIR/fftw/lib/libfftw3_threads.so -DHDF5_hdf5_LIBRARY:FILEPATH=$INSTALLDIR/hdf5/lib/libhdf5.so -DENABLE_TABLELOCKING=OFF -DUSE_OPENMP=True -DUSE_FFTW3=TRUE -DUSE_HDF5=True -DBUILD_PYTHON:BOOL=False -DBUILD_PYTHON3:BOOL=True ../src/
     cd ${INSTALLDIR}/casacore/build && $make -j ${J}
     cd ${INSTALLDIR}/casacore/build && $make install
     echo Installed CASAcore.
@@ -237,7 +241,7 @@ if [ ! -d $INSTALLDIR/python-casacore ]; then
     cd ${INSTALLDIR}/python-casacore && git clone https://github.com/casacore/python-casacore
     if [ "$PYTHON_CASACORE_VERSION" != "latest" ]; then cd ${INSTALLDIR}/python-casacore/python-casacore && git checkout tags/${PYTHON_CASACORE_VERSION}; fi
     # OLD: patch setup.py $PYTHON_CASACORE_PATCH
-    cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py build_ext --swig-cpp --cython-cplus --pyrex-cplus -I${INSTALLDIR}/wcslib/include:${INSTALLDIR}/casacore/include/:${INSTALLDIR}/cfitsio/include:${INSTALLDIR}/boost/include -L${INSTALLDIR}/wcslib/lib:${INSTALLDIR}/casacore/lib/:${INSTALLDIR}/cfitsio/lib/:${INSTALLDIR}/boost/lib:/usr/lib64/
+    cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py build_ext --swig-cpp -I${INSTALLDIR}/wcslib/include:${INSTALLDIR}/casacore/include/:${INSTALLDIR}/cfitsio/include:${INSTALLDIR}/boost/include -L${INSTALLDIR}/wcslib/lib:${INSTALLDIR}/casacore/lib/:${INSTALLDIR}/cfitsio/lib/:${INSTALLDIR}/boost/lib:/usr/lib/python3.5
     mkdir -p ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
     #cp -r ${INSTALLDIR}/python-casacore/python-casacore/build/lib.linux-x86_64-${PYTHON_VERSION}/casacore/ ${INSTALLDIR}/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/
     cd ${INSTALLDIR}/python-casacore/python-casacore && ./setup.py install --prefix ${INSTALLDIR}/python-casacore/
@@ -362,8 +366,8 @@ ls ${INSTALLDIR}
 #
 echo export INSTALLDIR=$INSTALLDIR > $INSTALLDIR/init.sh
 
-echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib/python3.6/site-packages/:\$INSTALLDIR/DP3/lib/python3.6/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
-echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib64/python3.6/site-packages/:\$INSTALLDIR/DP3/lib64/python3.6/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
+echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/DP3/lib/python${PYTHON_VERSION}/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
+echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/DP3/lib64/python${PYTHON_VERSION}/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/aoflagger/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/casacore/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/DP3/bin:\$PATH  >> $INSTALLDIR/init.sh
