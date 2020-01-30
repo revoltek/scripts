@@ -351,8 +351,8 @@ if [ ! -d $INSTALLDIR/pyBDSF ]; then
     #
     # Install pyBDSF.
     #
-    mkdir -p $INSTALLDIR/pyBDSF/lib/python$PYTHON_VERSION/site-packages
-    export PYTHONPATH=$INSTALLDIR/pyBDSF/lib/python$PYTHON_VERSION/site-packages:$PYTHONPATH
+    mkdir -p $INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages
+    export PYTHONPATH=$INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages:$PYTHONPATH
     cd $INSTALLDIR/pyBDSF && git clone https://github.com/lofar-astron/PyBDSF pyBDSF
     cd $INSTALLDIR/pyBDSF/pyBDSF && python setup.py install --prefix=$INSTALLDIR/pyBDSF
 else
