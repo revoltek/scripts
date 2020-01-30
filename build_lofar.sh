@@ -9,6 +9,7 @@ export INSTALLDIR=$HOME/opt/lofar_200124
 #module load make/4.2
 #module load cmake/3.9
 #export PYTHON_VERSION=3.6
+#export PYTHON_VERSION_NODOT=36
 # Hamburg
 export PYTHON_VERSION=3.5
 export PYTHON_VERSION_NODOT=35
@@ -345,13 +346,26 @@ else
     echo WSClean already installed.
 fi
 
+if [ ! -d $INSTALLDIR/pyBDSF ]; then
+    echo Installing pyBDSF.
+    #
+    # Install pyBDSF.
+    #
+    mkdir -p $INSTALLDIR/pyBDSF/lib/python$PYTHON_VERSION/site-packages
+    export PYTHONPATH=$INSTALLDIR/pyBDSF/lib/python$PYTHON_VERSION/site-packages:$PYTHONPATH
+    cd $INSTALLDIR/pyBDSF && git clone https://github.com/lofar-astron/PyBDSF pyBDSF
+    cd $INSTALLDIR/pyBDSF/pyBDSF && python setup.py install --prefix=$INSTALLDIR/pyBDSF
+else
+    echo pyBDSF already installed.
+fi
+
 if [ ! -d $INSTALLDIR/lsmtool ]; then
     echo Installing LSMTool.
     #
     # Install LSMTool.
     #
-    mkdir -p $INSTALLDIR/lsmtool/lib/python3.6/site-packages
-    export PYTHONPATH=$INSTALLDIR/lsmtool/lib/python3.6/site-packages:$PYTHONPATH
+    mkdir -p $INSTALLDIR/lsmtool/lib/python$PYTHON_VERSION/site-packages
+    export PYTHONPATH=$INSTALLDIR/lsmtool/lib/python$PYTHON_VERSION/site-packages:$PYTHONPATH
     cd $INSTALLDIR/lsmtool && git clone https://github.com/darafferty/LSMTool.git lsmtool
     cd $INSTALLDIR/lsmtool/lsmtool && python setup.py install --prefix=$INSTALLDIR/lsmtool
 else
@@ -368,12 +382,12 @@ ls ${INSTALLDIR}
 #
 echo export INSTALLDIR=$INSTALLDIR > $INSTALLDIR/init.sh
 
-echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/DP3/lib/python${PYTHON_VERSION}/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
-echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/DP3/lib64/python${PYTHON_VERSION}/site-packages/:\$PYTHONPATH  >> $INSTALLDIR/init.sh
+echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/DP3/lib/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/pyBDSF/lib/python$PYTHON_VERSION/site-packages:\$PYTHONPATH  >> $INSTALLDIR/init.sh
+echo export PYTHONPATH=\$INSTALLDIR/python-casacore/lib64/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/DP3/lib64/python${PYTHON_VERSION}/site-packages/:\$INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages:\$PYTHONPATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/aoflagger/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/casacore/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/DP3/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/dysco/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/wsclean/bin:\$PATH  >> $INSTALLDIR/init.sh
-echo export LD_LIBRARY_PATH=\$INSTALLDIR/aoflagger/lib:\$INSTALLDIR/armadillo/lib64:\$INSTALLDIR/boost/lib:\$INSTALLDIR/casacore/lib:\$INSTALLDIR/cfitsio/lib:\$INSTALLDIR/DP3/lib:\$INSTALLDIR/dysco/lib:\$INSTALLDIR/idg/lib:\$INSTALLDIR/LOFARBeam/lib:\$INSTALLDIR/superlu/lib64:\$INSTALLDIR/wcslib/:\$INSTALLDIR/hdf5/lib:\$LD_LIBRARY_PATH  >> $INSTALLDIR/init.sh
+echo export LD_LIBRARY_PATH=\$INSTALLDIR/aoflagger/lib:\$INSTALLDIR/armadillo/lib64:\$INSTALLDIR/armadillo/lib\$INSTALLDIR/boost/lib:\$INSTALLDIR/casacore/lib:\$INSTALLDIR/cfitsio/lib:\$INSTALLDIR/DP3/lib:\$INSTALLDIR/dysco/lib:\$INSTALLDIR/idg/lib:\$INSTALLDIR/LOFARBeam/lib:\$INSTALLDIR/superlu/lib64:\$INSTALLDIR/superlu/lib:\$INSTALLDIR/wcslib/:\$INSTALLDIR/hdf5/lib:\$LD_LIBRARY_PATH  >> $INSTALLDIR/init.sh
 
