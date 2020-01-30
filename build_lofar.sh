@@ -41,7 +41,7 @@ export HDF5_VERSION=1.8.21
 export LOSOTO_VERSION=2.0
 export OPENBLAS_VERSION=v0.3.7
 export PYBDSF_VERSION=v1.8.12
-export PYTHON_CASACORE_VERSION=latest
+export PYTHON_CASACORE_VERSION=v3.1.1
 # Do not change, Armadillo wants this version of SuperLU.
 export SUPERLU_VERSION=v5.2.1
 export WSCLEAN_VERSION=latest
