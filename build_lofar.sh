@@ -19,7 +19,8 @@ export cmake=`which cmake`
 export CC=`which gcc`
 export CXX=`which g++`
 export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
-export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS --std=c++11 -W -Wall -Woverloaded-virtual -Wno-unknown-pragmas -D_GLIBCXX_USE_CXX11_ABI=${CXX_ABI} -O3 -march=haswell"
+export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
+# --std=c++11 -W -Wall -Woverloaded-virtual -Wno-unknown-pragmas -D_GLIBCXX_USE_CXX11_ABI=${CXX_ABI} -O3 -march=haswell"
 
 # Path to where the patch for python-casacore's setup is stored.
 #export PYTHON_CASACORE_PATCH=$HOME/opt/src/patch_python-casacore.patch
@@ -41,7 +42,7 @@ export HDF5_VERSION=1.8.21
 export LOSOTO_VERSION=2.0
 export OPENBLAS_VERSION=v0.3.7
 export PYBDSF_VERSION=v1.8.12
-export PYTHON_CASACORE_VERSION=latest
+export PYTHON_CASACORE_VERSION=v3.1.1
 # Do not change, Armadillo wants this version of SuperLU.
 export SUPERLU_VERSION=v5.2.1
 export WSCLEAN_VERSION=latest
