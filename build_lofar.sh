@@ -5,14 +5,14 @@ export INSTALLDIR=$HOME/opt/lofar_200124
 # CEP3
 #export cmake=/home/dijkema/opt/cmake/bin/cmake
 # Leiden
-#module load gcc/8.1.0
-#module load make/4.2
-#module load cmake/3.9
-#export PYTHON_VERSION=3.6
-#export PYTHON_VERSION_NODOT=36
+module load gcc/8.1.0
+module load make/4.2
+module load cmake/3.9
+export PYTHON_VERSION=3.6
+export PYTHON_VERSION_NODOT=36
 # Hamburg
-export PYTHON_VERSION=3.5
-export PYTHON_VERSION_NODOT=35
+#export PYTHON_VERSION=3.5
+#export PYTHON_VERSION_NODOT=35
 
 # General compile and build settings.
 export make=`which make`
@@ -353,6 +353,7 @@ if [ ! -d $INSTALLDIR/pyBDSF ]; then
     #
     mkdir -p $INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages
     export PYTHONPATH=$INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages:$PYTHONPATH
+    export export LIBRARY_PATH=$LD_LIBRARY_PATH
     cd $INSTALLDIR/pyBDSF && git clone https://github.com/lofar-astron/PyBDSF pyBDSF
     cd $INSTALLDIR/pyBDSF/pyBDSF && python setup.py install --prefix=$INSTALLDIR/pyBDSF
 else
