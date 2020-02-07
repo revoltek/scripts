@@ -30,24 +30,23 @@ export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
 # Settings relevant to the installed software.
 #export AOFLAGGER_VERSION=latest
 export AOFLAGGER_VERSION=v2.14.0
-export ARMADILLO_VERSION=8.600.0
 export BOOST_DOT_VERSION=1.67.0
 export BOOST_VERSION=1_67_0
-#export CASACORE_VERSION=v2.4.1
 export CASACORE_VERSION=latest
 # Leave at latest, release versions crash for some reason.
 export CFITSIO_VERSION=3.47
 export DYSCO_VERSION=v1.2.0
 export FFTW_VERSION=3.3.8
 export HDF5_VERSION=1.8.21
-export LOSOTO_VERSION=2.0
-export OPENBLAS_VERSION=v0.3.7
 export PYBDSF_VERSION=v1.8.12
 export PYTHON_CASACORE_VERSION=v3.1.1
-# Do not change, Armadillo wants this version of SuperLU.
-export SUPERLU_VERSION=v5.2.1
 export WSCLEAN_VERSION=latest
 export WCSLIB_VERSION=latest
+
+# Do not change, Armadillo wants this version of SuperLU.
+#export SUPERLU_VERSION=v5.2.1
+#export OPENBLAS_VERSION=v0.3.7
+#export ARMADILLO_VERSION=8.600.0
 
 mkdir -p $INSTALLDIR
 
@@ -120,53 +119,53 @@ else
     echo Boost.Python already installed.
 fi
 
-if [ ! -d $INSTALLDIR/openblas ]; then
-    #
-    # Install OpenBLAS
-    #
-    echo Installing OpenBLAS...
-    mkdir -p $INSTALLDIR/openblas/
-    cd $INSTALLDIR/openblas/ && git clone https://github.com/xianyi/OpenBLAS.git src && cd src && git checkout $OPENBLAS_VERSION
-    cd $INSTALLDIR/openblas/src && $make -j $J 
-    cd $INSTALLDIR/openblas/src && $make install PREFIX=$INSTALLDIR/openblas
-    echo Installed OpenBLAS.
-else
-    echo OpenBlas already installed.
-fi
-
-export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:${INSTALLDIR}/openblas
-
-if [ ! -d $INSTALLDIR/superlu ]; then
-    #
-    # Install SuperLU
-    #
-    echo Installing SuperLU...
-    mkdir -p $INSTALLDIR/superlu/build
-    cd $INSTALLDIR/superlu/ && git clone https://github.com/xiaoyeli/superlu.git src && cd src && git checkout $SUPERLU_VERSION
-    cd $INSTALLDIR/superlu/build && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/superlu -DUSE_XSDK_DEFAULTS=TRUE -Denable_blaslib=OFF -DBLAS_LIBRARY=$INSTALLDIR/openblas/lib/libopenblas.so ../src
-    cd $INSTALLDIR/superlu/build && $make -j $J 
-    cd $INSTALLDIR/superlu/build && $make install
-    echo Installed SuperLU.
-else
-    echo SuperLu already installed.
-fi
-
-if [ ! -d $INSTALLDIR/armadillo ]; then
-    #
-    # Install Armadillo
-    #
-    echo Installing Armadillo...
-    # check if superlu lib is .../lib or .../lib64
-    mkdir -p $INSTALLDIR/armadillo/
-    cd $INSTALLDIR/armadillo && wget http://sourceforge.net/projects/arma/files/armadillo-$ARMADILLO_VERSION.tar.xz 
-    cd $INSTALLDIR/armadillo && tar xf armadillo-$ARMADILLO_VERSION.tar.xz
-    cd $INSTALLDIR/armadillo/armadillo*/ && ./configure && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/armadillo -Dopenblas_LIBRARY:FILEPATH=$INSTALLDIR/openblas/lib/libopenblas.so  -DSuperLU_INCLUDE_DIR:PATH=$INSTALLDIR/superlu/include -DSuperLU_LIBRARY:FILEPATH=$INSTALLDIR/superlu/lib/libsuperlu.so	
-    cd $INSTALLDIR/armadillo/armadillo*/ && $make -j $J
-    cd $INSTALLDIR/armadillo/armadillo*/ && $make install
-    echo Installed Armadillo.
-else
-    echo Armadillo already installed.
-fi
+#if [ ! -d $INSTALLDIR/openblas ]; then
+#    #
+#    # Install OpenBLAS
+#    #
+#    echo Installing OpenBLAS...
+#    mkdir -p $INSTALLDIR/openblas/
+#    cd $INSTALLDIR/openblas/ && git clone https://github.com/xianyi/OpenBLAS.git src && cd src && git checkout $OPENBLAS_VERSION
+#    cd $INSTALLDIR/openblas/src && $make -j $J 
+#    cd $INSTALLDIR/openblas/src && $make install PREFIX=$INSTALLDIR/openblas
+#    echo Installed OpenBLAS.
+#else
+#    echo OpenBlas already installed.
+#fi
+#
+#export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:${INSTALLDIR}/openblas
+#
+#if [ ! -d $INSTALLDIR/superlu ]; then
+#    #
+#    # Install SuperLU
+#    #
+#    echo Installing SuperLU...
+#    mkdir -p $INSTALLDIR/superlu/build
+#    cd $INSTALLDIR/superlu/ && git clone https://github.com/xiaoyeli/superlu.git src && cd src && git checkout $SUPERLU_VERSION
+#    cd $INSTALLDIR/superlu/build && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/superlu -DUSE_XSDK_DEFAULTS=TRUE -Denable_blaslib=OFF -DBLAS_LIBRARY=$INSTALLDIR/openblas/lib/libopenblas.so ../src
+#    cd $INSTALLDIR/superlu/build && $make -j $J 
+#    cd $INSTALLDIR/superlu/build && $make install
+#    echo Installed SuperLU.
+#else
+#    echo SuperLu already installed.
+#fi
+#
+#if [ ! -d $INSTALLDIR/armadillo ]; then
+#    #
+#    # Install Armadillo
+#    #
+#    echo Installing Armadillo...
+#    # check if superlu lib is .../lib or .../lib64
+#    mkdir -p $INSTALLDIR/armadillo/
+#    cd $INSTALLDIR/armadillo && wget http://sourceforge.net/projects/arma/files/armadillo-$ARMADILLO_VERSION.tar.xz 
+#    cd $INSTALLDIR/armadillo && tar xf armadillo-$ARMADILLO_VERSION.tar.xz
+#    cd $INSTALLDIR/armadillo/armadillo*/ && ./configure && $cmake -DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=1 -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/armadillo -Dopenblas_LIBRARY:FILEPATH=$INSTALLDIR/openblas/lib/libopenblas.so  -DSuperLU_INCLUDE_DIR:PATH=$INSTALLDIR/superlu/include -DSuperLU_LIBRARY:FILEPATH=$INSTALLDIR/superlu/lib/libsuperlu.so	
+#    cd $INSTALLDIR/armadillo/armadillo*/ && $make -j $J
+#    cd $INSTALLDIR/armadillo/armadillo*/ && $make install
+#    echo Installed Armadillo.
+#else
+#    echo Armadillo already installed.
+#fi
 
 if [ ! -d $INSTALLDIR/cfitsio ]; then
     #
@@ -204,10 +203,10 @@ fi
 
 
 # Make library and header directories easily available for future CMakes.
-export CMAKE_INCLUDE=$INSTALLDIR/fftw/include:$INSTALLDIR/armadillo/include:$INSTALLDIR/boost/include:$INSTALLDIR/cfitsio/include:$INSTALLDIR/openblas/include:$INSTALLDIR/superlu/include:$INSTALLDIR/wcslib/include:$INSTALLDIR/hdf5/include:$INSTALLDIR/aoflagger/include
-export CMAKE_LIBRARY=$INSTALLDIR/fftw/lib:$INSTALLDIR/armadillo/lib:$INSTALLDIR/boost/lib:$INSTALLDIR/cfitsio/lib:$INSTALLDIR/openblas/lib:$INSTALLDIR/superlu/lib64:$INSTALLDIR/wcslib/lib:$INSTALLDIR/hdf5/lib
-export CMAKE_PREFIX_PATH=$INSTALLDIR/armadillo:$INSTALLDIR/boost:$INSTALLDIR/casacore:$INSTALLDIR/cfitsio:$INSTALLDIR/dysco:$INSTALLDIR/idg:$INSTALLDIR/openblas:$INSTALLDIR/superlu:$INSTALLDIR/wcslib:$INSTALLDIR/hdf5:/usr/lib64
-export CPATH=$INSTALLDIR/armadillo/lib:$INSTALLDIR/boost/lib:$INSTALLDIR/cfitsio/lib:$INSTALLDIR/openblas/lib:$INSTALLDIR/superlu/lib:$INSTALLDIR/wcslib/lib
+export CMAKE_INCLUDE=$INSTALLDIR/fftw/include:$INSTALLDIR/boost/include:$INSTALLDIR/cfitsio/include:$INSTALLDIR/wcslib/include:$INSTALLDIR/hdf5/include:$INSTALLDIR/aoflagger/include
+export CMAKE_LIBRARY=$INSTALLDIR/fftw/lib:$INSTALLDIR/boost/lib:$INSTALLDIR/cfitsio/lib:$INSTALLDIR/wcslib/lib:$INSTALLDIR/hdf5/lib
+export CMAKE_PREFIX_PATH=$INSTALLDIR/boost:$INSTALLDIR/casacore:$INSTALLDIR/cfitsio:$INSTALLDIR/dysco:$INSTALLDIR/idg:$INSTALLDIR/wcslib:$INSTALLDIR/hdf5:/usr/lib64
+export CPATH=$INSTALLDIR/boost/lib:$INSTALLDIR/cfitsio/lib:$INSTALLDIR/wcslib/lib
 
 #########################################
 # Install main LOFAR software packages. #
@@ -318,7 +317,6 @@ if [ ! -d $INSTALLDIR/DP3 ]; then
     # Install DP3.
     #
     echo Installing DP3...
-    #export LD_LIBRARY_PATH=/net/lofar1/data1/sweijen/software/HDF5_1.8/lib:/net/lofar1/data1/sweijen/software/LOFAR/2018_11_05_DP3/superlu/lib64:$INSTALLDIR/LOFARBeam/lib:$LD_LIBRARY_PATH
     mkdir -p $INSTALLDIR/DP3/build
     git clone https://github.com/lofar-astron/DP3.git $INSTALLDIR/DP3/src
     cd $INSTALLDIR/DP3/build && $cmake -DCMAKE_CXX_FLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS" -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DHDF5_DIR:PATH=${INSTALLDIR}/hdf5/hdf5-${HDF5_VERSION} -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so ../src
@@ -391,5 +389,4 @@ echo export PATH=\$INSTALLDIR/DP3/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/dysco/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/wsclean/bin:\$PATH  >> $INSTALLDIR/init.sh
 echo export PATH=\$INSTALLDIR/pyBDSF/bin:\$PATH  >> $INSTALLDIR/init.sh
-echo export LD_LIBRARY_PATH=\$INSTALLDIR/aoflagger/lib:\$INSTALLDIR/armadillo/lib64:\$INSTALLDIR/armadillo/lib:\$INSTALLDIR/boost/lib:\$INSTALLDIR/casacore/lib:\$INSTALLDIR/cfitsio/lib:\$INSTALLDIR/DP3/lib:\$INSTALLDIR/dysco/lib:\$INSTALLDIR/idg/lib:\$INSTALLDIR/LOFARBeam/lib:\$INSTALLDIR/superlu/lib64:\$INSTALLDIR/superlu/lib:\$INSTALLDIR/wcslib/:\$INSTALLDIR/hdf5/lib:\$INSTALLDIR/openblas/lib:\$LD_LIBRARY_PATH  >> $INSTALLDIR/init.sh
-
+echo export LD_LIBRARY_PATH=\$INSTALLDIR/aoflagger/lib:\$INSTALLDIR/boost/lib:\$INSTALLDIR/casacore/lib:\$INSTALLDIR/cfitsio/lib:\$INSTALLDIR/DP3/lib:\$INSTALLDIR/dysco/lib:\$INSTALLDIR/idg/lib:\$INSTALLDIR/LOFARBeam/lib:\$INSTALLDIR/wcslib/:\$INSTALLDIR/hdf5/lib:\$LD_LIBRARY_PATH  >> $INSTALLDIR/init.sh
