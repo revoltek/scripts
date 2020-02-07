@@ -28,12 +28,10 @@ export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
 #export PATCH_AOFLAGGER=/net/lofar1/data1/sweijen/software/LOFAR/aoflagger.patch
 
 # Settings relevant to the installed software.
-#export AOFLAGGER_VERSION=latest
 export AOFLAGGER_VERSION=v2.14.0
 export ARMADILLO_VERSION=8.600.0
 export BOOST_DOT_VERSION=1.67.0
 export BOOST_VERSION=1_67_0
-#export CASACORE_VERSION=v2.4.1
 export CASACORE_VERSION=latest
 # Leave at latest, release versions crash for some reason.
 export CFITSIO_VERSION=3.47
@@ -346,6 +344,7 @@ else
     echo WSClean already installed.
 fi
 
+
 if [ ! -d $INSTALLDIR/pyBDSF ]; then
     echo Installing pyBDSF.
     #
@@ -358,6 +357,21 @@ if [ ! -d $INSTALLDIR/pyBDSF ]; then
 else
     echo pyBDSF already installed.
 fi
+
+
+if [ ! -d $INSTALLDIR/pyregion ]; then
+    echo Installing pyregions.
+    #
+    # Install pyregion.
+    #
+    mkdir -p $INSTALLDIR/pyregion/lib/python$PYTHON_VERSION/site-packages
+    export PYTHONPATH=$INSTALLDIR/pyregion/lib/python$PYTHON_VERSION/site-packages:$PYTHONPATH
+    cd $INSTALLDIR/pyregion && git clone https://github.com/astropy/pyregion pyregion
+    cd $INSTALLDIR/pyregion/pyregion && python setup.py install --prefix=$INSTALLDIR/pyregion
+else
+    echo pyregion already installed.
+fi
+
 
 if [ ! -d $INSTALLDIR/lsmtool ]; then
     echo Installing LSMTool.
