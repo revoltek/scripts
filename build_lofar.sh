@@ -5,14 +5,14 @@ export INSTALLDIR=$HOME/opt/lofar_200124
 # CEP3
 #export cmake=/home/dijkema/opt/cmake/bin/cmake
 # Leiden
-#module load gcc/8.1.0
-#module load make/4.2
-#module load cmake/3.9
-#export PYTHON_VERSION=3.6
-#export PYTHON_VERSION_NODOT=36
+module load gcc/8.1.0
+module load make/4.2
+module load cmake/3.9
+export PYTHON_VERSION=3.6
+export PYTHON_VERSION_NODOT=36
 # Hamburg
-export PYTHON_VERSION=3.5
-export PYTHON_VERSION_NODOT=35
+#export PYTHON_VERSION=3.5
+#export PYTHON_VERSION_NODOT=35
 
 # General compile and build settings.
 export make=`which make`
@@ -304,8 +304,8 @@ if [ ! -d $INSTALLDIR/idg ]; then
     mkdir -p $INSTALLDIR/idg/build
     cd $INSTALLDIR/idg && git clone https://gitlab.com/astron-idg/idg.git src
     #cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=OFF ../src
-    export LD_LIBRARY_PATH=/home/fdg/node31/opt/intel/mkl/lib/intel64:$LD_LIBRARY_PATH
-    cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
+    #cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
+    cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/opt/intel/mkl/include ../src
     cd $INSTALLDIR/idg/build && $make -j $J
     cd $INSTALLDIR/idg/build && $make install
 else
