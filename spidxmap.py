@@ -125,7 +125,7 @@ if args.beam is None:
         target_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
     else:
         #target_beam = findCommonBeam(all_beams)
-        logging.error('Not implemented.')
+        logging.error('Best beam not implemented. Use --circbeam.')
         sys.exit()
 else:
     target_beam = [args.beam[0]/3600., args.beam[1]/3600., args.beam[2]]

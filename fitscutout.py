@@ -18,8 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #./fitscutout.py fitsfile [set position and size below]
-position = (500, 500) # pixel
-size = (400, 400) # pixel
+position = (3800, 3300) # pixel
+size = (1000, 1000) # pixel
 
 import os, sys
 from astropy.io import fits
@@ -29,7 +29,7 @@ from astropy.wcs import WCS
 filename = sys.argv[1]
 
 # Load the image and the WCS
-data, hdr = fits.open(filename)[0]
+hdu = fits.open(filename)[0]
 wcs = WCS(hdu.header)
 
 # Make the cutout, including the WCS
