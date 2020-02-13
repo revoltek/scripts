@@ -21,7 +21,6 @@ import os, sys, argparse, logging
 import numpy as np
 from lib_linearfit import linear_fit_bootstrap
 from lib_fits import flatten
-from lib_beamdeconv import findCommonBeam
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.coordinates import match_coordinates_sky
@@ -124,7 +123,10 @@ if args.beam is None:
         maxmaj = np.max([b[0] for b in all_beams])
         target_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
     else:
-        target_beam = findCommonBeam(all_beams)
+        from radio_beam import Beams
+        my_beams = Beams([b[0] for b in all_beams] * u.deg, [b[1] for b in all_beams] * u.deg, [b[2] for b in all_beams] * u.deg)
+        common_beam = my_beams.common_beam()
+        target_beam = [common_beam.major.value, common_beam.minor.value, common_beam.pa.value]
 else:
     target_beam = [args.beam[0]/3600., args.beam[1]/3600., args.beam[2]]
 
@@ -230,12 +232,15 @@ for image in all_images:
             intermediate = pyfits.PrimaryHDU(image.img_data, image.img_hdr)
             intermediate.writeto(image.imagefile+'-regrid-conv.fits', overwrite=True)
  
+    if args.noise:
+        if args.sigma is not None:
+            image.calc_noise(sigma=args.sigma) # after mask?/convolution
+            image.blank_noisy(args.sigma)
+        else:
+            image.calc_noise() # after mask?/convolution
+
     if args.region is not None:
         image.apply_region(args.region, invert=True) # after convolution to minimise bad pixels
-    if args.noise:
-        image.calc_noise() # after mask/convolution
-        if args.sigma is not None:
-            image.blank_noisy(args.sigma)
 
 
 #########################################################
