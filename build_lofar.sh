@@ -10,13 +10,14 @@ export INSTALLDIR=$HOME/opt/lofar_200124
 #module load cmake/3.9
 #export PYTHON_VERSION=3.6
 #export PYTHON_VERSION_NODOT=36
+#export cmake=`which cmake`
 # Hamburg
 export PYTHON_VERSION=3.5
 export PYTHON_VERSION_NODOT=35
+export cmake='/home/fdg/opt/src/cmake-3.16.3/bin/cmake'
 
 # General compile and build settings.
 export make=`which make`
-export cmake=`which cmake`
 export CC=`which gcc`
 export CXX=`which g++`
 export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
@@ -303,9 +304,8 @@ if [ ! -d $INSTALLDIR/idg ]; then
     echo Installing IDG.
     mkdir -p $INSTALLDIR/idg/build
     cd $INSTALLDIR/idg && git clone https://gitlab.com/astron-idg/idg.git src
-    #cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=OFF ../src
-    export LD_LIBRARY_PATH=/home/fdg/node31/opt/intel/mkl/lib/intel64:$LD_LIBRARY_PATH
-    cd $INSTALLDIR/idg/build && $cmake -DBUILD_WITH_TESTS=1 -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
+    cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
+    #cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/opt/intel/mkl/include ../src
     cd $INSTALLDIR/idg/build && $make -j $J
     cd $INSTALLDIR/idg/build && $make install
 else
