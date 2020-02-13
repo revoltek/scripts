@@ -174,7 +174,7 @@ for i, image in enumerate(args.images):
 
 
 if args.beamarm:
-    if args.circbeam:
+    if args.beamcirc:
         maxmaj = np.max([b[0] for b in beams])
         common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
     else:
