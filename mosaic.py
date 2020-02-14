@@ -206,8 +206,8 @@ for i, d in enumerate(directions):
 
     if args.beamcorr: d.apply_beam_corr() # after noise calculation
 
-    #hdu = pyfits.PrimaryHDU(header=d.img_hdr, data=d.img_data)
-    #hdu.writeto(d.imagefile+'-beamcorr', overwrite=True)
+    hdu = pyfits.PrimaryHDU(header=d.img_hdr, data=d.img_data)
+    hdu.writeto(d.imagefile+'-beamcorr', overwrite=True)
 
     d.calc_weight() # after setting: beam, noise, scale
 
@@ -337,10 +337,18 @@ isum[wsum != 0] /= wsum[wsum != 0]
 isum[wsum == 0] = np.nan
 isum[~mask] = np.nan
 
-for ch in ('BMAJ', 'BMIN', 'BPA'):
-    regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
-    regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
-    regrid_hdr['UNITS'] = 'Jy/beam'
+#set beam
+try:
+    regrid_hdr['BMAJ'] = common_beam[0]
+    regrid_hdr['BMIN'] = common_beam[1]
+    regrid_hdr['BPA'] = common_beam[2]
+except:
+    logging.warning('Setting header beam equal to: %s' % directions[0].imagefile)
+    for ch in ('BMAJ', 'BMIN', 'BPA'):
+        regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
+
+regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
+regrid_hdr['UNITS'] = 'Jy/beam'
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
 hdu.writeto(args.output, overwrite=True)
