@@ -26,7 +26,6 @@ from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.table import Table
 import pyregion
-#from lib_beamdeconv import *
 # https://github.com/astrofrog/reproject
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_interp
@@ -41,6 +40,7 @@ parser.add_argument('--beams', dest='beams', nargs='+', help='List of beams')
 parser.add_argument('--beamcut', dest='beamcut', type=float, default=0.3, help='Beam level to cut at (default: 0.3, use 0.0 to deactivate)')
 parser.add_argument('--beamcorr', dest='beamcorr', action='store_true', help='Pre-correct for beam before combining (default: do not apply)')
 parser.add_argument('--beamarm', dest='beamarm', action='store_true', help='Convolve all images to minimum common beam (default: False)')
+parser.add_argument('--beamcirc', dest='beamcirc', action='store_true', help='If beamarm is set, then forces the beam to be circular (default: False)')
 parser.add_argument('--header', dest='header', help='An image/header to use for the output mosaic coordinates')
 parser.add_argument('--noises', dest='noises', type=float, nargs='+', help='UNSCALED Central noise level for weighting: must match numbers of maps')
 parser.add_argument('--scales', dest='scales', type=float, nargs='+', help='Scale factors by which maps should be multiplied: must match numbers of maps')
@@ -57,12 +57,16 @@ logging.root.setLevel(logging.DEBUG)
 
 if args.scales is not None:
     if len(args.scales) != len(args.images):
-        logging.error('Scales provided must match images')
+        logging.error('Scales provided must match images.')
         sys.exit(1)
 
 if args.noises is not None:
     if len(args.noises) != len(args.imagess):
-        logging.error('Noises provided must match images')
+        logging.error('Noises provided must match images.')
+        sys.exit(1)
+
+if args.beamcirc and not args.beamarm:
+        logging.error('--beamcirc requires --beamarm.')
         sys.exit(1)
 
 if args.images is None or len(args.images) < 2:
@@ -165,15 +169,20 @@ directions = []
 beams = []
 for i, image in enumerate(args.images):
     d = Direction(image)
-    #beams.append([d.get_beam()[0]+0.0001, d.get_beam()[0]+0.0001, 0]) 
     beams.append(d.get_beam()) 
     directions.append(d)
 
 
 if args.beamarm:
-    #common_beam = findCommonBeam(beams,0.01)
-    maxmaj = np.max([b[0] for b in beams])
-    common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
+    if args.beamcirc:
+        maxmaj = np.max([b[0] for b in beams])
+        common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
+    else:
+        from radio_beam import Beams
+        my_beams = Beams([b[0] for b in beams] * u.deg, [b[1] for b in beams] * u.deg, [b[2] for b in beams] * u.deg)
+        common_beam = my_beams.common_beam()
+        common_beam = [common_beam.major.value, common_beam.minor.value, common_beam.pa.value]
+
     logging.debug('Minimum common beam: %.1f" %.1f" (pa %.1f deg)' % \
              (common_beam[0]*3600., common_beam[1]*3600., common_beam[2]))
 
@@ -328,10 +337,18 @@ isum[wsum != 0] /= wsum[wsum != 0]
 isum[wsum == 0] = np.nan
 isum[~mask] = np.nan
 
-for ch in ('BMAJ', 'BMIN', 'BPA'):
-    regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
-    regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
-    regrid_hdr['UNITS'] = 'Jy/beam'
+#set beam
+try:
+    regrid_hdr['BMAJ'] = common_beam[0]
+    regrid_hdr['BMIN'] = common_beam[1]
+    regrid_hdr['BPA'] = common_beam[2]
+except:
+    logging.warning('Setting header beam equal to: %s' % directions[0].imagefile)
+    for ch in ('BMAJ', 'BMIN', 'BPA'):
+        regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
+
+regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
+regrid_hdr['UNITS'] = 'Jy/beam'
 
 hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
 hdu.writeto(args.output, overwrite=True)

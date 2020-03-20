@@ -32,7 +32,8 @@ def flatten(filename, channel=0, freqaxis=0):
     if naxis<2:
         raise RadioError('Can\'t make map from this')
     if naxis==2:
-        return f[0].header,f[0].data
+        pass
+        #return f[0].header,f[0].data
 
     w = pywcs(f[0].header)
     wn = pywcs(naxis=2)
@@ -66,6 +67,14 @@ def flatten(filename, channel=0, freqaxis=0):
     # add freq
     header["FREQ"] = find_freq(f[0].header)
 
+    # add beam if present
+    try:
+        header["BMAJ"]=f[0].header['BMAJ']
+        header["BMIN"]=f[0].header['BMIN']
+        header["BPA"]=f[0].header['BPA']
+    except:
+        pass
+
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
     return header, f[0].data[tuple(dataslice)]
 
@@ -89,8 +98,8 @@ def find_freq(header):
     """
     Find frequency value in most common places of a fits header
     """
-    if not header.get('RESTFREQ') is None and not header.get('RESTFREQ') == 0:
-        return header.get('RESTFREQ')
+    if not header.get('RESTFRQ') is None and not header.get('RESTFRQ') == 0:
+        return header.get('RESTFRQ')
     elif not header.get('FREQ') is None and not header.get('FREQ') == 0:
         return header.get('FREQ')
     else:
@@ -181,13 +190,13 @@ class Image(object):
         else: self.img_data[mask] = blankvalue
 
 
-    def calc_noise(self, niter=1000, eps=None):
+    def calc_noise(self, niter=1000, eps=None, sigma=5):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
         eps : convergency criterion, if None is 1% of initial rms
         """
-        if eps == None: eps = np.nanstd(self.img_data)*1e-2
+        if eps == None: eps = np.nanstd(self.img_data)*1e-4
         data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
         oldrms = 1.
         for i in range(niter):
@@ -198,7 +207,7 @@ class Image(object):
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
-            data = data[np.abs(data)<7*rms]
+            data = data[np.abs(data)<sigma*rms]
             oldrms = rms
         raise Exception('Noise estimation failed to converge.')
 

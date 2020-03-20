@@ -56,7 +56,7 @@ def badrms(values, rmsvalues):
 
 opt = optparse.OptionParser(usage="%prog images", version="%prog 0.3")
 opt.add_option('-o', '--outimg', help='Output spctral index image [default = spidx.img]', default='estrap.img')
-opt.add_option('-m', '--maskimg', help='Mask image tells image_spidx.py where perform linear regression')
+opt.add_option('-m', '--maskimg', help='Mask image tells image_estrapolate.py where perform linear regression')
 opt.add_option('-r', '--rmsfile', help='RMSs file with one entry per line entry like "filename RMS_VALUE"')
 opt.add_option('-f', '--freq', help='Frequency to estrapolate [Hz]' )
 (options, imglist) = opt.parse_args()
