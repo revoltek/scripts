@@ -351,6 +351,14 @@ if [ ! -d $INSTALLDIR/pyBDSF ]; then
     #
     # Install pyBDSF.
     #
+    # TO fose boost in setup.py:
+    #   def find_boost_python():
+    #   """Find the name of the boost-python library, and the path where it was found. Returns a guess if none found."""
+    #       return 'boost_python36', '/home/fdg/opt/lofar_200124/boost/lib'
+    #   def find_boost_numpy():
+    #   """Find the name of the boost-numpy library, and the directory where it was found. Returns None, '' if not found"""
+    #       return 'boost_numpy36', '/home/fdg/opt/lofar_200124/boost/lib'
+
     mkdir -p $INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages
     export PYTHONPATH=$INSTALLDIR/pyBDSF/lib64/python$PYTHON_VERSION/site-packages:$PYTHONPATH
     export export LIBRARY_PATH=$LD_LIBRARY_PATH
