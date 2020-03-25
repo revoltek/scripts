@@ -1,8 +1,3 @@
-# General environment settings.
-. /sw/profile/init.sh
-module switch env env/2019Q4-cuda-gcc-openmpi
-export LDFLAGS="$(rrz-build-linkpath -R) $LDFLAGS"
-
 export J=64
 export INSTALLDIR=$HOME/opt/lofar_200318
 export PYTHON_VERSION=3.6
@@ -15,6 +10,7 @@ export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS -march=native
 export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS -march=native -O3 -fno-math-errno -ftree-vectorize"
 export LDFLAGS="-lgsl -lcblas"
 export CMAKE_RPATH="-DCMAKE_BUILD_RPATH=$LD_RUN_PATH -DCMAKE_INSTALL_RPATH=$LD_RUN_PATH"
+export LDFLAGS="$(rrz-build-linkpath -R) $LDFLAGS"
 
 # Path to where the patch for python-casacore's setup is stored.
 #export PYTHON_CASACORE_PATCH=$HOME/opt/src/patch_python-casacore.patch
@@ -289,7 +285,7 @@ if [ ! -d $INSTALLDIR/idg ]; then
     echo Installing IDG.
     mkdir -p $INSTALLDIR/idg/build
     cd $INSTALLDIR/idg && git clone https://gitlab.com/astron-idg/idg.git src
-    cd $INSTALLDIR/idg/build && $cmake $CMAKE_RPATH -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
+    cd $INSTALLDIR/idg/build && $cmake $CMAKE_RPATH -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=OFF -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
     cd $INSTALLDIR/idg/build && $make -j $J
     cd $INSTALLDIR/idg/build && $make install
 else
@@ -304,7 +300,7 @@ if [ ! -d $INSTALLDIR/DP3 ]; then
     echo Installing DP3...
     mkdir -p $INSTALLDIR/DP3/build
     git clone https://github.com/lofar-astron/DP3.git $INSTALLDIR/DP3/src
-    cd $INSTALLDIR/DP3/build && $cmake $CMAKE_RPATH -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DCASACORE_ROOT_DIR=$INSTALLDIR/casacore -DBoost_PYTHON3_LIBRARY_RELEASE:FILEPATH=/sw/env/cuda-10.2.89_gcc-8.3.0_openmpi-4.0.2/pkgsrc/2019Q4/lib/libboost_python36.so  -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so -DPYTHON_INCLUDE_DIR:PATH=/sw/env/cuda-10.2.89_gcc-8.3.0_openmpi-4.0.2/pkgsrc/2019Q4/include/python3.6 -DPYTHON_LIBRARY:FILEPATH=/sw/env/cuda-10.2.89_gcc-8.3.0_openmpi-4.0.2/pkgsrc/2019Q4/lib/libpython3.6.so ../src
+    cd $INSTALLDIR/DP3/build && $cmake $CMAKE_RPATH -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DCASACORE_ROOT_DIR=$INSTALLDIR/casacore -DBoost_PYTHON3_LIBRARY_RELEASE:FILEPATH=/sw/env/cuda-10.2.89_gcc-8.3.0_openmpi-4.0.2/pkgsrc/2019Q4/lib/libboost_python36.so -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so -DPYTHON_INCLUDE_DIR:PATH=/sw/env/cuda-10.2.89_gcc-8.3.0_openmpi-4.0.2/pkgsrc/2019Q4/include/python3.6 -DPYTHON_LIBRARY:FILEPATH=/sw/env/cuda-10.2.89_gcc-8.3.0_openmpi-4.0.2/pkgsrc/2019Q4/lib/libpython3.6.so -DARMADILLO_LIBRARY:FILEPATH='' -DCMAKE_CXX_FLAGS:STRING=-I/home/fdg/opt/lofar_200318/wsclean/missinginclude/ ../src
     cd $INSTALLDIR/DP3/build && $make -j $J
     cd $INSTALLDIR/DP3/build && $make install
     echo Installed DP3.
