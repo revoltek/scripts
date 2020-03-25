@@ -398,6 +398,7 @@ if [ ! -e $prefix/.done ]; then
         -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include \
         -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so \
         -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include \
+        -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so \
         -DAOFLAGGER_INCLUDE_DIR=$INSTALLDIR/aoflagger/include \
         -DAOFLAGGER_LIB=$INSTALLDIR/aoflagger/lib/libaoflagger.so \
         ../src &&
@@ -483,7 +484,6 @@ fi || exit 1
 # Finish up the installation. #
 ###############################
 echo "Installation directory contents:"
-ls ${INSTALLDIR}
 #
 # init-lofar
 #
