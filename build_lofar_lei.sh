@@ -1,6 +1,6 @@
 # General environment settings.
 export J=64
-export INSTALLDIR=$HOME/opt/lofar_200318
+export INSTALLDIR=$HOME/opt/lofar_200124
 
 # CEP3
 #export cmake=/home/dijkema/opt/cmake/bin/cmake
@@ -14,8 +14,8 @@ export cmake=`which cmake`
 export make=`which make`
 export CC=`which gcc`
 export CXX=`which g++`
-export CFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
-export CXXFLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS"
+export CFLAGS="-march=native -O3"
+export CXXFLAGS="-march=native -O3"
 # --std=c++11 -W -Wall -Woverloaded-virtual -Wno-unknown-pragmas -D_GLIBCXX_USE_CXX11_ABI=${CXX_ABI} -O3 -march=haswell"
 
 # Path to where the patch for python-casacore's setup is stored.
