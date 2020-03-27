@@ -21,7 +21,10 @@ import bdsf
 import sys
 
 f = sys.argv[1]
-freq = sys.argv[2]
+try:
+    freq = sys.argv[2]
+except:
+    freq = None
 
 img = bdsf.process_image(f, advanced_opts=True, detection_image=f.replace('-pb',''), interactive=False, thresh_pix=5., thresh_isl=4., \
         adaptive_rms_box=True, rms_box_bright=(70,10), adaptive_thresh=6., frequency=freq)
