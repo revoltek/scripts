@@ -1,22 +1,16 @@
 # General environment settings.
 export J=64
-export INSTALLDIR=$HOME/opt/lofar_200124
+export INSTALLDIR=$HOME/opt/lofar_200318
 
 # CEP3
 #export cmake=/home/dijkema/opt/cmake/bin/cmake
 # Leiden
-#module load gcc/8.1.0
-#module load make/4.2
-#module load cmake/3.9
-#export PYTHON_VERSION=3.6
-#export PYTHON_VERSION_NODOT=36
-#export cmake=`which cmake`
-# Hamburg
-export PYTHON_VERSION=3.5
-export PYTHON_VERSION_NODOT=35
-export cmake='/home/fdg/opt/src/cmake-3.16.3/bin/cmake'
-
-# General compile and build settings.
+module load gcc/8.1.0
+module load make/4.2
+module load cmake/3.9
+export PYTHON_VERSION=3.6
+export PYTHON_VERSION_NODOT=36
+export cmake=`which cmake`
 export make=`which make`
 export CC=`which gcc`
 export CXX=`which g++`
@@ -42,11 +36,6 @@ export PYBDSF_VERSION=v1.8.12
 export PYTHON_CASACORE_VERSION=v3.1.1
 export WSCLEAN_VERSION=latest
 export WCSLIB_VERSION=latest
-
-# Do not change, Armadillo wants this version of SuperLU.
-#export SUPERLU_VERSION=v5.2.1
-#export OPENBLAS_VERSION=v0.3.7
-#export ARMADILLO_VERSION=8.600.0
 
 mkdir -p $INSTALLDIR
 
@@ -304,7 +293,7 @@ if [ ! -d $INSTALLDIR/idg ]; then
     echo Installing IDG.
     mkdir -p $INSTALLDIR/idg/build
     cd $INSTALLDIR/idg && git clone https://gitlab.com/astron-idg/idg.git src
-    cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include ../src
+    cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/node31/opt/intel/mkl/include -lgsl -lcblas ../src
     #cd $INSTALLDIR/idg/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/idg -DBUILD_WITH_MKL=ON -DBUILD_LIB_CPU=ON -DBUILD_LIB_CUDA=ON -DMKL_INCLUDE_DIRS:PATH=/home/fdg/opt/intel/mkl/include ../src
     cd $INSTALLDIR/idg/build && $make -j $J
     cd $INSTALLDIR/idg/build && $make install
@@ -320,7 +309,7 @@ if [ ! -d $INSTALLDIR/DP3 ]; then
     echo Installing DP3...
     mkdir -p $INSTALLDIR/DP3/build
     git clone https://github.com/lofar-astron/DP3.git $INSTALLDIR/DP3/src
-    cd $INSTALLDIR/DP3/build && $cmake -DCMAKE_CXX_FLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS" -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DHDF5_DIR:PATH=${INSTALLDIR}/hdf5/hdf5-${HDF5_VERSION} -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so ../src
+    cd $INSTALLDIR/DP3/build && $cmake -DCMAKE_CXX_FLAGS="-D_GLIB_USE_CXX_ABI=1 -DBOOST_NO_CXX11_SCOPED_ENUMS" -DCMAKE_INSTALL_PREFIX:PATH=$INSTALLDIR/DP3 -DHDF5_DIR:PATH=${INSTALLDIR}/hdf5/hdf5-${HDF5_VERSION} -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DAOFLAGGER_INCLUDE_DIR:PATH=$INSTALLDIR/aoflagger/include -DAOFLAGGER_LIB:FILEPATH=$INSTALLDIR/aoflagger/lib/libaoflagger.so -lgsl -lcblas ../src
     cd $INSTALLDIR/DP3/build && $make -j $J
     cd $INSTALLDIR/DP3/build && $make install
     echo Installed DP3.
@@ -338,7 +327,7 @@ if [ ! -d $INSTALLDIR/wsclean ]; then
     mkdir -p $INSTALLDIR/wsclean/build
     if [ "$WSCLEAN_VERSION" != "latest" ]; then cd ${INSTALLDIR}/wsclean && wget http://downloads.sourceforge.net/project/wsclean/wsclean-${WSCLEAN_VERSION}/wsclean-${WSCLEAN_VERSION}.tar.bz2 && tar -xjf wsclean-${WSCLEAN_VERSION}.tar.bz2 && cd wsclean-${WSCLEAN_VERSION}; fi
     if [ "$WSCLEAN_VERSION" = "latest" ]; then cd ${INSTALLDIR}/wsclean && git clone git://git.code.sf.net/p/wsclean/code src && cd src/wsclean; fi
-    cd $INSTALLDIR/wsclean/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/wsclean -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DFFTW3_INCLUDE_DIR:PATH=${INSTALLDIR}/fftw/include -DFFTW3_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3_threads.so -DFFTW3F_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3f_threads.so ../src/wsclean
+    cd $INSTALLDIR/wsclean/build && $cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR/wsclean -DIDGAPI_INCLUDE_DIRS:PATH=$INSTALLDIR/idg/include -DIDGAPI_LIBRARIES:PATH=$INSTALLDIR/idg/lib/libidg-api.so -DLOFAR_STATION_RESPONSE_INCLUDE_DIR:PATH=$INSTALLDIR/LOFARBeam/include -DLOFAR_STATION_RESPONSE_LIB:FILEPATH=$INSTALLDIR/LOFARBeam/lib/libstationresponse.so -DFFTW3_INCLUDE_DIR:PATH=${INSTALLDIR}/fftw/include -DFFTW3_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3.so -DFFTW3_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3_threads.so -DFFTW3F_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3f.so -DFFTW3F_THREADS_LIB:FILEPATH=${INSTALLDIR}/fftw/lib/libfftw3f_threads.so -lgsl -lcblas ../src/wsclean
     cd $INSTALLDIR/wsclean/build && $make -j $J
     cd $INSTALLDIR/wsclean/build && $make install
 else

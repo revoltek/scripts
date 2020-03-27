@@ -1,0 +1,79 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 515aae1..0dfbcc6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,8 @@
+ # FindHDF5 uses NATIVE_COMMAND in separate_arguments, which requires
+ # CMake 3.9.
+-cmake_minimum_required(VERSION 3.9)
++# ThOr: Let's turn it up to 3.12 for proper FindPython, as a helper
++# to finding the correct Boost python component.
++cmake_minimum_required(VERSION 3.12)
+ 
+ project(DP3)
+ 
+@@ -44,10 +46,15 @@ endif(IDGAPI_LIBRARIES AND IDGAPI_INCLUDE_DIRS)
+ 
+ find_package(CFITSIO REQUIRED)
+ 
++find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
++
+ #Prevent accidentally finding old BoostConfig.cmake file from casapy
+ set(Boost_NO_BOOST_CMAKE ON)
+-find_package(Boost COMPONENTS date_time filesystem python3 program_options system unit_test_framework REQUIRED)
++
++set(PY ${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR})
++find_package(Boost COMPONENTS date_time filesystem python${PY} program_options system unit_test_framework REQUIRED)
+ include_directories(${Boost_INCLUDE_DIR})
++include_directories(${Python3_INCLUDE_DIRS})
+ 
+ find_path(LOFAR_STATION_RESPONSE_DIR NAMES StationResponse/Station.h)
+ find_library(LOFAR_STATION_RESPONSE_LIB stationresponse)
+@@ -165,8 +172,6 @@ set(DPPP_OBJECT $<TARGET_OBJECTS:DPPP_OBJ>)
+ #
+ # Dependencies of AOFlagger
+ #
+-find_package(PythonLibs 3 REQUIRED)
+-find_package(PythonInterp REQUIRED)
+ find_package(LibXml2 REQUIRED)
+ find_package(PNG REQUIRED)
+ find_library(FFTW3_LIB fftw3 REQUIRED)
+@@ -193,9 +198,9 @@ set(AOFLAGGERSTEP_OBJECT $<TARGET_OBJECTS:AOFlaggerStep_OBJ>)
+ set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES}
+   ${AOFLAGGER_LIB}
+   ${CASACORE_LIBRARIES}
+-  ${Boost_DATE_TIME_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY}  ${Boost_PROGRAM_OPTIONS_LIBRARY} ${Boost_PYTHON3_LIBRARY}
++  Boost::date_time Boost::filesystem Boost::system Boost::program_options Boost::python${PY}
+   ${EXTRA_LIBRARIES}
+-  ${PYTHON_LIBRARIES}
++  Python3::Python
+   ${IDGAPI_LIBRARIES}
+   Threads::Threads)
+   
+diff --git a/PythonDPPP/CMakeLists.txt b/PythonDPPP/CMakeLists.txt
+index 9194dc7..69f945a 100644
+--- a/PythonDPPP/CMakeLists.txt
++++ b/PythonDPPP/CMakeLists.txt
+@@ -1,5 +1,5 @@
+ # If Boost-Python3 found, build this package. Otherwise give a warning.
+-if(${Boost_PYTHON3_FOUND})
++if(${Boost_PYTHON${PY}_FOUND})
+ 
+   include(PythonInstall)
+ 
+@@ -25,15 +25,6 @@ if(${Boost_PYTHON3_FOUND})
+   # Install Python modules
+   python_install(__init__.py DESTINATION lofar/pythondppp)
+ 
+-	find_package(PythonInterp REQUIRED)
+-  find_package(PythonLibs 3 REQUIRED)
+-  include_directories(${PYTHON_INCLUDE_DIRS})
+-
+-  find_package(Casacore COMPONENTS python)
+-  
+-  find_package(Boost REQUIRED COMPONENTS python3)
+-  include_directories(${Boost_INCLUDE_DIR})
+-
+ #  add_subdirectory(test)
+ else()
+   message (WARNING, " Boost-Python not found; PythonDPPP will not be built.")

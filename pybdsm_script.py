@@ -26,8 +26,8 @@ try:
 except:
     freq = None
 
-img = bdsf.process_image(f, advanced_opts=True, detection_image=f.replace('-pb',''), interactive=False, thresh_pix=5., thresh_isl=3., \
-        adaptive_rms_box=True, rms_box_bright=(100,30), adaptive_thresh=10., frequency=freq)
+img = bdsf.process_image(f, advanced_opts=True, detection_image=f.replace('-pb',''), interactive=False, thresh_pix=5., thresh_isl=4., \
+        adaptive_rms_box=True, rms_box_bright=(70,10), adaptive_thresh=6., frequency=freq)
 img.write_catalog(format='fits',catalog_type='srl', clobber=True)
 #img.write_catalog(format='ds9',catalog_type='srl', clobber=True)
 #img.write_catalog(format='ds9',catalog_type='gaul', clobber=True)
