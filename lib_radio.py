@@ -39,7 +39,7 @@ class radioImage(Image):
         cd1 = abs(self.img_hdr['CDELT1'])
         cd2 = abs(self.img_hdr['CDELT2'])
         bmaj = self.img_hdr['BMAJ']
-        bmin = self.img_hdr['BMAJ']
+        bmin = self.img_hdr['BMIN']
         if ((cd1-cd2)/cd1)>1.0001 and ((bmaj-bmin)/bmin)>1.0001:
                 raise RadioError('Pixels are not square (%g, %g) and beam is elliptical' % (cd1, cd2))
 
@@ -51,6 +51,7 @@ class radioImage(Image):
 
 
     def set_region(self, regionfile, individual=False):
+        self.masks = []
         region = pyregion.open(regionfile).as_imagecoord(self.img_hdr)
         if individual:
             for region_split in region:
@@ -84,4 +85,4 @@ class radioImage(Image):
             fluxes.append(flux)
             errors.append(error)
 
-        return fluxes, errors
+        return np.array(fluxes), np.array(errors)

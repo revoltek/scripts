@@ -196,8 +196,9 @@ class Image(object):
         niter : robust rms estimation
         eps : convergency criterion, if None is 1% of initial rms
         """
-        if eps == None: eps = np.nanstd(self.img_data)*1e-4
+        if eps == None: eps = np.nanstd(self.img_data)*1e-3
         data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
+        if len(data) == 0: return 0
         oldrms = 1.
         for i in range(niter):
             rms = np.nanstd(data)
