@@ -1,0 +1,25 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0801faacd..96d23e77b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -344,8 +344,18 @@ if (_usebison STREQUAL YES)
+     find_package (BISON REQUIRED)
+ endif (_usebison STREQUAL YES)
+ if (_uselapack STREQUAL YES)
+-    find_package (BLAS REQUIRED)
+-    find_package (LAPACK REQUIRED)
++    if(DEFINED ENV{BLAS_LIBS})
++      set(BLAS_FOUND YES)
++      set(BLAS_LIBRARIES $ENV{BLAS_LIBS})
++    else()
++      find_package (BLAS REQUIRED)
++    endif()
++    if(DEFINED ENV{LAPACK_LIBS})
++      set(LAPACK_FOUND YES)
++      set(LAPACK_LIBRARIES $ENV{LAPACK_LIBS})
++    else()
++      find_package (LAPACK REQUIRED)
++    endif()
+     if (USE_FFTW3)
+         if (FFTW3_DISABLE_THREADS)
+             find_package (FFTW3 COMPONENTS single double REQUIRED)

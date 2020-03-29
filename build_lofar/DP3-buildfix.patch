@@ -1,35 +1,135 @@
+diff --git a/CMake/FindCasacore.cmake b/CMake/FindCasacore.cmake
+index e4689f7..9068fdd 100644
+--- a/CMake/FindCasacore.cmake
++++ b/CMake/FindCasacore.cmake
+@@ -17,6 +17,8 @@
+ #
+ # Variables used by this module:
+ #  CASACORE_ROOT_DIR         - Casacore root directory. 
++#  BLAS_LIBS                 - override BLAS library
++#  LAPACK_LIBS               - override LAPACK library
+ #
+ # Variables defined by this module:
+ #  CASACORE_FOUND            - System has Casacore, which means that the
+@@ -232,7 +234,21 @@ else(NOT CASACORE_INCLUDE_DIR)
+     elseif(${_comp} STREQUAL fits)
+       casacore_find_package(CFITSIO REQUIRED)
+     elseif(${_comp} STREQUAL scimath_f)
+-      casacore_find_package(LAPACK REQUIRED)
++      # If only looking for LAPACK, no library will be added if LAPACK
++      # is part of BLAS, as it is customary nowadays. So look for both
++      # to avoid confusing linker errors on symbols used in headers/templates.
++      if(DEFINED ENV{BLAS_LIBS})
++        set(BLAS_FOUND YES)
++        list(APPEND CASACORE_LIBRARIES $ENV{BLAS_LIBS})
++      else()
++        casacore_find_package(BLAS   REQUIRED)
++      endif()
++      if(DEFINED ENV{LAPACK_LIBS})
++        set(LAPACK_FOUND YES)
++        list(APPEND CASACORE_LIBRARIES $ENV{LAPACK_LIBS})
++      else()
++        casacore_find_package(LAPACK REQUIRED)
++      endif()
+     endif(${_comp} STREQUAL casa)
+   endforeach(_comp ${_find_components})
+ endif(NOT CASACORE_INCLUDE_DIR)
+diff --git a/CMake/PythonInstall.cmake b/CMake/PythonInstall.cmake
+index 173f995..c15bbab 100644
+--- a/CMake/PythonInstall.cmake
++++ b/CMake/PythonInstall.cmake
+@@ -24,10 +24,11 @@
+ # $Id: PythonInstall.cmake 32905 2015-11-17 15:31:54Z schaap $
+ 
+ # Search for the Python interpreter.
+-find_package(PythonInterp)
++# No. We expect the toplevel CMakeLists.txt to have found python already!
++#find_package(PythonInterp)
+ 
+ # Derive the Python site-packages installation directory and build directory.
+-if(PYTHON_EXECUTABLE)
++if(Python_EXECUTABLE)
+   set(_cmd
+     "from distutils.sysconfig import get_python_lib"
+     "from os.path import join"
+@@ -36,7 +37,7 @@ if(PYTHON_EXECUTABLE)
+        'site-packages'))"
+   )
+   execute_process(
+-    COMMAND "${PYTHON_EXECUTABLE}" "-c" "${_cmd}"
++    COMMAND "${Python_EXECUTABLE}" "-c" "${_cmd}"
+     OUTPUT_VARIABLE _pydir
+     ERROR_VARIABLE _pyerr
+     OUTPUT_STRIP_TRAILING_WHITESPACE)
+@@ -57,7 +58,7 @@ if(PYTHON_EXECUTABLE)
+     message(STATUS "Build directory for Python extensions:        ${PYTHON_BUILD_DIR}")
+     message(STATUS "Installation directory for Python extensions: ${PYTHON_INSTALL_DIR}")
+   endif()
+-endif(PYTHON_EXECUTABLE)
++endif(Python_EXECUTABLE)
+ 
+ 
+ #
+@@ -66,9 +67,9 @@ endif(PYTHON_EXECUTABLE)
+ macro(python_install)
+ 
+   # Precondition check.
+-  if(NOT PYTHON_EXECUTABLE)
++  if(NOT Python_EXECUTABLE)
+     message(FATAL_ERROR "python_install: Python interpreter not available")
+-  endif(NOT PYTHON_EXECUTABLE)
++  endif(NOT Python_EXECUTABLE)
+ 
+   # Parse arguments.
+   # apart from the python files list, there are two additional arguments
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 515aae1..0dfbcc6 100644
+index 515aae1..671419d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1,6 +1,8 @@
- # FindHDF5 uses NATIVE_COMMAND in separate_arguments, which requires
- # CMake 3.9.
--cmake_minimum_required(VERSION 3.9)
-+# ThOr: Let's turn it up to 3.12 for proper FindPython, as a helper
-+# to finding the correct Boost python component.
-+cmake_minimum_required(VERSION 3.12)
- 
- project(DP3)
- 
-@@ -44,10 +46,15 @@ endif(IDGAPI_LIBRARIES AND IDGAPI_INCLUDE_DIRS)
+@@ -44,10 +44,40 @@ endif(IDGAPI_LIBRARIES AND IDGAPI_INCLUDE_DIRS)
  
  find_package(CFITSIO REQUIRED)
  
-+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+-#Prevent accidentally finding old BoostConfig.cmake file from casapy
++# An attempt at common logic for Python and Boost:
++# 0. Try CMake 3.12's FindPython, fall back to FindPythonInterp/Libs.
++# 1. Use a default Python being found (environment should provide that).
++# 2. Use that Python's version to look for modern versioned Boost pythonXY
++#    component.
++# 3. If that fails, resort to unversioned Boost python.
++# Baseline for this is CMake 3.5, being available in LTS distros.
++# We could require Boost >= 1.67 and CMake >= 3.12 and get rid
++# of the fallbacks.
 +
- #Prevent accidentally finding old BoostConfig.cmake file from casapy
++find_package(Python COMPONENTS Interpreter Development)
++if(NOT Python_FOUND)
++  message(STATUS "Falling back to deprecated Python search.")
++  find_package(PythonInterp REQUIRED)
++  find_package(PythonLibs REQUIRED)
++  set(Python_VERSION ${PYTHON_VERSION_STRING})
++  set(Python_VERSION_MAJOR ${PYTHON_VERSION_MAJOR})
++  set(Python_VERSION_MINOR ${PYTHON_VERSION_MINOR})
++  set(Python_LIBRARIES ${PYTHON_LIBRARIES})
++  set(Python_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
++endif()
++
  set(Boost_NO_BOOST_CMAKE ON)
 -find_package(Boost COMPONENTS date_time filesystem python3 program_options system unit_test_framework REQUIRED)
++set(boostcomp date_time filesystem program_options system unit_test_framework)
++set(boostpy ${Python_VERSION_MAJOR}${Python_VERSION_MINOR})
++find_package(Boost 1.67.0 COMPONENTS ${boostcomp} python${boostpy})
++if(NOT Boost_FOUND)
++  message(STATUS "Falling back to old Boost search.")
++  set(boostpy "")
++  find_package(Boost REQUIRED COMPONENTS ${boostcomp} python${boostpy})
++endif()
 +
-+set(PY ${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR})
-+find_package(Boost COMPONENTS date_time filesystem python${PY} program_options system unit_test_framework REQUIRED)
  include_directories(${Boost_INCLUDE_DIR})
-+include_directories(${Python3_INCLUDE_DIRS})
++include_directories(${Python_INCLUDE_DIRS})
  
  find_path(LOFAR_STATION_RESPONSE_DIR NAMES StationResponse/Station.h)
  find_library(LOFAR_STATION_RESPONSE_LIB stationresponse)
-@@ -165,8 +172,6 @@ set(DPPP_OBJECT $<TARGET_OBJECTS:DPPP_OBJ>)
+@@ -165,8 +195,6 @@ set(DPPP_OBJECT $<TARGET_OBJECTS:DPPP_OBJ>)
  #
  # Dependencies of AOFlagger
  #
@@ -38,26 +138,26 @@ index 515aae1..0dfbcc6 100644
  find_package(LibXml2 REQUIRED)
  find_package(PNG REQUIRED)
  find_library(FFTW3_LIB fftw3 REQUIRED)
-@@ -193,9 +198,9 @@ set(AOFLAGGERSTEP_OBJECT $<TARGET_OBJECTS:AOFlaggerStep_OBJ>)
+@@ -193,9 +221,9 @@ set(AOFLAGGERSTEP_OBJECT $<TARGET_OBJECTS:AOFlaggerStep_OBJ>)
  set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES}
    ${AOFLAGGER_LIB}
    ${CASACORE_LIBRARIES}
 -  ${Boost_DATE_TIME_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY}  ${Boost_PROGRAM_OPTIONS_LIBRARY} ${Boost_PYTHON3_LIBRARY}
-+  Boost::date_time Boost::filesystem Boost::system Boost::program_options Boost::python${PY}
++  Boost::date_time Boost::filesystem Boost::system Boost::program_options Boost::python${boostpy}
    ${EXTRA_LIBRARIES}
 -  ${PYTHON_LIBRARIES}
-+  Python3::Python
++  ${Python_LIBRARIES}
    ${IDGAPI_LIBRARIES}
    Threads::Threads)
    
 diff --git a/PythonDPPP/CMakeLists.txt b/PythonDPPP/CMakeLists.txt
-index 9194dc7..69f945a 100644
+index 9194dc7..c8284a8 100644
 --- a/PythonDPPP/CMakeLists.txt
 +++ b/PythonDPPP/CMakeLists.txt
 @@ -1,5 +1,5 @@
  # If Boost-Python3 found, build this package. Otherwise give a warning.
 -if(${Boost_PYTHON3_FOUND})
-+if(${Boost_PYTHON${PY}_FOUND})
++if(${Boost_PYTHON${boostpy}_FOUND})
  
    include(PythonInstall)
  
