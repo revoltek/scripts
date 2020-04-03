@@ -10,7 +10,6 @@
 #   fetch/patch/build code
 
 mandatory_vars="\
-lofar_prefix      Installation prefix to use. Packages are put into sub-directories of that.
 casacore_version  Version of CASAcore.
 pycasa_version    Version of CASAcore Python bindings.
 dysco_version     Version of Dysco.
@@ -35,7 +34,17 @@ CPATH        Path list for C/C++ include file search.
 idg_mkl      Passed on to idg BUILD_WITH_MKL
 "
 
-config=$0.config
+if test $# -lt 1; then
+  echo "$0: Please provide the installation prefix as mandatory argument."
+  exit 1
+fi
+lofar_prefix=$1; shift
+
+if test $# -ge 1; then
+  config=$1; shift
+else
+  config=$0.config
+fi
 
 if ! test -e "$config"; then
   cat <<EOT
@@ -46,7 +55,8 @@ Please create/link an appropriate config script named
 
   $config
 
-. It should load the correct environment for the site, possibly
+(or any other name you provide as second argument).
+It should load the correct environment for the site, possibly
 using environment modules or just setting variables for paths
 and compilers directly. It also has to set up PATH so that the
 desired python interpreter is directly available as the command
@@ -181,7 +191,7 @@ run_cmake()
     -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
     -DCMAKE_Fortran_FLAGS="$FCFLAGS" \
     -DCMAKE_SKIP_RPATH=ON \
-    -DPORTABLE=ON \
+    -DPORTABLE=OFF \
     "$@"
 }
 
@@ -676,13 +686,16 @@ print_init()
 #
 # Step 1: The build config with all variables used.
 #
+
+lofar_prefix='$lofar_prefix'
+
 EOT
   cat $config
 cat <<EOT
 #
 # Step 2: Paths to LOFAR tools in the prefix.
 #
-EOT
+EOT 
   for p in lsmtool pyBDSF wsclean dysco DP3\
          idg aoflagger python-casacore casacore
   do
