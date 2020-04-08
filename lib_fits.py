@@ -204,9 +204,9 @@ class Image(object):
             rms = np.nanstd(data)
             if np.abs(oldrms-rms)/rms < eps:
                 self.noise = rms
-                print('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
+                #print('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
-                return
+                return rms
 
             data = data[np.abs(data)<sigma*rms]
             oldrms = rms

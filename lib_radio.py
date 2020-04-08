@@ -24,7 +24,7 @@ from astropy.io import fits
 import pyregion
 from lib_fits import Image
 
-class radioImage(Image):
+class RadioImage(Image):
 
     def __init__(self, imagefile):
         """
