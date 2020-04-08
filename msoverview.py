@@ -21,10 +21,23 @@ import os, sys
 import casacore.tables as pt
 from astropy.time import Time
 
+def get_timestep(ms):
+    with pt.table(ms, ack = False) as t:
+        times = sorted(set(t.getcol('TIME')))
+    print("%s: Time step %i seconds." % (ms, times[1]-times[0]))
+
+def get_freq(ms):
+    """
+    Get chan frequencies in Hz
+    """
+    with pt.table(ms + "/SPECTRAL_WINDOW", ack = False) as t:
+        freqs = t.getcol("CHAN_FREQ")[0] * 1e-6 # MHz
+        nchan = t.getcol("NUM_CHAN")[0]
+    min_freq = min(freqs)
+    max_freq = max(freqs)
+    print("%s: Freq range: %f MHz - %f MHz (%i channels)" % (ms,min_freq,max_freq,nchan) )
+
+
 for ms in sys.argv[1:]:
-    t = pt.table(ms, ack=False)
-    times = sorted(set(t.getcol('TIME')))
-    #print(ms, Time(times[0]/86400, format='mjd').iso)
-    t.close()
-    os.system('msoverview in=%s' % ms)
-    print("Time step %i seconds." % (times[1]-times[0]))
+    get_timestep(ms)
+    get_freq(ms)

@@ -27,7 +27,7 @@ import logging
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d as gfilter
 import casacore.tables as pt
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
 
 logging.info('BL-based smoother - Francesco de Gasperin')
 
@@ -97,6 +97,7 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
     logging.debug('Working on antenna: %s' % ant1)
 
     a_uvw = ms_ant1.getcol('UVW')
+    a_uvw_dist = np.sqrt(a_uvw[:, 0]**2 + a_uvw[:, 1]**2 + a_uvw[:, 2]**2)
     a_data = ms_ant1.getcol(options.outcol)
     a_weights = ms_ant1.getcol('WEIGHT_SPECTRUM')
     a_flags = ms_ant1.getcol('FLAG')
@@ -105,13 +106,12 @@ for ms_ant1 in ms.iter(["ANTENNA1"]):
         if ant1 == ant2: continue # skip autocorr
         idx = np.where(a_ant2 == ant2)
         
-        uvw = a_uvw[idx]
+        uvw_dist = a_uvw_dist[idx]
         data = a_data[idx]
         weights = a_weights[idx]
         flags = a_flags[idx]
    
         # compute the FWHM
-        uvw_dist = np.sqrt(uvw[:, 0]**2 + uvw[:, 1]**2 + uvw[:, 2]**2)
         dist = np.mean(uvw_dist) / 1.e3
         if np.isnan(dist): continue # fix for missing anstennas
     

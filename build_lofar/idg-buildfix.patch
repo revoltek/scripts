@@ -1,0 +1,20 @@
+diff --git a/idg-api/CMakeLists.txt b/idg-api/CMakeLists.txt
+index 16babb07..6d7f6ac4 100644
+--- a/idg-api/CMakeLists.txt
++++ b/idg-api/CMakeLists.txt
+@@ -72,7 +72,14 @@ if (BUILD_WITH_MKL AND (${MKL_FOUND}))
+ else()
+     # Fallback to LAPACK libraries
+     # Use LAPACK headers
+-    find_package(LAPACK REQUIRED)
++    # One could try to also use underlying BLAS explicitly, to be
++    # safe. Usually, LAPACK is included in the same lib anyway, though.
++    if(DEFINED ENV{LAPACK_LIBS})
++      set(LAPACK_FOUND YES)
++      set(LAPACK_LIBRARIES $ENV{LAPACK_LIBS})
++    else()
++      find_package (LAPACK REQUIRED)
++    endif()
+ 
+     set (${PROJECT_NAME}_link_libraries
+         ${IDG_LIBRARY}
