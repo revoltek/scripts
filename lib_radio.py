@@ -64,9 +64,11 @@ class RadioImage(Image):
         region_noise = pyregion.open(regionfile).as_imagecoord(self.img_hdr)
         self.mask_noise = region_noise.get_mask(hdu=self.hdu,shape=np.shape(self.img_data))
 
-    def get_flux(self, nsigma = 0):
+    def get_flux(self, nsigma = 0, with_upper_limits = False, upper_limit_sigma = 3):
         """
         nsigma: use only pixels above this sigma
+        with_upper_limits: if no detection, set the value at upper_limit_sigma sigma. It also returns a bool array with True for limits
+        upper_limit_sigma: numer of sigmas to consider a flux a limit (default: 3)
         """
 
         # set self.noise
@@ -85,4 +87,14 @@ class RadioImage(Image):
             fluxes.append(flux)
             errors.append(error)
 
-        return np.array(fluxes), np.array(errors)
+        fluxes = np.array(fluxes)
+        errors = np.array(errors)
+
+        if with_upper_limits:
+            upper_limits = np.zeros_like(fluxes, dtype=bool)
+            is_limit = np.where(fluxes < (upper_limit_sigma * errors))
+            upper_limits[ is_limit ] = True
+            fluxes[ is_limit ] = upper_limit_sigma*errors[ is_limit ]
+            return fluxes, errors, upper_limits
+        else:
+            return fluxes, errors
