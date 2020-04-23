@@ -183,6 +183,7 @@ for idx in np.array_split(np.arange(n_bl), options.chunks):
         # replace bad data points with interpolation
         data = data * weights
         mask = np.isnan(data)
+        if np.isnan(data).all(): continue
         data[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), data[~mask])
         # smear weighted data and weights
         if options.onlyamp: # smooth only amplitudes
