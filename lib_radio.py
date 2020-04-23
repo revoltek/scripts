@@ -31,9 +31,8 @@ class RadioImage(Image):
         imagefile: name of the fits file
         """
         Image.__init__(self,imagefile)
-        self.region = None
-        self.region_noise = None
         self.hdu = fits.PrimaryHDU(self.img_data, self.img_hdr)
+        self.mask_noise = None
 
         # calculate beam area in pixels
         cd1 = abs(self.img_hdr['CDELT1'])
@@ -72,7 +71,7 @@ class RadioImage(Image):
         """
 
         # set self.noise
-        if self.region_noise is None:
+        if self.mask_noise is None:
             self.calc_noise()
         else:
             self.noise = np.nanstd( self.img_data[self.mask_noise] )
