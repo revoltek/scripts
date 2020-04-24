@@ -24,8 +24,8 @@ import os, sys, optparse
 import logging
 import numpy as np
 import pyrap.tables as pt
-logging.basicConfig(level=logging.DEBUG)
 import matplotlib.pyplot as plt
+logging.basicConfig(level=logging.INFO)
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 0.1")
 opt.add_option('-s', '--save', help='Instead of showing the image it saves it in this filename (png) [default: '']', type='string', default='')
@@ -57,15 +57,15 @@ time = msb.getcol('TIME')
     
 fig = plt.figure(figsize=(8, 8))
 fig.subplots_adjust(wspace=0)
-ax = fig.add_subplot(110)
+ax = fig.add_subplot(111)
 ax.tick_params('both', length=10, width=2, which='major')
 ax.tick_params('both', length=5, width=1, which='minor')
 ax.set_xlabel(r'Time [s]')
 ax.set_ylabel(r'Amplitude [Jy]')
 ax.label_outer()
-ax.plot( time[~flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][~flags[:,options.pol,options.chan]], 'ko' )
-ax.plot( time[~flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][~flags[:,options.pol,options.chan]], 'k-' )
-if options.flag: ax.plot( time[flags[:,options.pol,options.chan]], data[:,options.pol,options.chan][flags[:,options.pol,options.chan]], 'ro' ) # flags
+print('Shape:', data.shape)
+ax.plot( time[~flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][~flags[:,options.chan,options.pol]], 'k,', ls='' )
+if options.flag: ax.plot( time[flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][flags[:,options.chan,options.pol]], 'r,', ls='' ) # flags
 
 if options.save != '':
     logging.info('Save file: '+options.save)
