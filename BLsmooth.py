@@ -159,6 +159,9 @@ for idx in np.array_split(np.arange(n_bl), options.chunks):
         in_bl = slice(i_chunk,  -1, len(ants1_chunk)) # All times for 1 BL
         data = data_chunk[in_bl]
         weights = weights_chunk[in_bl]
+        if (weights == 0).all():
+            logging.debug('Fully flagged - continue.')
+            continue
 
         stddev_t = options.ionfactor * (25.e3 / dist) ** options.bscalefactor * (freq / 60.e6)  # in sec
         stddev_t = stddev_t / timepersample  # in samples
@@ -179,12 +182,8 @@ for idx in np.array_split(np.arange(n_bl), options.chunks):
         # Gaussian window function.
 
         # set bad data to 0 so nans do not propagate
-        # data = np.nan_to_num(data * weights) # TODO: Wouldn't it be better to set this e.g. to next neighbor mean?
-        # replace bad data points with interpolation
-        data = data * weights
-        mask = np.isnan(data)
-        if np.isnan(data).all(): continue
-        data[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), data[~mask])
+        data = np.nan_to_num(data*weights)
+
         # smear weighted data and weights
         if options.onlyamp: # smooth only amplitudes
             dataAMP, dataPH = np.abs(data), np.angle(data)
