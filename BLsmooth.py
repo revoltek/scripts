@@ -25,9 +25,7 @@ import os, sys
 import optparse
 import logging
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter1d
-from scipy.ndimage.fourier import fourier_gaussian
-import scipy.fftpack as fft
+from scipy.ndimage import gaussian_filter1d as smooth_real1d
 
 import casacore.tables as pt
 
@@ -35,37 +33,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(
 logging.info('BL-based smoother - Francesco de Gasperin, Henrik Edler')
 
 
-def smooth_real1d(values, std, axis):
-    """ smooth real data along one axis. """
-    if std < 18:  # direct filter is faster for small kernel sizes
-        values = gaussian_filter1d(values, std, axis=axis) # TODO maybe try mode='nearest'
-        return values
-    else:  # filter via fft for large kernels
-        values = fft.rfft(values, axis=axis)
-        values = fourier_gaussian(values, std, n=len(values), axis=axis)
-        values = fft.irfft(values, axis=axis)
-        return values
-
-
 def smooth_imag1d(values, std, axis):
     """ smooth complex values along one axis. """
-    valuesR = smooth_real1d(values.real, std, axis)
-    valuesI = smooth_real1d(values.imag, std, axis)
+    valuesR = smooth_real1d(values.real, std, axis=axis, truncate=3)
+    valuesI = smooth_real1d(values.imag, std, axis=axis, truncate=3)
     return valuesR + 1j * valuesI
-
-
-def smooth_imag2d(values, stds):
-    """ smooth complex data along the first and second axis."""
-    if np.mean(stds) < 18: # direct smoothing for small kernel size
-        values = smooth_imag1d(values, stds[0], 0)
-        values = smooth_imag1d(values, stds[1], 1)
-        return values
-    else: # smoothing in fourier space is faster for large kernels
-        values = fft.fft2(values, axes=(0, 1))
-        for i in range(np.shape(values)[-1]):
-            values[:, :, i] = fourier_gaussian(values[:, :, i], stds)
-        values = fft.ifft2(values, axes=(0, 1))
-        return values
 
 
 def addcol(ms, incol, outcol, setvals=True):
@@ -153,15 +125,12 @@ for idx in np.array_split(np.arange(n_bl), options.chunks):
     # Iterate on each baseline in this chunk
     for i_chunk, (ant1, ant2, dist) in enumerate(zip(ants1_chunk, ants2_chunk, dists[idx])):
         if ant1 == ant2: continue # skip autocorrelations
-        if np.isnan(dist): continue # fix for missing antennas
+        elif np.isnan(dist): continue # fix for missing antennas
         logging.debug('Working on baseline: {} - {} (dist = {:.2f}km)'.format(ant1, ant2, dist))
 
         in_bl = slice(i_chunk,  -1, len(ants1_chunk)) # All times for 1 BL
         data = data_chunk[in_bl]
         weights = weights_chunk[in_bl]
-        if (weights == 0).all():
-            logging.debug('Fully flagged - continue.')
-            continue
 
         stddev_t = options.ionfactor * (25.e3 / dist) ** options.bscalefactor * (freq / 60.e6)  # in sec
         stddev_t = stddev_t / timepersample  # in samples
@@ -182,27 +151,29 @@ for idx in np.array_split(np.arange(n_bl), options.chunks):
         # Gaussian window function.
 
         # set bad data to 0 so nans do not propagate
-        data = np.nan_to_num(data*weights)
-
+        data = np.nan_to_num(data * weights)
+        data = data * weights
+        if np.isnan(data).all(): continue # flagged ants
         # smear weighted data and weights
         if options.onlyamp: # smooth only amplitudes
             dataAMP, dataPH = np.abs(data), np.angle(data)
             if not options.notime:
-                dataAMP = smooth_real1d(dataAMP, stddev_t, axis=0)
+                dataAMP = smooth_real1d(dataAMP, stddev_t, axis=0, truncate=3)
             if not options.nofreq:
-                dataAMP = smooth_real1d(dataAMP, stddev_f, axis=1)
+                dataAMP = smooth_real1d(dataAMP, stddev_f, axis=1, truncate=3)
             data = dataAMP * (np.cos(dataPH) + 1j * np.sin(dataPH)) # recreate data
         else:
             if not options.notime and not options.nofreq: # smooth in t and f
-                data = smooth_imag2d(data, [stddev_t, stddev_f])
+                data = smooth_imag1d(data, stddev_t, 0)
+                data = smooth_imag1d(data, stddev_f, 1)
             elif not options.notime:
                 data = smooth_imag1d(data, stddev_t, axis=0)
             elif not options.nofreq:
                 data = smooth_imag1d(data, stddev_f, axis=1)
         if not options.notime:
-            weights = smooth_real1d(weights, stddev_t, axis=0)
+            weights = smooth_real1d(weights, stddev_t, axis=0, truncate=3)
         if not options.nofreq:
-            weights = smooth_real1d(weights, stddev_f, axis=1)
+            weights = smooth_real1d(weights, stddev_f, axis=1, truncate=3)
         data[(weights != 0)] /= weights[(weights != 0)]  # avoid divbyzero
 
         # print( np.count_nonzero(data[~flags[in_bl]]), np.count_nonzero(data[flags[in_bl]]), 100*np.count_nonzero(data[flags[in_bl]])/np.count_nonzero(data))
