@@ -67,6 +67,7 @@ print('Shape:', data.shape)
 data[np.isnan(data)] = 0
 ax.plot( time[~flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][~flags[:,options.chan,options.pol]], 'k,', ls='' )
 if options.flag: ax.plot( time[flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][flags[:,options.chan,options.pol]], 'rx', ls='' ) # flags
+print('Mean:', np.mean(data[:,options.chan,options.pol][~flags[:,options.chan,options.pol]]))
 
 if options.save != '':
     logging.info('Save file: '+options.save)
