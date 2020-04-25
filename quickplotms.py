@@ -65,7 +65,7 @@ ax.set_ylabel(r'Amplitude [Jy]')
 ax.label_outer()
 print('Shape:', data.shape)
 ax.plot( time[~flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][~flags[:,options.chan,options.pol]], 'k,', ls='' )
-if options.flag: ax.plot( time[flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][flags[:,options.chan,options.pol]], 'r,', ls='' ) # flags
+if options.flag: ax.plot( time[flags[:,options.chan,options.pol]], data[:,options.chan,options.pol][flags[:,options.chan,options.pol]], 'rx', ls='' ) # flags
 
 if options.save != '':
     logging.info('Save file: '+options.save)
