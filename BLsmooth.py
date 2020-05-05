@@ -25,19 +25,12 @@ import os, sys
 import optparse
 import logging
 import numpy as np
-from scipy.ndimage import gaussian_filter1d as smooth_real1d
+from scipy.ndimage import gaussian_filter1d as gfilter
 
 import casacore.tables as pt
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
 logging.info('BL-based smoother - Francesco de Gasperin, Henrik Edler')
-
-
-def smooth_imag1d(values, std, axis):
-    """ smooth complex values along one axis. """
-    valuesR = smooth_real1d(values.real, std, axis=axis, truncate=3)
-    valuesI = smooth_real1d(values.imag, std, axis=axis, truncate=3)
-    return valuesR + 1j * valuesI
 
 
 def addcol(ms, incol, outcol):
@@ -162,23 +155,23 @@ for c, idx in enumerate(np.array_split(np.arange(n_bl), options.chunks)):
         if options.onlyamp: # smooth only amplitudes
             dataAMP, dataPH = np.abs(data), np.angle(data)
             if not options.notime:
-                dataAMP = smooth_real1d(dataAMP, stddev_t, axis=0, truncate=3)
+                dataAMP = gfilter(dataAMP, stddev_t, axis=0, truncate=3)
             if not options.nofreq:
-                dataAMP = smooth_real1d(dataAMP, stddev_f, axis=1, truncate=3)
+                dataAMP = gfilter(dataAMP, stddev_f, axis=1, truncate=3)
             data = dataAMP * (np.cos(dataPH) + 1j * np.sin(dataPH)) # recreate data
         else:
-            if not options.notime and not options.nofreq: # smooth in t and f
-                data = smooth_imag1d(data, stddev_t, 0)
-                data = smooth_imag1d(data, stddev_f, 1)
-            elif not options.notime:
-                data = smooth_imag1d(data, stddev_t, axis=0)
-            elif not options.nofreq:
-                data = smooth_imag1d(data, stddev_f, axis=1)
-
+            dataR, dataI = np.real(data), np.imag(data)
+            if not options.notime:
+                dataR = gfilter(dataR, stddev_t, axis=0, truncate=3)
+                dataI = gfilter(dataI, stddev_t, axis=0, truncate=3)
+            if not options.nofreq:
+                dataR = gfilter(dataR, stddev_f, axis=1, truncate=3)
+                dataI = gfilter(dataI, stddev_f, axis=1, truncate=3)
+            data = dataR + 1j*dataI # recreate data
         if not options.notime:
-            weights = smooth_real1d(weights, stddev_t, axis=0, truncate=3)
+            weights = gfilter(weights, stddev_t, axis=0, truncate=3)
         if not options.nofreq:
-            weights = smooth_real1d(weights, stddev_f, axis=1, truncate=3)
+            weights = gfilter(weights, stddev_f, axis=1, truncate=3)
         data[(weights != 0)] /= weights[(weights != 0)]  # avoid divbyzero
 
         # print( np.count_nonzero(data[~flags[in_bl]]), np.count_nonzero(data[flags[in_bl]]), 100*np.count_nonzero(data[flags[in_bl]])/np.count_nonzero(data))
