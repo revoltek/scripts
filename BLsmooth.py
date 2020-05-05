@@ -40,14 +40,14 @@ def smooth_imag1d(values, std, axis):
     return valuesR + 1j * valuesI
 
 
-def addcol(ms, incol, outcol, setvals=True):
+def addcol(ms, incol, outcol):
     """ Add a new column to a MS. """
     if outcol not in ms.colnames():
         logging.info('Adding column: '+outcol)
         coldmi = ms.getdminfo(incol)
         coldmi['NAME'] = outcol
         ms.addcols(pt.makecoldesc(outcol, ms.getcoldesc(incol)), coldmi)
-    if setvals and (outcol != incol):
+    if (outcol != incol):
         # copy columns val
         logging.info('Set '+outcol+'='+incol)
         pt.taql("UPDATE $ms SET "+outcol+"="+incol)
@@ -97,7 +97,7 @@ if not all(np.diff(times) >= 0):
 del times
 
 # create column to smooth
-addcol(ms, options.incol, options.outcol, setvals=False) # setvals=F reduces overhead
+addcol(ms, options.incol, options.outcol)
 # restore WEIGHT_SPECTRUM
 if 'WEIGHT_SPECTRUM_ORIG' in ms.colnames() and options.restore:
     addcol(ms, 'WEIGHT_SPECTRUM_ORIG', 'WEIGHT_SPECTRUM')
@@ -108,7 +108,7 @@ elif options.weight and not options.nobackup:
 # Iterate over chunks of baselines
 for c, idx in enumerate(np.array_split(np.arange(n_bl), options.chunks)):
     
-    logging.debug('### Fetching chunk {}/{}'.format(c,options.chunks))
+    logging.debug('### Fetching chunk {}/{}'.format(c+1,options.chunks))
 
     # get input data for this chunk
     ants1_chunk, ants2_chunk = ants1[idx], ants2[idx]
