@@ -125,8 +125,8 @@ opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM i
 opt.add_option('-a', '--onlyamp', help='Smooth only amplitudes [default: smooth real/imag]', action="store_true", default=False)
 opt.add_option('-t', '--notime', help='Do not do smoothing in time [default: False]', action="store_true", default=False)
 opt.add_option('-q', '--nofreq', help='Do not do smoothing in frequency [default: False]', action="store_true", default=False)
-opt.add_option('-c', '--chunks', help='Split the I/O in n chunks. If you run out of memory, set this to a value > 2.', default=2, type='int')
-opt.add_option('-n', '--ncpu', help='Number of cores', default=8, type='int')
+opt.add_option('-c', '--chunks', help='Split the I/O in n chunks. If you run out of memory, set this to a value > 2.', default=8, type='int')
+opt.add_option('-n', '--ncpu', help='Number of cores', default=4, type='int')
 (options, msfile) = opt.parse_args()
 
 if msfile == []:
