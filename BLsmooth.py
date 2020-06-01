@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2019 - Francesco de Gasperin
+# Copyright (C) 2020 - Francesco de Gasperin, Henrik Edler
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,30 +17,102 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Usage: BLavg.py vis.MS
-# Load a MS, smooth visibilities according to the baseline lenght,
-# i.e. shorter BLs are averaged more, and write a new MS
+# Usage: BLsmooth.py vis.MS [--options]
+# Load a MS, smooth visibilities according to the baseline length,
+# i.e. shorter BLs are averaged more, and write a new column to the MS
 
-import os, sys, time
-import optparse, itertools
+import os, sys
+import optparse
 import logging
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter1d as gfilter
-import casacore.tables as pt
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
+from scipy.ndimage import gaussian_filter1d as gfilter
 
-logging.info('BL-based smoother - Francesco de Gasperin')
+import casacore.tables as pt
+
+from lib_multiproc import multiprocManager
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
+logging.info('BL-based smoother - Francesco de Gasperin, Henrik Edler')
+
 
 def addcol(ms, incol, outcol):
+    """ Add a new column to a MS. """
     if outcol not in ms.colnames():
         logging.info('Adding column: '+outcol)
         coldmi = ms.getdminfo(incol)
         coldmi['NAME'] = outcol
         ms.addcols(pt.makecoldesc(outcol, ms.getcoldesc(incol)), coldmi)
-    if outcol != incol:
+    if (outcol != incol):
         # copy columns val
         logging.info('Set '+outcol+'='+incol)
-        pt.taql("update $ms set "+outcol+"="+incol)
+        pt.taql("UPDATE $ms SET "+outcol+"="+incol)
+
+
+def smooth_baseline(in_bl, data, weights, std_t, std_f, outQueue=None):
+    """
+    Smooth one baseline.
+    Multiply every element of the data by the weights, convolve both the
+    scaled data and the weights, and then divide the convolved data by the
+    convolved weights (translating flagged data into weight=0).
+    That's basically the equivalent of a running weighted average with a
+    Gaussian window function.
+    see also: https://stackoverflow.com/questions/51728224/gaussian-filtering-image-with-a-cut-off-value-in-python
+
+    Parameters
+    ----------
+    in_bl: boolean ndarray
+        Mask for everything not in this baseline.
+    data: ndarray
+        Data for one baseline that is to be smoothed.
+    weights: ndarray
+        Weight input.
+    std_t: float
+        Standard deviation in samples to use for time-smoothing.
+    std_f: float
+        Standard deviation in samples to use for freq-smoothing.
+
+    Returns
+    -------
+    in_bl: boolean ndarray
+        Mask for everything not in this baseline.
+    data: ndarray.
+        Smoothed ata for one baseline.
+    weights: ndarray
+        Weight output.
+    """
+    data = np.nan_to_num(data * weights) # set bad data to 0 so nans don't propagate
+    if np.isnan(data).all():
+        return in_bl, data, weights # flagged ants
+    # smear weighted data and weights
+    if options.onlyamp: # smooth only amplitudes
+        dataAMP, dataPH = np.abs(data), np.angle(data)
+        if not options.notime:
+            dataAMP = gfilter(dataAMP, std_t, axis=0, truncate=3)
+        if not options.nofreq:
+            dataAMP = gfilter(dataAMP, std_f, axis=1, truncate=3)
+        data = dataAMP * (np.cos(dataPH) + 1j * np.sin(dataPH)) # recreate data
+    else:
+        dataR, dataI = np.real(data), np.imag(data)
+        if not options.notime:
+            dataR = gfilter(dataR, std_t, axis=0, truncate=3)
+            dataI = gfilter(dataI, std_t, axis=0, truncate=3)
+        if not options.nofreq:
+            dataR = gfilter(dataR, std_f, axis=1, truncate=3)
+            dataI = gfilter(dataI, std_f, axis=1, truncate=3)
+        data = dataR + 1j*dataI # recreate data
+    if not options.notime:
+        weights = gfilter(weights, std_t, axis=0, truncate=3)
+    if not options.nofreq:
+        weights = gfilter(weights, std_f, axis=1, truncate=3)
+    data[(weights != 0)] /= weights[(weights != 0)]  # avoid divbyzero
+
+    # print( np.count_nonzero(data[~flags[in_bl]]), np.count_nonzero(data[flags[in_bl]]), 100*np.count_nonzero(data[flags[in_bl]])/np.count_nonzero(data))
+    # print( "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags[in_bl]])))
+    # print( "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags[in_bl]])))
+    # print( "NANs in weights: ", np.count_nonzero(np.isnan(weights)))
+    outQueue.put([in_bl, data, weights])
+
+
 
 opt = optparse.OptionParser(usage="%prog [options] MS", version="%prog 3.0")
 opt.add_option('-f', '--ionfactor', help='Gives an indication on how strong is the ionosphere [default: 0.01]', type='float', default=0.01)
@@ -53,135 +125,104 @@ opt.add_option('-b', '--nobackup', help='Do not backup the old WEIGHT_SPECTRUM i
 opt.add_option('-a', '--onlyamp', help='Smooth only amplitudes [default: smooth real/imag]', action="store_true", default=False)
 opt.add_option('-t', '--notime', help='Do not do smoothing in time [default: False]', action="store_true", default=False)
 opt.add_option('-q', '--nofreq', help='Do not do smoothing in frequency [default: False]', action="store_true", default=False)
+opt.add_option('-c', '--chunks', help='Split the I/O in n chunks. If you run out of memory, set this to a value > 2.', default=8, type='int')
+opt.add_option('-n', '--ncpu', help='Number of cores', default=4, type='int')
 (options, msfile) = opt.parse_args()
 
 if msfile == []:
     opt.print_help()
     sys.exit(0)
 msfile = msfile[0]
-
 if not os.path.exists(msfile):
-    logging.error("Cannot find MS file.")
+    logging.error("Cannot find MS file {}.".format(msfile))
     sys.exit(1)
-
 # open input/output MS
 ms = pt.table(msfile, readonly=False, ack=False)
-        
-freqtab = pt.table(msfile + '/SPECTRAL_WINDOW', ack=False)
-freq = freqtab.getcol('REF_FREQUENCY')[0]
-freqpersample = np.mean(freqtab.getcol('RESOLUTION'))
-freqtab.close()
-wav = 299792458. / freq
-timepersample = ms.getcell('INTERVAL',0)
+
+with pt.table(msfile + '::SPECTRAL_WINDOW', ack=False) as freqtab:
+    freq = freqtab.getcol('REF_FREQUENCY')[0]
+    freqpersample = np.mean(freqtab.getcol('RESOLUTION'))
+    timepersample = ms.getcell('INTERVAL',0)
+
+# get info on all baselines
+with pt.taql("SELECT ANTENNA1,ANTENNA2,sqrt(sumsqr(UVW)),GCOUNT() FROM $ms GROUPBY ANTENNA1,ANTENNA2") as BL:
+    ants1, ants2 = BL.getcol('ANTENNA1'), BL.getcol('ANTENNA2')
+    dists = BL.getcol('Col_3')/1e3 # baseleline length in km
+    n_t = BL.getcol('Col_4')[0] # number of timesteps
+    n_bl = len(ants1)
 
 # check if ms is time-ordered
 times = ms.getcol('TIME_CENTROID')
 if not all(np.diff(times) >= 0):
     logging.critical('This code cannot handle MS that are not time-sorted.')
     sys.exit(1)
+del times
 
 # create column to smooth
 addcol(ms, options.incol, options.outcol)
-
-# retore WEIGHT_SPECTRUM
+# restore WEIGHT_SPECTRUM
 if 'WEIGHT_SPECTRUM_ORIG' in ms.colnames() and options.restore:
     addcol(ms, 'WEIGHT_SPECTRUM_ORIG', 'WEIGHT_SPECTRUM')
 # backup WEIGHT_SPECTRUM
 elif options.weight and not options.nobackup:
     addcol(ms, 'WEIGHT_SPECTRUM', 'WEIGHT_SPECTRUM_ORIG')
 
-# iteration on antenna1
-for ms_ant1 in ms.iter(["ANTENNA1"]):
-    ant1 = ms_ant1.getcol('ANTENNA1')[0]
-    a_ant2 = ms_ant1.getcol('ANTENNA2')
-    logging.debug('Working on antenna: %s' % ant1)
+# Iterate over chunks of baselines
+for c, idx in enumerate(np.array_split(np.arange(n_bl), options.chunks)):
+    logging.debug('### Fetching chunk {}/{}'.format(c+1,options.chunks))
 
-    a_uvw = ms_ant1.getcol('UVW')
-    a_uvw_dist = np.sqrt(a_uvw[:, 0]**2 + a_uvw[:, 1]**2 + a_uvw[:, 2]**2)
-    a_data = ms_ant1.getcol(options.outcol)
-    a_weights = ms_ant1.getcol('WEIGHT_SPECTRUM')
-    a_flags = ms_ant1.getcol('FLAG')
- 
-    for ant2 in sorted(set(a_ant2)):
-        if ant1 == ant2: continue # skip autocorr
-        idx = np.where(a_ant2 == ant2)
-        
-        uvw_dist = a_uvw_dist[idx]
-        data = a_data[idx]
-        weights = a_weights[idx]
-        flags = a_flags[idx]
-   
-        # compute the FWHM
-        dist = np.mean(uvw_dist) / 1.e3
-        if np.isnan(dist): continue # fix for missing anstennas
-    
-        stddev_t = options.ionfactor * (25.e3 / dist)**options.bscalefactor * (freq / 60.e6) # in sec
-        stddev_t = stddev_t/timepersample # in samples
-        # TODO: for freq this is hardcoded, it should be thought better 
-        # However, the limitation is probably smearing here
-        stddev_f = 1e6 / dist  # Hz
-        stddev_f = stddev_f / freqpersample  # in samples
-        logging.debug("%s - %s (dist = %.1f km) >> Time: sigma=%.1f samples (%.1f s) >> Freq: sigma=%.1f samples (%.2f MHz)" % \
-                (ant1, ant2, dist, stddev_t, timepersample*stddev_t, stddev_f, freqpersample*stddev_f/1e6))
-
-        if stddev_t == 0: continue # fix for flagged antennas
-        if stddev_t < 0.5: continue # avoid very small smoothing
-
-        flags[ np.isnan(data) ] = True # flag NaNs
-        weights[flags] = 0 # set weight of flagged data to 0
-        del flags
-        
-        # Multiply every element of the data by the weights, convolve both the scaled data and the weights, and then
-        # divide the convolved data by the convolved weights (translating flagged data into weight=0). That's basically the equivalent of a
-        # running weighted average with a Gaussian window function.
-        
-        # set bad data to 0 so nans do not propagate
-        data = np.nan_to_num(data*weights)
-        # smear weighted data and weights
-        if options.onlyamp:
-            dataAMP = np.abs(data)
-            dataPH = np.angle(data)
-            if not options.notime:
-                dataAMP = gfilter(dataAMP, stddev_t, axis=0)
-            if not options.nofreq:
-                dataAMP = gfilter(dataAMP, stddev_f, axis=1)
-        else:
-            dataR = np.real(data)
-            dataI = np.imag(data)
-            if not options.notime:
-                dataR = gfilter(dataR, stddev_t, axis=0)#, truncate=4.)
-                dataI = gfilter(dataI, stddev_t, axis=0)#, truncate=4.)
-            if not options.nofreq:
-                dataR = gfilter(dataR, stddev_f, axis=1)#, truncate=4.)
-                dataI = gfilter(dataI, stddev_f, axis=1)#, truncate=4.)
-    
-        if not options.notime:
-            weights = gfilter(weights, stddev_t, axis=0)#, truncate=4.)
-        if not options.nofreq:
-            weights = gfilter(weights, stddev_f, axis=1)#, truncate=4.)
-    
-        # re-create data
-        if options.onlyamp:
-            data = dataAMP * ( np.cos(dataPH) + 1j*np.sin(dataPH) )
-        else:
-            data = (dataR + 1j * dataI)
-
-        data[(weights != 0)] /= weights[(weights != 0)] # avoid divbyzero
-    
-        #print np.count_nonzero(data[~flags]), np.count_nonzero(data[flags]), 100*np.count_nonzero(data[flags])/np.count_nonzero(data)
-        #print "NANs in flagged data: ", np.count_nonzero(np.isnan(data[flags]))
-        #print "NANs in unflagged data: ", np.count_nonzero(np.isnan(data[~flags]))
-        #print "NANs in weights: ", np.count_nonzero(np.isnan(weights))
-
-        a_data[idx] = data
-        if options.weight: a_weights[idx] = weights
-    
-    #logging.info('Writing %s column.' % options.outcol)
-    ms_ant1.putcol(options.outcol, a_data)
-
+    # get input data for this chunk
+    ants1_chunk, ants2_chunk = ants1[idx], ants2[idx]
+    chunk = pt.taql("SELECT FROM $ms WHERE any(ANTENNA1== $ants1_chunk && ANTENNA2==$ants2_chunk)")
+    data_chunk = chunk.getcol(options.incol)
+    weights_chunk = chunk.getcol('WEIGHT_SPECTRUM')
+    # flag NaNs and set weights to zero
+    flags = chunk.getcol('FLAG')
+    flags[np.isnan(data_chunk)] = True
+    weights_chunk[flags] = 0
+    del flags
+    # prepare output cols
+    smoothed_data = data_chunk.copy()
     if options.weight:
-        #logging.warning('Writing WEIGHT_SPECTRUM column.')
-        ms_ant1.putcol('WEIGHT_SPECTRUM', a_weights)
+        new_weights = np.zeros_like(weights_chunk)
+
+    # Iterate on each baseline in this chunk
+    mpm = multiprocManager(options.ncpu, smooth_baseline)
+    for i_chunk, (ant1, ant2, dist) in enumerate(zip(ants1_chunk, ants2_chunk, dists[idx])):
+        if ant1 == ant2:
+            continue  # skip autocorrelations
+        elif np.isnan(dist):
+            continue  # fix for missing antennas
+        logging.debug('Working on baseline: {} - {} (dist = {:.2f}km)'.format(ant1, ant2, dist))
+
+        in_bl = slice(i_chunk, -1, len(ants1_chunk))  # All times for 1 BL
+        data, weights= data_chunk[in_bl], weights_chunk[in_bl]
+
+        std_t = options.ionfactor * (25.e3 / dist) ** options.bscalefactor * (freq / 60.e6)  # in sec
+        std_t = std_t / timepersample  # in samples
+        # TODO: for freq this is hardcoded, it should be thought better
+        # However, the limitation is probably smearing here
+        std_f = 1e6 / dist  # Hz
+        std_f = std_f / freqpersample  # in samples
+        logging.debug("-Time: sig={:.1f} samples ({:.1f}s) -Freq: sig={:.1f} samples ({:.2f}MHz)".format(
+            std_t, timepersample * std_t, std_f, freqpersample * std_f / 1e6))
+        if std_t < 0.5: continue  # avoid very small smoothing and flagged ants
+        # fill queue
+        mpm.put([in_bl, data, weights, std_t, std_f])
+
+    mpm.wait() # run queue
+    # reconstruct chunk column
+    for in_bl, data, weights in mpm.get():
+        smoothed_data[in_bl] = data
+        if options.weight:
+            new_weights[in_bl] = weights
+    # write to ms
+    logging.info('Writing %s column.' % options.outcol)
+    chunk.putcol(options.outcol, smoothed_data)
+    if options.weight:
+        logging.warning('Writing WEIGHT_SPECTRUM column.')
+        chunk.putcol('WEIGHT_SPECTRUM', new_weights)
+    chunk.close()
 
 ms.close()
 logging.info("Done.")
