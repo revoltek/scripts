@@ -42,7 +42,7 @@ if msfile == []:
 msfile = msfile[0]
 
 if not os.path.exists(msfile):
-    logging.error("Cannot find MS file.")
+    logging.error("Cannot find MS file: %s." % msfile)
     sys.exit(1)
 
 # open input/output MS

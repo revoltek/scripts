@@ -24,7 +24,7 @@ from astropy.time import Time
 def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
         times = sorted(set(t.getcol('TIME')))
-    print("%s: Time step %i seconds." % (ms, times[1]-times[0]))
+    print("%s: Time step %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
 
 def get_freq(ms):
     """
@@ -35,7 +35,8 @@ def get_freq(ms):
         nchan = t.getcol("NUM_CHAN")[0]
     min_freq = min(freqs)
     max_freq = max(freqs)
-    print("%s: Freq range: %f MHz - %f MHz (%i channels)" % (ms,min_freq,max_freq,nchan) )
+    interval_freq = (max_freq-min_freq)/nchan
+    print("%s: Freq range: %.3f MHz - %.3f MHz, interval: %.3f MHz (total channels: %i)" % (ms,min_freq,max_freq,interval_freq,nchan) )
 
 
 for ms in sys.argv[1:]:
