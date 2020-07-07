@@ -19,7 +19,7 @@
 
 # create a mask using bdsm of an image
 
-def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(100,30), mask_combine=None):
+def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(100,10), mask_combine=None):
 
     import sys, os
     import numpy as np
@@ -52,7 +52,7 @@ def make_mask(image_name, mask_name=None, threshisl=5, atrous_do=False, rmsbox=(
             assert data.shape() == data_comb.shape()
             data[(data_comb == 1.)] = 1.
             fits[0].data = data
-            fits.writeto(mask_name, clobber=True)
+            fits.writeto(mask_name, overwrite=True)
 
     return mask_name
 
@@ -63,7 +63,7 @@ if __name__=='__main__':
     opt.add_option('-t', '--atrous_do', help='BDSM extended source detection (default=False)', action='store_true', default=False)
     opt.add_option('-m', '--newmask', help='Mask name (default=imagename with mask in place of image)', default=None)
     opt.add_option('-c', '--combinemask', help='Mask name of a mask to add to the found one (default=None)', default=None)
-    opt.add_option('-r', '--rmsbox', help='rms box size (default=55,12)', default='55,12')
+    opt.add_option('-r', '--rmsbox', help='rms box size (default=100,10)', default='100,10')
     (options, args) = opt.parse_args()
     
     rmsbox = (int(options.rmsbox.split(',')[0]),int(options.rmsbox.split(',')[1]))
