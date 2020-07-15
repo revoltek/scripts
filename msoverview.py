@@ -20,6 +20,7 @@
 import os, sys
 import casacore.tables as pt
 from astropy.time import Time
+import numpy as np
 
 def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
@@ -33,9 +34,13 @@ def get_freq(ms):
     with pt.table(ms + "/SPECTRAL_WINDOW", ack = False) as t:
         freqs = t.getcol("CHAN_FREQ")[0] * 1e-6 # MHz
         nchan = t.getcol("NUM_CHAN")[0]
+        chan_bandwidth = t.getcol("CHAN_WIDTH")[0][0] * 1e-6 # MHz
     min_freq = min(freqs)
     max_freq = max(freqs)
-    print("%s: Freq range: %f MHz - %f MHz (%i channels)" % (ms,min_freq,max_freq,nchan) )
+    mean_freq = np.mean(freqs)
+    bandwidth = max_freq-min_freq
+    print("%s: Freq range: %f MHz - %f MHz (bandwidth: %f MHz, mean freq: %f MHz)" % (ms, min_freq, max_freq, bandwidth, mean_freq))
+    print("%s: Channels: %i ch (bandwidth: %f MHz)" % (ms, nchan, chan_bandwidth) )
 
 
 for ms in sys.argv[1:]:
