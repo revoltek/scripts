@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # Script to add missing tables in the MS to conform with CASA standards 
 # and to make a fix in the MeasInfo in the spectral window table.
@@ -9,7 +9,8 @@
 #
 
 import os,sys
-import numpy as np, pyrap.tables as pt
+import numpy as np
+import casacore.tables as pt
 from numpy import uint32
 
 if (len(sys.argv) <= 1):

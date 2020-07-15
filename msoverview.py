@@ -25,7 +25,7 @@ import numpy as np
 def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
         times = sorted(set(t.getcol('TIME')))
-    print("%s: Time step %i seconds." % (ms, times[1]-times[0]))
+    print("%s: Time step %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
 
 def get_freq(ms):
     """
