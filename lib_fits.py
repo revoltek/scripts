@@ -247,9 +247,9 @@ class Image(object):
         Shift header by dra/ddec
         dra, ddec in degree
         """
-        # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log!
+        # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log as the reference val doesn't need it!
         logging.info('%s: Shift %.2f %.2f (arcsec)' % (self.imagefile, dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600))
         dec = self.img_hdr['CRVAL2']
-        self.img_hdr['CRVAL1'] += dra/(np.cos(np.pi*dec/180.))
+        self.img_hdr['CRVAL1'] += dra
         self.img_hdr['CRVAL2'] += ddec
 
