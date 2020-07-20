@@ -32,8 +32,8 @@ def flatten(filename, channel=0, freqaxis=0):
     if naxis<2:
         raise RadioError('Can\'t make map from this')
     if naxis==2:
-        pass
-        #return f[0].header,f[0].data
+        #pass
+        return f[0].header,f[0].data
 
     w = pywcs(f[0].header)
     wn = pywcs(naxis=2)

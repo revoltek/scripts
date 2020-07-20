@@ -8,7 +8,7 @@ m_e * c**2 * gamma in eV
 # cutoff momentum of particles at time t and magnetic field B
 # https://academic.oup.com/mnras/article/433/4/3364/1079558
 b = ( 4 * (6.65e-29 m**2) / (3 * m_e**2 * c**3) ) * U_B
-U_B = B/(2*mu_0) # note that B_cmb = 3.25*(1+z)**2 uG
+U_B = B**2/(2*mu_0) # note that B_cmb = 3.25*(1+z)**2 uG
 E_cut =  1/(b*U_B*t)
 
 
