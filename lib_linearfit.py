@@ -140,9 +140,9 @@ def linear_fit(x, y, yerr=None, tolog=False):
         if not yerr is None: yerr = 0.434*yerr/y
         x=np.log10(x)
         y=np.log10(y)
-    if yerr is None: yerr = np.ones(len(y))
-    for i,e in enumerate(yerr):
-        if e == 0: yerr[i] = 1
+    #if yerr is None: yerr = np.ones(len(y))
+    #for i,e in enumerate(yerr):
+    #    if e == 0: yerr[i] = 1
     out = curve_fit(f, x, y, [-1. ,0.], yerr)
     # return B0, B1, errB0, errB1 (err are in std dev)
     if type(out[1]) is np.ndarray:

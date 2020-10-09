@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #./fitscutout.py fitsfile [set position and size below]
-position = (3800, 3300) # pixel
+position = (100, 500) # pixel
 size = (1000, 1000) # pixel
 
 import os, sys
