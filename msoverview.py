@@ -26,6 +26,8 @@ def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
         times = sorted(set(t.getcol('TIME')))
     print("%s: Time step %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
+    time = Time( times[0]/86400, format='mjd')
+    print("%s: Starting time %s" % (ms, str(time.iso)))
 
 def get_freq(ms):
     """
