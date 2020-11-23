@@ -44,7 +44,23 @@ def get_freq(ms):
     print("%s: Freq range: %f MHz - %f MHz (bandwidth: %f MHz, mean freq: %f MHz)" % (ms, min_freq, max_freq, bandwidth, mean_freq))
     print("%s: Channels: %i ch (bandwidth: %f MHz)" % (ms, nchan, chan_bandwidth) )
 
+def get_dir(ms):
+    """
+    Get phase centre
+    """
+    field_no = 0
+    ant_no   = 0
+    with pt.table(ms + "/FIELD", ack = False) as field_table:
+        direction = field_table.getcol("PHASE_DIR")
+    RA        = direction[ant_no, field_no, 0]
+    Dec       = direction[ant_no, field_no, 1]
+
+    if (RA < 0):
+        RA += 2 * np.pi
+
+    print("%s: Phase centre: %f, %f (deg)" % (ms, np.degrees(RA), np.degrees(Dec)))
 
 for ms in sys.argv[1:]:
     get_timestep(ms)
     get_freq(ms)
+    get_dir(ms)
