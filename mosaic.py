@@ -97,12 +97,18 @@ class Direction(Image):
         if not os.path.exists(beamfile):
             logging.error('Beam file %s not found.' % beamfile)
             sys.exit(1)
-        logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
         self.beamfile = beamfile
         self.beam_hdr, self.beam_data = flatten(self.beamfile)
         if self.beam_data.shape != self.img_data.shape:
-            logging.error('Beam and image shape are different.')
-            sys.exit(1)
+            beamfile = self.imagefile+'__beam.fits'
+            logging.warning('Beam and image shape are different, regrid beam...')
+            beam_data, footprint = reproj((self.beam_data, self.beam_hdr), self.img_hdr,
+                                            order='bilinear')  # , parallel=True)
+            # save temp regridded beam
+            pyfits.writeto(beamfile, header=self.img_hdr, data=beam_data, overwrite=True)
+            self.beamfile = beamfile
+            self.beam_hdr, self.beam_data = flatten(self.beamfile)
+        logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
 
     def apply_beam_cut(self, beamcut=0.3):
         if self.beamfile is None: return
@@ -325,10 +331,9 @@ if args.mask is not None:
         logging.debug('Loading %s...' % outname)
         mask_n = pyfits.open(outname)[0]
     else:
-        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='nearest-neighbor')#, parallel=True)
+        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='bilinear')#, parallel=True)
         if args.save:
-            hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=mask_n.data)
-            hdu.writeto(outname, overwrite=True)
+            pyfits.writeto(outname, header=regrid_hdr, data=mask_n.data, overwrite=True)
 
     # get numbers into mask in increasing order
     mask_numbers = sorted(np.unique(mask_n.data))
@@ -345,8 +350,7 @@ for i, d in enumerate(directions):
         r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
         r[ np.isnan(r) ] = 0
         if args.save:
-            hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=r)
-            hdu.writeto(outname, overwrite=True)
+            pyfits.writeto(outname, header=regrid_hdr, data=r, overwrite=True)
 
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
@@ -361,8 +365,7 @@ for i, d in enumerate(directions):
         if args.mask is not None:
             w[mask_n.data != mask_numbers[i]] = 0
         if args.save:
-            hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=w)
-            hdu.writeto(outname, overwrite=True)
+            pyfits.writeto(outname, header=regrid_hdr, data=w, overwrite=True)
     logging.debug('Add to mosaic...')
     isum += r*w
     wsum += w
@@ -386,7 +389,6 @@ except:
 regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
 regrid_hdr['UNITS'] = 'Jy/beam'
 
-hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
-hdu.writeto(args.output, overwrite=True)
+pyfits.writeto(args.output, header=regrid_hdr, data=isum, overwrite=True)
 
 logging.debug('Done.')
