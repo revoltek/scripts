@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013 - Francesco de Gasperin
@@ -19,8 +19,8 @@
 #
 #usage: extractbeam.py imagename
 
-import pyrap.images as pim
-from pyrap import quanta
+import casacore.images as pim
+from casacore import quanta
 import sys
 
 for img in sys.argv[1:]:
