@@ -185,7 +185,7 @@ for c in range(0,args.iter):
         fv[i]=fl
 
         if args.smear > 0:
-            restore_gaussian(f,fl*args.smear,x,y,bmaj/np.sqrt(args.smear),bmin/np.sqrt(args.smear),bpa,guard)
+            restore_gaussian(f,fl*(1-args.smear),x,y,bmaj/np.sqrt(1-args.smear),bmin/np.sqrt(1-args.smear),bpa,guard)
         else:
             restore_gaussian(f,fl,x,y,bmaj,bmin,bpa,guard)
         
