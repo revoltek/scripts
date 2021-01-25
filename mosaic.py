@@ -382,7 +382,7 @@ try:
     regrid_hdr['BMIN'] = common_beam[1]
     regrid_hdr['BPA'] = common_beam[2]
 except:
-    logging.warning('Setting header beam equal to: %s' % directions[0].imagefile)
+    logging.warning('Setting beam in the headers equal to: %s' % directions[0].imagefile)
     for ch in ('BMAJ', 'BMIN', 'BPA'):
         regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
 
