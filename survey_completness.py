@@ -112,6 +112,9 @@ parser.add_argument('-M','--maximum',dest='max',action='store',
 parser.add_argument('-I','--index',dest='index',action='store',
                     type=float, default=-0.6,
                     help='Power-law index of integrated number counts')
+parser.add_argument('-s','--smear',dest='smear',action='store',
+                    type=float, default=0,
+                    help='Fraction of smearing (e.g. 0.2 for 20% reduction in peak flux)')
 parser.add_argument('-l','--logfile',dest='logfile',action='store',
                     default=None,
                     help='File to log results to')
@@ -175,17 +178,16 @@ for c in range(0,args.iter):
             if not(np.isnan(f[int(y),int(x)])):
                 break
             
-        
-#        fl=np.exp(np.random.uniform(np.log(args.min),np.log(args.max)))
         fl=(sms-pnorm*np.random.random())**(1.0/args.index)
         print(i,x,y,fl)
         xp[i]=x
         yp[i]=y
         fv[i]=fl
 
-#        g=gaussian(maxx,maxy,x,y,bmin,bmaj,bpa)
-#        print f.shape,g.shape
-        restore_gaussian(f,fl,x,y,bmaj,bmin,bpa,guard)
+        if args.smear > 0:
+            restore_gaussian(f,fl*(1-args.smear),x,y,bmaj/np.sqrt(1-args.smear),bmin/np.sqrt(1-args.smear),bpa,guard)
+        else:
+            restore_gaussian(f,fl,x,y,bmaj,bmin,bpa,guard)
         
     fp.writeto(fakefile,clobber=True)
     fp.close()
