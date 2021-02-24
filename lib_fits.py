@@ -22,19 +22,19 @@ from astropy.io import fits as pyfits
 import numpy as np
 import os, sys, logging, re
 
-def flatten(filename, channel=0, freqaxis=0):
+def flatten(filename, channel=0, freqaxis=0, hdu=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
 
     f = pyfits.open(filename)
 
-    naxis=f[0].header['NAXIS']
+    naxis=f[hdu].header['NAXIS']
     if naxis<2:
         raise RadioError('Can\'t make map from this')
     if naxis==2:
         #pass
-        return f[0].header,f[0].data
+        return f[hdu].header,f[hdu].data
 
-    w = pywcs(f[0].header)
+    w = pywcs(f[hdu].header)
     wn = pywcs(naxis=2)
 
     wn.wcs.crpix[0]=w.wcs.crpix[0]
@@ -46,11 +46,11 @@ def flatten(filename, channel=0, freqaxis=0):
 
     header = wn.to_header()
     header["NAXIS"]=2
-    header["NAXIS1"]=f[0].header['NAXIS1']
-    header["NAXIS2"]=f[0].header['NAXIS2']
+    header["NAXIS1"]=f[hdu].header['NAXIS1']
+    header["NAXIS2"]=f[hdu].header['NAXIS2']
     copy=('EQUINOX','EPOCH')
     for k in copy:
-        r=f[0].header.get(k)
+        r=f[hdu].header.get(k)
         if r:
             header[k]=r
 
@@ -64,18 +64,18 @@ def flatten(filename, channel=0, freqaxis=0):
             dataslice.append(0)
 
     # add freq
-    header["FREQ"] = find_freq(f[0].header)
+    header["FREQ"] = find_freq(f[hdu].header)
 
     # add beam if present
     try:
-        header["BMAJ"]=f[0].header['BMAJ']
-        header["BMIN"]=f[0].header['BMIN']
-        header["BPA"]=f[0].header['BPA']
+        header["BMAJ"]=f[hdu].header['BMAJ']
+        header["BMIN"]=f[hdu].header['BMIN']
+        header["BPA"]=f[hdu].header['BPA']
     except:
         pass
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header, f[0].data[tuple(dataslice)]
+    return header, f[hdu].data[tuple(dataslice)]
 
 
 def correct_beam_header(header):
