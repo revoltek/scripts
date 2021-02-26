@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from math import *
 import numpy as np
@@ -6,11 +6,11 @@ import scipy.special
 
 # USER INPUT
 freq = 54.0e6 # Hz. Observing freqency, from msoverview
-nchan= 4 # Channels per subband
+nchan= 16 # Channels per subband
 bw=195.e3/nchan # Hz. 195kHz is the bandwidt of one subband
 delta_T = 2. # seconds. Averaging
-#b = 1292.0e3 # meters. IS longest baseline in meters. 
-b = 100.0e3 # meters. RS longest baseline in meters.
+b = 1292.0e3 # meters. IS longest baseline in meters. 
+#b = 100.0e3 # meters. RS longest baseline in meters.
 delta_Theta = 2.0 # deg. Distance in image from phase centre, i.e. half the FWHM.
 
 c = 2.998e8 # m/s. Speed of light

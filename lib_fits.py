@@ -189,27 +189,48 @@ class Image(object):
         else: self.img_data[mask] = blankvalue
 
 
-    def calc_noise(self, niter=1000, eps=None, sigma=5):
+#    def calc_noise(self, niter=1000, eps=None, sigma=5):
+#        """
+#        Return the rms of all the pixels in an image
+#        niter : robust rms estimation
+#        eps : convergency criterion, if None is 1% of initial rms
+#        """
+#        if eps == None: eps = np.nanstd(self.img_data)*1e-3
+#        data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
+#        if len(data) == 0: return 0
+#        oldrms = 1.
+#        for i in range(niter):
+#            rms = np.nanstd(data)
+#            if np.abs(oldrms-rms)/rms < eps:
+#                self.noise = rms
+#                #print('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
+#                logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
+#                return rms
+#
+#            data = data[np.abs(data)<sigma*rms]
+#            oldrms = rms
+#        raise Exception('Noise estimation failed to converge.')
+
+    def calc_noise(self, sigma=7):
         """
         Return the rms of all the pixels in an image
-        niter : robust rms estimation
-        eps : convergency criterion, if None is 1% of initial rms
         """
-        if eps == None: eps = np.nanstd(self.img_data)*1e-3
+        from astropy.stats import median_absolute_deviation
         data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
         if len(data) == 0: return 0
-        oldrms = 1.
-        for i in range(niter):
-            rms = np.nanstd(data)
-            if np.abs(oldrms-rms)/rms < eps:
-                self.noise = rms
-                #print('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
-                logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
-                return rms
-
-            data = data[np.abs(data)<sigma*rms]
-            oldrms = rms
-        raise Exception('Noise estimation failed to converge.')
+        mad = median_absolute_deviation(data)
+        mad_old = 0.
+        while mad != mad_old:
+             #print('MAD: %f uJy"' % (mad*1e6))
+             mad_old = mad
+             mad = median_absolute_deviation(data[np.where(data < sigma * mad)])
+    
+        rms = np.nanstd( data[np.where(np.abs(data) < sigma * mad)] )
+        if np.isnan(rms):
+            raise("cal_noise didn't converge")
+        logging.debug('Noise: %.3f mJy/b' % (rms*1e3))
+        self.noise = rms
+        return rms
 
     def convolve(self, target_beam):
         """
