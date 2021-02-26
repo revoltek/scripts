@@ -19,14 +19,14 @@
 
 import os, sys, argparse, logging
 import numpy as np
-from lib_linearfit import linear_fit_bootstrap
-from lib_fits import flatten
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.coordinates import match_coordinates_sky
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import pyregion
+from lib_linearfit import linear_fit_bootstrap
+from lib_fits import flatten
 # https://github.com/astrofrog/reproject
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_exact
@@ -254,7 +254,7 @@ spidx_err_data = np.empty(shape=(xsize, ysize))
 spidx_err_data[:] = np.nan
 
 for i in range(xsize):
-    print('.', end=' ')
+    print('%i/%i' % (i,xsize), end='\r')
     sys.stdout.flush()
     for j in range(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
