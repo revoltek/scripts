@@ -223,7 +223,7 @@ class Image(object):
         while mad != mad_old:
              #print('MAD: %f uJy"' % (mad*1e6))
              mad_old = mad
-             mad = median_absolute_deviation(data[np.where(data < sigma * mad)])
+             mad = median_absolute_deviation(data[np.where(np.abs(data) < sigma * mad)])
     
         rms = np.nanstd( data[np.where(np.abs(data) < sigma * mad)] )
         if np.isnan(rms):
