@@ -211,7 +211,7 @@ class Image(object):
 #            oldrms = rms
 #        raise Exception('Noise estimation failed to converge.')
 
-    def calc_noise(self, niter=1000, eps=None, sigma=7):
+    def calc_noise(self, niter=1000, eps=None, sigma=15):
         """
         Return the rms of all the pixels in an image
         eps : convergency criterion, if None is 0.1% of initial rms
@@ -219,19 +219,20 @@ class Image(object):
         from astropy.stats import median_absolute_deviation
         if eps == None: eps = 1e-3
         data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
-        if len(data) == 0: return 0
+        initial_len = len(data)
+        if initial_len == 0: return 0
         mad_old = 0.
         for i in range(niter):
              mad = median_absolute_deviation(data)
-             print('MAD: %f uJy"' % (mad*1e6))
+             #print('MAD: %f uJy"' % (mad*1e6))
              if np.abs(mad_old-mad)/mad < eps:
                  rms = np.nanstd( data )
                  self.noise = rms
                  #print('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
-                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
+                 logging.debug('%s: Noise: %.3f mJy/b (data len: %i -> %i - %.2f%%)' % (self.imagefile, self.noise*1e3, initial_len, len(data), 100*len(data)/initial_len))
                  return rms
 
-             data = data[np.abs(data)<sigma*mad]
+             data = data[np.abs(data) < (sigma*mad)]
              mad_old = mad
         raise Exception('Noise estimation failed to converge.')
 
