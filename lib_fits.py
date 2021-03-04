@@ -211,7 +211,7 @@ class Image(object):
 #            oldrms = rms
 #        raise Exception('Noise estimation failed to converge.')
 
-    def calc_noise(self, niter=1000, eps=None, sigma=15):
+    def calc_noise(self, niter=1000, eps=None, sigma=7):
         """
         Return the rms of all the pixels in an image
         eps : convergency criterion, if None is 0.1% of initial rms

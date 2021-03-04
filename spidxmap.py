@@ -234,7 +234,8 @@ for image in all_images:
  
     if args.noise:
         if args.sigma is not None:
-            image.calc_noise(sigma=args.sigma) # after mask?/convolution
+            # usually the sigma used for the blanking is rather low, better to increase it for the calc_noise
+            image.calc_noise(sigma=args.sigma*2) # after mask?/convolution
             image.blank_noisy(args.sigma)
         else:
             image.calc_noise() # after mask?/convolution
@@ -259,13 +260,13 @@ for i in range(xsize):
     for j in range(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any(): continue
-        print(val4reg, yerr)
         (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
 
 spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
 spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
+logging.info('Save %s (and errors)' % args.output)
 spidx.writeto(args.output, overwrite=True)
 spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
 
