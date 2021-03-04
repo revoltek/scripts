@@ -234,7 +234,8 @@ for image in all_images:
  
     if args.noise:
         if args.sigma is not None:
-            image.calc_noise(sigma=args.sigma) # after mask?/convolution
+            # usually the sigma used for the blanking is rather low, better to increase it for the calc_noise
+            image.calc_noise(sigma=args.sigma*2) # after mask?/convolution
             image.blank_noisy(args.sigma)
         else:
             image.calc_noise() # after mask?/convolution
@@ -265,6 +266,7 @@ for i in range(xsize):
 
 spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
 spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
+logging.info('Save %s (and errors)' % args.output)
 spidx.writeto(args.output, overwrite=True)
 spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
 
