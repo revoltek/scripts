@@ -17,10 +17,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from astropy.wcs import WCS as pywcs
-from astropy.io import fits as pyfits
-import numpy as np
 import os, sys, logging, re
+from astropy.io import fits as pyfits
+from astropy.wcs import WCS as pywcs
+import numpy as np
 
 def flatten(filename, channel=0, freqaxis=0, hdu=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
