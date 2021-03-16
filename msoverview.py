@@ -37,8 +37,8 @@ def get_freq(ms):
         freqs = t.getcol("CHAN_FREQ")[0] * 1e-6 # MHz
         nchan = t.getcol("NUM_CHAN")[0]
         chan_bandwidth = t.getcol("CHAN_WIDTH")[0][0] * 1e-6 # MHz
-    min_freq = min(freqs)
-    max_freq = max(freqs)
+    min_freq = min(freqs-chan_bandwidth/2.)
+    max_freq = max(freqs+chan_bandwidth/2.)
     mean_freq = np.mean(freqs)
     bandwidth = max_freq-min_freq
     print("%s: Freq range: %f MHz - %f MHz (bandwidth: %f MHz, mean freq: %f MHz)" % (ms, min_freq, max_freq, bandwidth, mean_freq))
