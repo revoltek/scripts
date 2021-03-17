@@ -294,10 +294,10 @@ class AllImages():
             this_regrid_hdr['BMAJ'], this_regrid_hdr['BMIN'], this_regrid_hdr['BPA'] = image.get_beam()
             image.regrid(this_regrid_hdr)
 
-    def write(self, suffix):
+    def write(self, suffix, inflate=False):
         """ Write all (changed) images to imagename-suffix.fits"""
         for image in self.images:
-            image.write(image.imagefile.replace('.fits', f'-{suffix}.fits'))
+            image.write(image.imagefile.replace('.fits', f'-{suffix}.fits'), inflate=inflate)
 
 
 class Image(object):
@@ -307,6 +307,7 @@ class Image(object):
         imagefile: name of the fits file
         """
 
+        logging.info(f"Open {imagefile}")
         self.imagefile = imagefile
         header = pyfits.open(imagefile)[0].header
         header = correct_beam_header(header)
@@ -512,6 +513,7 @@ class Image(object):
         from astropy import convolution
 
         # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
+        print (self.imagefile)
         beam = self.get_beam()
         if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
             logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
