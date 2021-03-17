@@ -478,7 +478,7 @@ class Image(object):
             logging.debug('%s: Apply background region %s' % (self.imagefile, bg_reg))
             r = pyregion.open(bg_reg)
             mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
-            print('STD:', np.nanstd(self.img_data[mask]),np.nanstd(self.img_data[~mask]))
+            print('%s: region-estimated noise: %f' % (self.imagefile, np.nanstd(self.img_data[mask])))
             self.noise = np.nanstd(self.img_data[mask])
             logging.info('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise * 1e3))
         else:
@@ -490,7 +490,7 @@ class Image(object):
             mad_old = 0.
             for i in range(niter):
                  mad = median_absolute_deviation(data)
-                 print('MAD: %f uJy"' % (mad*1e6))
+                 print('MAD: %f uJy on %f%% data' % (mad*1e6, 100*len(data)/initial_len))
                  if np.abs(mad_old-mad)/mad < eps:
                      rms = np.nanstd( data )
                      self.noise = rms
