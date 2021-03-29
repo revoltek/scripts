@@ -217,6 +217,7 @@ for i, image in enumerate(args.images):
     beams.append(d.get_beam()) 
     directions.append(d)
 
+logging.info("Working on %i images..." % len(directions))
 
 if args.beamarm:
     if args.beamcirc:
