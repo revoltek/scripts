@@ -102,17 +102,19 @@ class Direction(Image):
         if self.beam_data.shape != self.img_data.shape:
             beamfile = self.imagefile+'__beam.fits'
             logging.warning('Beam and image shape are different, regrid beam...')
-            beam_data, footprint = reproj((self.beam_data, self.beam_hdr), self.img_hdr,
+            if not os.path.exists(beamfile):
+                beam_data, footprint = reproj((self.beam_data, self.beam_hdr), self.img_hdr,
                                             order='bilinear')  # , parallel=True)
-            # save temp regridded beam
-            pyfits.writeto(beamfile, header=self.img_hdr, data=beam_data, overwrite=True)
+                # save temp regridded beam
+                pyfits.writeto(beamfile, header=self.img_hdr, data=beam_data, overwrite=True)
             self.beamfile = beamfile
             self.beam_hdr, self.beam_data = flatten(self.beamfile)
         logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
 
     def apply_beam_cut(self, beamcut=0.3):
         if self.beamfile is None: return
-        self.img_data[self.beam_data < beamcut] = 0.
+        self.img_data[self.beam_data < beamcut] = 0. # in the calc_weigth this region is properly removed
+        #self.beam_data[self.beam_data < beamcut] = 0.
 
     def apply_beam_corr(self):
         if self.beamfile is None: return
