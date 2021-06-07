@@ -488,12 +488,14 @@ class Image(object):
             from astropy.stats import median_absolute_deviation
             if eps == None: eps = 1e-3
             data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
+            data = self.img_data[ (self.img_data != 0) ] # remove 0.
             initial_len = len(data)
             if initial_len == 0: return 0
             mad_old = 0.
             for i in range(niter):
                  mad = median_absolute_deviation(data)
                  print('MAD: %f uJy on %f%% data' % (mad*1e6, 100*len(data)/initial_len))
+                 if np.isnan(mad): break
                  if np.abs(mad_old-mad)/mad < eps:
                      rms = np.nanstd( data )
                      self.noise = rms
