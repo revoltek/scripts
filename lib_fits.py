@@ -73,7 +73,9 @@ def flatten(filename, channel=0, freqaxis=0):
             dataslice.append(0)
 
     # add freq
-    header["FREQ"] = find_freq(f[0].header)
+    freq = find_freq(f[0].header)
+    if freq is not None:
+        header["FREQ"] = freq
 
     # add beam if present
     try:
@@ -85,7 +87,6 @@ def flatten(filename, channel=0, freqaxis=0):
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
     return header, f[0].data[tuple(dataslice)]
-
 
 
 def correct_beam_header(header):
@@ -102,6 +103,7 @@ def correct_beam_header(header):
                 header['BMIN'] = float(bmin)
                 header['BPA'] = float(pa)
     return header
+
 
 def find_freq(header):
     """

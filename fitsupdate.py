@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013 - Francesco de Gasperin
@@ -56,7 +56,8 @@ except:
     sys.exit(1)
 
 if setkeyword is None and setbeam is None and delkeyword is None:
-    print(hdulist[0].header)
+    for entry, val in hdulist[0].header.items():
+        print(entry, val)
     sys.exit(0)
 
 if ( not setkeyword is None ):
