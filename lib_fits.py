@@ -159,7 +159,6 @@ class AllImages():
         ref_cat = self[ref_idx].cat
         logging.info(f'Reference cat: {self[ref_idx].imagefile}')
         # keep only point sources
-        # print(ref_cat)
         target_beam = self.common_beam(circbeam=True)
         for i, image in enumerate(self):
             if i == ref_idx:
@@ -487,8 +486,7 @@ class Image(object):
         else:
             from astropy.stats import median_absolute_deviation
             if eps == None: eps = 1e-3
-            data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
-            data = self.img_data[ (self.img_data != 0) ] # remove 0.
+            data = self.img_data[ ~np.isnan(self.img_data) & (self.img_data != 0) ] # remove nans and 0s
             initial_len = len(data)
             if initial_len == 0: return 0
             mad_old = 0.
@@ -517,7 +515,6 @@ class Image(object):
         from astropy import convolution
 
         # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
-        print (self.imagefile)
         beam = self.get_beam()
         if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
             logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
