@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2017 - Francesco de Gasperin
@@ -138,7 +138,7 @@ logging.info('Final beam: %.1f" %.1f" (pa %.1f deg)' \
 if args.shift:
     ref_cat = all_images[0].cat
     # keep only point sources
-    print(ref_cat)
+    print('Reference catalogue:', ref_cat)
     for image in all_images[1:]:
         # cross match
         idx_match, sep, _ = match_coordinates_sky(SkyCoord(ref_cat['RA'], ref_cat['DEC']),\
@@ -189,7 +189,8 @@ if args.size is None:
         y, x = mask.nonzero()
         ra_max, dec_max = w.all_pix2world(np.max(x), np.max(y), 0, ra_dec_order=True)
         ra_min, dec_min = w.all_pix2world(np.min(x), np.min(y), 0, ra_dec_order=True)
-        args.size = 1.5*np.max( [ np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]), np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]) ] )
+        args.size = 1.2*2.*np.max( [ np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]), np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]) ] )
+        #print(ra_min,ra_max,dec_min,dec_max)
     else:
         logging.warning('No size or region provided, use entire size of first image.')
         sys.exit('not implemented')
@@ -204,6 +205,8 @@ regrid_hdr = rwcs.to_header()
 regrid_hdr['NAXIS'] = 2
 regrid_hdr['NAXIS1'] = xsize
 regrid_hdr['NAXIS2'] = ysize
+regrid_hdr['EQUINOX'] = 2000.0
+regrid_hdr['RADESYSa'] = 'J2000 '
 logging.info('Image size: %f deg (%i %i pixels)' % (args.size,xsize,ysize))
 
 #########################################################
@@ -211,6 +214,7 @@ logging.info('Image size: %f deg (%i %i pixels)' % (args.size,xsize,ysize))
 for image in all_images:
 
     if os.path.exists(image.imagefile+'-conv.fits'):
+        logging.warning('Load: '+image.imagefile+'-conv.fits')
         data, hdr = pyfits.getdata(image.imagefile+'-conv.fits', 0, header=True)
         image.img_data = data
         image.img_hdr = hdr
@@ -222,6 +226,7 @@ for image in all_images:
             intermediate.writeto(image.imagefile+'-conv.fits', overwrite=True)
 
     if os.path.exists(image.imagefile+'-regrid-conv.fits'):
+        logging.warning('Load: '+image.imagefile+'-regrid-conv.fits')
         data, hdr = pyfits.getdata(image.imagefile+'-regrid-conv.fits', 0, header=True)
         image.img_data = data
         image.img_hdr = hdr

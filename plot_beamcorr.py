@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # usage: plot_beamcorr.py <MS>
+# Show beam corrections from LOFAR beam libs
 
 import os, sys
 import numpy as np

@@ -73,7 +73,9 @@ def flatten(filename, channel=0, freqaxis=0):
             dataslice.append(0)
 
     # add freq
-    header["FREQ"] = find_freq(f[0].header)
+    freq = find_freq(f[0].header)
+    if freq is not None:
+        header["FREQ"] = freq
 
     # add beam if present
     try:
@@ -85,7 +87,6 @@ def flatten(filename, channel=0, freqaxis=0):
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
     return header, f[0].data[tuple(dataslice)]
-
 
 
 def correct_beam_header(header):
@@ -102,6 +103,7 @@ def correct_beam_header(header):
                 header['BMIN'] = float(bmin)
                 header['BPA'] = float(pa)
     return header
+
 
 def find_freq(header):
     """
@@ -157,7 +159,6 @@ class AllImages():
         ref_cat = self[ref_idx].cat
         logging.info(f'Reference cat: {self[ref_idx].imagefile}')
         # keep only point sources
-        # print(ref_cat)
         target_beam = self.common_beam(circbeam=True)
         for i, image in enumerate(self):
             if i == ref_idx:
@@ -479,20 +480,19 @@ class Image(object):
             logging.debug('%s: Apply background region %s' % (self.imagefile, bg_reg))
             r = pyregion.open(bg_reg)
             mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
-            print('STD:', np.nanstd(self.img_data[mask]),np.nanstd(self.img_data[~mask]))
+            print('%s: region-estimated noise: %f' % (self.imagefile, np.nanstd(self.img_data[mask])))
             self.noise = np.nanstd(self.img_data[mask])
             logging.info('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise * 1e3))
         else:
             from astropy.stats import median_absolute_deviation
             if eps == None: eps = 1e-3
-            data = self.img_data[ ~np.isnan(self.img_data) ] # remove nans
-            data = self.img_data[ (self.img_data != 0) ] # remove 0.
+            data = self.img_data[ ~np.isnan(self.img_data) & (self.img_data != 0) ] # remove nans and 0s
             initial_len = len(data)
             if initial_len == 0: return 0
             mad_old = 0.
             for i in range(niter):
                  mad = median_absolute_deviation(data)
-                 print('MAD: %f uJy"' % (mad*1e6))
+                 print('MAD: %f uJy on %f%% data' % (mad*1e6, 100*len(data)/initial_len))
                  if np.isnan(mad): break
                  if np.abs(mad_old-mad)/mad < eps:
                      rms = np.nanstd( data )
@@ -515,7 +515,6 @@ class Image(object):
         from astropy import convolution
 
         # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
-        print (self.imagefile)
         beam = self.get_beam()
         if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
             logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
