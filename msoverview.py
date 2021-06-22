@@ -24,10 +24,14 @@ import numpy as np
 
 def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
-        times = sorted(set(t.getcol('TIME')))
-    print("%s: Time step %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
+        times = np.array((t.getcol('TIME')))
     time = Time( times[0]/86400, format='mjd')
     print("%s: Starting time %s" % (ms, str(time.iso)))
+    times = np.sort(np.unique(times))
+    time_step = np.average((times[1:] - times[:-1]))
+    print("%s: Time step %.1f seconds (total timesteps: %i)." % (ms, time_step, len(times)))
+
+
 
 def get_freq(ms):
     """
@@ -61,6 +65,9 @@ def get_dir(ms):
     print("%s: Phase centre: %f, %f (deg)" % (ms, np.degrees(RA), np.degrees(Dec)))
 
 for ms in sys.argv[1:]:
+    if not os.path.exists(ms):
+        print("ERROR: missing ms %s" % ms)
+        sys.exit()
     get_timestep(ms)
     get_freq(ms)
     get_dir(ms)
