@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2020 - Francesco de Gasperin
@@ -18,29 +18,27 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #./fitscutout.py fitsfile [set position and size below]
-position = (100, 500) # pixel
+position = (6650, 6650) # pixel
 size = (1000, 1000) # pixel
 
 import os, sys
 from astropy.io import fits
 from astropy.nddata import Cutout2D
 from astropy.wcs import WCS
+from lib_fits import flatten
 
 filename = sys.argv[1]
+header, data = flatten(filename)
 
 # Load the image and the WCS
-hdu = fits.open(filename)[0]
-wcs = WCS(hdu.header)
+wcs = WCS(header)
 
 # Make the cutout, including the WCS
-cutout = Cutout2D(hdu.data, position=position, size=size, wcs=wcs)
-
-# Put the cutout image in the FITS HDU
-hdu.data = cutout.data
+cutout = Cutout2D(data, position=position, size=size, wcs=wcs)
 
 # Update the FITS header with the cutout WCS
-hdu.header.update(cutout.wcs.to_header())
+header.update(cutout.wcs.to_header())
 
 # Write the cutout to a new FITS file
 cutout_filename = filename.replace('.fits','-cut.fits')
-hdu.writeto(cutout_filename, overwrite=False)
+fits.writeto(cutout_filename, cutout.data, header, overwrite=False)

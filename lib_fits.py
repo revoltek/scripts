@@ -318,7 +318,8 @@ class Image(object):
             beam = [header['BMAJ'], header['BMIN'], header['BPA']]
         except:
             logging.warning('%s: No beam information found.' % self.imagefile)
-            sys.exit(1)
+            beam = [0,0,0]
+            #sys.exit(1)
         logging.debug('%s: Beam: %.1f" %.1f" (pa %.1f deg)' % \
                 (self.imagefile, beam[0]*3600., beam[1]*3600., beam[2]))
 
@@ -328,6 +329,7 @@ class Image(object):
             # sys.exit(1)
         else:
             logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, self.freq/1e6))
+
 
         self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile)
@@ -400,8 +402,9 @@ class Image(object):
         self.img_hdr['BPA'] = beam[2]
 
     def set_freq(self, freq):
-        self.img_hdr['RESTFREQ'] = freq
-        self.img_hdr['FREQ'] = freq
+        if freq is not None:
+            self.img_hdr['RESTFREQ'] = freq
+            self.img_hdr['FREQ'] = freq
 
     def get_beam(self):
         return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
@@ -464,13 +467,18 @@ class Image(object):
         nans_after = np.sum(np.isnan(self.img_data))
         logging.debug('%s: Blanked pixels %i -> %i' % (self.imagefile, nans_before, nans_after))
 
-    def calc_noise(self, niter=1000, eps=None, sigma=5, bg_reg=None):
+    def calc_noise(self, niter=1000, eps=None, sigma=5, bg_reg=None, force_recalc=False):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
         eps : convergency criterion, if None is 1% of initial rms
         bg_reg : If ds9 region file provided, use this as background region
+        force_recalc : recalculate noise even if already set
         """
+        if not self.noise is None and force_recalc == False:
+            print('WARNING: Noise already set, and force_recalc=False.')
+            return self.noise
+
         if bg_reg is not None:
             import pyregion
             if not os.path.exists(bg_reg):
