@@ -32,7 +32,7 @@ class RadioImage(Image):
         """
         Image.__init__(self,imagefile)
         self.hdu = fits.PrimaryHDU(self.img_data, self.img_hdr)
-        self.mask_noise = None
+        self.region_noise = None
 
         # calculate beam area in pixels
         cd1 = abs(self.img_hdr['CDELT1'])
@@ -60,8 +60,7 @@ class RadioImage(Image):
 
 
     def set_region_noise(self, regionfile):
-        region_noise = pyregion.open(regionfile).as_imagecoord(self.img_hdr)
-        self.mask_noise = region_noise.get_mask(hdu=self.hdu,shape=np.shape(self.img_data))
+        self.region_noise = regionfile
 
     def get_flux(self, nsigma = 0, with_upper_limits = False, upper_limit_sigma = 3):
         """
@@ -71,11 +70,10 @@ class RadioImage(Image):
         """
 
         # set self.noise
-        if self.mask_noise is None:
+        if self.region_noise is None:
             self.calc_noise()
         else:
-            self.noise = np.nanstd( self.img_data[self.mask_noise] )
-
+            self.calc_noise(bg_reg = self.region_noise)
 
         fluxes = []
         errors = []
