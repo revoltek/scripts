@@ -25,7 +25,7 @@ from astropy.coordinates import match_coordinates_sky
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import pyregion
-from lib_linearfit import linear_fit_bootstrap
+from lib_linearfit import linear_fit, linear_fit_bootstrap
 from lib_fits import flatten
 # https://github.com/astrofrog/reproject
 from reproject import reproject_interp, reproject_exact
@@ -43,6 +43,7 @@ parser.add_argument('--noise', dest='noise', action='store_true', help='Calculat
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results')
 parser.add_argument('--sigma', dest='sigma', type=float, help='Restrict to pixels above this sigma in all images')
 parser.add_argument('--circbeam', dest='circbeam', action='store_true', help='Force final beam to be circular (default: False, use minimum common beam area)')
+parser.add_argument('--bootstrap', dest='bootstrap', action='store_true', help='Use bootstrap to estimate errors (default: use normal X|Y with errors)')
 parser.add_argument('--output', dest='output', default='spidx.fits', help='Name of output mosaic (default: spidx.fits)')
 
 args = parser.parse_args()
@@ -265,7 +266,11 @@ for i in range(xsize):
     for j in range(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any(): continue
-        (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+        if args.bootstrap:
+            (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+        else:
+            print(frequencies,val4reg,yerr)
+            (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
 
