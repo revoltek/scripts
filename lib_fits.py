@@ -536,6 +536,7 @@ class Image(object):
                 % (self.imagefile, convolve_beam[0]*3600, convolve_beam[1]*3600, convolve_beam[2]))
         # do convolution on data
         bmaj, bmin, bpa = convolve_beam
+        #print(self.imagefile,self.img_hdr['CDELT1'], self.img_hdr['CDELT2'])
         assert abs(self.img_hdr['CDELT1']) == abs(self.img_hdr['CDELT2'])
         pixsize = abs(self.img_hdr['CDELT1'])
         fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
