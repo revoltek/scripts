@@ -64,6 +64,15 @@ def get_dir(ms):
 
     print("%s: Phase centre: %f, %f (deg)" % (ms, np.degrees(RA), np.degrees(Dec)))
 
+    with pt.table(ms+'/FIELD', readonly=True, ack=False) as t:
+        code = t.getcell('CODE',0)
+    if code == '':
+        with pt.table(ms+'/OBSERVATION', readonly=True, ack=False) as t:
+            code = t.getcell('LOFAR_TARGET',0)[0]
+    code = code.lower().replace(' ','_')
+    print("%s: Field: %s" % (ms, code))
+
+
 for ms in sys.argv[1:]:
     if not os.path.exists(ms):
         print("ERROR: missing ms %s" % ms)
