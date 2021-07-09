@@ -269,7 +269,6 @@ for i in range(xsize):
         if args.bootstrap:
             (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         else:
-            print(frequencies,val4reg,yerr)
             (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa

@@ -136,6 +136,11 @@ def linear_fit(x, y, yerr=None, tolog=False):
     # Using OLS (X|Y)" # for more algo read: Isobe et al 1990
     # tolog : convert in log space x, y, and yerr before doing linear regression
     from scipy.optimize import curve_fit
+
+    x = np.array(x)
+    y = np.array(y)
+    if yerr is not None: yerr = np.array(yerr)
+
     if tolog:
         if not yerr is None: yerr = 0.434*yerr/y
         x=np.log10(x)
