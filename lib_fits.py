@@ -205,6 +205,11 @@ class AllImages():
         bmaj, bmin, bpa
 
         """
+        all_beams = [image.get_beam() for image in self.images]
+        if all_beams.count(all_beams[0]) == len(all_beams):
+            # all beams are already exactly the same
+            return all_beams[0]
+
         if circbeam:
             maxmaj = np.max([image.get_beam()[0] for image in self.images])
             target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
