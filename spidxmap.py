@@ -272,7 +272,7 @@ for i in range(xsize):
     sys.stdout.flush()
     for j in range(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
-        if np.isnan(val4reg).any(): continue
+        if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
         if args.bootstrap:
             (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         else:
@@ -283,6 +283,9 @@ for i in range(xsize):
 spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
 spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
 logging.info('Save %s (and errors)' % args.output)
-spidx.writeto(args.output, overwrite=True)
-spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
-
+if args.output[-5:] == '.fits':
+    spidx.writeto(args.output, overwrite=True)
+    spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
+else:
+    spidx.writeto(args.output+'.fits', overwrite=True)
+    spidx_err.writeto(args.output+'-err.fits', overwrite=True)
