@@ -248,7 +248,7 @@ for i, d in enumerate(directions):
         d.apply_region(args.regions[i], blankvalue=0, invert=True)
 
     if args.noises is not None: d.noise = args.noises[i]
-    elif args.find_noise: d.calc_noise() # after beam cut/mask
+    elif args.find_noise: d.calc_noise(force_recalc=True) # after beam cut/mask
 
     if args.scales is not None: d.scale = args.scales[i]
 

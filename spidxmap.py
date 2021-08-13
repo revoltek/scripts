@@ -267,9 +267,10 @@ for i in range(xsize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any(): continue
         if args.bootstrap:
+            if (np.array(val4reg) <= 0).any(): continue
             (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         else:
-            print(frequencies,val4reg,yerr)
+            if (np.array(val4reg) <= 0).any(): continue
             (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
