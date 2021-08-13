@@ -136,6 +136,11 @@ def linear_fit(x, y, yerr=None, tolog=False):
     # Using OLS (X|Y)" # for more algo read: Isobe et al 1990
     # tolog : convert in log space x, y, and yerr before doing linear regression
     from scipy.optimize import curve_fit
+
+    x = np.array(x)
+    y = np.array(y)
+    if yerr is not None: yerr = np.array(yerr)
+
     if tolog:
         if not yerr is None: yerr = 0.434*yerr/y
         x=np.log10(x)
@@ -152,17 +157,23 @@ def linear_fit(x, y, yerr=None, tolog=False):
 
 
 # extimate errors and accept errors on x and y-data
-def linear_fit_odr(x, y, xerr=None, yerr=None):
+def linear_fit_odr(x, y, xerr=None, yerr=None, tolog=False):
     from scipy import odr
+    if tolog:
+        if not yerr is None: yerr = 0.434*yerr/y
+        if not xerr is None: xerr = 0.434*xerr/x
+        x=np.log10(x)
+        y=np.log10(y)
+ 
     def f(B, x):
         return B[0]*x + B[1]
     linear = odr.Model(f)
-    if xerr == None: xerr = np.ones(len(x))
-    if yerr == None: yerr = np.ones(len(y))
+    if xerr is None: xerr = np.ones(len(x))
+    if yerr is None: yerr = np.ones(len(y))
     for i,e in enumerate(yerr):
        if e == 0: yerr[i] = 1
     mydata = odr.RealData(x, y, sx=xerr, sy=yerr)
-    myodr = odr.ODR(mydata, linear, beta0=[-1., 0.])
+    myodr = odr.ODR(mydata, linear, beta0=[-1., 1e-3])
     myoutput = myodr.run()
     return(myoutput.beta[0],myoutput.beta[1],myoutput.sd_beta[0],myoutput.sd_beta[1])
 

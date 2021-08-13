@@ -35,20 +35,36 @@ print ( gamma_from_freq( 14e6*u.Hz, 5e-6*u.Gauss).to(u.dimensionless_unscaled) )
 def B_cmb (z):
     return (1e-6*3.25*(1+z)**2)*u.G
 def B_min (z):
+    """
+    The B that minimises the losses
+    """
     return B_cmb(z)/np.sqrt(3)
 
 print ("B_cmb:", B_cmb(0.225))
 
 def age(gamma, B, z):
+    """
+    Returns the time in yr for a CR of a certain gamma to pass the cutoff
+    """
     B_ic = B_cmb(z)
     return 2.5e13*u.yr / (( (B/(1e-6*u.G))**2+(B_ic/(1e-6*u.G))**2) * gamma)
 
-B_min = B_min(0.225)/2
-print ('B_min:', B_min)
-gamma = gamma_from_freq(58e6*u.Hz, B_min)
-print ('gamma:', gamma)
-age = age(gamma, B_min, 0.225).to(u.yr)
-print('age:', age)
 
+def max_distance(speed, gamma, B, z):
+    """
+    Max distance the CR can survive
+    """
+    _ = age(gamma,B,z)*speed
+    return _.to(u.kpc)
+
+B_min = B_min(0.225)
+print ('B_min:', B_min)
+gamma = gamma_from_freq(58e6*u.Hz*(1+z), B_min) # note that one needs to correct the frequency for the redshift
+print ('gamma:', gamma)
+cl_age = age(gamma, B_min, 0.225).to(u.yr)
+print('age:', cl_age)
+speed = 10e3*u.km/u.s
+max_distance = max_distance(speed, gamma, B_min, 0.225)
+print('max_distance:', max_distance.to(u.kpc))
 
 

@@ -222,6 +222,11 @@ for i, image in enumerate(args.images):
 logging.info("Working on %i images..." % len(directions))
 
 if args.beamarm:
+
+    if beams.count(beams[0]) == len(beams):
+        # all beams are already exactly the same
+        common_beam = beams[0]
+
     if args.beamcirc:
         maxmaj = np.max([b[0] for b in beams])
         common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution

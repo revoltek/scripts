@@ -36,6 +36,8 @@ parser = argparse.ArgumentParser(description='Make spectral index maps, e.g. spi
 parser.add_argument('images', nargs='+', help='List of images to use for spidx')
 parser.add_argument('--beam', dest='beam', nargs='+', type=float, help='3 parameters final beam to convolve all images (BMAJ (arcsec), BMIN (arcsec), BPA (deg))')
 parser.add_argument('--region', dest='region', help='Ds9 region to restrict analysis')
+parser.add_argument('--noiseregion', dest='noiseregion', help='Ds9 region to calculate rms noise')
+parser.add_argument('--noisesigma', dest='noisesigma', default=5, help='Sigma used in the calc_noise function (default: 5)')
 parser.add_argument('--size', dest='size', type=float, help='Size (horizontal and vertical) of final image in degree')
 parser.add_argument('--radec', dest='radec', nargs='+', type=float, help='RA/DEC where to center final image in deg (if not given, center on first image)')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before calculating spidx')
@@ -120,7 +122,12 @@ for imagefile in args.images:
 #####################################################
 # find the smallest common beam
 if args.beam is None:
-    if args.circbeam:
+    
+    if all_beams.count(all_beams[0]) == len(all_beams):
+        # all beams are already exactly the same
+        target_beam = all_beams[0]
+
+    elif args.circbeam:
         maxmaj = np.max([b[0] for b in all_beams])
         target_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
     else:
@@ -241,7 +248,7 @@ for image in all_images:
     if args.noise:
         if args.sigma is not None:
             # usually the sigma used for the blanking is rather low, better to increase it for the calc_noise
-            image.calc_noise(sigma=args.sigma*2) # after mask?/convolution
+            image.calc_noise(sigma=args.noisesigma, bg_reg=args.noiseregion) # after mask?/convolution
             image.blank_noisy(args.sigma)
         else:
             image.calc_noise() # after mask?/convolution
@@ -265,7 +272,7 @@ for i in range(xsize):
     sys.stdout.flush()
     for j in range(ysize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
-        if np.isnan(val4reg).any(): continue
+        if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
         if args.bootstrap:
             if (np.array(val4reg) <= 0).any(): continue
             (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
@@ -278,6 +285,9 @@ for i in range(xsize):
 spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
 spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
 logging.info('Save %s (and errors)' % args.output)
-spidx.writeto(args.output, overwrite=True)
-spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
-
+if args.output[-5:] == '.fits':
+    spidx.writeto(args.output, overwrite=True)
+    spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
+else:
+    spidx.writeto(args.output+'.fits', overwrite=True)
+    spidx_err.writeto(args.output+'-err.fits', overwrite=True)
