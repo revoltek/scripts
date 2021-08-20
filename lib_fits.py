@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import numpy as np
-import os, sys, logging, re
+import os, sys, logging, re, copy
 
 from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
@@ -155,7 +155,7 @@ class AllImages():
     def align_catalogue(self):
         [image.make_catalogue() for image in self]
         # ref cat - use lowest scaled noise as reference.
-        noise = [image.calc_noise()*(image.freq/(54.e6))**0.8 for image in self]
+        noise = [image.calc_noise()*(image.get_freq()/(54.e6))**0.8 for image in self]
         ref_idx = np.argmin(noise)
         ref_cat = self[ref_idx].cat
         logging.info(f'Reference cat: {self[ref_idx].imagefile}')
@@ -275,8 +275,8 @@ class AllImages():
             mra = radec[0]*np.pi/180
             mdec = radec[1]*np.pi/180
         else:
-            mra = self.images[0].img_hdr['CRVAL1']
-            mdec = self.images[0].img_hdr['CRVAL2']
+            midpix = np.array(self.images[0].img_data.shape)/2
+            mra, mdec = self.images[0].get_wcs().all_pix2world(midpix[0], midpix[1], 0, ra_dec_order=True)
         rwcs.wcs.crval = [mra, mdec]
 
         if region:
@@ -288,7 +288,7 @@ class AllImages():
             y, x = mask.nonzero()
             ra_max, dec_max = w.all_pix2world(np.max(x), np.max(y), 0, ra_dec_order=True)
             ra_min, dec_min = w.all_pix2world(np.min(x), np.min(y), 0, ra_dec_order=True)
-            size = [1.2*2.*np.max( [ np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]), np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]) ] )]
+            size = [1.2*np.max( [ np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]), np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]) ] )]
             os.system('rm __mask.fits')
             #print(ra_min,ra_max,dec_min,dec_max)
 
@@ -315,6 +315,8 @@ class AllImages():
         regrid_hdr['NAXIS'] = 2
         regrid_hdr['NAXIS1'] = xsize
         regrid_hdr['NAXIS2'] = ysize
+        regrid_hdr['EQUINOX'] = 2000.0
+        regrid_hdr['RADESYSA'] = 'J2000'
 
         logging.info(f'Regridded image size: {size} deg ({xsize:.0f},{ysize:.0f} pixels))')
         if action == 'regrid' or action == 'regrid_header':
@@ -351,19 +353,19 @@ class Image(object):
         logging.debug('%s: Beam: %.1f" %.1f" (pa %.1f deg)' % \
                 (self.imagefile, beam[0]*3600., beam[1]*3600., beam[2]))
 
-        self.freq = find_freq(header)
-        if self.freq is None:
+        freq = find_freq(header)
+        if freq is None:
             logging.warning('%s: No frequency information found.' % self.imagefile)
             # sys.exit(1)
         else:
-            logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, self.freq/1e6))
-
+            logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, freq/1e6))
 
         self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile)
         self.img_hdu = pyfits.ImageHDU(data=self.img_data, header=self.img_hdr)
         self.set_beam(beam)
-        self.set_freq(self.freq)
+        self.set_freq(find_freq(header))
+
 
     def write(self, filename=None, inflate=False):
         """
@@ -409,7 +411,7 @@ class Image(object):
             hdr_inf['CUNIT2'  ] = self.img_hdr['CUNIT2']
             hdr_inf['CTYPE3'  ] = 'FREQ'
             hdr_inf['CRPIX3'  ] = 1.
-            hdr_inf['CRVAL3'  ] = self.freq
+            hdr_inf['CRVAL3'  ] = self.get_freq()
             hdr_inf['CDELT3'  ] = 10000000.
             hdr_inf['CUNIT3'  ] = 'Hz'
             hdr_inf['CTYPE4'  ] = 'STOKES'
@@ -426,13 +428,19 @@ class Image(object):
         self.img_hdr['BMIN'] = beam[1]
         self.img_hdr['BPA'] = beam[2]
 
+    def get_beam(self):
+        return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
+
     def set_freq(self, freq):
-        if freq is not None:
+        if freq:
             self.img_hdr['RESTFREQ'] = freq
             self.img_hdr['FREQ'] = freq
 
-    def get_beam(self):
-        return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
+    def get_freq(self):
+        try:
+            return self.img_hdr['FREQ']
+        except:
+            return None
 
     def get_beam_area(self, unit='arcsec'):
         """
@@ -451,7 +459,6 @@ class Image(object):
             return beam_area_squaredeg * 3600**2
         elif unit in ['pix','pixel']:
             return beam_area_squaredeg / self.get_degperpixel()**2
-
 
     def get_wcs(self):
         return pywcs(self.img_hdr)
@@ -572,11 +579,11 @@ class Image(object):
         """ Regrid image to new header """
         # store some info so to reconstruct headers
         beam = self.get_beam()
-        freq = find_freq(self.img_hdr)
+        freq = self.get_freq()
         logging.debug('%s: regridding' % (self.imagefile))
         self.img_data, __footprint = reproj((self.img_data, self.img_hdr), regrid_hdr, parallel=True)
         # update headers
-        self.img_hdr = regrid_hdr
+        self.img_hdr = copy.copy(regrid_hdr)
         self.set_freq(freq)
         self.set_beam(beam)
 
@@ -649,7 +656,7 @@ class Image(object):
             Cij = np.exp(-((dx*np.sin(theta)+dy*np.cos(theta))/(b_sig_pix_ma))**2
                          -((dx*np.cos(theta)-dy*np.sin(theta))/(b_sig_pix_min))**2)
         Cij *= uncorrelated_variance
-        print(Cij)
+        #print(Cij)
         return Cij
 
     def make_catalogue(self):

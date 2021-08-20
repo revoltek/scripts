@@ -39,7 +39,7 @@ parser.add_argument('--region', dest='region', type=str, help='Ds9 region to res
 parser.add_argument('--noiseregion', dest='noiseregion', type=str, help='Ds9 region to calculate rms noise (default: do not use)')
 parser.add_argument('--noisesigma', dest='noisesigma', default=5, type=int, help='Sigma used in the calc_noise function when no region is specified (default: 5)')
 parser.add_argument('--size', dest='size', nargs=2, type=float, help='Size (ra and dec) of final image in degree (example: 3.5 4.0)')
-parser.add_argument('--radec', dest='radec', nargs='+', type=float, help='RA/DEC where to center final image in deg (if not given, center on first image)')
+parser.add_argument('--radec', dest='radec', nargs=2, type=float, help='RA/DEC where to center final image in deg (if not given, center on first image - example: 32.3 30.1)')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before calculating spidx (default: false)')
 parser.add_argument('--noise', dest='noise', action='store_true', help='Calculate noise of each image, necessary for the error map (default: false)')
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results (default: false)')
@@ -55,33 +55,18 @@ if len(args.images) < 2:
     logging.error('Requires at lest 2 images.')
     sys.exit(1)
 
-if args.beam is not None and len(args.beam) != 3:
-    logging.error('Beam must be in the form of "BMAJ BMIN BPA" (3 floats).')
-    sys.exit(1)
-
-if args.radec is not None and len(args.radec) != 2:
-    logging.error('--radec must be in the form of "RA DEC" (2 floats).')
-    sys.exit(1)
-
 ########################################################
 # prepare images and convolve+regrid if needed
 if np.all([os.path.exists(name.replace('.fits', '-conv-regrid.fits')) for name in args.images]):
-    all_images = AllImages(args.images)
-    regrid_hdr = all_images.regrid_common(size=args.size, region=args.region, action='header')
+    logging.info('Found convolved+regridded image... restoring.')
     all_images = AllImages([name.replace('.fits', '-conv-regrid.fits') for name in args.images])
-
-elif np.all([os.path.exists(name.replace('.fits', '-conv.fits')) for name in args.images]):
-    all_images = AllImages(args.images)
-    regrid_hdr = all_images.regrid_common(size=args.size, region=args.region, action='regrid_header')
-    all_images = AllImages([name.replace('.fits', '-conv.fits') for name in args.images])
-    if args.save: all_images.write('regrid')
-
+    regrid_hdr = all_images.images[0].img_hdr
 else:
     all_images = AllImages(args.images)
     all_images.convolve_to(beam=args.beam, circbeam=args.circbeam)
     if args.save: all_images.write('conv')
-    regrid_hdr = all_images.regrid_common(size=args.size, region=args.region, action='regrid_header')
-    if args.save: all_images.write('regrid')
+    regrid_hdr = all_images.regrid_common(size=args.size, region=args.region, radec=args.radec, action='regrid_header')
+    if args.save: all_images.write('conv-regrid')
 
 #####################################################
 # find+apply shift w.r.t. lowest noise image
@@ -106,7 +91,7 @@ for image in all_images:
 # do spdix and write output
 xsize = regrid_hdr['NAXIS1']
 ysize = regrid_hdr['NAXIS2']
-frequencies = [ image.freq for image in all_images ]
+frequencies = [ image.get_freq() for image in all_images ]
 if args.noise: yerr = [ image.noise for image in all_images ]
 else: yerr = None
 spidx_data = np.empty(shape=(xsize,ysize))
@@ -129,6 +114,9 @@ for i in range(xsize):
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
 
+del regrid_hdr['FREQ']
+del regrid_hdr['RESTFREQ']
+regrid_hdr['BTYPE'] = 'SPIDX'
 spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
 spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
 logging.info('Save %s (and errors)' % args.output)
