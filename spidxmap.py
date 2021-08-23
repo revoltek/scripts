@@ -94,15 +94,15 @@ ysize = regrid_hdr['NAXIS2']
 frequencies = [ image.get_freq() for image in all_images ]
 if args.noise: yerr = [ image.noise for image in all_images ]
 else: yerr = None
-spidx_data = np.empty(shape=(xsize,ysize))
+spidx_data = np.empty(shape=(ysize,xsize))
 spidx_data[:] = np.nan
-spidx_err_data = np.empty(shape=(xsize,ysize))
+spidx_err_data = np.empty(shape=(ysize,xsize))
 spidx_err_data[:] = np.nan
 
-for i in range(xsize):
-    print('%i/%i' % (i,xsize), end='\r')
+for i in range(ysize):
+    print('%i/%i' % (i,ysize), end='\r')
     sys.stdout.flush()
-    for j in range(ysize):
+    for j in range(xsize):
         val4reg = [ image.img_data[i,j] for image in all_images ]
         if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
         if args.bootstrap:
@@ -114,15 +114,18 @@ for i in range(xsize):
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
 
-del regrid_hdr['FREQ']
-del regrid_hdr['RESTFREQ']
+if 'FREQ' in regrid_hdr.keys():
+    del regrid_hdr['FREQ']
+if 'RESTFREQ' in regrid_hdr.keys():
+    del regrid_hdr['RESTFREQ']
 regrid_hdr['BTYPE'] = 'SPIDX'
-spidx = pyfits.PrimaryHDU(spidx_data, regrid_hdr)
-spidx_err = pyfits.PrimaryHDU(spidx_err_data, regrid_hdr)
-logging.info('Save %s (and errors)' % args.output)
+
 if args.output[-5:] == '.fits':
-    spidx.writeto(args.output, overwrite=True)
-    spidx_err.writeto(args.output.replace('.fits','-err.fits'), overwrite=True)
+    filename_out = args.output
 else:
-    spidx.writeto(args.output+'.fits', overwrite=True)
-    spidx_err.writeto(args.output+'-err.fits', overwrite=True)
+    filename_out = args.output+'.fits'
+logging.info('Save %s (and errors)' % filename_out)
+regrid_hdr['CTYPE3'] = 'ALPHA'
+pyfits.writeto(filename_out, spidx_data, regrid_hdr, overwrite=True, output_verify='fix')
+regrid_hdr['CTYPE3'] = 'ALPHAERR'
+pyfits.writeto(filename_out.replace('.fits','-err.fits'), spidx_err_data, regrid_hdr, overwrite=True, output_verify='fix')

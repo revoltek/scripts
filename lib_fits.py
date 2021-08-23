@@ -213,7 +213,8 @@ class AllImages():
 
         if circbeam:
             maxmaj = np.max([image.get_beam()[0] for image in self.images])
-            target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
+            target_beam = [maxmaj, maxmaj, 0.]  # add 1% to prevent crash in convolution
+            #target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
         else:
             from radio_beam import Beams
             my_beams = Beams([image.get_beam()[0] for image in self.images] * u.deg,
@@ -276,7 +277,7 @@ class AllImages():
             mdec = radec[1]*np.pi/180
         else:
             midpix = np.array(self.images[0].img_data.shape)/2
-            mra, mdec = self.images[0].get_wcs().all_pix2world(midpix[0], midpix[1], 0, ra_dec_order=True)
+            mra, mdec = self.images[0].get_wcs().all_pix2world(midpix[1], midpix[0], 0, ra_dec_order=True)
         rwcs.wcs.crval = [mra, mdec]
 
         if region:
@@ -288,7 +289,7 @@ class AllImages():
             y, x = mask.nonzero()
             ra_max, dec_max = w.all_pix2world(np.max(x), np.max(y), 0, ra_dec_order=True)
             ra_min, dec_min = w.all_pix2world(np.min(x), np.min(y), 0, ra_dec_order=True)
-            size = [1.2*np.max( [ np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]), np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]) ] )]
+            size = [1.2*np.max( [ np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]), np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]) ] )]
             os.system('rm __mask.fits')
             #print(ra_min,ra_max,dec_min,dec_max)
 
@@ -305,8 +306,9 @@ class AllImages():
             if square:
                 size = np.min(size)
 
-        xsize = int(np.rint(np.array([size[0]]) / cdelt))
-        ysize = int(np.rint(np.array([size[-1]]) / cdelt))
+        # fits file are ordered the opposite way: (dec,ra)
+        ysize = int(np.rint(np.array([size[0]]) / cdelt))
+        xsize = int(np.rint(np.array([size[-1]]) / cdelt))
         if xsize % 2 != 0: xsize += 1
         if ysize % 2 != 0: ysize += 1
         rwcs.wcs.crpix = [xsize / 2, ysize / 2]
@@ -318,7 +320,7 @@ class AllImages():
         regrid_hdr['EQUINOX'] = 2000.0
         regrid_hdr['RADESYSA'] = 'J2000'
 
-        logging.info(f'Regridded image size: {size} deg ({xsize:.0f},{ysize:.0f} pixels))')
+        logging.info(f'Regridded image size: {size} deg ({ysize:.0f},{xsize:.0f} pixels))')
         if action == 'regrid' or action == 'regrid_header':
             for image in self.images:
                 image.regrid(regrid_hdr)

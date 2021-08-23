@@ -96,9 +96,9 @@ frequencies = [ image.get_freq() for image in all_images ]
 
 if args.noise: yerr = [ image.noise for image in all_images ]
 else: yerr = None
-tomo_data = np.empty(shape=(alpha_num,xsize,ysize))
+tomo_data = np.empty(shape=(alpha_num,ysize,xsize))
 tomo_data[:] = np.nan
-tomo_err_data = np.empty(shape=(xsize,ysize,alpha_num))
+tomo_err_data = np.empty(shape=(alpha_num,ysize,xsize))
 tomo_err_data[:] = np.nan
 
 logging.info("Alphas: "+str(np.linspace(alpha_min, alpha_max, num=alpha_num)))
@@ -111,6 +111,12 @@ for a, alpha in enumerate(np.linspace(alpha_min, alpha_max, num=alpha_num)):
         tomo_err = 0
     tomo_data[a] = tomo
     tomo_err_data[a] = tomo_err
+
+if 'FREQ' in regrid_hdr.keys():
+    del regrid_hdr['FREQ']
+if 'RESTFREQ' in regrid_hdr.keys():
+    del regrid_hdr['RESTFREQ']
+regrid_hdr['BTYPE'] = 'SPTOMO'
 
 # add headers for alpha axes
 regrid_hdr['NAXIS'] = 3
