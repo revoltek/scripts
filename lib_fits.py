@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import numpy as np
-import os, sys, logging, re
+import os, sys, logging, re, copy
 
 from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
@@ -26,6 +26,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy.nddata import Cutout2D
 from astropy.coordinates import match_coordinates_sky, SkyCoord
 from astropy.convolution import Gaussian2DKernel
+import pyregion
 import astropy.units as u
 
 from reproject import reproject_interp, reproject_exact
@@ -40,8 +41,8 @@ def flatten(filename, channel=0, freqaxis=0):
     if naxis<2:
         raise RadioError('Can\'t make map from this')
     if naxis==2:
-        #pass
-        return f[0].header,f[0].data
+        pass
+        #return f[0].header,f[0].data
 
     w = pywcs(f[0].header)
     wn = pywcs(naxis=2)
@@ -154,7 +155,7 @@ class AllImages():
     def align_catalogue(self):
         [image.make_catalogue() for image in self]
         # ref cat - use lowest scaled noise as reference.
-        noise = [image.calc_noise()*(image.freq/(54.e6))**0.8 for image in self]
+        noise = [image.calc_noise()*(image.get_freq()/(54.e6))**0.8 for image in self]
         ref_idx = np.argmin(noise)
         ref_cat = self[ref_idx].cat
         logging.info(f'Reference cat: {self[ref_idx].imagefile}')
@@ -212,7 +213,8 @@ class AllImages():
 
         if circbeam:
             maxmaj = np.max([image.get_beam()[0] for image in self.images])
-            target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
+            target_beam = [maxmaj, maxmaj, 0.]  # add 1% to prevent crash in convolution
+            #target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
         else:
             from radio_beam import Beams
             my_beams = Beams([image.get_beam()[0] for image in self.images] * u.deg,
@@ -244,7 +246,7 @@ class AllImages():
         for image in self.images:
             image.convolve(target_beam)
 
-    def regrid_common(self, size=None, pixscale=None, square=False):
+    def regrid_common(self, size=None, region=None, pixscale=None, radec=None, square=False, action='regrid'):
         """
         Move all images to a common grid
         Parameters
@@ -252,39 +254,61 @@ class AllImages():
         size: float or array-like of size 2, optional. Default = None
             Size of the new grid in degree. If not a list of size two, is assumed to be square.
             If not provided, automatically determines the largest size that fits all images.
-        pixscale: float, optional. Default = use from first image
+        region: ds9 region used to restrict the image to just cover it
+        pixscale: float, optional. Default = derive from the beam of first image
             Size of a square pixel in arcseconds
+        radec: RA [deg] and Dec [deg] where to chenter the final image, otherwise use first image
         square: bool, optional. Default = True
             If False, do not force square image.
+        action: regrid, header, regrid_header
+            The function can perform the regrid or just return the common header or both
         """
+
         rwcs = pywcs(naxis=2)
         rwcs.wcs.ctype = self.images[0].get_wcs().wcs.ctype
         if pixscale:
             cdelt = pixscale / 3600.
         else:
-            cdelt = self.images[0].get_beam()[1] / 5.  # 1/5 of minor axes (deg)
+            cdelt = self.images[0].get_beam()[1] / 4.  # 1/4 of minor axes (deg)
         logging.info('Pixel scale: %f"' % (cdelt * 3600.))
         rwcs.wcs.cdelt = [-cdelt, cdelt]
-        mra = self.images[0].img_hdr['CRVAL1']
-        mdec = self.images[0].img_hdr['CRVAL2']
+        if radec:
+            mra = radec[0]*np.pi/180
+            mdec = radec[1]*np.pi/180
+        else:
+            midpix = np.array(self.images[0].img_data.shape)/2
+            mra, mdec = self.images[0].get_wcs().all_pix2world(midpix[1], midpix[0], 0, ra_dec_order=True)
         rwcs.wcs.crval = [mra, mdec]
+
+        if region:
+            r = pyregion.open(region)
+            mask = r.get_mask(header=self.images[0].img_hdr, shape=self.images[0].img_data.shape)
+            intermediate = pyfits.PrimaryHDU(mask.astype(float), self.images[0].img_hdr)
+            intermediate.writeto('__mask.fits', overwrite=True)
+            w = self.images[0].get_wcs()
+            y, x = mask.nonzero()
+            ra_max, dec_max = w.all_pix2world(np.max(x), np.max(y), 0, ra_dec_order=True)
+            ra_min, dec_min = w.all_pix2world(np.min(x), np.min(y), 0, ra_dec_order=True)
+            size = [1.2*np.max( [ np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]), np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]) ] )]
+            os.system('rm __mask.fits')
+            #print(ra_min,ra_max,dec_min,dec_max)
 
         # Calculate sizes of all images to find smalles size that fits all images
         sizes = np.empty((len(self.images), 2))
         for i, image in enumerate(self.images):
-            sizes[i] = np.array(image.img_data.shape) * image.degperpixel
+            sizes[i] = np.array(image.img_data.shape) * image.get_degperpixel()
         if size:
             size = np.array(size)
             if np.any(np.min(sizes, axis=1) < size):
                 logging.warning(f'Requested size {size} is larger than smallest image size {np.min(sizes, axis=1)} in at least one dimension. This will result in NaN values in the regridded images.')
         else:
-            print(np.min(sizes, axis=0))
             size = np.min(sizes, axis=0)
             if square:
                 size = np.min(size)
 
-        xsize = int(np.rint(np.array([size[0]]) / cdelt))
-        ysize = int(np.rint(np.array([size[-1]]) / cdelt))
+        # fits file are ordered the opposite way: (dec,ra)
+        ysize = int(np.rint(np.array([size[0]]) / cdelt))
+        xsize = int(np.rint(np.array([size[-1]]) / cdelt))
         if xsize % 2 != 0: xsize += 1
         if ysize % 2 != 0: ysize += 1
         rwcs.wcs.crpix = [xsize / 2, ysize / 2]
@@ -293,12 +317,15 @@ class AllImages():
         regrid_hdr['NAXIS'] = 2
         regrid_hdr['NAXIS1'] = xsize
         regrid_hdr['NAXIS2'] = ysize
+        regrid_hdr['EQUINOX'] = 2000.0
+        regrid_hdr['RADESYSA'] = 'J2000'
 
-        logging.info(f'Image size: {size} deg ({xsize:.0f},{ysize:.0f} pixels))')
-        for image in self.images:
-            this_regrid_hdr = regrid_hdr.copy()
-            this_regrid_hdr['BMAJ'], this_regrid_hdr['BMIN'], this_regrid_hdr['BPA'] = image.get_beam()
-            image.regrid(this_regrid_hdr)
+        logging.info(f'Regridded image size: {size} deg ({ysize:.0f},{xsize:.0f} pixels))')
+        if action == 'regrid' or action == 'regrid_header':
+            for image in self.images:
+                image.regrid(regrid_hdr)
+        if action == 'header' or action == 'regrid_header':
+            return regrid_hdr
 
     def write(self, suffix, inflate=False):
         """ Write all (changed) images to imagename-suffix.fits"""
@@ -324,26 +351,23 @@ class Image(object):
         except:
             logging.warning('%s: No beam information found.' % self.imagefile)
             beam = [0,0,0]
-            #sys.exit(1)
+
         logging.debug('%s: Beam: %.1f" %.1f" (pa %.1f deg)' % \
                 (self.imagefile, beam[0]*3600., beam[1]*3600., beam[2]))
 
-        self.freq = find_freq(header)
-        if self.freq is None:
+        freq = find_freq(header)
+        if freq is None:
             logging.warning('%s: No frequency information found.' % self.imagefile)
             # sys.exit(1)
         else:
-            logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, self.freq/1e6))
-
+            logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, freq/1e6))
 
         self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile)
         self.img_hdu = pyfits.ImageHDU(data=self.img_data, header=self.img_hdr)
         self.set_beam(beam)
-        self.set_freq(self.freq)
-        self.ra = self.img_hdr['CRVAL1']
-        self.dec = self.img_hdr['CRVAL2']
-        self.get_degperpixel() # sets self.detperpixel (faster to call, no WCS call)
+        self.set_freq(find_freq(header))
+
 
     def write(self, filename=None, inflate=False):
         """
@@ -389,7 +413,7 @@ class Image(object):
             hdr_inf['CUNIT2'  ] = self.img_hdr['CUNIT2']
             hdr_inf['CTYPE3'  ] = 'FREQ'
             hdr_inf['CRPIX3'  ] = 1.
-            hdr_inf['CRVAL3'  ] = self.freq
+            hdr_inf['CRVAL3'  ] = self.get_freq()
             hdr_inf['CDELT3'  ] = 10000000.
             hdr_inf['CUNIT3'  ] = 'Hz'
             hdr_inf['CTYPE4'  ] = 'STOKES'
@@ -406,13 +430,19 @@ class Image(object):
         self.img_hdr['BMIN'] = beam[1]
         self.img_hdr['BPA'] = beam[2]
 
+    def get_beam(self):
+        return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
+
     def set_freq(self, freq):
-        if freq is not None:
+        if freq:
             self.img_hdr['RESTFREQ'] = freq
             self.img_hdr['FREQ'] = freq
 
-    def get_beam(self):
-        return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
+    def get_freq(self):
+        try:
+            return self.img_hdr['FREQ']
+        except:
+            return None
 
     def get_beam_area(self, unit='arcsec'):
         """
@@ -430,8 +460,7 @@ class Image(object):
         if unit in ['arcsec', 'asec']:
             return beam_area_squaredeg * 3600**2
         elif unit in ['pix','pixel']:
-            return beam_area_squaredeg / self.degperpixel**2
-
+            return beam_area_squaredeg / self.get_degperpixel()**2
 
     def get_wcs(self):
         return pywcs(self.img_hdr)
@@ -441,7 +470,6 @@ class Image(object):
         Blank inside mask
         invert: blank outside region
         """
-        import pyregion
         if not os.path.exists(regionfile):
             logging.error('%s: Region file not found.' % regionfile)
             sys.exit(1)
@@ -451,7 +479,6 @@ class Image(object):
         mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
         if invert: self.img_data[~mask] = blankvalue
         else: self.img_data[mask] = blankvalue
-
 
     def apply_mask(self, mask, blankvalue=np.nan, invert=False):
         """
@@ -485,7 +512,6 @@ class Image(object):
             return self.noise
 
         if bg_reg is not None:
-            import pyregion
             if not os.path.exists(bg_reg):
                 logging.error('%s: Region file not found.' % bg_reg)
                 sys.exit(1)
@@ -493,7 +519,6 @@ class Image(object):
             logging.debug('%s: Apply background region %s' % (self.imagefile, bg_reg))
             r = pyregion.open(bg_reg)
             mask = r.get_mask(header=self.img_hdr, shape=self.img_data.shape)
-            print('%s: region-estimated noise: %f' % (self.imagefile, np.nanstd(self.img_data[mask])))
             self.noise = np.nanstd(self.img_data[mask])
             logging.info('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise * 1e3))
         else:
@@ -548,20 +573,21 @@ class Image(object):
         gauss_kern = EllipticalGaussian2DKernel((bmaj*fwhm2sigma)/pixsize, (bmin*fwhm2sigma)/pixsize, (90+bpa)*np.pi/180.) # bmaj and bmin are in pixels
         self.img_data = convolution.convolve(self.img_data, gauss_kern, boundary=None, preserve_nan=True)
         if stokes: # if not stokes image (e.g. spectral index, do not renormalize)
-            self.img_data *= (target_beam[0]*target_beam[1])/(beam[0]*beam[1]) # since we are in Jt/b we need to renormalise
+            self.img_data *= (target_beam[0]*target_beam[1])/(beam[0]*beam[1]) # since we are in Jy/b we need to renormalise
 
         self.set_beam(target_beam) # update beam
 
     def regrid(self, regrid_hdr):
         """ Regrid image to new header """
+        # store some info so to reconstruct headers
+        beam = self.get_beam()
+        freq = self.get_freq()
         logging.debug('%s: regridding' % (self.imagefile))
         self.img_data, __footprint = reproj((self.img_data, self.img_hdr), regrid_hdr, parallel=True)
-        beam = self.get_beam()
-        freq = find_freq(self.img_hdr)
-        self.img_hdr = regrid_hdr
-        self.img_hdr['FREQ'] = freq
-        self.set_beam(beam) # retain beam info if not present in regrd_hdr
-        self.get_degperpixel() # update
+        # update headers
+        self.img_hdr = copy.copy(regrid_hdr)
+        self.set_freq(freq)
+        self.set_beam(beam)
 
     def apply_shift(self, dra, ddec):
         """
@@ -574,33 +600,33 @@ class Image(object):
         self.img_hdr['CRVAL1'] += dra
         self.img_hdr['CRVAL2'] += ddec
 
-    def apply_recenter_cutout(self, ra, dec):
-        """
-        Center the image at ra, dec. The image will be cut accordingly.
+    #def apply_recenter_cutout(self, ra, dec):
+    #    """
+    #    Center the image at ra, dec. The image will be cut accordingly.
 
-        Parameters
-        ----------
-        ra: float, RA in deg.
-        dec: float, Dec in deg.
-        """
-        log.warning('RECENTER IS BUGGY')
-        new_center_pix = self.get_wcs().all_world2pix([[ra, dec]], 0)[0]
-        new_center_skycoord = SkyCoord(ra, dec, unit="deg")
-        shape = np.array(np.shape(self.img_data))
-        new_shape = np.array([2*np.min([shape[0] - new_center_pix[0], new_center_pix[0]]),
-                     2*np.min([shape[1] - new_center_pix[1], new_center_pix[1]])]).astype(int)
-        print('ncp', new_center_pix, new_center_pix[::-1], ra, dec)
-        print(self.img_hdr['CRVAL1'], self.img_hdr['CRVAL2'])
-        self.img_hdr['CRVAL1']
-        cutout = Cutout2D(self.img_data.T, new_center_pix.T, new_shape.T, wcs=self.get_wcs().copy(), copy=True)#, mode='strict')
-        hdr = cutout.wcs.to_header()
-        print(hdr['CRVAL1'], hdr['CRVAL2'])
-        sys.exit()
-        hdr['BMAJ'], hdr['BMIN'], hdr['BPA'] = self.get_beam()
-        self.img_hdr = hdr
-        self.img_data = cutout.data
-        logging.info(f'{self.imagefile}: recenter, size ({shape[0]}, {shape[1]})' \
-                     f' -->  ({new_shape[0]}, {new_shape[1]})')
+    #    Parameters
+    #    ----------
+    #    ra: float, RA in deg.
+    #    dec: float, Dec in deg.
+    #    """
+    #    log.warning('RECENTER IS BUGGY')
+    #    new_center_pix = self.get_wcs().all_world2pix([[ra, dec]], 0)[0]
+    #    new_center_skycoord = SkyCoord(ra, dec, unit="deg")
+    #    shape = np.array(np.shape(self.img_data))
+    #    new_shape = np.array([2*np.min([shape[0] - new_center_pix[0], new_center_pix[0]]),
+    #                 2*np.min([shape[1] - new_center_pix[1], new_center_pix[1]])]).astype(int)
+    #    print('ncp', new_center_pix, new_center_pix[::-1], ra, dec)
+    #    print(self.img_hdr['CRVAL1'], self.img_hdr['CRVAL2'])
+    #    self.img_hdr['CRVAL1']
+    #    cutout = Cutout2D(self.img_data.T, new_center_pix.T, new_shape.T, wcs=self.get_wcs().copy(), copy=True)#, mode='strict')
+    #    hdr = cutout.wcs.to_header()
+    #    print(hdr['CRVAL1'], hdr['CRVAL2'])
+    #    sys.exit()
+    #    hdr['BMAJ'], hdr['BMIN'], hdr['BPA'] = self.get_beam()
+    #    self.img_hdr = hdr
+    #    self.img_data = cutout.data
+    #    logging.info(f'{self.imagefile}: recenter, size ({shape[0]}, {shape[1]})' \
+    #                 f' -->  ({new_shape[0]}, {new_shape[1]})')
 
     def pixel_covariance(self, pix1, pix2):
         """
@@ -617,8 +643,8 @@ class Image(object):
         """
         b = self.get_beam()
         fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
-        b_sig_pix_ma = b[0] * fwhm2sigma / self.degperpixel
-        b_sig_pix_min = b[1] * fwhm2sigma / self.degperpixel
+        b_sig_pix_ma = b[0] * fwhm2sigma / self.get_degperpixel()
+        b_sig_pix_min = b[1] * fwhm2sigma / self.get_degperpixel()
         theta = np.deg2rad(b[2])
         dx, dy = np.array(pix1 - pix2)
 
@@ -632,7 +658,7 @@ class Image(object):
             Cij = np.exp(-((dx*np.sin(theta)+dy*np.cos(theta))/(b_sig_pix_ma))**2
                          -((dx*np.cos(theta)-dy*np.sin(theta))/(b_sig_pix_min))**2)
         Cij *= uncorrelated_variance
-        print(Cij)
+        #print(Cij)
         return Cij
 
     def make_catalogue(self):
@@ -662,8 +688,7 @@ class Image(object):
         degperpixel: float
         """
         wcs = self.get_wcs()
-        self.degperpixel = np.abs(wcs.all_pix2world(0, 0, 0)[1] - wcs.all_pix2world(0, 1, 0)[1])
-        return self.degperpixel
+        return np.abs(wcs.all_pix2world(0, 0, 0)[1] - wcs.all_pix2world(0, 1, 0)[1])
 
     def get_degperkpc(self, z):
         """
@@ -677,7 +702,6 @@ class Image(object):
         -------
         degperkpc: float
         """
-        wcs = self.get_wcs()
         cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
         return cosmo.arcsec_per_kpc_proper(z).value / 3600.
 
