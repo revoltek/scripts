@@ -10,24 +10,25 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
 
-file_suffix = '-wide-ddc1.fits' # this is used to isolate file names
+file_suffix = '-wide-v.fits' # this is used to isolate file names
 # each one needs to have a corresponding "-avgbeam.fits"
 cutout_size = 3.3 # size of the final cutout [deg]
 beam_size = 3.7 # approx beam RADIUS at the black point, usually 30% of the beam power [deg]
-grid_file = 'allsky-grid.fits'
+grid_file = '../allsky-grid.fits'
+beamdir = '../beams/'
 
 class Pointing():
 
     def __init__(self, pointing_file):
         self.pointing_file = pointing_file
-        self.beam_file = pointing_file.replace(file_suffix,'-avgbeam.fits')
+        self.beam_file = pointing_file.replace(beamdir+file_suffix,'-avgbeam.fits')
         assert os.path.exists(self.beam_file)
         self.output_file = pointing_file.replace(file_suffix,'-mosaic.fits')
         with pyfits.open(pointing_file) as f:
-            head = f[0].header
-        ra = head['CRVAL1']
-        dec = head['CRVAL2']
-        self.wcs = pywcs(head)
+            self.head = f[0].header
+        ra = self.head['CRVAL1']
+        dec = self.head['CRVAL2']
+        self.wcs = pywcs(self.head)
         self.coord = SkyCoord(ra*u.deg, dec*u.deg, frame='fk5')
 
     def add_closest(self, dist):
@@ -37,7 +38,7 @@ class Pointing():
         print('distances:', grid[grid['dist'] < dist*u.deg])
         
         # track also beam files
-        self.beam_closest_files = [pointing_closest_file.replace(file_suffix,'-avgbeam.fits') for pointing_closest_file in self.pointing_closest_files]
+        self.beam_closest_files = [pointing_closest_file.replace(beamdir+file_suffix,'-avgbeam.fits') for pointing_closest_file in self.pointing_closest_files]
 
     def mosaic(self):
         in_pointings = [self.pointing_file]+self.pointing_closest_files
@@ -56,6 +57,9 @@ class Pointing():
         regrid_hdr['NAXIS'] = 2
         regrid_hdr['NAXIS1'] = 4000
         regrid_hdr['NAXIS2'] = 4000
+        # inherit some headers
+        for h in ['RESTFRQ','BTYPE','BUNIT','BMAJ','BMIN','BPA']:
+            regrid_hdr[h] = self.head[h]
         data = np.zeros((4000,4000))
         pyfits.writeto(self.output_file, header=regrid_hdr, data=data, overwrite=True)
 
@@ -72,9 +76,10 @@ print('Restricting to %i pointings.' % len(grid))
 # list of pointings to mosaic
 for pointing_file in pointing_files:
     pointing = Pointing(pointing_file)
-    # get the closest (assuming worst case: perfectly diagonally aligned pointings)
-    dist = np.sqrt(2.)/2*cutout_size+beam_size
-    pointing.add_closest(dist)
-    pointing.make_empty_mosaic()
-    pointing.mosaic()
+    if not os.path.exists(pointing.output_file):
+        # get the closest (assuming worst case: perfectly diagonally aligned pointings)
+        dist = np.sqrt(2.)/2*cutout_size+beam_size
+        pointing.add_closest(dist)
+        pointing.make_empty_mosaic()
+        pointing.mosaic()
 
