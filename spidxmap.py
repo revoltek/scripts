@@ -94,11 +94,7 @@ xsize = regrid_hdr['NAXIS1']
 ysize = regrid_hdr['NAXIS2']
 frequencies = [ image.get_freq() for image in all_images ]
 if args.noise: 
-    yerr = [ image.noise for image in all_images ]
-elif args.noise and args.fluxerr: 
-    rmserr = [ image.noise for image in all_images ]
-    fluxerr = [ image.img_data*args.fluxerr for image in all_images ]
-    yerr = np.sqrt(rmserr**2 + fluxerr**2)
+    rmserr = np.array([ image.noise for image in all_images ])
 else: yerr = None
 spidx_data = np.empty(shape=(ysize,xsize))
 spidx_data[:] = np.nan
@@ -109,8 +105,13 @@ for i in range(ysize):
     print('%i/%i' % (i,ysize), end='\r')
     sys.stdout.flush()
     for j in range(xsize):
-        val4reg = [ image.img_data[i,j] for image in all_images ]
+        val4reg = np.array([ image.img_data[i,j] for image in all_images ])
         if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
+        # add flux error
+        if args.fluxerr: 
+            yerr = np.sqrt((args.fluxerr*val4reg)**2+rmserr**2)
+        else:
+            yerr = rmserr
         if args.bootstrap:
             if (np.array(val4reg) <= 0).any(): continue
             (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
@@ -131,6 +132,7 @@ if args.output[-5:] == '.fits':
 else:
     filename_out = args.output+'.fits'
 logging.info('Save %s (and errors)' % filename_out)
+regrid_hdr['HISTORY'] = ' '.join(sys.argv)
 regrid_hdr['CTYPE3'] = 'ALPHA'
 pyfits.writeto(filename_out, spidx_data, regrid_hdr, overwrite=True, output_verify='fix')
 regrid_hdr['CTYPE3'] = 'ALPHAERR'
