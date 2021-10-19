@@ -46,6 +46,8 @@ parser.add_argument('--noises', dest='noises', type=float, nargs='+', help='UNSC
 parser.add_argument('--scales', dest='scales', type=float, nargs='+', help='Scale factors by which maps should be multiplied: must match numbers of maps')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before mosaicing')
 parser.add_argument('--find_noise', dest='find_noise', action='store_true', help='Find noise from image (default: assume equal weights, ignored if noises are given)')
+parser.add_argument('--use_channel', dest='use_channel', type=int, default=0, help='Channel to be used in a cube image (default: 0)')
+parser.add_argument('--use_stokes', dest='use_stokes', type=int, default=0, help='Stokes to be used in a cube image (default: 0)')
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results (default: False)')
 parser.add_argument('--output', dest='output', default='mosaic.fits', help='Name of output mosaic (default: mosaic.fits)')
 
@@ -84,9 +86,9 @@ if args.shift and not args.beamcorr:
 
 class Direction(Image):
 
-    def __init__(self, imagefile):
+    def __init__(self, imagefile, channel=0, stokes=0):
         logging.debug('Create direction for %s' % imagefile)
-        Image.__init__(self, imagefile)
+        Image.__init__(self, imagefile, channel, stokes)
         self.scale = 1.
         self.shift = 0.
         self.beamfile = None
@@ -215,7 +217,7 @@ logging.info('Reading files...')
 directions = []
 beams = []
 for i, image in enumerate(args.images):
-    d = Direction(image)
+    d = Direction(image, channel=args.use_channel, stokes=args.use_stokes)
     beams.append(d.get_beam()) 
     directions.append(d)
 

@@ -104,21 +104,17 @@ spidx_err_data[:] = np.nan
 
 if args.ncpu > 1:
     from lib_multiproc import multiprocManager
-    def funct(i,j,frequencies, val4reg, yerr, outQueue=None):
-        (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+    def funct(i,j,frequencies, val4reg, yerr, bootstrap, outQueue=None):
+        if bootstrap:
+            (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+        else:
+            (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         outQueue.put([i,j,a,sa])
 
     # start processes for multi-thread
     mpm = multiprocManager(args.ncpu, funct)
-    mpm.put([i,j,frequencies, val4reg, yerr])
-    mpm.wait()
-    for r in mpm.get():
-        i = r[0]; j = r[1]; a = r[2]; sa = r[3]
-        spidx_data[i,j] = a
-        spidx_err_data[i,j] = sa
-else:
     for i in range(ysize):
-        print('%i/%i' % (i,ysize), end='\r')
+        print('%i/%i' % (i+1,ysize), end='\r')
         sys.stdout.flush()
         for j in range(xsize):
             val4reg = np.array([ image.img_data[i,j] for image in all_images ])
@@ -128,11 +124,31 @@ else:
                 yerr = np.sqrt((args.fluxerr*val4reg)**2+rmserr**2)
             else:
                 yerr = rmserr
+            if (np.array(val4reg) <= 0).any(): continue
+            mpm.put([i,j,frequencies, val4reg, yerr, args.bootstrap])
+
+    print("Computing...")
+    mpm.wait()
+    for r in mpm.get():
+        i = r[0]; j = r[1]; a = r[2]; sa = r[3]
+        spidx_data[i,j] = a
+        spidx_err_data[i,j] = sa
+else:
+    for i in range(ysize):
+        print('%i/%i' % (i+1,ysize), end='\r')
+        sys.stdout.flush()
+        for j in range(xsize):
+            val4reg = np.array([ image.img_data[i,j] for image in all_images ])
+            if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
+            # add flux error
+            if args.fluxerr: 
+                yerr = np.sqrt((args.fluxerr*val4reg)**2+rmserr**2)
+            else:
+                yerr = rmserr
+            if (np.array(val4reg) <= 0).any(): continue
             if args.bootstrap:
-                if (np.array(val4reg) <= 0).any(): continue
                 (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
             else:
-                if (np.array(val4reg) <= 0).any(): continue
                 (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
             spidx_data[i,j] = a
             spidx_err_data[i,j] = sa

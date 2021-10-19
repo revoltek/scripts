@@ -32,7 +32,7 @@ import astropy.units as u
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_exact
 
-def flatten(filename, channel=0, freqaxis=0):
+def flatten(filename, channel=0, freqaxis=4, stokes=0, stokesaxis=3):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
 
     f = pyfits.open(filename)
@@ -70,8 +70,11 @@ def flatten(filename, channel=0, freqaxis=0):
             dataslice.append(np.s_[:],)
         elif i==freqaxis:
             dataslice.append(channel)
+        elif i==stokesaxis:
+            dataslice.append(stokes)
         else:
             dataslice.append(0)
+    #print("dataslice:", dataslice)
 
     # add freq
     freq = find_freq(f[0].header)
@@ -124,7 +127,7 @@ def find_freq(header):
  
 class AllImages():
 
-    def __init__(self, filenames):
+    def __init__(self, filenames, channel=0, stokes=0):
         if len(filenames) == 0:
             logging.error('Cannot find images!')
             raise ValueError()
@@ -132,7 +135,7 @@ class AllImages():
         self.filenames = filenames
         self.images = []
         for filename in filenames:
-            self.images.append(Image(filename))
+            self.images.append(Image(filename, channel, stokes))
 
     def __len__(self):
         return len(self.images)
@@ -335,7 +338,7 @@ class AllImages():
 
 class Image(object):
 
-    def __init__(self, imagefile):
+    def __init__(self, imagefile, channel=0, stokes=0):
         """
         imagefile: name of the fits file
         """
@@ -363,7 +366,7 @@ class Image(object):
             logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, freq/1e6))
 
         self.noise = None
-        self.img_hdr, self.img_data = flatten(self.imagefile)
+        self.img_hdr, self.img_data = flatten(self.imagefile, channel=channel, stokes=stokes)
         self.img_hdu = pyfits.ImageHDU(data=self.img_data, header=self.img_hdr)
         self.set_beam(beam)
         self.set_freq(find_freq(header))
