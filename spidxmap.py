@@ -34,6 +34,7 @@ logging.root.setLevel(logging.DEBUG)
 
 parser = argparse.ArgumentParser(description='Make spectral index maps, e.g. spidxmap.py --region ds9.reg --noise --sigma 5 --save *fits')
 parser.add_argument('images', nargs='+', help='List of images to use for spidx')
+parser.add_argument('--ncpu', dest='ncpu', default=1, type=int, help='Number of cpus to use (default: 1)')
 parser.add_argument('--beam', dest='beam', nargs=3, type=float, help='3 parameters final beam to convolve all images (BMAJ (arcsec), BMIN (arcsec), BPA (deg))')
 parser.add_argument('--region', dest='region', type=str, help='Ds9 region to restrict analysis')
 parser.add_argument('--noiseregion', dest='noiseregion', type=str, help='Ds9 region to calculate rms noise (default: do not use)')
@@ -101,25 +102,40 @@ spidx_data[:] = np.nan
 spidx_err_data = np.empty(shape=(ysize,xsize))
 spidx_err_data[:] = np.nan
 
-for i in range(ysize):
-    print('%i/%i' % (i,ysize), end='\r')
-    sys.stdout.flush()
-    for j in range(xsize):
-        val4reg = np.array([ image.img_data[i,j] for image in all_images ])
-        if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
-        # add flux error
-        if args.fluxerr: 
-            yerr = np.sqrt((args.fluxerr*val4reg)**2+rmserr**2)
-        else:
-            yerr = rmserr
-        if args.bootstrap:
-            if (np.array(val4reg) <= 0).any(): continue
-            (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
-        else:
-            if (np.array(val4reg) <= 0).any(): continue
-            (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+if args.ncpu > 1:
+    from lib_multiproc import multiprocManager
+    def funct(i,j,frequencies, val4reg, yerr, outQueue=None):
+        (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+        outQueue.put([i,j,a,sa])
+
+    # start processes for multi-thread
+    mpm = multiprocManager(args.ncpu, funct)
+    mpm.put([i,j,frequencies, val4reg, yerr])
+    mpm.wait()
+    for r in mpm.get():
+        i = r[0]; j = r[1]; a = r[2]; sa = r[3]
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
+else:
+    for i in range(ysize):
+        print('%i/%i' % (i,ysize), end='\r')
+        sys.stdout.flush()
+        for j in range(xsize):
+            val4reg = np.array([ image.img_data[i,j] for image in all_images ])
+            if np.isnan(val4reg).any() or (np.array(val4reg) < 0).any(): continue
+            # add flux error
+            if args.fluxerr: 
+                yerr = np.sqrt((args.fluxerr*val4reg)**2+rmserr**2)
+            else:
+                yerr = rmserr
+            if args.bootstrap:
+                if (np.array(val4reg) <= 0).any(): continue
+                (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+            else:
+                if (np.array(val4reg) <= 0).any(): continue
+                (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+            spidx_data[i,j] = a
+            spidx_err_data[i,j] = sa
 
 if 'FREQ' in regrid_hdr.keys():
     del regrid_hdr['FREQ']
