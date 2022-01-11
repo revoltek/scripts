@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #i -*- coding: utf-8 -*-
 #
-# Copyright (C) 2019 - Francesco de Gasperin
+# Copyright (C) 2022 - Francesco de Gasperin, Henrik Edler
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -206,7 +206,7 @@ class AllImages():
 
         Returns
         -------
-        bmaj, bmin, bpa
+        bmaj, bmin, bpa: array-like. Common beam in deg
 
         """
         all_beams = [image.get_beam() for image in self.images]
@@ -216,15 +216,14 @@ class AllImages():
 
         if circbeam:
             maxmaj = np.max([image.get_beam()[0] for image in self.images])
-            target_beam = [maxmaj, maxmaj, 0.]  # add 1% to prevent crash in convolution
-            #target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
+            target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
         else:
             from radio_beam import Beams
             my_beams = Beams([image.get_beam()[0] for image in self.images] * u.deg,
                              [image.get_beam()[1] for image in self.images] * u.deg,
                              [image.get_beam()[2] for image in self.images] * u.deg)
             common_beam = my_beams.common_beam()
-            target_beam = [common_beam.major.value, common_beam.minor.value, common_beam.pa.value]
+            target_beam = [common_beam.major.to_value('deg'), common_beam.minor.to_value('deg'), common_beam.pa.to_value('deg')]
         return target_beam
 
     def convolve_to(self, beam=None, circbeam=False):
@@ -234,7 +233,7 @@ class AllImages():
         Parameters
         ----------
         beam: list, optional. Default = None
-            Beam parameters [b_major, b_minor, b_pa] in deg. None: find smallest common beam
+            Beam parameters [b_major, b_minor, b_pa] in [asec, asec, deg]. None: find smallest common beam
         circbeam: bool, optional. Default = False
             Force circular beam
         """
