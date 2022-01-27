@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #i -*- coding: utf-8 -*-
 #
-# Copyright (C) 2019 - Francesco de Gasperin
+# Copyright (C) 2022 - Francesco de Gasperin, Henrik Edler
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -206,7 +206,7 @@ class AllImages():
 
         Returns
         -------
-        bmaj, bmin, bpa
+        bmaj, bmin, bpa: array-like. Common beam in deg
 
         """
         all_beams = [image.get_beam() for image in self.images]
@@ -216,15 +216,19 @@ class AllImages():
 
         if circbeam:
             maxmaj = np.max([image.get_beam()[0] for image in self.images])
-            target_beam = [maxmaj, maxmaj, 0.]  # add 1% to prevent crash in convolution
-            #target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]  # add 1% to prevent crash in convolution
+            maxmin = np.max([image.get_beam()[1] for image in self.images])
+            if maxmaj == maxmin:
+                target_beam = [maxmaj, maxmaj, 0.]
+            else:
+                # add 1% to prevent crash in convolution when making only half of the beam larger
+                target_beam = [maxmaj * 1.01, maxmaj * 1.01, 0.]
         else:
             from radio_beam import Beams
             my_beams = Beams([image.get_beam()[0] for image in self.images] * u.deg,
                              [image.get_beam()[1] for image in self.images] * u.deg,
                              [image.get_beam()[2] for image in self.images] * u.deg)
             common_beam = my_beams.common_beam()
-            target_beam = [common_beam.major.value, common_beam.minor.value, common_beam.pa.value]
+            target_beam = [common_beam.major.to_value('deg'), common_beam.minor.to_value('deg'), common_beam.pa.to_value('deg')]
         return target_beam
 
     def convolve_to(self, beam=None, circbeam=False):
@@ -234,7 +238,7 @@ class AllImages():
         Parameters
         ----------
         beam: list, optional. Default = None
-            Beam parameters [b_major, b_minor, b_pa] in deg. None: find smallest common beam
+            Beam parameters [b_major, b_minor, b_pa] in [asec, asec, deg]. None: find smallest common beam
         circbeam: bool, optional. Default = False
             Force circular beam
         """
@@ -292,9 +296,10 @@ class AllImages():
             y, x = mask.nonzero()
             ra_max, dec_max = w.all_pix2world(np.max(x), np.max(y), 0, ra_dec_order=True)
             ra_min, dec_min = w.all_pix2world(np.min(x), np.min(y), 0, ra_dec_order=True)
-            size = [1.2*np.max( [ np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]), np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]) ] )]
+            # 2.2 to go a bit larger than the diameter
+            size = [2.2*np.max( [ np.max([np.abs(dec_max-mdec),np.abs(dec_min-mdec)]), np.max([np.abs(ra_max-mra),np.abs(ra_min-mra)]) ] )]
             os.system('rm __mask.fits')
-            #print(ra_min,ra_max,dec_min,dec_max)
+            #print(ra_min,ra_max,dec_min,dec_max,'size:',size)
 
         # Calculate sizes of all images to find smalles size that fits all images
         sizes = np.empty((len(self.images), 2))
@@ -302,7 +307,7 @@ class AllImages():
             sizes[i] = np.array(image.img_data.shape) * image.get_degperpixel()
         if size:
             size = np.array(size)
-            if np.any(np.min(sizes, axis=1) < size):
+            if np.any(np.min(sizes, axis=1) < np.min(size)):
                 logging.warning(f'Requested size {size} is larger than smallest image size {np.min(sizes, axis=1)} in at least one dimension. This will result in NaN values in the regridded images.')
         else:
             size = np.min(sizes, axis=0)
