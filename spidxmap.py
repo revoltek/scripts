@@ -43,7 +43,7 @@ parser.add_argument('--size', dest='size', nargs=2, type=float, help='Size (ra a
 parser.add_argument('--radec', dest='radec', nargs=2, type=float, help='RA/DEC where to center final image in deg (if not given, center on first image - example: 32.3 30.1)')
 parser.add_argument('--shift', dest='shift', action='store_true', help='Shift images before calculating spidx (default: false)')
 parser.add_argument('--noise', dest='noise', action='store_true', help='Calculate noise of each image, necessary for the error map (default: false)')
-parser.add_argument('--fluxerr', dest='fluxerr', type=float, help='Fractional flux density error to be added in quadrature (default: 0 - example: 0.05 for 5%)')
+parser.add_argument('--fluxerr', dest='fluxerr', type=float, help='Fractional flux density error to be added in quadrature (default: 0 - example: 0.05 for 5 per cent)')
 parser.add_argument('--save', dest='save', action='store_true', help='Save intermediate results (default: false)')
 parser.add_argument('--sigma', dest='sigma', type=float, help='Restrict to pixels above this sigma in all images')
 parser.add_argument('--circbeam', dest='circbeam', action='store_true', help='Force final beam to be circular (default: False, use minimum common beam area)')
