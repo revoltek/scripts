@@ -22,16 +22,20 @@ import casacore.tables as pt
 from astropy.time import Time
 import numpy as np
 
+def get_obs(ms):
+    with pt.table(ms + '/OBSERVATION', ack=False) as t:
+        obsid =  int(t.getcell("LOFAR_OBSERVATION_ID", 0))
+        pathFieldTable = ms + "/FIELD"
+        nameField = (pt.taql("select NAME from $pathFieldTable")).getcol("NAME")[0]
+        print("%s: Observation field: %s" % (ms, nameField))
+        print("%s: Observation ID %s" % (ms, obsid))
+
 def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
-        times = np.array((t.getcol('TIME')))
+        times = sorted(set(t.getcol('TIME')))
+    print("%s: Time step %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
     time = Time( times[0]/86400, format='mjd')
     print("%s: Starting time %s" % (ms, str(time.iso)))
-    times = np.sort(np.unique(times))
-    time_step = np.average((times[1:] - times[:-1]))
-    print("%s: Time step %.1f seconds (total timesteps: %i)." % (ms, time_step, len(times)))
-
-
 
 def get_freq(ms):
     """
@@ -72,11 +76,44 @@ def get_dir(ms):
     code = code.lower().replace(' ','_')
     print("%s: Field: %s" % (ms, code))
 
+def get_cols(ms):
+    """
+    get non-default colummns
+    """
+    with pt.table(ms, ack = False) as table:
+        colnames = table.colnames()
+
+    default_colnames = ['UVW','FLAG_CATEGORY','WEIGHT','SIGMA','ANTENNA1','ANTENNA2','ARRAY_ID','DATA_DESC_ID','EXPOSURE',
+                        'FEED1','FEED2','FIELD_ID','FLAG_ROW','INTERVAL','OBSERVATION_ID','PROCESSOR_ID','SCAN_NUMBER',
+                        'STATE_ID','TIME','TIME_CENTROID','DATA','FLAG','WEIGHT_SPECTRUM']
+
+    non_default_colnames =[]
+    for colname in colnames:
+        if colname not in default_colnames:
+            non_default_colnames.append(colname)
+    if len(non_default_colnames) != 0:
+        print(f'{ms}: Non-default data columns: {", ".join(non_default_colnames)}.')
+    else:
+        print(f'{ms}: Table does only contain default columns.')
+
+    for colname in colnames:
+        if 'DATA' in colname and colname != 'DATA_DESC_ID':
+            with pt.table(ms, ack=False) as t:
+                kws = t.getcolkeywords(colname)
+                if 'LOFAR_APPLIED_BEAM_MODE' in kws:
+                    print(f'{ms}: [{colname}] Beam mode: {kws["LOFAR_APPLIED_BEAM_MODE"]} ('
+                          f'{np.degrees(kws["LOFAR_APPLIED_BEAM_DIR"]["m0"]["value"]):.4f}, '
+                          f'{np.degrees(kws["LOFAR_APPLIED_BEAM_DIR"]["m1"]["value"]):.4f}).')
+                else:
+                    print(f'{ms}: [{colname}] Beam mode: No beam applied.')
+
 
 for ms in sys.argv[1:]:
     if not os.path.exists(ms):
         print("ERROR: missing ms %s" % ms)
         sys.exit()
+    get_obs(ms)
     get_timestep(ms)
     get_freq(ms)
     get_dir(ms)
+    get_cols(ms)

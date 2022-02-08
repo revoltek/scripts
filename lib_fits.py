@@ -27,6 +27,7 @@ from astropy.nddata import Cutout2D
 from astropy.coordinates import match_coordinates_sky, SkyCoord
 from astropy.convolution import Gaussian2DKernel
 import pyregion
+import lsmtool as lsm
 import astropy.units as u
 
 from reproject import reproject_interp, reproject_exact
@@ -134,8 +135,12 @@ class AllImages():
 
         self.filenames = filenames
         self.images = []
+        img_list, freqs = [], []
         for filename in filenames:
-            self.images.append(Image(filename, channel, stokes))
+            img_list.append(Image(filename))
+            freqs.append(img_list[-1].freq)
+        self.images = [img_list[i] for i in np.argsort(freqs)]
+
 
     def __len__(self):
         return len(self.images)
@@ -185,6 +190,14 @@ class AllImages():
             ddec = ref_cat['DEC'][idx_matched_ref] - image.cat['DEC'][idx_matched_img]
             flux = ref_cat['Peak_flux'][idx_matched_ref]
             image.apply_shift(np.average(dra, weights=flux), np.average(ddec, weights=flux))
+            logging.info(f'{image.imagefile} Applying shift: {3600*np.average(dra, weights=flux):.5f}", {3600*np.average(ddec, weights=flux):.5f}".')
+            # debug output
+            matches_lsm = image.cat_lsm.copy()
+            matches_lsm.select(idx_match, aggregate=True)
+            matches_lsm.write(image.imagefile + '-matched.reg', format='ds9', clobber=True)
+        # debug output
+        ref_cat_lsm = self.images[ref_idx].cat_lsm
+        ref_cat_lsm.write(image.imagefile + '-refcat.reg', format='ds9', clobber=True)
 
     def center_at(self, ra, dec):
         """
@@ -335,6 +348,10 @@ class AllImages():
         if action == 'header' or action == 'regrid_header':
             return regrid_hdr
 
+    def suffix_exists(self, suffix):
+        """ Check if suffix exists for all images"""
+        return np.all([os.path.exists(name.replace('.fits', f'-{suffix}.fits')) for name in self.filenames])
+
     def write(self, suffix, inflate=False):
         """ Write all (changed) images to imagename-suffix.fits"""
         for image in self.images:
@@ -369,12 +386,20 @@ class Image(object):
             # sys.exit(1)
         else:
             logging.debug('%s: Frequency: %.0f MHz' % (self.imagefile, freq/1e6))
+        try:
+            self.mhz = np.round(freq / 1e6).astype(int) # handy for suffixes etc.
+        except TypeError:
+            self.mhz = None
 
         self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile, channel=channel, stokes=stokes)
         self.img_hdu = pyfits.ImageHDU(data=self.img_data, header=self.img_hdr)
         self.set_beam(beam)
-        self.set_freq(find_freq(header))
+        self.set_freq(freq)
+        self.ra = self.img_hdr['CRVAL1']
+        self.dec = self.img_hdr['CRVAL2']
+        self.get_degperpixel() # sets self.degperpixel (faster to call, no WCS call)
+
 
 
     def write(self, filename=None, inflate=False):
@@ -445,6 +470,7 @@ class Image(object):
         if freq:
             self.img_hdr['RESTFREQ'] = freq
             self.img_hdr['FREQ'] = freq
+            self.freq = freq
 
     def get_freq(self):
         try:
@@ -468,7 +494,8 @@ class Image(object):
         if unit in ['arcsec', 'asec']:
             return beam_area_squaredeg * 3600**2
         elif unit in ['pix','pixel']:
-            return beam_area_squaredeg / self.get_degperpixel()**2
+            return beam_area_squaredeg / self.degperpixel**2
+
 
     def get_wcs(self):
         return pywcs(self.img_hdr)
@@ -562,9 +589,13 @@ class Image(object):
 
         # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
         beam = self.get_beam()
-        if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
-            logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
-            return
+        try:
+            if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
+                logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
+                return
+            elif (target_beam[0] < beam[0]) or target_beam[1] < beam[1]:
+                raise ValueError('%s: target beam is smaller than current beam. Cannot convolve!.' % self.imagefile)
+        except ZeroDivisionError: pass  # catch case where we have delta scale beam (model image)
         # first find beam to convolve with
         convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
         if convolve_beam[0] is None:
@@ -596,6 +627,7 @@ class Image(object):
         self.img_hdr = copy.copy(regrid_hdr)
         self.set_freq(freq)
         self.set_beam(beam)
+        self.get_degperpixel() # update
 
     def apply_shift(self, dra, ddec):
         """
@@ -607,34 +639,6 @@ class Image(object):
         dec = self.img_hdr['CRVAL2']
         self.img_hdr['CRVAL1'] += dra
         self.img_hdr['CRVAL2'] += ddec
-
-    #def apply_recenter_cutout(self, ra, dec):
-    #    """
-    #    Center the image at ra, dec. The image will be cut accordingly.
-
-    #    Parameters
-    #    ----------
-    #    ra: float, RA in deg.
-    #    dec: float, Dec in deg.
-    #    """
-    #    log.warning('RECENTER IS BUGGY')
-    #    new_center_pix = self.get_wcs().all_world2pix([[ra, dec]], 0)[0]
-    #    new_center_skycoord = SkyCoord(ra, dec, unit="deg")
-    #    shape = np.array(np.shape(self.img_data))
-    #    new_shape = np.array([2*np.min([shape[0] - new_center_pix[0], new_center_pix[0]]),
-    #                 2*np.min([shape[1] - new_center_pix[1], new_center_pix[1]])]).astype(int)
-    #    print('ncp', new_center_pix, new_center_pix[::-1], ra, dec)
-    #    print(self.img_hdr['CRVAL1'], self.img_hdr['CRVAL2'])
-    #    self.img_hdr['CRVAL1']
-    #    cutout = Cutout2D(self.img_data.T, new_center_pix.T, new_shape.T, wcs=self.get_wcs().copy(), copy=True)#, mode='strict')
-    #    hdr = cutout.wcs.to_header()
-    #    print(hdr['CRVAL1'], hdr['CRVAL2'])
-    #    sys.exit()
-    #    hdr['BMAJ'], hdr['BMIN'], hdr['BPA'] = self.get_beam()
-    #    self.img_hdr = hdr
-    #    self.img_data = cutout.data
-    #    logging.info(f'{self.imagefile}: recenter, size ({shape[0]}, {shape[1]})' \
-    #                 f' -->  ({new_shape[0]}, {new_shape[1]})')
 
     def pixel_covariance(self, pix1, pix2):
         """
@@ -651,8 +655,8 @@ class Image(object):
         """
         b = self.get_beam()
         fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
-        b_sig_pix_ma = b[0] * fwhm2sigma / self.get_degperpixel()
-        b_sig_pix_min = b[1] * fwhm2sigma / self.get_degperpixel()
+        b_sig_pix_ma = b[0] * fwhm2sigma / self.degperpixel
+        b_sig_pix_min = b[1] * fwhm2sigma / self.degperpixel
         theta = np.deg2rad(b[2])
         dx, dy = np.array(pix1 - pix2)
 
@@ -671,7 +675,7 @@ class Image(object):
 
     def make_catalogue(self):
         """
-        Create catalogue for this image
+        Create catalogue for image alignmnt
         """
         import bdsf
         from astropy.table import Table
@@ -682,11 +686,24 @@ class Image(object):
                                           thresh_pix=5, thresh_isl=3, atrous_do=False, \
                                           adaptive_rms_box=True, adaptive_thresh=100, rms_box_bright=(30,10), quiet=True)
             bdsf_img.write_catalog(outfile=img_cat, catalog_type='srl', format='fits', clobber=True)
+            bdsf_img.write_catalog(outfile=img_cat.replace('.cat', '.skymodel'), catalog_type='gaul', format='bbs', bbs_patches='source', clobber=True, srcroot='src')
         else:
             logging.warning('%s already exists, using it.' % img_cat)
 
-        self.cat = Table.read(img_cat)
-        logging.debug('%s: Number of sources detected: %i' % (self.imagefile, len(self.cat)) )
+        cat = Table.read(img_cat)
+        # remove extended sources
+        extended_src = (cat['Peak_flux'] / cat['Total_flux']) < 0.1 # ~extended source
+        extended_src[cat['S_Code'] == 'M'] = True # multiple-gaussian source
+        extended_src[cat['S_Code'] == 'C'] = True # one gaussian + other sources island
+        # remove same sources from skymodel
+        cat_lsm = lsm.load(img_cat.replace('.cat', '.skymodel'))
+        # TODO this spams the logging
+        for srcid in cat[extended_src]['Source_id']:
+            cat_lsm.remove(f'Patch == src_patch_s{srcid}')
+        cat.remove_rows(np.argwhere(extended_src))
+        self.cat = cat
+        self.cat_lsm = cat_lsm
+        logging.debug('%s: Number of sources detected: %i; removed %i extended sources.' % (self.imagefile, len(self.cat), sum(extended_src)) )
 
     def get_degperpixel(self):
         """
@@ -696,7 +713,8 @@ class Image(object):
         degperpixel: float
         """
         wcs = self.get_wcs()
-        return np.abs(wcs.all_pix2world(0, 0, 0)[1] - wcs.all_pix2world(0, 1, 0)[1])
+        self.degperpixel = np.abs(wcs.all_pix2world(0, 0, 0)[1] - wcs.all_pix2world(0, 1, 0)[1])
+        return self.degperpixel
 
     def get_degperkpc(self, z):
         """
