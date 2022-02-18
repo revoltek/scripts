@@ -293,8 +293,8 @@ class AllImages():
         logging.info('Pixel scale: %f"' % (cdelt * 3600.))
         rwcs.wcs.cdelt = [-cdelt, cdelt]
         if radec:
-            mra = radec[0]*np.pi/180
-            mdec = radec[1]*np.pi/180
+            mra = radec[0]
+            mdec = radec[1]
         else:
             midpix = np.array(self.images[0].img_data.shape)/2
             mra, mdec = self.images[0].get_wcs().all_pix2world(midpix[1], midpix[0], 0, ra_dec_order=True)
@@ -314,7 +314,7 @@ class AllImages():
             os.system('rm __mask.fits')
             #print(ra_min,ra_max,dec_min,dec_max,'size:',size)
 
-        # Calculate sizes of all images to find smalles size that fits all images
+        # Calculate sizes of all images to find smallest size that fits all images
         sizes = np.empty((len(self.images), 2))
         for i, image in enumerate(self.images):
             sizes[i] = np.array(image.img_data.shape) * image.get_degperpixel()
@@ -326,6 +326,11 @@ class AllImages():
             size = np.min(sizes, axis=0)
             if square:
                 size = np.min(size)
+        try: # if we have square, make it 2 dim
+            if len(size) == 1:
+                size = np.repeat(size,2)
+        except TypeError:
+            size = np.repeat(size, 2)
 
         # fits file are ordered the opposite way: (dec,ra)
         ysize = int(np.rint(np.array([size[0]]) / cdelt))
