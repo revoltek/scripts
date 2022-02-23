@@ -143,6 +143,9 @@ class Direction(Image):
         from scipy.stats import gaussian_kde
         from astropy.stats import median_absolute_deviation
 
+        # if there are no data in the image prevent the crash of bdsf
+        if np.isnan(self.img_data).all(): return
+
         img_cat = self.imagefile+'.cat'
         if not os.path.exists(img_cat):
             bdsf_img = bdsf.process_image(self.imagefile, rms_box=(100,30), \
@@ -180,19 +183,24 @@ class Direction(Image):
                                                   SkyCoord(ref_t['RA'], ref_t['DEC']))
     
         sep_mad = median_absolute_deviation(sep[np.where(sep < (3*self.get_beam()[0])*u.deg)])
-        logging.debug('SHIFT: Sep MAD init: %f"' % sep_mad.arcsec)
+        sep_med = np.median(sep[np.where(sep < (3*self.get_beam()[0])*u.deg)])
+        logging.debug('SHIFT: Sep init Med: %f" - MAD: %f"' % (sep_med.arcsec, sep_mad.arcsec))
         sep_mad_old = 0
         i = 0
         while sep_mad != sep_mad_old and not i > 100:
             sep_mad_old = sep_mad
-            sep_mad = median_absolute_deviation(sep[np.where(sep < 7 * sep_mad)])
-            logging.debug('SHIFT: Sep MAD: %f"' % sep_mad.arcsec)
+            idx = np.where(sep-sep_med < 7 * sep_mad)
+            sep_mad = median_absolute_deviation(sep[idx])
+            sep_med = np.median(sep[idx])
+            logging.debug(sep[idx].arcsec)
+            logging.debug('SHIFT: Sep Med: %.2f" - MAD: %.2f" (n sources:%i)' % \
+                    (sep_med.arcsec, sep_mad.arcsec, len(sep[idx])))
             if np.isnan(sep_mad):
                 sys.exit('MAD diverged')
             i+=1
     
-        idx_match_ref = idx_match[sep<3*sep_mad]
-        idx_match_img = np.arange(0,len(img_t))[sep<3*sep_mad]
+        idx_match_ref = idx_match[sep-sep_med < 3*sep_mad]
+        idx_match_img = np.arange(0,len(img_t))[sep-sep_med < 3*sep_mad]
         img_t = img_t[idx_match_img]
     
         logging.debug('SHIFT: After match source len: %i' % len(img_t))
@@ -209,9 +217,16 @@ class Direction(Image):
 
         self.apply_shift(np.mean(dra), np.mean(ddec)) # ra is in deg on the sphere, no dec correction
 
+        # debug
+        #self.write(self.imagefile.replace('fits','shift.fits'))
+        #img_t['RA'] += np.mean(dra)
+        #img_t['DEC'] += np.mean(ddec)
+        #img_t.write(img_cat.replace('cat','shiftedcat'), format='fits', overwrite=True)
+        #ref_t[idx_match_ref].write(img_cat.replace('cat','refcat'), format='fits', overwrite=True)
+
         # clean up
-        if not args.save:
-            os.system('rm '+img_cat)
+        #if not args.save:
+        #    os.system('rm '+img_cat)
 
 logging.info('Reading files...')
 directions = []

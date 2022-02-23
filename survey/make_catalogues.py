@@ -4,10 +4,11 @@
 import bdsf
 import os, sys, glob
 
-infiles = glob.glob(sys.argv[1])
+infiles = sys.argv[1:]
 restfrq = 54e6
 
 if not os.path.exists('catalogues'): os.system('mkdir catalogues')
+print("All files:", infiles)
 
 for infile in infiles:
     print('Working on %s' % infile)
