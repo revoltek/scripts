@@ -20,7 +20,6 @@ eps0 = 8.8541878128e-12 # F/m
 U_cmb = 4.19e-14  # J m-3 CMB energy density at z=0
 B_cmb = 3.25e-10 # T, CMB B field at z=0 in
 
-
 def nu_c(E, B, alpha):
     """
     Critical frequency for synchrotron
@@ -246,6 +245,7 @@ class S_model():
             return self.F_interp(x)
 
 def get_si(nu1, nu2, S1, S2): # TODO use lib_linearfit
+    np.seterr(divide='ignore')
     return np.log(S1 / S2) / np.log(nu1 / nu2)
 
 def get_aging_si(nu1, nu2, B, injection_index, times, z, model=None):
@@ -292,7 +292,6 @@ import astropy.units as u
 from scipy import special, integrate, interpolate
 from collections.abc import Iterable
 import mpmath
-import numba
 import quadpy
 import logging as log
 import numpy as np
@@ -308,7 +307,6 @@ eps0 = 8.8541878128e-12 # F/m
 U_cmb = 4.19e-14  # J m-3 CMB energy density at z=0
 B_cmb = 3.25e-10 # T, CMB B field at z=0 in
 
-@numba.njit()
 def nu_c(E, B, alpha):
     """
     Critical frequency for synchrotron

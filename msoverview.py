@@ -52,6 +52,17 @@ def get_freq(ms):
     print("%s: Freq range: %f MHz - %f MHz (bandwidth: %f MHz, mean freq: %f MHz)" % (ms, min_freq, max_freq, bandwidth, mean_freq))
     print("%s: Channels: %i ch (bandwidth: %f MHz)" % (ms, nchan, chan_bandwidth) )
 
+def get_uvw(ms):
+    with pt.table(ms, ack = False) as t:
+        uvw = t.getcol('UVW')
+        wavelength = 2.99e8 / np.mean(t.SPECTRAL_WINDOW[0]['CHAN_FREQ'])
+        uvw = np.linalg.norm(uvw, axis=1)
+        minuv, maxuv = uvw.min(), uvw.max()
+        print(f"%s: uv-range %.0f m - %.0f m" % (ms, minuv, maxuv))
+        print(f"%s: uv-range %.0f lambda - %.0f lambda" % (ms, minuv/wavelength, maxuv/wavelength))
+
+
+
 def get_dir(ms):
     """
     Get phase centre
@@ -105,15 +116,19 @@ def get_cols(ms):
                           f'{np.degrees(kws["LOFAR_APPLIED_BEAM_DIR"]["m0"]["value"]):.4f}, '
                           f'{np.degrees(kws["LOFAR_APPLIED_BEAM_DIR"]["m1"]["value"]):.4f}).')
                 else:
-                    print(f'{ms}: [{colname}] Beam mode: No beam applied.')
+                    print(f'{ms}: [{colname}] Beam mode: No LOFAR beam applied.')
 
 
 for ms in sys.argv[1:]:
     if not os.path.exists(ms):
         print("ERROR: missing ms %s" % ms)
         sys.exit()
-    get_obs(ms)
+    try:
+        get_obs(ms)
+    except RuntimeError:
+        pass
     get_timestep(ms)
     get_freq(ms)
+    get_uvw(ms)
     get_dir(ms)
     get_cols(ms)

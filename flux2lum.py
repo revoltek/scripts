@@ -30,7 +30,7 @@ from astropy.cosmology import FlatLambdaCDM
 #cosmo = FlatLambdaCDM(H0=71, Om0=0.27)
 #print("Using Flat LmbdaCDM H0=0.71 Om0=0.27")
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
-print "Using Flat LmbdaCDM H0=0.7 Om0=0.3"
+print("Using Flat LmbdaCDM H0=0.7 Om0=0.3")
 
 # k-correction
 def kcorr(flux, z, alpha):
