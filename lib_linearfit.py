@@ -99,7 +99,8 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
 
 
 def linear_fit_bootstrap(x, y, yerr, niter=1000, tolog=False):
-    # Comment HE: I think if one multiplies the covariance matrix with the residual variance, the absolute magnitude of the errors should be taken into account and the problem is obsolete.
+    # Comment HE: I think if one multiplies the covariance matrix with the residual variance, the absolute magnitude
+    # of the errors should be taken into account and one can circumvent the bootstrap.
     #
     # An issue arises with scipy.curve_fit when errors in the y data points
     # are given.  Only the relative errors are used as weights, so the fit

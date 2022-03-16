@@ -140,6 +140,7 @@ class AllImages():
             img_list.append(Image(filename))
             freqs.append(img_list[-1].freq)
         self.images = [img_list[i] for i in np.argsort(freqs)]
+        self.freqs = np.sort(freqs)
 
 
     def __len__(self):
@@ -190,7 +191,7 @@ class AllImages():
             ddec = ref_cat['DEC'][idx_matched_ref] - image.cat['DEC'][idx_matched_img]
             flux = ref_cat['Peak_flux'][idx_matched_ref]
             image.apply_shift(np.average(dra, weights=flux), np.average(ddec, weights=flux))
-            logging.info(f'{image.imagefile} Applying shift: {3600*np.average(dra, weights=flux):.5f}", {3600*np.average(ddec, weights=flux):.5f}".')
+            logging.warning(f'{image.imagefile} Applying shift: {3600*np.average(dra, weights=flux):.5f}", {3600*np.average(ddec, weights=flux):.5f}".')
             # debug output
             matches_lsm = image.cat_lsm.copy()
             matches_lsm.select(idx_match, aggregate=True)
