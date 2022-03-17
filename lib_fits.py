@@ -33,12 +33,13 @@ import astropy.units as u
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_exact
 
-def flatten(filename, channel=0, freqaxis=4, stokes=0, stokesaxis=3):
+def flatten(filename, channel=0, stokes=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
 
     f = pyfits.open(filename)
+    header_init = f[0].header
 
-    naxis=f[0].header['NAXIS']
+    naxis = header_init['NAXIS']
     if naxis<2:
         raise RadioError('Can\'t make map from this')
     if naxis==2:
@@ -69,13 +70,14 @@ def flatten(filename, channel=0, freqaxis=4, stokes=0, stokesaxis=3):
     for i in range(naxis,0,-1):
         if i<=2:
             dataslice.append(np.s_[:],)
-        elif i==freqaxis:
+        elif header_init['CTYPE%i'%i] == 'FREQ':
+            #print("channel:", channel)
             dataslice.append(channel)
-        elif i==stokesaxis:
+        elif header_init['CTYPE%i'%i] == 'STOKES':
+            #print("stokes:", stokes)
             dataslice.append(stokes)
         else:
             dataslice.append(0)
-    #print("dataslice:", dataslice)
 
     # add freq
     freq = find_freq(f[0].header)
@@ -571,7 +573,7 @@ class Image(object):
             mad_old = 0.
             for i in range(niter):
                  mad = median_absolute_deviation(data)
-                 print('MAD: %f uJy on %f%% data' % (mad*1e6, 100*len(data)/initial_len))
+                 logging.debug('%s: MAD noise: %f uJy on %f%% data' % (self.imagefile, mad*1e6, 100*len(data)/initial_len))
                  if np.isnan(mad): break
                  if np.abs(mad_old-mad)/mad < eps:
                      rms = np.nanstd( data )

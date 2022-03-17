@@ -58,7 +58,7 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
 
     identity = []
     for idx in cat_gaus['Source_id']:
-        identity.append( cat['Source_name'][ cat['Source_id'] == idx ] )
+        identity.append( cat['Source_name'][ cat['Source_id'] == idx ][0] )
     cat_gaus['Source_name'] = identity
 
     # add mosaic id
@@ -156,7 +156,7 @@ def do_concat(mosdir):
     decs = []
     for mosaiccat, gauscat in zip(mosaiccats, gauscats):
         mosaicfile = mosaiccat.replace('.cat.fits', '.fits').replace('catalogues/', '')
-        fieldnames.append(mosaicfile[12:19])
+        fieldnames.append(mosaicfile[9:16])
         print('Adding catalogue: %s (field: %s)' % (mosaiccat, fieldnames[-1]))
         with fits.open(mosaicfile) as f:
             ras.append(f[0].header['CRVAL1'])

@@ -1,0 +1,52 @@
+
+========================================================================
+Tue 22-02-2022 10:03:01:: INFO    : Processing /home/baq1889/scripts/survey/make_catalogues.py
+Tue 22-02-2022 10:03:01:: INFO    : PyBDSF version 1.9.2
+Tue 22-02-2022 10:03:01:: INFO    : Non-default input parameters:
+                                        adaptive_rms_box     = True
+                                        adaptive_thresh      = 150.0
+                                        advanced_opts        = True
+                                        atrous_do            = True
+                                        atrous_jmax          = 4
+                                        filename             = '/home/baq1889/scripts/survey/make_catalogues.py'
+                                        flagging_opts        = True
+                                        frequency            = 54000000.0
+                                        group_tol            = 10.0
+                                        mean_map             = 'zero'
+                                        output_all           = True
+                                        output_opts          = True
+                                        rms_box              = (150, 15)
+                                        rms_box_bright       = (60, 15)
+                                        rms_map              = True
+                                        thresh_isl           = 4.0
+Tue 22-02-2022 10:03:01:: WARNING : VerifyWarning: Error validating header for HDU #0 (note: Astropy uses zero-based indexing).
+                                        Header size is not multiple of 2880: 1447
+                                    There may be extra bytes after the last HDU or the file is corrupted.
+Tue 22-02-2022 10:03:02:: ERROR   : /home/baq1889/scripts/survey/make_catalogues.py cannot be opened as image (expression): Image Expression: Parse error at or near '/'
+                                    Scanned so far: /
+
+========================================================================
+Tue 22-02-2022 10:03:13:: INFO    : Processing /home/baq1889/scripts/survey/make_catalogues.py
+Tue 22-02-2022 10:03:13:: INFO    : PyBDSF version 1.9.2
+Tue 22-02-2022 10:03:13:: INFO    : Non-default input parameters:
+                                        adaptive_rms_box     = True
+                                        adaptive_thresh      = 150.0
+                                        advanced_opts        = True
+                                        atrous_do            = True
+                                        atrous_jmax          = 4
+                                        filename             = '/home/baq1889/scripts/survey/make_catalogues.py'
+                                        flagging_opts        = True
+                                        frequency            = 54000000.0
+                                        group_tol            = 10.0
+                                        mean_map             = 'zero'
+                                        output_all           = True
+                                        output_opts          = True
+                                        rms_box              = (150, 15)
+                                        rms_box_bright       = (60, 15)
+                                        rms_map              = True
+                                        thresh_isl           = 4.0
+Tue 22-02-2022 10:03:13:: WARNING : VerifyWarning: Error validating header for HDU #0 (note: Astropy uses zero-based indexing).
+                                        Header size is not multiple of 2880: 1451
+                                    There may be extra bytes after the last HDU or the file is corrupted.
+Tue 22-02-2022 10:03:14:: ERROR   : /home/baq1889/scripts/survey/make_catalogues.py cannot be opened as image (expression): Image Expression: Parse error at or near '/'
+                                    Scanned so far: /
