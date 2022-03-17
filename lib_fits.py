@@ -32,8 +32,6 @@ import astropy.units as u
 
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_exact
-import warnings
-warnings.filterwarnings('ignore', '.*output shape of zoom.*')
 
 def flatten(filename, channel=0, freqaxis=4, stokes=0, stokesaxis=3):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
