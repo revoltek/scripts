@@ -193,7 +193,7 @@ class AllImages():
             ddec = ref_cat['DEC'][idx_matched_ref] - image.cat['DEC'][idx_matched_img]
             flux = ref_cat['Peak_flux'][idx_matched_ref]
             image.apply_shift(np.average(dra, weights=flux), np.average(ddec, weights=flux))
-            logging.warning(f'{image.imagefile} Applying shift: {3600*np.average(dra, weights=flux):.5f}", {3600*np.average(ddec, weights=flux):.5f}".')
+            logging.info(f'{image.imagefile} Applying shift: {3600*np.average(dra, weights=flux):.5f}", {3600*np.average(ddec, weights=flux):.5f}".')
             # debug output
             matches_lsm = image.cat_lsm.copy()
             matches_lsm.select(idx_match, aggregate=True)
