@@ -8,6 +8,9 @@ import astropy.units as u
 from scipy import special, integrate, interpolate
 import logging as log
 import numpy as np
+import warnings
+# Some strange behavior of the integrand raises annoying warnings - mute them for now...
+warnings.filterwarnings('ignore', category=integrate.IntegrationWarning, append=True)
 
 ### Define constants
 ### Throughout this script, SI units are used!!
