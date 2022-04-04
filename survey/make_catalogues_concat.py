@@ -37,7 +37,7 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
     cat = Table.read(t_this['catalogue'])
     cat_gaus = Table.read(t_this['catalogue_gaus'])
 
-    print('Matching...')
+    print('Matching (%s)...' % t_this['fieldname'])
     idx_match, sep, _ = match_coordinates_sky(SkyCoord(cat['RA'], cat['DEC']), SkyCoord(t_full['RA'], t_full['DEC']))
     # find all idx_match with the same index of the current fieldname and keep only those entry of the catalogue
     initial_len = len(cat)
@@ -189,4 +189,4 @@ if __name__=='__main__':
 
     do_concat(args.mosdir)
 
-# call as e.g. make_catalogues_concat.py --mosdir=./mosaic-i/
+# call as e.g. make_catalogues_concat.py --mosdir=mosaic-i
