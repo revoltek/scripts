@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os,sys, glob, time
+import os,sys, glob, time, re
 import numpy as np
 from astropy.io import fits
 from astropy import units as u
@@ -145,9 +145,9 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
     cat.write(srl_outname, overwrite=True)
     cat_gaus.write(gaus_outname, overwrite=True)
 
-def do_concat(mosdir):
+def do_concat(mosdir, catdir):
 
-    mosaiccats = sorted(glob.glob('%s/catalogues/*cat.fits' % mosdir))
+    mosaiccats = sorted(glob.glob('%s/*cat.fits' % catdir))
     gauscats = [x.replace('cat.fits','gaus.fits') for x in mosaiccats]
 
     # Determine all pointing coordinates
@@ -155,8 +155,9 @@ def do_concat(mosdir):
     ras = []
     decs = []
     for mosaiccat, gauscat in zip(mosaiccats, gauscats):
-        mosaicfile = mosaiccat.replace('.cat.fits', '.fits').replace('catalogues/', '')
-        fieldnames.append(mosaicfile[9:16])
+        mosaicfile = mosdir+'/'+os.path.basename(mosaiccat).replace('.cat.fits', '.fits')
+        #fieldnames.append(mosaicfile[9:16])
+        fieldnames.append( re.findall(r'p\d\d\d\+\d\d', mosaicfile)[0] )
         print('Adding catalogue: %s (field: %s)' % (mosaiccat, fieldnames[-1]))
         with fits.open(mosaicfile) as f:
             ras.append(f[0].header['CRVAL1'])
@@ -185,8 +186,9 @@ if __name__=='__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Concatenate ddf-pipeline mosaic directories')
     parser.add_argument('--mosdir', type=str, help='mosaic directory name')
+    parser.add_argument('--catdir', type=str, help='catalogue directory name')
     args = parser.parse_args()
 
-    do_concat(args.mosdir)
+    do_concat(args.mosdir, args.catdir)
 
-# call as e.g. make_catalogues_concat.py --mosdir=mosaic-i
+# call as e.g. make_catalogues_concat.py --mosdir=mosaic-i --catdir=mosaic-i/catalogues

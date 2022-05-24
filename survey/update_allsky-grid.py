@@ -52,7 +52,7 @@ if not os.path.exists("update_allsky-grid.pickle"):
                         print('Add BAD obs to the list: %s' % (field_id))
                         obs_all.append([field_id,'bad',obs_id,0])
                     else: 
-                        print('Add obs to the list: %s (LST: %f)' % (field_id, lst))
+                        print('Add obs to the list: %s (LST: %f)' % (field_id, lst.hour))
                         obs_all.append([field_id,project,obs_id,lst])
 
     # add manual things:
