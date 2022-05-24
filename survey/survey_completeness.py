@@ -51,7 +51,7 @@ def gaussian(xsize,ysize,x0,y0,sx,sy,pa):
 
 def restore_gaussian(image,norm,x,y,bmaj,bmin,bpa,guard,verbose=False):
     # deal with real image co-ords
-    yd,xd,_,_=np.shape(image)
+    yd,xd=np.shape(image)
     if x is int:
         xp=x
         x=x+0.5
@@ -78,7 +78,7 @@ def restore_gaussian(image,norm,x,y,bmaj,bmin,bpa,guard,verbose=False):
         ymax=yd-1
     x0=x-xmin
     y0=y-ymin
-    image[ymin:ymax,xmin:xmax,0,0]+=norm*gaussian(xmax-xmin,ymax-ymin,x0,y0,bmaj,bmin,bpa)
+    image[ymin:ymax,xmin:xmax]+=norm*gaussian(xmax-xmin,ymax-ymin,x0,y0,bmaj,bmin,bpa)
 
 
 # Add some fake sources to a FITS image and then see if they can be
@@ -142,7 +142,7 @@ for c in range(0,args.iter):
 
     print('Doing iteration #',c)
     fp=fits.open(fitsfile)
-    f=fp[0].data#[0,0]
+    f=fp[0].data[0,0]
     prhd=fp[0].header
     bmaj=prhd.get('BMAJ')
     bmin=prhd.get('BMIN')
@@ -154,7 +154,7 @@ for c in range(0,args.iter):
     if abs(cd1-cd2) > 1E-14:
         print(cd1,cd2,cd1-cd2)
         raise Exception('Pixels are not square')
-    (maxy,maxx,_,_)=f.shape
+    (maxy,maxx)=f.shape
 
     print('File',fn)
     print('BMAJ',bmaj,'BMIN',bmin,'BPA',bpa)
@@ -180,7 +180,7 @@ for c in range(0,args.iter):
         while True:
             x=np.random.random_sample()*maxx
             y=np.random.random_sample()*maxy
-            if not(np.isnan(f[int(y),int(x),0,0])):
+            if not(np.isnan(f[int(y),int(x)])):
                 break
             
         fl=(sms-pnorm*np.random.random())**(1.0/args.index)
@@ -236,7 +236,7 @@ for c in range(0,args.iter):
         plt.show()
 
     if (args.logfile!=None):
-        outfile.write('cycle idx ra dec fv rfv efv')
+        outfile.write('cycle idx ra dec fv rfv efv\n')
         for i in range(sources):
             outfile.write('%i %i %g %g %g %g %g\n' % (c,i, ras[i], decs[i], fv[i], rfv[i], efv[i]))
 
