@@ -10,7 +10,7 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
 
-file_suffix = '-wide-res.fits' # this is used to isolate file names
+file_suffix = '-wide-v.fits' # this is used to isolate file names
 nchans = None
 #file_suffix = '-wide-cube.fits' # this is used to isolate file names
 #nchans = 6
@@ -18,7 +18,7 @@ cutout_size = 3.3 # size of the final cutout [deg]
 beam_size = 3.7 # approx beam RADIUS at the blank point, usually 30% of the beam power [deg]
 grid_file = '../allsky-grid.fits'
 beamdir = '../beams/'
-stokes = 0
+stokes = 1
 
 class Pointing():
 

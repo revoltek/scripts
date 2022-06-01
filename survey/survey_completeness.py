@@ -1,6 +1,24 @@
 #!/usr/bin/env python
 # ~/scripts/survey/survey_completness.py $file -m 1e-3 --logfile=$file-injection.txt -i 20 -n 1500 -I -1.6
 
+# to run on several pointings, collect the residual_gaus from mosaic-i and rms+mean in the same dir and run
+"""
+#!/usr/bin/env python3
+  
+import os, sys, glob
+
+residuals = sorted(glob.glob('*resid_gaus*fits'))
+
+for residual in residuals:
+    print ('Working on %s' % residual)
+    rms = residual.replace('resid_gaus','rmsd_I')
+    mean = residual.replace('resid_gaus','mean_I')
+    output = residual.replace('resid_gaus.fits','injection.txt')
+
+    os.system('~/scripts/survey/survey_completeness.py %s -m 3e-3 --logfile %s -i 20 -n 10000 -I -1.6 --rmsmap %s --meanmap %s' % (residual,output,rms,mean))
+"""
+
+
 from astropy.io import fits
 import sys
 from astropy import wcs
@@ -236,7 +254,7 @@ for c in range(0,args.iter):
         plt.show()
 
     if (args.logfile!=None):
-        outfile.write('cycle idx ra dec fv rfv efv\n')
+        if c == 0: outfile.write('cycle idx ra dec fv rfv efv\n')
         for i in range(sources):
             outfile.write('%i %i %g %g %g %g %g\n' % (c,i, ras[i], decs[i], fv[i], rfv[i], efv[i]))
 
