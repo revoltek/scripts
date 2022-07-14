@@ -171,7 +171,7 @@ class S_model():
         C0 = (z+1)**-2*N0*3**0.5*e**3*B/(8*np.pi*eps0*c*m_e)
         E_min, E_max = 0.5e6*1.60218e-19, 1.e11*1.60218e-19 # eV, TODO: units...
 
-        def integrand(E, alpha):
+        def integrand(logE, alpha):
             """
             Integrand to call
             Parameters
@@ -180,18 +180,18 @@ class S_model():
             alpha: float, impact angle
             """
             try:
-                E = E[:,np.newaxis]
+                logE = logE[:,np.newaxis]
                 alpha = alpha[np.newaxis]
-                result = self.F(nu/nu_c(E,B,alpha))*0.5*np.sin(alpha)**2*n_e(E, iidx, B, t, z)
+                result = np.log(10) * 10**logE * self.F(nu/nu_c(10**logE,B,alpha))*0.5*np.sin(alpha)**2*n_e(10**logE, iidx, B, t, z)
                 result[np.isnan(result)] = 0.0  # case zero times infinity
                 return result
             except (IndexError, TypeError) as e:
                 if alpha == 0.:
                     return 0.
                 else:
-                    return self.F(nu/nu_c(E,B,alpha))*0.5*np.sin(alpha)**2*n_e(E, iidx, B, t, z)
+                    return np.log(10) * 10**logE * self.F(nu/nu_c(10**logE,B,alpha))*0.5*np.sin(alpha)**2*n_e(10**logE, iidx, B, t, z)
 
-        res_quad =  C0 * integrate.dblquad(integrand, 1e-4, np.pi, E_min, E_max, epsrel=self.epsrel)[0] # rough integration
+        res_quad =  C0 * integrate.dblquad(integrand, 1e-4, np.pi, np.log10(E_min), np.log10(E_max), epsrel=self.epsrel)[0] # rough integration
         return res_quad
 
     def evaluate_fermi2_steady_state(self, nu, B, z, q, D_0, N0=1.):
