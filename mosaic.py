@@ -192,7 +192,6 @@ class Direction(Image):
             idx = np.where(sep-sep_med < 7 * sep_mad)
             sep_mad = median_absolute_deviation(sep[idx])
             sep_med = np.median(sep[idx])
-            logging.debug(sep[idx].arcsec)
             logging.debug('SHIFT: Sep Med: %.2f" - MAD: %.2f" (n sources:%i)' % \
                     (sep_med.arcsec, sep_mad.arcsec, len(sep[idx])))
             if np.isnan(sep_mad):

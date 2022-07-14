@@ -1,5 +1,23 @@
 #!/usr/bin/env python
-# ./fakesources-hetdex.py mosaic.fits_resid.fits -m 1e-3 --logfile=test-blanked-results.txt -i 50 -n 6000 -p -I -1.6
+# ~/scripts/survey/survey_completness.py $file -m 1e-3 --logfile=$file-injection.txt -i 20 -n 1500 -I -1.6
+
+# to run on several pointings, collect the residual_gaus from mosaic-i and rms+mean in the same dir and run
+"""
+#!/usr/bin/env python3
+  
+import os, sys, glob
+
+residuals = sorted(glob.glob('*resid_gaus*fits'))
+
+for residual in residuals:
+    print ('Working on %s' % residual)
+    rms = residual.replace('resid_gaus','rmsd_I')
+    mean = residual.replace('resid_gaus','mean_I')
+    output = residual.replace('resid_gaus.fits','injection.txt')
+
+    os.system('~/scripts/survey/survey_completeness.py %s -m 3e-3 --logfile %s -i 20 -n 10000 -I -1.6 --rmsmap %s --meanmap %s' % (residual,output,rms,mean))
+"""
+
 
 from astropy.io import fits
 import sys
@@ -84,13 +102,11 @@ def restore_gaussian(image,norm,x,y,bmaj,bmin,bpa,guard,verbose=False):
 # Add some fake sources to a FITS image and then see if they can be
 # detected with pybdsm
 
-# HETDEX version: use same arguments as Tim did
-
 gfactor=2.0*np.sqrt(2.0*np.log(2.0))
 
 parser = argparse.ArgumentParser(description='Completness testing')
 parser.add_argument('file', metavar='FILE', nargs='+',
-                   help='Root name of file to process')
+                   help='Root name of file to process (a residual image)')
 parser.add_argument('-p','--plot',dest='plot',action='store_const',
                     const=True,default=False,
                     help='Produce diagnostic plots')
@@ -98,13 +114,13 @@ parser.add_argument('-i','--iterations',dest='iter',action='store',
                     type=int, default=1,
                     help='Number of iterations to go through')
 parser.add_argument('-t','--tolerance',dest='toler',action='store',
-                    type=float, default=25.0,
+                    type=float, default=15.0,
                     help='Tolerance for source matches in pixels')
 parser.add_argument('-n','--number',dest='number',action='store',
                     type=int, default=100,
                     help='Number of fake sources to add')
 parser.add_argument('-m','--minimum',dest='min',action='store',
-                    type=float, default=3e-2,
+                    type=float, default=3e-3,
                     help='Minimum flux to use')
 parser.add_argument('-M','--maximum',dest='max',action='store',
                     type=float, default=10,
@@ -118,12 +134,16 @@ parser.add_argument('-s','--smear',dest='smear',action='store',
 parser.add_argument('-l','--logfile',dest='logfile',action='store',
                     default=None,
                     help='File to log results to')
+parser.add_argument('-r','--rmsmap',dest='rmsmap',action='store',
+                    default=None,
+                    help='BDSF RMS map (important to re-use the originally created one as the "empty" image has different rms properties)')
+parser.add_argument('-e','--meanmap',dest='meanmap',action='store',
+                    default=None,
+                    help='BDSF mean map')
 args = parser.parse_args()
 
 fn=args.file[0]
 fitsfile=fn
-rmsmap='mosaic.fits_rms.fits'
-meanmap='mosaic.fits_mean.fits'
 fakefile=re.sub('.fits','.fake.fits',fitsfile)
 
 if (args.plot):
@@ -145,6 +165,7 @@ for c in range(0,args.iter):
     bmaj=prhd.get('BMAJ')
     bmin=prhd.get('BMIN')
     bpa=prhd.get('BPA')
+    restfrq=prhd.get('RESTFRQ')
     w=wcs.WCS(prhd)
     cd1=-w.wcs.cdelt[0]
     cd2=w.wcs.cdelt[1]
@@ -171,7 +192,9 @@ for c in range(0,args.iter):
     fv=np.zeros(sources)
     rfv=np.zeros(sources)
     efv=np.zeros(sources)
-    for i in range(0,sources):
+    ras=np.zeros(sources)
+    decs=np.zeros(sources)
+    for i in range(sources):
         while True:
             x=np.random.random_sample()*maxx
             y=np.random.random_sample()*maxy
@@ -179,27 +202,33 @@ for c in range(0,args.iter):
                 break
             
         fl=(sms-pnorm*np.random.random())**(1.0/args.index)
-        print(i,x,y,fl)
+        #print(i,x,y,fl)
         xp[i]=x
         yp[i]=y
         fv[i]=fl
+        [[ra,dec,_,_]]=w.wcs_pix2world([[x,y,0,0]],0)
+        ras[i] = ra
+        decs[i] = dec
 
         if args.smear > 0:
             restore_gaussian(f,fl*(1-args.smear),x,y,bmaj/np.sqrt(1-args.smear),bmin/np.sqrt(1-args.smear),bpa,guard)
         else:
             restore_gaussian(f,fl,x,y,bmaj,bmin,bpa,guard)
         
-    fp.writeto(fakefile,clobber=True)
+    fp.writeto(fakefile, overwrite=True)
     fp.close()
-    restfrq=54e6 # should work this out from the FITS headers eventually
-    img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(160,50), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=150, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=True,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq, rmsmean_map_filename=[meanmap,rmsmap])
+    #restfrq=54e6 # should work this out from the FITS headers eventually
+    if args.rmsmap and args.meanmap:
+        img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq, rmsmean_map_filename=[args.meanmap,args.rmsmap])
+    else:
+        img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq)
 
     found=[]
         
     for s in img.sources:
         (ra,dec)=s.posn_sky_centroid
-        [[x,y,d,q]]=w.wcs_world2pix([[ra,dec,0,0]],0)
-        #        print x,y,s.total_flux
+        [[x,y,_,_]]=w.wcs_world2pix([[ra,dec,0,0]],0)
+        #print x,y,s.total_flux
         d=np.sqrt((xp-x)**2.0+(yp-y)**2.0)
         i=np.argmin(d)
         fd=abs(fv[i]-s.total_flux)/s.total_fluxE
@@ -225,6 +254,7 @@ for c in range(0,args.iter):
         plt.show()
 
     if (args.logfile!=None):
-        for i in range(0,sources):
-            outfile.write('%i %i %g %g %g\n' % (c,i,fv[i],rfv[i],efv[i]))
+        if c == 0: outfile.write('cycle idx ra dec fv rfv efv\n')
+        for i in range(sources):
+            outfile.write('%i %i %g %g %g %g %g\n' % (c,i, ras[i], decs[i], fv[i], rfv[i], efv[i]))
 

@@ -10,29 +10,34 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
 
-#file_suffix = '-wide-ddc1.fits' # this is used to isolate file names
-#nchans = None
-file_suffix = '-wide-cube.fits' # this is used to isolate file names
-nchans = 6
+file_suffix = '-wide-v.fits' # this is used to isolate file names
+nchans = None
+#file_suffix = '-wide-cube.fits' # this is used to isolate file names
+#nchans = 6
 cutout_size = 3.3 # size of the final cutout [deg]
 beam_size = 3.7 # approx beam RADIUS at the blank point, usually 30% of the beam power [deg]
 grid_file = '../allsky-grid.fits'
 beamdir = '../beams/'
-stokes = 0
+stokes = 1
 
 class Pointing():
 
     def __init__(self, pointing_file, channel=None, stokes=0):
         self.pointing_file = pointing_file
-        if channel:
+        if channel is not None:
             self.beam_file = beamdir+pointing_file.replace(file_suffix,'-beam%04i.fits' % channel)
+            self.output_file = pointing_file.replace(file_suffix,'-mosaic-chan%02i.fits' % channel)
         else:
             self.beam_file = beamdir+pointing_file.replace(file_suffix,'-avgbeam.fits')
+            self.output_file = pointing_file.replace(file_suffix,'-mosaic.fits')
         if not os.path.exists(self.beam_file):
             sys.exit('Missing %s' % self.beam_file)
-        self.output_file = pointing_file.replace(file_suffix,'-mosaic-chan%02i.fits' % channel)
+
         with pyfits.open(pointing_file) as f:
             self.head = f[0].header
+        if channel:
+            assert self.head['CTYPE4']  == 'FREQ'
+            self.head['RESTFREQ'] = self.head['CRVAL4']+self.head['CDELT4']*channel
         ra = self.head['CRVAL1']
         dec = self.head['CRVAL2']
         self.wcs = pywcs(self.head)
@@ -47,7 +52,7 @@ class Pointing():
         print('distances:', grid[grid['dist'] < dist*u.deg])
         
         # track also beam files
-        if self.channel:
+        if self.channel is not None:
             self.beam_closest_files = [beamdir+pointing_closest_file.replace(file_suffix,'-beam%04i.fits' % self.channel) for pointing_closest_file in self.pointing_closest_files]
         else:
             self.beam_closest_files = [beamdir+pointing_closest_file.replace(file_suffix,'-avgbeam.fits') for pointing_closest_file in self.pointing_closest_files]
@@ -93,9 +98,10 @@ grid = grid[selection]
 print('Restricting to %i pointings.' % len(grid))
 
 # list of pointings to mosaic
-for pointing_file in pointing_files:
-    if nchans:
-        for chan in range(nchans):
+if nchans:
+    for chan in range(nchans):
+        os.system('rm *__beam.fits') # be sure we do not re-use the old beam
+        for pointing_file in pointing_files:
             pointing = Pointing(pointing_file, channel=chan, stokes=stokes)
             if not os.path.exists(pointing.output_file):
                 # get the closest (assuming worst case: perfectly diagonally aligned pointings)
@@ -103,10 +109,12 @@ for pointing_file in pointing_files:
                 pointing.add_closest(dist)
                 pointing.make_empty_mosaic()
                 pointing.mosaic()
-    else:
+else:
+    for pointing_file in pointing_files:
         pointing = Pointing(pointing_file, channel=None, stokes=stokes)
         if not os.path.exists(pointing.output_file):
             # get the closest (assuming worst case: perfectly diagonally aligned pointings)
             dist = np.sqrt(2.)/2*cutout_size+beam_size
             pointing.add_closest(dist)
             pointing.make_empty_mosaic()
+            pointing.mosaic()
