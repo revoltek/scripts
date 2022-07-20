@@ -18,8 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #./fitscutout.py fitsfile [set position and size below]
-position = (4776, 3266) # pixel
-size = (700, 700) # pixel
+position = (1178, 1164) # pixel
+size = (1852, 1882) # pixel
 
 import os, sys
 from astropy.io import fits
