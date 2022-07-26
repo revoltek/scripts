@@ -46,7 +46,7 @@ class Schedule():
                          ### number of MPI tasks per node
                          #SBATCH --ntasks-per-node=1
                          ### number of openmp threads
-                         #SBATCH --cpus-per-task=32
+                         #SBATCH --cpus-per-task=36
                          #SBATCH --time=72:00:00
                          #SBATCH -o %s
                          rm -r /local/work/fdg/*
