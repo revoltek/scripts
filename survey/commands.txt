@@ -1,4 +1,0 @@
-#rename:
-#for file in *.png; do mv "$file" "${file/_h.png/_half.png}"; done
-
-~/LiLF/scripts/makepb.py -k -o test -p 60 -n 6 xxx/mss-avg/*
