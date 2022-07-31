@@ -3,7 +3,7 @@
 import os, sys, glob
 from LiLF.surveys_db import SurveysDB
 
-dir_run = '/data/LBAsurvey'
+dir_run = '~/storage/surveycals/done'
 
 def calibrator_tables_available(sdb, obsid):
     """
