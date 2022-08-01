@@ -47,7 +47,7 @@ class Schedule():
                          #SBATCH --ntasks-per-node=1
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
-                         #SBATCH --time=4:00:00
+                         #SBATCH --time=5:00:00
                          #SBATCH -o %s
                          rm -r /local/work/fdg/*
                          mkdir /local/work/fdg/cal
