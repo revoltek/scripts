@@ -19,4 +19,4 @@ obsid = tgt['obsid']
 
 for c,o in zip(cycle[0], obsid[0]):
     if c == b'' or c == b'bad' or c == b'bug': continue
-    os.system('~/LiLF/scripts/LOFAR_stager.py -o %i -p %s -t %s' % (o,c.decode("utf-8"),args.target))
+    os.system('~/LiLF/scripts/LOFAR_stager.py --obsID %i -t %s' % (o,args.target))
