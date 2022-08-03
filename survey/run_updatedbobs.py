@@ -3,7 +3,7 @@
 # At the same time set to "Observed" all fields that have at least 3 observed hours
 
 import os, sys, argparse, re
-from surveys_db import SurveysDB
+from LiLF.surveys_db import SurveysDB
 from astropy.table import Table
 import numpy as np
 
