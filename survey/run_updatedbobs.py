@@ -4,6 +4,7 @@
 
 import os, sys, argparse, re
 from surveys_db import SurveysDB
+from astropy.table import Table
 import numpy as np
 
 gridfile = 'allsky-grid.fits'
@@ -61,48 +62,63 @@ with SurveysDB(survey='lba',readonly=True) as sdb:
     obs_to_skip = [ x['obs_id'] for x in sdb.cur.fetchall() ]
 print('The following obs are already in the DB:', obs_to_skip)
 
-id_all={}
+grid = Table.read('allsky-grid.fits')
+
 with SurveysDB(survey='lba',readonly=False) as sdb:
-    for project in projects:
-        print('Checking project: %s' % project)
-        query_observations = Observation.select_all().project_only(project)
-        for observation in query_observations:
-            obs_id = int(observation.observationId)
-            id_all[obs_id]=[]
+    for field in grid:
+        field_id = field['name']
+        nobs = field['hrs']
+        for obs_id, cycle in zip(field['obsid'],field['cycle']):
+            if obs_id != 0 and cycle != 'bad' and cycle != 'bug' and not obs_id in obs_to_skip:
+                print('Add to the db: %i -> %s' % (obs_id, field_id))
+                sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id))
+            if nobs >= 3:
+                print("%s: set as observed (%i)" % (field_id, nobs))
+                sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
+                if nobs > 7:
+                    sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
+                else:
+                    sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
 
-            # this is faster but doesn't allow to count how many obs per target are available and may result
-            # in not setting a target as "Observed" below
-            if skip_obs and obs_id in obs_to_skip: continue
-
-            print('Checking obs_id: %i' % obs_id)
-            dataproduct_query = CorrelatedDataProduct.observations.contains(observation)
-            # isValid = 1 means there should be an associated URI
-            dataproduct_query &= CorrelatedDataProduct.isValid == 1
-            dataproduct_query &= CorrelatedDataProduct.minimumFrequency >= 59
-            dataproduct_query &= CorrelatedDataProduct.maximumFrequency <= 59.3
-            for i, dataproduct in enumerate(dataproduct_query):
-                # apply selections
-                field_id = dataproduct.subArrayPointing.targetName.split('_')[-1]
-                time = dataproduct.subArrayPointing.startTime
-                if not obs_id in obs_to_skip: # prevent multiple entries
-                    print('Add to the db: %i -> %s' % (obs_id, field_id))
-                    sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id))
-                id_all[obs_id].append(field_id)
-
-#print (id_all)
-field_id_all = []
-for obs_id, field_id in id_all.items():
-    field_id_all += field_id
-
-#print (field_id_all)
-with SurveysDB(survey='lba',readonly=False) as sdb:
-    for field_id in set(field_id_all):
-        nobs = field_id_all.count(field_id)
-        # 3 hrs are the minimum to have an observation marked as "Observed"
-        if nobs >= 3:
-            print("Set %s as observed (%i)" % (field_id, nobs))
-            sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
-            if nobs == 8:
-                sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
-            else:
-                sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
+#with SurveysDB(survey='lba',readonly=False) as sdb:
+#    for project in projects:
+#        print('Checking project: %s' % project)
+#        query_observations = Observation.select_all().project_only(project)
+#        for observation in query_observations:
+#            obs_id = int(observation.observationId)
+#            id_all[obs_id]=[]
+#
+#            # this is faster but doesn't allow to count how many obs per target are available and may result
+#            # in not setting a target as "Observed" below
+#            if skip_obs and obs_id in obs_to_skip: continue
+#
+#            print('Checking obs_id: %i' % obs_id)
+#            dataproduct_query = CorrelatedDataProduct.observations.contains(observation)
+#            # isValid = 1 means there should be an associated URI
+#            dataproduct_query &= CorrelatedDataProduct.isValid == 1
+#            dataproduct_query &= CorrelatedDataProduct.minimumFrequency >= 59
+#            dataproduct_query &= CorrelatedDataProduct.maximumFrequency <= 59.3
+#            for i, dataproduct in enumerate(dataproduct_query):
+#                # apply selections
+#                field_id = dataproduct.subArrayPointing.targetName.split('_')[-1]
+#                time = dataproduct.subArrayPointing.startTime
+#                if not obs_id in obs_to_skip: # prevent multiple entries
+#                    print('Add to the db: %i -> %s' % (obs_id, field_id))
+#                    sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id))
+#                id_all[obs_id].append(field_id)
+#
+#field_id_all = []
+#for obs_id, field_id in id_all.items():
+#    field_id_all += field_id
+#
+#with SurveysDB(survey='lba',readonly=False) as sdb:
+#    for field_id in set(field_id_all):
+#        nobs = 
+#        # 3 hrs are the minimum to have an observation marked as "Observed"
+#        if nobs >= 3:
+#            print("Set %s as observed (%i)" % (field_id, nobs))
+#            sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
+#            if nobs > 7:
+#                sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
+#            else:
+#                sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
