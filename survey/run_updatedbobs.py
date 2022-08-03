@@ -69,16 +69,16 @@ with SurveysDB(survey='lba',readonly=False) as sdb:
         field_id = field['name']
         nobs = field['hrs']
         for obs_id, cycle in zip(field['obsid'],field['cycle']):
-            if obs_id != 0 and cycle != 'bad' and cycle != 'bug' and not obs_id in obs_to_skip:
-                print('Add to the db: %i -> %s' % (obs_id, field_id))
+            if obs_id != 0 and cycle != b'bad' and cycle != b'bug' and not obs_id in obs_to_skip:
+                print('Add to the db: %i -> %s (%s)' % (obs_id, field_id, cycle))
                 sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id))
-            if nobs >= 3:
-                print("%s: set as observed (%i)" % (field_id, nobs))
-                sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
-                if nobs > 7:
-                    sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
-                else:
-                    sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
+        if nobs >= 3:
+            print("%s: set as observed (%i)" % (field_id, nobs))
+            sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
+            if nobs > 7:
+                sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
+            else:
+                sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
 
 #with SurveysDB(survey='lba',readonly=False) as sdb:
 #    for project in projects:
