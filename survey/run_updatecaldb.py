@@ -3,7 +3,8 @@
 import os, sys, glob
 from LiLF.surveys_db import SurveysDB
 
-dir_run = '~/storage/surveycals/done'
+dir_run = '/homes/fdg/storage/surveycals/done'
+cals = glob.glob(dir_run+'/id*')
 
 def calibrator_tables_available(sdb, obsid):
     """
@@ -16,7 +17,7 @@ def calibrator_tables_available(sdb, obsid):
 
 # copy solutions in the repository
 with SurveysDB(survey='lba',readonly=False) as sdb:
-    for cal in glob.glob(dir_run+'/id*'):
+    for cal in cals:
         print('Working on %s...' % cal)
         obsid = int(cal.split('_-_')[0].split('/')[-1][2:])
         if not calibrator_tables_available(sdb, obsid):
