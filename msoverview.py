@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2019 - Francesco de Gasperin
@@ -33,9 +33,9 @@ def get_obs(ms):
 def get_timestep(ms):
     with pt.table(ms, ack = False) as t:
         times = sorted(set(t.getcol('TIME')))
-    print("%s: Time step %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
+    print("%s: Time step: %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
     time = Time( times[0]/86400, format='mjd')
-    print("%s: Starting time %s" % (ms, str(time.iso)))
+    print("%s: Starting time: %s" % (ms, str(time.iso)))
 
 def get_freq(ms):
     """
@@ -58,10 +58,8 @@ def get_uvw(ms):
         wavelength = 2.99e8 / np.mean(t.SPECTRAL_WINDOW[0]['CHAN_FREQ'])
         uvw = np.linalg.norm(uvw, axis=1)
         minuv, maxuv = uvw.min(), uvw.max()
-        print(f"%s: uv-range %.0f m - %.0f m" % (ms, minuv, maxuv))
-        print(f"%s: uv-range %.0f lambda - %.0f lambda" % (ms, minuv/wavelength, maxuv/wavelength))
-
-
+        print(f"%s: uv-range: %.0f m - %.0f m" % (ms, minuv, maxuv))
+        print(f"%s: uv-range: %.0f lambda - %.0f lambda" % (ms, minuv/wavelength, maxuv/wavelength))
 
 def get_dir(ms):
     """

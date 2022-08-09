@@ -7,7 +7,7 @@ import string, random, glob, time
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-singularity_img = '/homes/fdg/storage/pill-20220720.simg'
+singularity_img = '/homes/fdg/storage/pill.simg'
 singularity_cmd = 'singularity run --pid --writable-tmpfs --containall --cleanenv -B/homes/fdg:/homes/fdg,/local/work/fdg:/local/work/fdg,/iranet/lofarfs2/lofar2/fdg:/iranet/lofarfs2/lofar2/fdg '+singularity_img
 
 dir_storage_cals = '/iranet/lofarfs2/lofar2/fdg/surveycals'
@@ -58,12 +58,25 @@ class Schedule():
                          """ % (self.file_sbatch+".log", dir_orig, singularity_img, dir_dest)
             content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
 
-        elif mode == 'self':
-            pass
+        elif mode == 'pill':
 
-        elif mode == 'dd':
-            pass
+            content = """#!/bin/bash
+                         #SBATCH --nodes=1
+                         ### number of hyperthreading threads
+                         #SBATCH --ntasks-per-core=1
+                         ### number of MPI tasks per node
+                         #SBATCH --ntasks-per-node=1
+                         ### number of openmp threads
+                         #SBATCH --cpus-per-task=36
+                         #SBATCH --time=200:00:00
+                         #SBATCH -o %s
+                         rm -r /local/work/fdg/*
+                         xxx
+                         rm -r /local/work/fdg/*
+                         """ % (self.file_sbatch+".log", dir_orig, singularity_img, dir_dest)
+            content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
 
+ 
         with open(self.file_sbatch, 'w') as f:
             f.write(content)
 
@@ -93,6 +106,12 @@ for i, dir_orig in enumerate(all_cals):
     if i < 50:
         time.sleep(60)
 
-# tgts self
+# tgts
+for i in range(10):
+    c = Schedule(name=dir_orig.split('/')[-1])
+    c.prepare_sbatch('pill')
+    c.submit()
 
-# tgts dd-cal
+    # separate initial calls so initial cp is diluted
+    if i < 24:
+        time.sleep(3600)
