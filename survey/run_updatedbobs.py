@@ -61,9 +61,12 @@ if args.updatedb:
                 print("%s: set as observed (%i)" % (field_id, nobs))
                 sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
                 if nobs > 7:
-                    sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
+                    sdb.execute('UPDATE fields SET priority=3 WHERE id="%s"' % (field_id))
                 else:
-                    sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
+                    if field['distAteam'] < 15:
+                        sdb.execute('UPDATE fields SET priority=2 WHERE id="%s"' % (field_id))
+                    else:
+                        sdb.execute('UPDATE fields SET priority=1 WHERE id="%s"' % (field_id))
     sys.exit()
 
 # default: show the db
