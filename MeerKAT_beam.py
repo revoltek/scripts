@@ -4,6 +4,7 @@
 import os,sys
 from astropy.io import fits
 import numpy as np
+import argparse
 
 parser = argparse.ArgumentParser(description='Save/Correct MeerKAT primary beam.')
 parser.add_argument('--savecorr', dest='savecorr', action='store_true', help='Save a beam corrected file (defailt: False)')
@@ -59,9 +60,9 @@ def get_beam(data, header):
         return MKCosBeam(rho, nu)
 
     beam = np.fromfunction(beam_creator, [data.shape[2],data.shape[3]])
-    return [[beam]]
+    return np.array([[beam]])
 
-for fits_file in sys.argv[1:]:
+for fits_file in args.images:
     # read
     print('Work on: %s' % fits_file)
     with fits.open(fits_file, readonly=True) as f:
@@ -69,7 +70,7 @@ for fits_file in sys.argv[1:]:
         data = f[0].data
         header = f[0].header
         beam = get_beam(data, header)
-        if args.corrbeam:
+        if args.savecorr:
             data = data/beam
             # write
             fits_output = fits_file.replace('.fits','_'+args.outputcorr+'.fits')
