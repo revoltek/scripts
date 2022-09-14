@@ -53,7 +53,7 @@ class Schedule():
                          mkdir /local/work/fdg/cal
                          echo -e "[LOFAR_cal]\ndata_dir=%s\n" > /local/work/fdg/lilf.config
                          singularity exec --cleanenv --pwd /local/work/fdg/cal --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs --containall -B/homes/fdg,/local/work/fdg,/iranet/lofarfs2/lofar2/fdg %s /homes/fdg/storage/LiLF/pipelines/LOFAR_cal.py
-                         mv /local/work/fdg/cal/plots* /local/work/fdg/cal/cal*h5 /local/work/fdg/cal/*logger /local/work/fdg/cal/logs %s
+                         mv /local/work/fdg/cal/plots* /local/work/fdg/cal/cal*h5 /local/work/fdg/cal/*logger /local/work/fdg/cal/logs* %s
                          rm -r /local/work/fdg/*
                          """ % (self.file_sbatch+".log", dir_orig, singularity_img, dir_dest)
             content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
@@ -85,7 +85,8 @@ class Schedule():
 all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
 logging.info('Setting up %i jobs.' % len(all_cals))
 
-for i, dir_orig in enumerate(all_cals):
+i=0
+for dir_orig in all_cals:
     dir_dest = dir_orig.replace('download/mss','done')
     if not os.path.exists(dir_dest):
         os.makedirs(dir_dest)
@@ -103,15 +104,16 @@ for i, dir_orig in enumerate(all_cals):
     c.submit()
 
     # separate initial calls so initial cp is diluted
-    if i < 50:
-        time.sleep(60)
+    if i < 24:
+        time.sleep(120)
+    i+=1
 
 # tgts
-for i in range(10):
-    c = Schedule(name=dir_orig.split('/')[-1])
-    c.prepare_sbatch('pill')
-    c.submit()
-
-    # separate initial calls so initial cp is diluted
-    if i < 24:
-        time.sleep(3600)
+#for i in range(10):
+#    c = Schedule(name=dir_orig.split('/')[-1])
+#    c.prepare_sbatch('pill')
+#    c.submit()
+#
+#    # separate initial calls so initial cp is diluted
+#    if i < 24:
+#        time.sleep(3600)

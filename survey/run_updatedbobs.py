@@ -48,24 +48,38 @@ if args.updatedb:
     print('The following obs are already in the DB:', obs_to_skip)
     
     grid = Table.read('allsky-grid.fits')
+
     
     with SurveysDB(survey='lba',readonly=False) as sdb:
         for field in grid:
             field_id = field['name']
             nobs = field['hrs']
-            for obs_id, cycle in zip(field['obsid'],field['cycle']):
+            for obs_id, cycle, antset in zip(field['obsid'],field['cycle'],field['antset']):
                 if obs_id != 0 and cycle != b'bad' and cycle != b'bug' and not obs_id in obs_to_skip:
-                    print('Add to the db: %i -> %s (%s)' % (obs_id, field_id, cycle))
-                    sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id))
-            if nobs >= 3:
+                    # select sparse
+                    if 'Sparse' in antset:
+                        print('Add to the db: %i -> %s (%s)' % (obs_id, field_id+'s', cycle))
+                        sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id+'s'))
+                    # select outer
+                    elif 'Outer' in antset:
+                        print('Add to the db: %i -> %s (%s)' % (obs_id, field_id+'o', cycle))
+                        sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id+'o'))
+            nobs_s = sum(field['antset'] == 'LBA Sparse Even')
+            nobs_o = sum(field['antset'] == 'LBA Outer')
+            if nobs_s >= 3 or nobs_o >= 3:
                 if nobs > 7:
                     priority = 3
                 else:
                     if field['distAteam'] < 15: priority = 2
                     else: priority = 1
-                print("%s: set as observed (%i hr - priority: %i)" % (field_id, nobs, priority))
-                sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id))
-                sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (priority,field_id))
+                if nobs_s >= 3:
+                    print("%s: set as observed (%i hr - priority: %i)" % (field_id+'s', nobs_s, priority))
+                    sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id+'s'))
+                    sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (priority,field_id+'s'))
+                if nobs_o >= 3:
+                    print("%s: set as observed (%i hr - priority: %i)" % (field_id+'o', nobs_o, priority))
+                    sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id+'o'))
+                    sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (priority,field_id+'o'))
     sys.exit()
 
 # default: show the db

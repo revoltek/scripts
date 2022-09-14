@@ -8,7 +8,8 @@ cals = glob.glob(dir_run+'/id*')
 
 def calibrator_tables_available(sdb, obsid):
     """
-    check if calibrator data exist in the database
+    Check if calibrator data exist in the database
+    To remove all entries in the db: "DELETE from observations"
     """
     sdb.execute('SELECT * FROM observations WHERE id=%f' % obsid)
     r = sdb.cur.fetchall()
