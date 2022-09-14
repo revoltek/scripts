@@ -54,6 +54,7 @@ if not os.path.exists("update_allsky-grid.pickle"):
                     # find HA
                     astrotime = Time(time, format='datetime', scale='utc')
                     lst = astrotime.sidereal_time('mean', lofar_location.lon)
+
                     if time.year == 2021 and ( (time.month==2 and time.day>=8) or (time.month>2 and time.month<8) or ( time.month==8 and time.day<=3) ):
                         print('Add BUG obs to the list: %s' % (field_id))
                         obs_all.append([field_id,'bug',obs_id,0,antennaset])
@@ -61,7 +62,6 @@ if not os.path.exists("update_allsky-grid.pickle"):
                         print('Add BAD obs to the list: %s' % (field_id))
                         obs_all.append([field_id,'bad',obs_id,0,antennaset])
                     else: 
-                        if field_id == 'PP033+66': field_id = 'P033+66' # has a wrong name in LTA
                         print('Add obs to the list: %s (LST: %f)' % (field_id, lst.hour))
                         obs_all.append([field_id,project,obs_id,lst,antennaset])
 
@@ -96,6 +96,12 @@ grid['LST'] = None
 grid['antset'] = ''
 for obs in obs_all:
     obs[0] = obs[0].strip()
+    # fix some name errors
+    if obs[0] == 'PP033+66': obs[0] = 'P033+66' # has a wrong name in LTA
+    if obs[0] == 'PP219+37': obs[0] = 'P219+37' # has a wrong name in LTA
+    if obs[0] == '094+59': obs[0] = 'P094+59' # has a wrong name in LTA
+    if obs[0] == 'P142+49': obs[0] = 'P142+42' # has a wrong name in LTA
+
     try:
         idx = np.where(grid['name'] == obs[0].upper())[0][0]
     except:

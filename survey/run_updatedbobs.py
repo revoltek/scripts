@@ -48,14 +48,14 @@ if args.updatedb:
     print('The following obs are already in the DB:', obs_to_skip)
     
     grid = Table.read('allsky-grid.fits')
-
+    grid.convert_bytestring_to_unicode()
     
     with SurveysDB(survey='lba',readonly=False) as sdb:
         for field in grid:
             field_id = field['name']
             nobs = field['hrs']
             for obs_id, cycle, antset in zip(field['obsid'],field['cycle'],field['antset']):
-                if obs_id != 0 and cycle != b'bad' and cycle != b'bug' and not obs_id in obs_to_skip:
+                if obs_id != 0 and cycle != 'bad' and cycle != 'bug' and not obs_id in obs_to_skip:
                     # select sparse
                     if 'Sparse' in antset:
                         print('Add to the db: %i -> %s (%s)' % (obs_id, field_id+'s', cycle))
@@ -64,8 +64,8 @@ if args.updatedb:
                     elif 'Outer' in antset:
                         print('Add to the db: %i -> %s (%s)' % (obs_id, field_id+'o', cycle))
                         sdb.execute('INSERT INTO field_obs (obs_id,field_id) VALUES (%i,"%s")' % (obs_id, field_id+'o'))
-            nobs_s = sum(field['antset'] == 'LBA Sparse Even')
-            nobs_o = sum(field['antset'] == 'LBA Outer')
+            nobs_s = np.sum(field['antset'][(field['cycle'] != 'bad') & (field['cycle'] != 'bug')] == 'LBA Sparse Even')
+            nobs_o = np.sum(field['antset'][(field['cycle'] != 'bad') & (field['cycle'] != 'bug')] == 'LBA Outer')
             if nobs_s >= 3 or nobs_o >= 3:
                 if nobs > 7:
                     priority = 3
