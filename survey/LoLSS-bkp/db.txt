@@ -1,4 +1,4 @@
-MariaDB [lba]> show columns in field;
+MariaDB [lba]> show columns in fields;
 +------------------+--------------+------+-----+---------+-------+
 | Field            | Type         | Null | Key | Default | Extra |
 +------------------+--------------+------+-----+---------+-------+
@@ -17,6 +17,8 @@ MariaDB [lba]> show columns in field;
 | gal_b            | float        | YES  |     | NULL    |       |
 | lotss_field      | int(11)      | YES  |     | NULL    |       |
 | proprietary_date | datetime     | YES  |     | NULL    |       |
+| noise            | float        | YES  |     | NULL    |       |
+| nvss_ratio       | float        | YES  |     | NULL    |       |
 +------------------+--------------+------+-----+---------+-------+
 15 rows in set (0.01 sec)
 
