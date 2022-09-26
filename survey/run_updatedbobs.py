@@ -92,7 +92,11 @@ with SurveysDB(survey='lba',readonly=True) as sdb:
         hrs = sum(np.array(all_fields) == entry['id'])
         print('%03i) ID: %s - %i hrs (%s - priority: %i)' % (i, entry['id'], hrs, entry['status'], entry['priority']))
     print("############################")
-    sdb.execute('SELECT id,status,clustername,nodename FROM fields WHERE status!="Observed" and status!="Not started"')
+    sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio FROM fields WHERE status!="Observed" and status!="Not started"')
     r = sdb.cur.fetchall()
     for i, entry in enumerate(r):
-        print('%03i) ID: %s (%s - %s: %s)' % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename']))
+        if entry['status'] == 'Done':
+            print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f' \
+                    % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio']))
+        else:
+            print('%03i) ID: %s (%s - %s: %s)' % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename']))

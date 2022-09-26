@@ -70,18 +70,37 @@ if not os.path.exists("update_allsky-grid.pickle"):
     # add manual things:
 
     # Commissioning obs on SPARSE 12/2020
-    commissioning_obs = {800556:['P184+37','P187+40','P188+35'],
-                         800546:['P182+35','P187+37','P191+40'],
-                         800536:['P184+40','P185+35','P190+37'],
-                         800586:['P182+35','P187+37','P191+40'],
-                         800576:['P184+40','P185+35','P190+37'],
-                         800566:['P184+37','P187+40','P188+35'],
-                         800616:['P184+40','P185+35','P190+37'],
-                         800606:['P184+37','P187+40','P188+35'],
-                         800596:['P182+35','P187+37','P191+40']}
+    commissioning_obs = {800556: [['P184+37', 'P187+40', 'P188+35'],
+  [184.0686541666666, 187.9613333333333, 188.88933333333333],
+  [37.22016916666666, 39.75032611111111, 34.73559944444445]],
+ 800546: [['P182+35', 'P187+37', 'P191+40'],
+  [182.59013333333328, 187.32009166666663, 191.3290916666666],
+  [34.70261472222222, 37.23719777777778, 39.768018611111124]],
+ 800536: [['P184+40', 'P185+35', 'P190+37'],
+  [184.5944541666666, 185.73941249999996, 190.5722375],
+  [39.73269083333333, 34.7190913888889, 37.25426666666666]],
+ 800586: [['P182+35', 'P187+37', 'P191+40'],
+  [182.59013333333328, 187.32009166666663, 191.3290916666666],
+  [34.70261472222222, 37.23719777777778, 39.768018611111124]],
+ 800576: [['P184+40', 'P185+35', 'P190+37'],
+  [184.5944541666666, 185.73941249999996, 190.5722375],
+  [39.73269083333333, 34.7190913888889, 37.25426666666666]],
+ 800566: [['P184+37', 'P187+40', 'P188+35'],
+  [184.0686541666666, 187.9613333333333, 188.88933333333333],
+  [37.22016916666666, 39.75032611111111, 34.73559944444445]],
+ 800616: [['P184+40', 'P185+35', 'P190+37'],
+  [184.5944541666666, 185.73941249999996, 190.5722375],
+  [39.73269083333333, 34.7190913888889, 37.25426666666666]],
+ 800606: [['P184+37', 'P187+40', 'P188+35'],
+  [184.0686541666666, 187.9613333333333, 188.88933333333333],
+  [37.22016916666666, 39.75032611111111, 34.73559944444445]],
+ 800596: [['P182+35', 'P187+37', 'P191+40'],
+  [182.59013333333328, 187.32009166666663, 191.3290916666666],
+  [34.70261472222222, 37.23719777777778, 39.768018611111124]]}
+
     for obs_id in commissioning_obs.keys():
-        for obs in commissioning_obs[obs_id]:
-            obs_all.append([obs,'comm2020',obs_id,-1,'LBA Sparse Even'])
+        for obs,ra,dec in zip(commissioning_obs[obs_id][0],commissioning_obs[obs_id][1],commissioning_obs[obs_id][2]):
+            obs_all.append([obs,'comm2020',obs_id,-1,'LBA Sparse Even',ra,dec])
 
     pickle.dump(obs_all, open( "update_allsky-grid.pickle", "wb" ))
 
@@ -109,6 +128,12 @@ for obs in obs_all:
     except:
         print('WARNING: missing %s in the grid' % obs)
         continue
+
+    dist = SkyCoord(grid['ra'][idx]*u.deg,grid['dec'][idx]*u.deg).separation(SkyCoord(obs[5]*u.deg,obs[6]*u.deg))
+    if dist > 1*u.arcmin:
+        print('WARNING: wrong coord for %s (should be: %f %f - it is: %f %f)' % (obs[0],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
+        continue
+
     if not obs[1] == 'bug' and not obs[1] == 'bad': grid['hrs'][idx] += 1
     idxcell = list(grid['obsid'][idx]).index(0)
     #print(obs,idxcell)
@@ -119,8 +144,6 @@ for obs in obs_all:
         grid['LST'][idx][idxcell] = obs[3].hour
     except:
         grid['LST'][idx][idxcell] = 0
-    dist = SkyCoord(grid['ra'][idx]*u.deg,grid['dec'][idx]*u.deg).separation(SkyCoord(obs[5]*u.deg,obs[6]*u.deg))
-    if dist > 1*u.arcmin:
-        print('WARNING: wrong coord for %s (should be: %f %f - it is: %f %f)' % (obs[0],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
+
 
 grid.write('allsky-grid.fits', overwrite=True)

@@ -19,6 +19,8 @@ MariaDB [lba]> show columns in fields;
 | proprietary_date | datetime     | YES  |     | NULL    |       |
 | noise            | float        | YES  |     | NULL    |       |
 | nvss_ratio       | float        | YES  |     | NULL    |       |
+| nvss_match       | int          | YES  |     | NULL    |       |
+| flag_frac        | float        | YES  |     | NULL    |       |
 +------------------+--------------+------+-----+---------+-------+
 15 rows in set (0.01 sec)
 
