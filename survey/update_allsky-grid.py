@@ -13,7 +13,7 @@ iers.IERS_A_URL='https://maia.usno.navy.mil/ser7/finals2000A.all'
 iers_a = iers.IERS_A.open(iers.IERS_A_URL)
 iers.earth_orientation_table.set(iers_a)
 from astropy.table import Table
-from astropy.coordinates import EarthLocation
+from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.time import Time
 import astropy.units as u
 
@@ -29,7 +29,7 @@ bad_obs_ids += [2002720,2002893,2002900,2003137,2003474,2003537,2004173,2004180,
 
 # The class of data to query
 cls = CorrelatedDataProduct
-re_cal = re.compile('.*3[c|C](196|295|380).*')
+re_cal = re.compile('.*3[c|C](196|296|295|380).*') # 3c296 is a typo in LTA
 
 if not os.path.exists("update_allsky-grid.pickle"):
     obs_all = []
@@ -44,6 +44,8 @@ if not os.path.exists("update_allsky-grid.pickle"):
                 for subarray in observation.subArrayPointings:
                     subarray_dict = subarray.as_dict()
                     field_id = subarray_dict['SubArrayPointing.targetName'].split('_')[-1]
+                    field_ra = subarray_dict['SubArrayPointing.pointing.rightAscension']
+                    field_dec = subarray_dict['SubArrayPointing.pointing.declination']
 
                     # ignore calibrators
                     if re_cal.match(field_id):
@@ -57,13 +59,13 @@ if not os.path.exists("update_allsky-grid.pickle"):
 
                     if time.year == 2021 and ( (time.month==2 and time.day>=8) or (time.month>2 and time.month<8) or ( time.month==8 and time.day<=3) ):
                         print('Add BUG obs to the list: %s' % (field_id))
-                        obs_all.append([field_id,'bug',obs_id,0,antennaset])
+                        obs_all.append([field_id,'bug',obs_id,0,antennaset,field_ra,field_dec])
                     elif obs_id in bad_obs_ids:
                         print('Add BAD obs to the list: %s' % (field_id))
-                        obs_all.append([field_id,'bad',obs_id,0,antennaset])
+                        obs_all.append([field_id,'bad',obs_id,0,antennaset,field_ra,field_dec])
                     else: 
                         print('Add obs to the list: %s (LST: %f)' % (field_id, lst.hour))
-                        obs_all.append([field_id,project,obs_id,lst,antennaset])
+                        obs_all.append([field_id,project,obs_id,lst,antennaset,field_ra,field_dec])
 
     # add manual things:
 
@@ -117,5 +119,8 @@ for obs in obs_all:
         grid['LST'][idx][idxcell] = obs[3].hour
     except:
         grid['LST'][idx][idxcell] = 0
+    dist = SkyCoord(grid['ra'][idx]*u.deg,grid['dec'][idx]*u.deg).separation(SkyCoord(obs[5]*u.deg,obs[6]*u.deg))
+    if dist > 1*u.arcmin:
+        print('WARNING: wrong coord for %s (should be: %f %f - it is: %f %f)' % (obs[0],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
 
 grid.write('allsky-grid.fits', overwrite=True)
