@@ -126,12 +126,13 @@ for obs in obs_all:
     try:
         idx = np.where(grid['name'] == obs[0].upper())[0][0]
     except:
-        print('WARNING: missing %s in the grid' % obs)
+        if obs[0] != 'Coma':
+            print('WARNING: missing %s in the grid' % obs)
         continue
 
     dist = SkyCoord(grid['ra'][idx]*u.deg,grid['dec'][idx]*u.deg).separation(SkyCoord(obs[5]*u.deg,obs[6]*u.deg))
     if dist > 1*u.arcmin:
-        print('WARNING: wrong coord for %s (should be: %f %f - it is: %f %f)' % (obs[0],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
+        print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f)' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
         continue
 
     if not obs[1] == 'bug' and not obs[1] == 'bad': grid['hrs'][idx] += 1
