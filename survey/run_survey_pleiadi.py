@@ -73,9 +73,10 @@ class Scheduler():
                          rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg/
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL.py
+                         tar zcf mss.tgz mss-avg
                          target=`cat target.txt | cut -d "," -f 0`
                          mkdir -p {dir_storage_tgts}/$target
-                         mv /local/work/fdg/$target/mss-avg /local/work/fdg/$target/ddcal {dir_storage_tgts}/$target
+                         mv /local/work/fdg/$target/mss.tgz {dir_storage_tgts}/$target
                          #rm -r /local/work/fdg/*
                          """
             content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
