@@ -96,7 +96,6 @@ with SurveysDB(survey='lba',readonly=True) as sdb:
     r = sdb.cur.fetchall()
     for i, entry in enumerate(r):
         if entry['status'] == 'Done':
-            print(entry)
             print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
                     % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
         else:
