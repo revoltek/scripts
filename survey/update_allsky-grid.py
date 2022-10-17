@@ -17,7 +17,7 @@ from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.time import Time
 import astropy.units as u
 
-survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC18_020' # list of projects related with the LBA survey
+survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC18_020,LC18_007' # list of projects related with the LBA survey
 projects = survey_projects.split(',')
 
 lofar_location = EarthLocation(lat=52.90889*u.deg, lon=6.86889*u.deg, height=0*u.m) # LOFAR
