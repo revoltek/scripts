@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # to run on the whoel survey, in the mosaic-res dir use
 """
@@ -11,7 +11,6 @@ for mosaic in mosaics:
     basename = mosaic.replace('.fits', '')
     rmsmap = glob.glob('../mosaic-i/%s_pybdsm/*/background/%s.pybdsm.rmsd_I.fits' % (basename, basename))[0]
     meanmap = glob.glob('../mosaic-i/%s_pybdsm/*/background/%s.pybdsm.mean_I.fits' % (basename, basename))[0]
-    outfile = basename+'-falsepositive.txt'
     os.system('~/scripts/survey/survey_falsepositive.py %s --rmsmap %s --meanmap %s' % (mosaic, rmsmap, meanmap))
 """
 
@@ -48,3 +47,4 @@ img=bdsf.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15
 
 catprefix = 'catalogues-inv/'+infile.replace('.fits','')
 img.write_catalog(outfile=catprefix +'.cat.fits',catalog_type='srl',format='fits',correct_proj='True',clobber=True)
+img.write_catalog(outfile=catprefix +'.gaus.fits',catalog_type='gaul',format='fits',correct_proj='True',clobber=True)

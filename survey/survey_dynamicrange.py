@@ -32,14 +32,6 @@ def isolated(tab, dist):
     idx_match = np.arange(0,len(tab))[sep>dist*u.arcsec]
     return tab[idx_match]
 
-#def get_closest_mosaic(mosaics_coord, ra, dec):
-#    """
-#    Return the file with the center closest to the ra,dec
-#    """
-#    #idx_match, sep, _ = match_coordinates_sky(SkyCoord(mosaics_coord['ra'], mosaics_coord['dec']), SkyCoord(ra, dec))
-#    sep = SkyCoord(ra*u.deg,dec*u.deg).separation(SkyCoord(mosaics_coord['ra']*u.deg, mosaics_coord['dec']*u.deg))
-#    return mosaics_coord['file'][mosaics_coord['file'].index(min(mosaics_coord['file']))]
-
 def do_dynrng(mosaics_coord, catfile, outfile):
 
     with open(outfile, 'w') as f:
@@ -47,7 +39,7 @@ def do_dynrng(mosaics_coord, catfile, outfile):
 
     cat = Table.read(catfile)
     print("Inital len:", len(cat))
-    cat = isolated(cat, 450)
+    cat = isolated(cat, 560)
     print("After isolation:", len(cat))
     cat = cat[cat['Maj']<30]
     print("Final len:", len(cat))
@@ -56,7 +48,8 @@ def do_dynrng(mosaics_coord, catfile, outfile):
         ra = sou['RA']
         dec = sou['DEC']
         # create region
-        region_strings = ['fk5;panda(%f,%f,0,359.9,1,%f",%f",1)' % (ra,dec,dist,dist+30) for dist in np.arange(30,330,15)]
+        region_strings = ['fk5;panda(%f,%f,0,359.9,1,%f",%f",1)' % (ra,dec,dist,dist+30) for dist in np.arange(30,630,60)]
+        print(region_strings)
 
         # debug
         #for region_string in region_strings:
