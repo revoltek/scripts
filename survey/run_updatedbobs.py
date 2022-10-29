@@ -16,7 +16,14 @@ parser.add_argument('--skip', '-s', action="store_true", help='Skip observations
 parser.add_argument('--updatedb', '-u', action="store_true", help='Update the databse using the gridfile.')
 parser.add_argument('--reset', '-r', dest="reset", help='If "all" reset the db to "Not started" for all fields. If a field is specified it only reset it to "Observed".', default=None)
 parser.add_argument('--incompletereset', '-i', action="store_true", help='Reset the fields that are not "Done"/"Not started" to "Observed".')
+parser.add_argument('--sethighpriority', '-h', dest="sethighpriority", help='Give the pointing name so to set its priority to 0 (maximum).', default=None)
 args = parser.parse_args()
+
+if args.sethighpriority is not None:
+    with SurveysDB(survey='lba',readonly=False) as sdb:  
+        print("INFO: set %s to maximum priority" % args.sethighpriority)
+        sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (0,args.sethighpriority))
+        sys.exit()
 
 if args.reset is not None:
     with SurveysDB(survey='lba',readonly=False) as sdb:  

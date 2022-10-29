@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 singularity_img = '/homes/fdg/storage/pill.simg'
-singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs --containall -B/homes/fdg,/local/work/fdg,/iranet/lofarfs2/lofar2/fdg '+singularity_img
+singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/lofarfs2/lofar2/fdg '+singularity_img
 
 dir_storage_cals = '/iranet/lofarfs2/lofar2/fdg/surveycals'
 dir_storage_tgts = '/iranet/lofarfs2/lofar2/fdg/surveytgts'
@@ -71,7 +71,7 @@ class Scheduler():
                          #SBATCH --cpus-per-task=36
                          #SBATCH --time=200:00:00
                          #SBATCH -o {self.file_log}
-                         rm -r /local/work/fdg/*
+                         #rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg/
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL.py
                          #rm -r /local/work/fdg/*
@@ -87,37 +87,37 @@ class Scheduler():
 all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
 logging.info('Setting up %i jobs.' % len(all_cals))
 
-i=0
-for dir_orig in all_cals:
-    dir_dest = dir_orig.replace('download/mss','done')
-    if not os.path.exists(dir_dest):
-        os.makedirs(dir_dest)
-
-    # skip if already done
-    if len(glob.glob(dir_dest+'/*h5')) == 4:
-        continue
-
-    # skip if not present
-    if len(glob.glob(dir_orig+'/*MS')) == 0:
-        continue
-
-    c = Scheduler(name=dir_orig.split('/')[-1])
-    c.prepare_sbatch('cal')
-    c.submit()
-
-    # separate initial calls so initial cp is diluted
-    if i < 24:
-        time.sleep(120)
-    i+=1
-
-# tgts
 #i=0
-#for i in range(10):
-#    c = Scheduler('pill')
-#    c.prepare_sbatch('pill')
+#for dir_orig in all_cals:
+#    dir_dest = dir_orig.replace('download/mss','done')
+#    if not os.path.exists(dir_dest):
+#        os.makedirs(dir_dest)
+#
+#    # skip if already done
+#    if len(glob.glob(dir_dest+'/*h5')) == 4:
+#        continue
+#
+#    # skip if not present
+#    if len(glob.glob(dir_orig+'/*MS')) == 0:
+#        continue
+#
+#    c = Scheduler(name=dir_orig.split('/')[-1])
+#    c.prepare_sbatch('cal')
 #    c.submit()
 #
-#    # separate initial calls so the stagings+downloads are diluted
+#    # separate initial calls so initial cp is diluted
 #    if i < 24:
-#        time.sleep(3600)
+#        time.sleep(120)
 #    i+=1
+
+# tgts
+i=0
+for i in range(10):
+    c = Scheduler('pill')
+    c.prepare_sbatch('pill')
+    c.submit()
+
+    # separate initial calls so the stagings+downloads are diluted
+    if i < 24:
+        time.sleep(2*3600)
+    i+=1
