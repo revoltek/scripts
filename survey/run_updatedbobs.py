@@ -11,12 +11,11 @@ gridfile = 'allsky-grid.fits'
 
 parser = argparse.ArgumentParser(description='Stage and download MS from the LOFAR LTA.')
 parser.add_argument('--gridfile', '-g', dest="gridfile", help='The gridfile as created with update_allsky-grid.py', default=gridfile)
-parser.add_argument('--skip', '-s', action="store_true", help='Skip observations already present in field_obs, \
-        this is faster but might miss some target to update as "Observed" in the field table.')
 parser.add_argument('--updatedb', '-u', action="store_true", help='Update the databse using the gridfile.')
 parser.add_argument('--reset', '-r', dest="reset", help='If "all" reset the db to "Not started" for all fields. If a field is specified it only reset it to "Observed".', default=None)
 parser.add_argument('--incompletereset', '-i', action="store_true", help='Reset the fields that are not "Done"/"Not started" to "Observed".')
 parser.add_argument('--sethighpriority', '-p', dest="sethighpriority", help='Give the pointing name so to set its priority to 0 (maximum).', default=None)
+parser.add_argument('--show', '-s', dest="show", help="If 'done' shows completed runs; if 'running' shows ongoing/failed runs; if 'all' shows all, incuding runs that have not started yet.")
 args = parser.parse_args()
 
 if args.sethighpriority is not None:
@@ -46,9 +45,6 @@ if args.incompletereset:
         sys.exit()
 
 if args.updatedb:
-    skip_obs = args.skip
-
-    # get obs_id already done
     with SurveysDB(survey='lba',readonly=True) as sdb:
         sdb.execute('select obs_id from field_obs')
         obs_to_skip = [ x['obs_id'] for x in sdb.cur.fetchall() ]
@@ -81,29 +77,34 @@ if args.updatedb:
                     else: priority = 1
                 if nobs_s >= 3:
                     print("%s: set as observed (%i hr - priority: %i)" % (field_id+'s', nobs_s, priority))
-                    sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id+'s'))
+                    sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s" and status="Not started"' % (field_id+'s'))
                     sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (priority,field_id+'s'))
                 if nobs_o >= 3:
                     print("%s: set as observed (%i hr - priority: %i)" % (field_id+'o', nobs_o, priority))
-                    sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s"' % (field_id+'o'))
+                    sdb.execute('UPDATE fields SET status="Observed" WHERE id="%s" and status="Not started"' % (field_id+'o'))
                     sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (priority,field_id+'o'))
     sys.exit()
 
 # default: show the db
-with SurveysDB(survey='lba',readonly=True) as sdb:
-    sdb.execute('SELECT id,status,priority FROM fields WHERE status="Observed" order by priority desc')
-    r = sdb.cur.fetchall()
-    sdb.execute('SELECT field_id FROM field_obs')
-    all_fields = [x['field_id'] for x in sdb.cur.fetchall()]
-    for i, entry in enumerate(r):
-        hrs = sum(np.array(all_fields) == entry['id'])
-        print('%03i) ID: %s - %i hrs (%s - priority: %i)' % (i, entry['id'], hrs, entry['status'], entry['priority']))
-    print("############################")
-    sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status!="Observed" and status!="Not started"')
-    r = sdb.cur.fetchall()
-    for i, entry in enumerate(r):
-        if entry['status'] == 'Done':
-            print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
-                    % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
-        else:
-            print('%03i) ID: %s (%s - %s: %s)' % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename']))
+if args.show is not None:
+    with SurveysDB(survey='lba',readonly=True) as sdb:
+        if args.show == 'all':
+            sdb.execute('SELECT id,status,priority FROM fields WHERE status="Observed" order by priority desc')
+            r = sdb.cur.fetchall()
+            sdb.execute('SELECT field_id FROM field_obs')
+            all_fields = [x['field_id'] for x in sdb.cur.fetchall()]
+            for i, entry in enumerate(r):
+                hrs = sum(np.array(all_fields) == entry['id'])
+                print('%03i) ID: %s - %i hrs (%s - priority: %i)' % (i, entry['id'], hrs, entry['status'], entry['priority']))
+            print("############################")
+        if args.show == 'all' or args.show == 'done':
+            sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status="Done"')
+            r = sdb.cur.fetchall()
+            for i, entry in enumerate(r):
+                print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
+                            % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
+        if args.show == 'all' or args.show == 'running':
+            sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status!="Observed" and status!="Not started" and status!="Done"')
+            r = sdb.cur.fetchall()
+            for i, entry in enumerate(r):
+                print('%03i) ID: %s (%s - %s: %s)' % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename']))
