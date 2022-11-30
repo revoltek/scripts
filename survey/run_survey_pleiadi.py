@@ -17,7 +17,7 @@ dir_run = "/homes/fdg/storage/run"
 
 # go in the run dir
 os.chdir(dir_run)
-os.system('rm sbatch_files/*')
+#os.system('rm sbatch_files/*')
 
 class Scheduler():
 
@@ -28,7 +28,7 @@ class Scheduler():
 
         self.name = name
         self.file_sbatch = "sbatch_files/"+name+'_'+id_generator()
-        self.file_log = self.file_sbatch+'.log'
+        self.file_log = self.file_sbatch
 
     def submit(self):
         logging.info('Scheduling: %s' % self.file_sbatch)
@@ -49,7 +49,7 @@ class Scheduler():
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
                          #SBATCH --time=5:00:00
-                         #SBATCH -o {self.file_log}
+                         #SBATCH -o {self.file_log}-%N.log
                          rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg
                          echo -e "[LOFAR_cal]\ndata_dir={dir_orig}\n" > /local/work/fdg/lilf.config
@@ -70,8 +70,8 @@ class Scheduler():
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
                          #SBATCH --time=200:00:00
-                         #SBATCH -o {self.file_log}
-                         #rm -r /local/work/fdg/*
+                         #SBATCH -o {self.file_log}-%N.log
+                         rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg/
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL.py
                          #rm -r /local/work/fdg/*
