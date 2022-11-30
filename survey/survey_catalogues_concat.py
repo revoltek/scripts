@@ -27,7 +27,7 @@ def replace_to(t, col, dtype):
 def concat_catalogs(cats, outconcatcat):
     # Use the first catalogue as a dummy and then just update the entries
 
-    concat_table = vstack([ Table.read(c) for c in cats ], join_type='exact')
+    concat_table = vstack([ Table.read(c) for c in cats if len(Table.read(c))>0], join_type='exact')
     concat_table.sort('Source_name')
     concat_table.write(outconcatcat, overwrite=True)
 
@@ -61,9 +61,10 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
         identity.append( cat['Source_name'][ cat['Source_id'] == idx ][0] )
     cat_gaus['Source_name'] = identity
 
-    # add mosaic id
-    cat['Mosaic_id'] = t_this['fieldname']
-    cat_gaus['Mosaic_id'] = t_this['fieldname']
+    # add mosaic id if at least a source is found
+    if len(cat) > 0:
+        cat['Mosaic_id'] = t_this['fieldname']
+        cat_gaus['Mosaic_id'] = t_this['fieldname']
 
     cat.remove_columns(['Source_id', 'Isl_id',
                   'RA_max', 'E_RA_max', 'DEC_max', 'E_DEC_max',
@@ -117,10 +118,11 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
             replace_to(t, col, 'f4') # to float from double
 
     # reorder columns
-    new_order = ['Source_name','RA','E_RA','DEC','E_DEC','Total_flux','E_Total_flux','Peak_flux','E_Peak_flux','Maj','E_Maj','Min','E_Min','PA','E_PA','DC_Maj','E_DC_Maj','DC_Min','E_DC_Min','DC_PA','E_DC_PA','Isl_rms','S_Code', 'Mosaic_id']
-    cat = cat[new_order]
-    new_order = ['Source_name','Gaus_id','RA','E_RA','DEC','E_DEC','Total_flux','E_Total_flux','Peak_flux','E_Peak_flux','Maj','E_Maj','Min','E_Min','PA','E_PA','DC_Maj','E_DC_Maj','DC_Min','E_DC_Min','DC_PA','E_DC_PA','Isl_rms','S_Code', 'Mosaic_id']
-    cat_gaus = cat_gaus[new_order]
+    if len(cat)>0:
+        new_order = ['Source_name','RA','E_RA','DEC','E_DEC','Total_flux','E_Total_flux','Peak_flux','E_Peak_flux','Maj','E_Maj','Min','E_Min','PA','E_PA','DC_Maj','E_DC_Maj','DC_Min','E_DC_Min','DC_PA','E_DC_PA','Isl_rms','S_Code', 'Mosaic_id']
+        cat = cat[new_order]
+        new_order = ['Source_name','Gaus_id','RA','E_RA','DEC','E_DEC','Total_flux','E_Total_flux','Peak_flux','E_Peak_flux','Maj','E_Maj','Min','E_Min','PA','E_PA','DC_Maj','E_DC_Maj','DC_Min','E_DC_Min','DC_PA','E_DC_PA','Isl_rms','S_Code', 'Mosaic_id']
+        cat_gaus = cat_gaus[new_order]
 
     with open(srl_outname.replace('.fits','.reg'), 'w') as regionfile:
         regionfile.write('# Region file format: DS9 version 4.0\n')
@@ -191,4 +193,4 @@ if __name__=='__main__':
 
     do_concat(args.mosdir, args.catdir)
 
-# call as e.g. make_catalogues_concat.py --mosdir=mosaic-i --catdir=mosaic-i/catalogues
+# call as e.g. survey_catalogues_concat.py --mosdir=mosaic-i --catdir=mosaic-i/catalogues

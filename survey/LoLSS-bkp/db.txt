@@ -29,7 +29,7 @@ MariaDB [lba]> show columns in observations;
 | Field          | Type         | Null | Key | Default | Extra |
 +----------------+--------------+------+-----+---------+-------+
 | id             | int(11)      | NO   | PRI | 0       | is the obs number      |
-| status         | varchar(12)  | YES  |     | NULL    |       |
+| status         | varchar(12)  | YES  |     | NULL    | good/bad      |
 | location       | varchar(128) | YES  |     | NULL    | hostname      |
 | calibratordata | varchar(128) | YES  |     | NULL    | cal dir      |
 +----------------+--------------+------+-----+---------+-------+

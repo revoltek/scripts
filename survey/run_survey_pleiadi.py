@@ -8,7 +8,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 singularity_img = '/homes/fdg/storage/pill.simg'
-singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs --containall -B/homes/fdg,/local/work/fdg,/iranet/lofarfs2/lofar2/fdg '+singularity_img
+singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/lofarfs2/lofar2/fdg '+singularity_img
 
 dir_storage_cals = '/iranet/lofarfs2/lofar2/fdg/surveycals'
 dir_storage_tgts = '/iranet/lofarfs2/lofar2/fdg/surveytgts'
@@ -17,7 +17,7 @@ dir_run = "/homes/fdg/storage/run"
 
 # go in the run dir
 os.chdir(dir_run)
-os.system('rm sbatch_files/*')
+#os.system('rm sbatch_files/*')
 
 class Scheduler():
 
@@ -28,6 +28,7 @@ class Scheduler():
 
         self.name = name
         self.file_sbatch = "sbatch_files/"+name+'_'+id_generator()
+        self.file_log = self.file_sbatch
 
     def submit(self):
         logging.info('Scheduling: %s' % self.file_sbatch)
@@ -48,9 +49,9 @@ class Scheduler():
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
                          #SBATCH --time=5:00:00
-                         #SBATCH -o {self.file_sbatch}.log
+                         #SBATCH -o {self.file_log}-%N.log
                          rm -r /local/work/fdg/*
-                         mkdir -p /local/work/fdg/
+                         mkdir -p /local/work/fdg
                          echo -e "[LOFAR_cal]\ndata_dir={dir_orig}\n" > /local/work/fdg/lilf.config
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/LOFAR_cal.py
                          mv /local/work/fdg/plots* /local/work/fdg/cal*h5 /local/work/fdg/*logger /local/work/fdg/logs* {dir_dest}
@@ -69,14 +70,10 @@ class Scheduler():
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
                          #SBATCH --time=200:00:00
-                         #SBATCH -o {self.file_sbatch}.log
+                         #SBATCH -o {self.file_log}-%N.log
                          rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg/
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL.py
-                         tar zcf mss.tgz mss-avg
-                         target=`cat target.txt | cut -d "," -f 0`
-                         mkdir -p {dir_storage_tgts}/$target
-                         mv /local/work/fdg/$target/mss.tgz {dir_storage_tgts}/$target
                          #rm -r /local/work/fdg/*
                          """
             content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
@@ -87,9 +84,9 @@ class Scheduler():
 
 
 # cals
-#all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
-#logging.info('Setting up %i jobs.' % len(all_cals))
-#
+all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
+logging.info('Setting up %i jobs.' % len(all_cals))
+
 #i=0
 #for dir_orig in all_cals:
 #    dir_dest = dir_orig.replace('download/mss','done')
@@ -114,6 +111,7 @@ class Scheduler():
 #    i+=1
 
 # tgts
+i=0
 for i in range(10):
     c = Scheduler('pill')
     c.prepare_sbatch('pill')
@@ -121,4 +119,5 @@ for i in range(10):
 
     # separate initial calls so the stagings+downloads are diluted
     if i < 24:
-        time.sleep(3600)
+        time.sleep(2*3600)
+    i+=1
