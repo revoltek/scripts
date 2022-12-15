@@ -57,6 +57,7 @@ def max_distance(speed, gamma, B, z):
     _ = age(gamma,B,z)*speed
     return _.to(u.kpc)
 
+z=0.1
 B_min = B_min(0.225)
 print ('B_min:', B_min)
 gamma = gamma_from_freq(58e6*u.Hz*(1+z), B_min) # note that one needs to correct the frequency for the redshift
