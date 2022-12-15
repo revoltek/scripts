@@ -52,7 +52,7 @@ def get_beam(data, header):
     # find distance in deg from image center to each pixel
     
     pix2deg = abs(header['CDELT1']) # in deg
-    pixPhaseCentre = [header['CRPIX1'], header['CRPIX2']]
+    pixPhaseCentre = [header['CRPIX2'], header['CRPIX1']]
 
     def beam_creator(i,j):
         # get distance from phase centre pixel in deg
