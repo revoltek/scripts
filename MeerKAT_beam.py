@@ -47,8 +47,12 @@ def get_beam(data, header):
     apply the beam to the the 2d array "data" using MKCosBeam
     """
     # freq
-    assert 'FREQ' in header['CTYPE3']
-    nu = header['CRVAL3']
+    if 'FREQ' in header['CTYPE3']:
+        nu = header['CRVAL3']
+    elif 'FREQ' in header['CTYPE4']:
+        nu = header['CRVAL4']
+    else:
+        raise ValueError('Freq not found')
     # find distance in deg from image center to each pixel
     
     pix2deg = abs(header['CDELT1']) # in deg
@@ -58,7 +62,6 @@ def get_beam(data, header):
         # get distance from phase centre pixel in deg
         rho = np.sqrt( (pixPhaseCentre[0] - i)**2 + (pixPhaseCentre[1] - j)**2 ) * pix2deg
         return MKCosBeam(rho, nu)
-
     beam = np.fromfunction(beam_creator, [data.shape[2],data.shape[3]])
     return np.array([[beam]])
 
