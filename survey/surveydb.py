@@ -61,20 +61,20 @@ if args.updatedb:
 
             # first fill the observations db with good/bad obs
             for obs_id, status in zip(field['obsid'],field['cycle']):
+                if obs_id == 0: continue
                 if status != 'bad' and status != 'bug': status = 'good'
-                print('Add to the observations db: %i (%s)' % (obs_id, status))
-                sdb.execute('SELECT status FROM observations WHERE obs_id = "%i"' % obs_id)
+                sdb.execute('SELECT status FROM observations WHERE id="%i"' % obs_id)
                 status_old = sdb.cur.fetchall()
-                print(status,status_old)
+                print('Add to the observations db: %i (%s - was: %s)' % (obs_id, status, status_old))
 
-                if status == 'bad' and status_old == '':
+                if status == 'bad' and len(status_old) == 0:
                     # track bad obs
                     sdb.execute('INSERT INTO observations (id, status) VALUES (%i, "bad")' % obs_id)
-                elif status == 'good' and status_old == '':
+                elif status == 'good' and len(status_old) == 0:
                     # add good obs
                     sdb.execute('INSERT INTO observations (id, status) VALUES (%i, "good")' % obs_id)
                 elif status != status_old:
-                    sdb.execute('UPDATE observations status VALUES "%s" WHERE id = "%i"' % (status, obs_id))
+                    sdb.execute('UPDATE observations SET status="%s" WHERE id="%i"' % (status, obs_id))
                 else:
                     pass # already correct in the db
 
@@ -144,14 +144,19 @@ if args.show is not None:
                 hrs = sum(np.array(all_fields) == entry['id'])
                 print('%03i) ID: %s - %i hrs (%s - priority: %i)' % (i, entry['id'], hrs, entry['status'], entry['priority']))
             print("############################")
-        if args.show == 'all' or args.show == 'done':
+        elif args.show == 'all' or args.show == 'done':
             sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status="Done"')
             r = sdb.cur.fetchall()
             for i, entry in enumerate(r):
                 print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
                             % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
-        if args.show == 'all' or args.show == 'running':
+        elif args.show == 'all' or args.show == 'running':
             sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status!="Observed" and status!="Not started" and status!="Done"')
             r = sdb.cur.fetchall()
             for i, entry in enumerate(r):
                 print('%03i) ID: %s (%s - %s: %s)' % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename']))
+        else:
+            print('With "show" use: all, running, or done.')
+    sys.exit()
+
+print('No action selected...')
