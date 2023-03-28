@@ -42,6 +42,7 @@ class Scheduler():
 
             content = f"""#!/bin/bash
                          #SBATCH --nodes=1
+                         #SBATCH --partition=lofar
                          ### number of hyperthreading threads
                          #SBATCH --ntasks-per-core=1
                          ### number of MPI tasks per node
@@ -64,6 +65,7 @@ class Scheduler():
             content = f"""#!/bin/bash
                          #SBATCH --nodes=1
                          ### number of hyperthreading threads
+                         #SBATCH --partition=lofar
                          #SBATCH --ntasks-per-core=1
                          ### number of MPI tasks per node
                          #SBATCH --ntasks-per-node=1
