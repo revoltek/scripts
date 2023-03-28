@@ -129,6 +129,7 @@ class Direction(Image):
             self.weight_data *= self.beam_data
         # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
         self.weight_data /= self.noise * self.scale
+        # https://en.wikipedia.org/wiki/Inverse-variance_weighting
         self.weight_data = self.weight_data**2.0
 
     def calc_shift(self, ref_cat, separation=15):
