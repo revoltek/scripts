@@ -137,6 +137,7 @@ if args.caldir is not None:
                 os.system('ssh herts "mkdir /beegfs/lofar/lba/calibration_solutions/%s"' % cal)
                 os.system('scp -q cal-pa.h5 cal-amp.h5 cal-iono.h5 herts:/beegfs/lofar/lba/calibration_solutions/%s' % cal)
                 os.system('scp -q -r plots* herts:/beegfs/lofar/lba/calibration_solutions/%s' % cal)
+                os.system('scp -q *.logger herts:/beegfs/lofar/lba/calibration_solutions/%s/pipeline-cal.logger' % cal)
 
                 # update the db
                 sdb.execute('UPDATE observations SET location="herts", calibratordata="%s" \
