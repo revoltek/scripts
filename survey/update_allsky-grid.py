@@ -16,6 +16,7 @@ from astropy.table import Table
 from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.time import Time
 import astropy.units as u
+import zlib, base64
 
 survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC18_020,LC18_007' # list of projects related with the LBA survey
 projects = survey_projects.split(',')
@@ -38,6 +39,14 @@ if not os.path.exists("update_allsky-grid.pickle"):
             for observation in query_observations:
                 obs_id = int(observation.observationId)
                 antennaset = observation.as_dict()['Observation.antennaSet']
+                
+                # get demix info
+                dataproduct_query = cls.observations.contains(observation)[0]
+                parset = dataproduct_query.as_dict()['CorrelatedDataProduct.pipeline.parset.content']
+                parset = zlib.decompress(base64.b64decode(''.join(parset))).decode().split('ObsSW')
+                parset = dict(x.split("=",1) for x in re.split("ObsSW.", parset)
+                demix = parset['Observation.ObservationControl.PythonControl.PreProcessing.demix_always']
+                ignoretarget = parset['Observation.ObservationControl.PythonControl.DPPP.demixer.ignoretarget']
     
                 print('Checking obs_id: %i' % obs_id)
                 for subarray in observation.subArrayPointings:
@@ -58,13 +67,13 @@ if not os.path.exists("update_allsky-grid.pickle"):
 
                     if time.year == 2021 and ( (time.month==2 and time.day>=8) or (time.month>2 and time.month<8) or ( time.month==8 and time.day<=3) ):
                         print('Add BUG obs to the list: %s' % (field_id))
-                        obs_all.append([field_id,'bug',obs_id,0,antennaset,field_ra,field_dec])
+                        obs_all.append([field_id,'bug',obs_id,0,antennaset,field_ra,field_dec,demix,ignoretarget])
                     elif obs_id in bad_obs_ids:
                         print('Add BAD obs to the list: %s' % (field_id))
-                        obs_all.append([field_id,'bad',obs_id,0,antennaset,field_ra,field_dec])
+                        obs_all.append([field_id,'bad',obs_id,0,antennaset,field_ra,field_dec,demix,ignoretarget])
                     else: 
                         print('Add obs to the list: %s (LST: %f)' % (field_id, lst.hour))
-                        obs_all.append([field_id,project,obs_id,lst,antennaset,field_ra,field_dec])
+                        obs_all.append([field_id,project,obs_id,lst,antennaset,field_ra,field_dec,demix,ignoretarget])
 
     # add manual things:
 
@@ -99,7 +108,7 @@ if not os.path.exists("update_allsky-grid.pickle"):
 
     for obs_id in commissioning_obs.keys():
         for obs,ra,dec in zip(commissioning_obs[obs_id][0],commissioning_obs[obs_id][1],commissioning_obs[obs_id][2]):
-            obs_all.append([obs,'comm2020',obs_id,-1,'LBA Sparse Even',ra,dec])
+            obs_all.append([obs,'comm2020',obs_id,-1,'LBA Sparse Even',ra,dec,'[Cas,Cyg]','false'])
 
     pickle.dump(obs_all, open( "update_allsky-grid.pickle", "wb" ))
 
@@ -140,6 +149,8 @@ for obs in obs_all:
     grid['cycle'][idx][idxcell] = obs[1]
     grid['obsid'][idx][idxcell] = obs[2]
     grid['antset'][idx][idxcell] = obs[4]
+    grid['demix'][idx][idxcell] = obs[5]
+    grid['ignoretarget'][idx][idxcell] = obs[6]
     try:
         grid['LST'][idx][idxcell] = obs[3].hour
     except:
