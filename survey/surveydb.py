@@ -2,7 +2,7 @@
 # This script uses the data from LBA (in the gridfile) and populate the field and field_obs table
 # At the same time set to "Observed" all fields that have at least 3 observed hours
 
-import os, sys, argparse, re
+import os, sys, argparse, re, glob
 from LiLF.surveys_db import SurveysDB
 from astropy.table import Table
 import numpy as np
@@ -18,6 +18,16 @@ parser.add_argument('--sethighpriority', '-p', dest="sethighpriority", help='Giv
 parser.add_argument('--caldir', '-c', dest="caldir", help='Update calibrators if given. It needs cal dir, e.g. "/homes/fdg/storage/surveycals/done"', default=None)
 parser.add_argument('--show', '-s', dest="show", help="If 'done' shows completed runs; if 'running' shows ongoing/failed runs; if 'all' shows all, incuding runs that have not started yet.")
 args = parser.parse_args()
+
+def calibrator_tables_available(sdb, obsid):
+    """
+    Check if calibrator data exist in the database
+    To remove all entries in the db: "DELETE from observations"
+    """
+    sdb.execute('SELECT * FROM observations WHERE id=%f' % obsid)
+    r = sdb.cur.fetchall()
+    if len(r) != 0 and r[0]['location'] != '': return True
+    else: return False
 
 if args.sethighpriority is not None:
     with SurveysDB(survey='lba',readonly=False) as sdb:  
@@ -61,20 +71,20 @@ if args.updatedb:
 
             # first fill the observations db with good/bad obs
             for obs_id, status in zip(field['obsid'],field['cycle']):
+                if obs_id == 0: continue
                 if status != 'bad' and status != 'bug': status = 'good'
-                print('Add to the observations db: %i (%s)' % (obs_id, status))
-                sdb.execute('SELECT status FROM observations WHERE obs_id = "%i"' % obs_id)
+                sdb.execute('SELECT status FROM observations WHERE id="%i"' % obs_id)
                 status_old = sdb.cur.fetchall()
-                print(status,status_old)
+                print('Add to the observations db: %i (%s - was: %s)' % (obs_id, status, status_old))
 
-                if status == 'bad' and status_old == '':
+                if status == 'bad' and len(status_old) == 0:
                     # track bad obs
                     sdb.execute('INSERT INTO observations (id, status) VALUES (%i, "bad")' % obs_id)
-                elif status == 'good' and status_old == '':
+                elif status == 'good' and len(status_old) == 0:
                     # add good obs
                     sdb.execute('INSERT INTO observations (id, status) VALUES (%i, "good")' % obs_id)
                 elif status != status_old:
-                    sdb.execute('UPDATE observations status VALUES "%s" WHERE id = "%i"' % (status, obs_id))
+                    sdb.execute('UPDATE observations SET status="%s" WHERE id="%i"' % (status, obs_id))
                 else:
                     pass # already correct in the db
 
@@ -108,13 +118,14 @@ if args.updatedb:
 
 if args.caldir is not None:
     cals = glob.glob(args.caldir+'/id*')
+    cwd = os.getcwd()
     # copy solutions in the repository
     with SurveysDB(survey='lba',readonly=False) as sdb:
         for cal in cals:
-            print('Working on %s...' % cal)
             obsid = int(cal.split('_-_')[0].split('/')[-1][2:])
             if not calibrator_tables_available(sdb, obsid):
-                os.chdir(cal)
+                print('Working on %s...' % cal)
+                os.chdir(cwd+'/'+cal)
                 # be sure is completed
                 if not os.path.exists('cal-iono.h5'):
                     print('Incomplete!')
@@ -126,10 +137,13 @@ if args.caldir is not None:
                 os.system('ssh herts "mkdir /beegfs/lofar/lba/calibration_solutions/%s"' % cal)
                 os.system('scp -q cal-pa.h5 cal-amp.h5 cal-iono.h5 herts:/beegfs/lofar/lba/calibration_solutions/%s' % cal)
                 os.system('scp -q -r plots* herts:/beegfs/lofar/lba/calibration_solutions/%s' % cal)
+                os.system('scp -q *.logger herts:/beegfs/lofar/lba/calibration_solutions/%s/pipeline-cal.logger' % cal)
 
                 # update the db
                 sdb.execute('UPDATE observations SET location="herts", calibratordata="%s" \
                             WHERE id=%i' % ("/beegfs/lofar/lba/calibration_solutions/"+cal, obsid))
+            else:
+                print('Skip %s...' % cal)
     sys.exit()
 
 # default: show the db
@@ -144,14 +158,19 @@ if args.show is not None:
                 hrs = sum(np.array(all_fields) == entry['id'])
                 print('%03i) ID: %s - %i hrs (%s - priority: %i)' % (i, entry['id'], hrs, entry['status'], entry['priority']))
             print("############################")
-        if args.show == 'all' or args.show == 'done':
+        elif args.show == 'all' or args.show == 'done':
             sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status="Done"')
             r = sdb.cur.fetchall()
             for i, entry in enumerate(r):
                 print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
                             % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
-        if args.show == 'all' or args.show == 'running':
+        elif args.show == 'all' or args.show == 'running':
             sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status!="Observed" and status!="Not started" and status!="Done"')
             r = sdb.cur.fetchall()
             for i, entry in enumerate(r):
                 print('%03i) ID: %s (%s - %s: %s)' % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename']))
+        else:
+            print('With "show" use: all, running, or done.')
+    sys.exit()
+
+print('No action selected...')

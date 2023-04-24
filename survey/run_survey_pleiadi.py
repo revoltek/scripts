@@ -42,6 +42,7 @@ class Scheduler():
 
             content = f"""#!/bin/bash
                          #SBATCH --nodes=1
+                         #SBATCH --partition=lofar
                          ### number of hyperthreading threads
                          #SBATCH --ntasks-per-core=1
                          ### number of MPI tasks per node
@@ -64,6 +65,7 @@ class Scheduler():
             content = f"""#!/bin/bash
                          #SBATCH --nodes=1
                          ### number of hyperthreading threads
+                         #SBATCH --partition=lofar
                          #SBATCH --ntasks-per-core=1
                          ### number of MPI tasks per node
                          #SBATCH --ntasks-per-node=1
@@ -82,11 +84,11 @@ class Scheduler():
         with open(self.file_sbatch, 'w') as f:
             f.write(content)
 
-
+###
 # cals
-all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
-logging.info('Setting up %i jobs.' % len(all_cals))
-
+#all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
+#logging.info('Setting up %i jobs.' % len(all_cals))
+#
 #i=0
 #for dir_orig in all_cals:
 #    dir_dest = dir_orig.replace('download/mss','done')
@@ -110,14 +112,14 @@ logging.info('Setting up %i jobs.' % len(all_cals))
 #        time.sleep(120)
 #    i+=1
 
+###
 # tgts
 i=0
-for i in range(10):
+for i in range(1):
     c = Scheduler('pill')
     c.prepare_sbatch('pill')
     c.submit()
 
     # separate initial calls so the stagings+downloads are diluted
-    if i < 24:
-        time.sleep(2*3600)
-    i+=1
+    #if i < 24:
+    #    time.sleep(2*3600)
