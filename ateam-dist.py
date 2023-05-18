@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2019 - Francesco de Gasperin
@@ -60,7 +60,7 @@ def distance(ra1, dec1, ra2, dec2):
     return np.arccos(cosdist)*180/np.pi
 
 def printdist(name,d):
-	print(name, str(d), "deg", end=' ')
+	print(name, str(d), "deg")
 	if d<25: print('*CLOSE*')
 	else: print('')
 

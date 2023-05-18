@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from math import *
 import numpy as np
@@ -6,16 +6,16 @@ import scipy.special
 
 # USER INPUT
 freq = 54.0e6 # Hz. Observing freqency, from msoverview
-nchan= 4. # Channels per subband
+nchan= 8 # Channels per subband
 bw=195.e3/nchan # Hz. 195kHz is the bandwidt of one subband
 delta_T = 4. # seconds. Averaging
 #b = 1292.0e3 # meters. IS longest baseline in meters. 
-b = 120.0e3 # meters. RS longest baseline in meters.
-delta_Theta = 4. # deg. Distance in image from phase centre, i.e. half the FWHM.
+b = 70.0e3 # meters. RS longest baseline in meters.
+delta_Theta = 3. # deg. Distance in image from phase centre, i.e. half the FWHM.
 
 c = 2.998e8 # m/s. Speed of light
 resolution = (c/freq)/b*180./np.pi # deg. Resolution
-print("Resolution is ",resolution*3600, "arcsec")
+print("Resolution is ~",resolution*3600, "arcsec")
 
 def time_smearing(resolution,delta_Theta):
     #http://www.cv.nrao.edu/course/astr534/Interferometers1.html

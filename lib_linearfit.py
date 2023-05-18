@@ -24,9 +24,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def linsq_spidx(nu, S, Serr = None):
+    """
+    LLS in log-space. Error estimation does only work for two frequencies.
+    Parameters
+    ----------
+    nu: (n,) array of floats
+    S: (n,) or (n,m) array of floats
+    Serr: (n,) or (n,m) array of floats, optional
+
+    Returns
+    -------
+    si: float or (m,) array of floats
+    si_err: if S_err provided, float or (m,) array of floats
+    """
+    # http://www.askanastronomer.co.uk/brats/downloads/bratscookbook.pdf
+    assert len(nu) == len(S)
+    N = len(nu)
+    nu = np.array(nu)
+    S = np.array(S)
+    if np.ndim(S) == 2:
+        nu = nu[:,np.newaxis]
+    alpha = N*np.sum(np.log(nu)*np.log(S), axis=0) - np.sum(np.log(nu), axis=0)*np.sum(np.log(S), axis=0)
+    alpha /= N*np.sum(np.log(nu)**2, axis=0) - np.sum(np.log(nu), axis=0)**2
+
+    if Serr is None:
+        return alpha
+    else:
+        if np.shape(Serr)[0] !=2:
+            log.error('Error estimation only fof 2 freq')
+            sys.exit()
+        Serr = np.array(Serr)
+        # w = np.log(1/Serr**2)
+        # print(nu)
+        # 1 seems wrong since it does not depend on magnitude. 2 only works for two datapoints
+        # delta_alpha = np.sqrt(np.sum(w)/(np.sum(np.log(nu)**2*w)*np.sum(w) - (np.sum(np.log(nu)*w))**2))
+        delta_alpha2 = np.abs(np.log(nu[0]/nu[1])**-1 * np.sqrt((Serr[0]/S[0])**2 + (Serr[1]/S[1])**2))
+        return alpha, delta_alpha2
+
 def f(x, B0, B1):
     return B0*x + B1
-
 
 def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
     """
@@ -62,6 +99,9 @@ def twopoint_spidx_bootstrap(freq, flux, flux_err, niter=10000):
 
 
 def linear_fit_bootstrap(x, y, yerr, niter=1000, tolog=False):
+    # Comment HE: I think if one multiplies the covariance matrix with the residual variance, the absolute magnitude
+    # of the errors should be taken into account and one can circumvent the bootstrap.
+    #
     # An issue arises with scipy.curve_fit when errors in the y data points
     # are given.  Only the relative errors are used as weights, so the fit
     # parameter errors, determined from the covariance do not depended on the
@@ -136,14 +176,18 @@ def linear_fit(x, y, yerr=None, tolog=False):
     # Using OLS (X|Y)" # for more algo read: Isobe et al 1990
     # tolog : convert in log space x, y, and yerr before doing linear regression
     from scipy.optimize import curve_fit
+
+    x = np.array(x)
+    y = np.array(y)
+    if yerr is not None: yerr = np.array(yerr)
+
     if tolog:
-        print(yerr, yerr is None)
         if not yerr is None: yerr = 0.434*yerr/y
         x=np.log10(x)
         y=np.log10(y)
-    if yerr is None: yerr = np.ones(len(y))
-    for i,e in enumerate(yerr):
-        if e == 0: yerr[i] = 1
+    #if yerr is None: yerr = np.ones(len(y))
+    #for i,e in enumerate(yerr):
+    #    if e == 0: yerr[i] = 1
     out = curve_fit(f, x, y, [-1. ,0.], yerr)
     # return B0, B1, errB0, errB1 (err are in std dev)
     if type(out[1]) is np.ndarray:
@@ -153,17 +197,23 @@ def linear_fit(x, y, yerr=None, tolog=False):
 
 
 # extimate errors and accept errors on x and y-data
-def linear_fit_odr(x, y, xerr=None, yerr=None):
+def linear_fit_odr(x, y, xerr=None, yerr=None, tolog=False):
     from scipy import odr
+    if tolog:
+        if not yerr is None: yerr = 0.434*yerr/y
+        if not xerr is None: xerr = 0.434*xerr/x
+        x=np.log10(x)
+        y=np.log10(y)
+ 
     def f(B, x):
         return B[0]*x + B[1]
     linear = odr.Model(f)
-    if xerr == None: xerr = np.ones(len(x))
-    if yerr == None: yerr = np.ones(len(y))
+    if xerr is None: xerr = np.ones(len(x))
+    if yerr is None: yerr = np.ones(len(y))
     for i,e in enumerate(yerr):
        if e == 0: yerr[i] = 1
     mydata = odr.RealData(x, y, sx=xerr, sy=yerr)
-    myodr = odr.ODR(mydata, linear, beta0=[-1., 0.])
+    myodr = odr.ODR(mydata, linear, beta0=[-1., 1e-3])
     myoutput = myodr.run()
     return(myoutput.beta[0],myoutput.beta[1],myoutput.sd_beta[0],myoutput.sd_beta[1])
 

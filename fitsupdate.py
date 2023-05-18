@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 - Francesco de Gasperin
+# Copyright (C) 2021 - Francesco de Gasperin
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 # Usage: updatefits.py -setbeam max min pa -setkeyword name=value fitsfile
 
 import sys,optparse,re
+import numpy as np
 from astropy.io import fits as pyfits
 
 def isfloat(x):
@@ -42,10 +43,12 @@ def isint(x):
 opt = optparse.OptionParser(usage="%prog [-setbeam max,min,pa] [-setkeyword keyword=value] fitsfile", version="%prog 0.1")
 opt.add_option('-b', '--setbeam', help='Set beam minaxis maxaxis and position angle to three comma-separated numbers (arcsec,arcsec,degree) [ex: 123,123,90]')
 opt.add_option('-k', '--setkeyword', help='Set a keyword to a specific value (e.g. --k CRPIX1=10)')
+opt.add_option('-p', '--setpix', help='Set a pixel value to a new value, -999 is nan (e.g. --p 0=-999')
 opt.add_option('-d', '--delkeyword', help='Delete a keyword')
 (options, img) = opt.parse_args()
 setbeam = options.setbeam
 setkeyword = options.setkeyword
+setpix = options.setpix
 delkeyword = options.delkeyword
 sys.stdout.flush()
 
@@ -55,8 +58,9 @@ except:
     print("ERROR: problems opening file "+img[0])
     sys.exit(1)
 
-if setkeyword is None and setbeam is None and delkeyword is None:
-    print(hdulist[0].header)
+if setkeyword is None and setpix is None and setbeam is None and delkeyword is None:
+    for entry, val in hdulist[0].header.items():
+        print(entry, val)
     sys.exit(0)
 
 if ( not setkeyword is None ):
@@ -76,6 +80,18 @@ if ( not setkeyword is None ):
             prihdr[keyword] = float(value)
         else:
             prihdr[keyword] = str(value)
+
+if ( not setpix is None ):
+    try: 
+        oldvalue, newvalue = setpix.split('=')
+        oldvalue = float(oldvalue)
+        newvalue = float(newvalue)
+        if newvalue == -999: newvalue = np.nan
+    except:
+        print("ERROR: the format for \"--setpix\" is oldvalue=newvalue")
+        sys.exit(1)
+    print("Setting data %f -> %f" % (oldvalue, newvalue))
+    hdulist[0].data[(hdulist[0].data == oldvalue)] = newvalue
 
 if ( not delkeyword is None ):
     prihdr = hdulist[0].header

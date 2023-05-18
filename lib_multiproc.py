@@ -20,6 +20,7 @@
 
 # Parallelizator
 # USAGE:
+# from lib_multiproc import multiprocManager
 # def funct(funct_param, outQueue=None):
 #     pass
 #     outQueue.put([funct_output])

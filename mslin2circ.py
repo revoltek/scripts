@@ -20,8 +20,8 @@
 import optparse
 import numpy
 import sys
-import pyrap.tables as pt
-from pyrap.quanta import quantity
+import casacore.tables as pt
+from casacore.quanta import quantity
 
 def checkfile(inms):
   if inms == '':
@@ -46,23 +46,26 @@ def setupiofiles(inms, outms, incolumn, outcolumn):
   """
   if outms == None:
      outms = inms
+
   if inms != outms :
      t = pt.table(inms)
      t.copy(outms, True, True)
      t.close()
      print("Finished copy.")
+
   # create output column if doesn't exist
   to = pt.table(outms, readonly=False)
   if not outcolumn in to.colnames():
+      print("Add column %s" % outcolumn)
       ti = pt.table(inms)
-      desc = ti.getcoldesc('DATA')
-      desc['name'] = outcolumn
-      dminfo = ti.getdminfo(incolumn)
-      dminfo['NAME'] = outcolumn
-      to.addcols(desc,dminfo)
+      coldmi = ti.getdminfo(incolumn)
+      coldmi['NAME'] = outcolumn
+      to.addcols(pt.makecoldesc(outcolumn, ti.getcoldesc(incolumn)), coldmi)
+      pt.taql("update $to set "+outcolumn+"="+incolumn)
       ti.close()
   to.close()
   return outms
+
 
 def mslin2circ(incol, outcol, outms, skipmetadata):
   tc = pt.table(outms, readonly=False, ack=False)
