@@ -9,13 +9,14 @@ from awlofar.main.aweimports import CorrelatedDataProduct, \
     Observation
 from awlofar.toolbox.LtaStager import LtaStager, LtaStagerError
 from astropy.utils import iers
-iers.IERS_A_URL='https://maia.usno.navy.mil/ser7/finals2000A.all'
-iers_a = iers.IERS_A.open(iers.IERS_A_URL)
-iers.earth_orientation_table.set(iers_a)
+#iers.IERS_A_URL='https://maia.usno.navy.mil/ser7/finals2000A.all'
+#iers_a = iers.IERS_A.open(iers.IERS_A_URL)
+#iers.earth_orientation_table.set(iers_a)
 from astropy.table import Table
 from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.time import Time
 import astropy.units as u
+import zlib, base64
 
 survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC18_020,LC18_007' # list of projects related with the LBA survey
 projects = survey_projects.split(',')
@@ -23,7 +24,7 @@ projects = survey_projects.split(',')
 lofar_location = EarthLocation(lat=52.90889*u.deg, lon=6.86889*u.deg, height=0*u.m) # LOFAR
 
 # obs ids that are know to have bad data
-bad_obs_ids = pickle.load(open(os.path.dirname(os.path.realpath(__file__))+'/LoLSS-bkp/badobsid.pickle', 'rb'))
+bad_obs_ids = pickle.load(open(os.path.dirname(os.path.realpath(__file__))+'/LoLSS-bkp/badobsids.pickle', 'rb'))
 bad_obs_ids += [2002720,2002893,2002900,2003137,2003474,2003537,2004173,2004180,2004187,2004194,2004201,2004208,2004215,2004222,2004229,2004244,2004259,2004266,2004273,2004288,2004323,2004330,2004411,2004552,2004559,2004869,2004925,2004932,2005019,2005236,2005243,2005547,2005771,2005778,2005792,2005829,2006414] # to be removed from LTA
 
 # The class of data to query
@@ -38,6 +39,14 @@ if not os.path.exists("update_allsky-grid.pickle"):
             for observation in query_observations:
                 obs_id = int(observation.observationId)
                 antennaset = observation.as_dict()['Observation.antennaSet']
+                
+                # get demix info
+                dataproduct_query = cls.observations.contains(observation)[0]
+                parset = dataproduct_query.as_dict()['CorrelatedDataProduct.pipeline.parset.content']
+                parset = zlib.decompress(base64.b64decode(''.join(parset))).decode().split('ObsSW')
+                parset = dict(x.split("=",1) for x in re.split("ObsSW.", parset)
+                demix = parset['Observation.ObservationControl.PythonControl.PreProcessing.demix_always']
+                ignoretarget = parset['Observation.ObservationControl.PythonControl.DPPP.demixer.ignoretarget']
     
                 print('Checking obs_id: %i' % obs_id)
                 for subarray in observation.subArrayPointings:
@@ -58,13 +67,13 @@ if not os.path.exists("update_allsky-grid.pickle"):
 
                     if time.year == 2021 and ( (time.month==2 and time.day>=8) or (time.month>2 and time.month<8) or ( time.month==8 and time.day<=3) ):
                         print('Add BUG obs to the list: %s' % (field_id))
-                        obs_all.append([field_id,'bug',obs_id,0,antennaset,field_ra,field_dec])
+                        obs_all.append([field_id,'bug',obs_id,0,antennaset,field_ra,field_dec,demix,ignoretarget])
                     elif obs_id in bad_obs_ids:
                         print('Add BAD obs to the list: %s' % (field_id))
-                        obs_all.append([field_id,'bad',obs_id,0,antennaset,field_ra,field_dec])
+                        obs_all.append([field_id,'bad',obs_id,0,antennaset,field_ra,field_dec,demix,ignoretarget])
                     else: 
                         print('Add obs to the list: %s (LST: %f)' % (field_id, lst.hour))
-                        obs_all.append([field_id,project,obs_id,lst,antennaset,field_ra,field_dec])
+                        obs_all.append([field_id,project,obs_id,lst,antennaset,field_ra,field_dec,demix,ignoretarget])
 
     # add manual things:
 
@@ -99,7 +108,7 @@ if not os.path.exists("update_allsky-grid.pickle"):
 
     for obs_id in commissioning_obs.keys():
         for obs,ra,dec in zip(commissioning_obs[obs_id][0],commissioning_obs[obs_id][1],commissioning_obs[obs_id][2]):
-            obs_all.append([obs,'comm2020',obs_id,-1,'LBA Sparse Even',ra,dec])
+            obs_all.append([obs,'comm2020',obs_id,-1,'LBA Sparse Even',ra,dec,'[Cas,Cyg]','false'])
 
     pickle.dump(obs_all, open( "update_allsky-grid.pickle", "wb" ))
 
@@ -125,7 +134,7 @@ for obs in obs_all:
     try:
         idx = np.where(grid['name'] == obs[0].upper())[0][0]
     except:
-        if obs[0] != 'Coma':
+        if obs[0] != 'Coma' and obs[0] != 'Cring':
             print('WARNING: missing %s in the grid' % obs)
         continue
 
@@ -140,6 +149,8 @@ for obs in obs_all:
     grid['cycle'][idx][idxcell] = obs[1]
     grid['obsid'][idx][idxcell] = obs[2]
     grid['antset'][idx][idxcell] = obs[4]
+    grid['demix'][idx][idxcell] = obs[5]
+    grid['ignoretarget'][idx][idxcell] = obs[6]
     try:
         grid['LST'][idx][idxcell] = obs[3].hour
     except:
