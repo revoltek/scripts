@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2019 - Francesco de Gasperin & Bas Van Der Tol
@@ -41,6 +41,7 @@ if len(sys.argv) == 2:
 else:
    print("Usage")
    print("   plot_Ateam_elevation.py <msname>")
+   sys.exit()
    
 
 # Create a measures object
