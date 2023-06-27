@@ -23,7 +23,7 @@
 import sys, os, re
 import numpy as np
 from casacore import tables
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, Angle
 from astropy.time import Time
 from astropy import units as u
 
@@ -43,10 +43,15 @@ for source in sys.argv[1:]:
     else:
         print('Use ./elev_from_coord.py [name,]ra,dec')
         sys.exit()
-
+    
+    print(ra)
+    ra = Angle(ra).deg
+    dec = Angle(dec).deg
     sources.append([name,float(ra),float(dec)])
+    
+print(sources)
 
-fig = plt.figure(figsize=(8, 12))
+fig = plt.figure(figsize=(12, 8))
 fig.subplots_adjust(wspace=0)
 ax = fig.add_subplot(111)
 
