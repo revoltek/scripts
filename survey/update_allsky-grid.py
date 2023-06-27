@@ -40,18 +40,22 @@ if not os.path.exists("update_allsky-grid.pickle"):
                 obs_id = int(observation.observationId)
                 antennaset = observation.as_dict()['Observation.antennaSet']
                 
-                # get demix info
-                dataproduct_query = cls.observations.contains(observation)[0]
-                parset = dataproduct_query.as_dict()['CorrelatedDataProduct.pipeline.parset.content']
-                parset = zlib.decompress(base64.b64decode(''.join(parset))).decode().split('ObsSW')
-                parset = dict(x.split("=",1) for x in re.split("ObsSW.", parset)
-                demix = parset['Observation.ObservationControl.PythonControl.PreProcessing.demix_always']
-                ignoretarget = parset['Observation.ObservationControl.PythonControl.DPPP.demixer.ignoretarget']
+                # TODO get demix info
+                #dataproduct_query = cls.observations.contains(observation)
+                #dataproduct_query &= cls.isValid == 1
+                #parset = dataproduct_query[0].as_dict()['CorrelatedDataProduct.pipeline.parset.content']
+                #parset = zlib.decompress(base64.b64decode(''.join(parset))).decode()
+                #parset = dict(x.split("=",1) for x in re.split("ObsSW.", parset))
+                #demix = parset['Observation.ObservationControl.PythonControl.PreProcessing.demix_always']
+                #ignoretarget = parset['Observation.ObservationControl.PythonControl.DPPP.demixer.ignoretarget']
+                demix = ''
+                ignoretarget = ''
     
                 print('Checking obs_id: %i' % obs_id)
                 for subarray in observation.subArrayPointings:
                     subarray_dict = subarray.as_dict()
-                    field_id = subarray_dict['SubArrayPointing.targetName'].split('_')[-1]
+                    field_id = subarray_dict['SubArrayPointing.targetName'].strip().replace(' ','_').split('_')[-1]
+                    print(subarray_dict['SubArrayPointing.targetName'],subarray_dict['SubArrayPointing.targetName'].strip().replace(' ','_'),field_id)
                     field_ra = subarray_dict['SubArrayPointing.pointing.rightAscension']
                     field_dec = subarray_dict['SubArrayPointing.pointing.declination']
 
@@ -130,6 +134,7 @@ for obs in obs_all:
     if obs[0] == 'PP219+37': obs[0] = 'P219+37' # has a wrong name in LTA
     if obs[0] == '094+59': obs[0] = 'P094+59' # has a wrong name in LTA
     if obs[0] == 'P142+49': obs[0] = 'P142+42' # has a wrong name in LTA
+    if obs[0] == 'P351+28': obs[0] = 'P321+28' # has a wrong name in LTA
 
     try:
         idx = np.where(grid['name'] == obs[0].upper())[0][0]
@@ -149,8 +154,8 @@ for obs in obs_all:
     grid['cycle'][idx][idxcell] = obs[1]
     grid['obsid'][idx][idxcell] = obs[2]
     grid['antset'][idx][idxcell] = obs[4]
-    grid['demix'][idx][idxcell] = obs[5]
-    grid['ignoretarget'][idx][idxcell] = obs[6]
+    grid['demix'][idx][idxcell] = obs[7]
+    grid['ignoretarget'][idx][idxcell] = obs[8]
     try:
         grid['LST'][idx][idxcell] = obs[3].hour
     except:
