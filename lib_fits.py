@@ -116,6 +116,8 @@ def find_freq(header):
         return header.get('RESTFRQ')
     elif not header.get('FREQ') is None and not header.get('FREQ') == 0:
         return header.get('FREQ')
+    elif not header.get('RFALPHA') is None and not header.get('RFALPHA') == 0:
+        return header.get('RFALPHA')
     else:
         for i in range(5):
             type_s = header.get('CTYPE%i' % i)

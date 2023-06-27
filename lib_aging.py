@@ -192,6 +192,8 @@ class S_model():
                     return np.log(10) * 10**logE * self.F(nu/nu_c(10**logE,B,alpha))*0.5*np.sin(alpha)**2*n_e(10**logE, iidx, B, t, z)
 
         res_quad =  C0 * integrate.dblquad(integrand, 1e-4, np.pi, np.log10(E_min), np.log10(E_max), epsrel=self.epsrel)[0] # rough integration
+        # TODO check order of integration borders
+        # res_quad =  C0 * integrate.dblquad(integrand, 1e-4, np.pi, np.log10(E_min), np.log10(E_max), epsrel=self.epsrel)[0] # rough integration
         return res_quad
 
     def evaluate_fermi2_steady_state(self, nu, B, z, q, D_0, N0=1.):
