@@ -22,7 +22,7 @@ import casacore.tables as pt
 from astropy.time import Time
 import numpy as np
 
-def get_obs(ms):
+def get_obs(ms: str):
     with pt.table(ms + '/OBSERVATION', ack=False) as t:
         obsid =  int(t.getcell("LOFAR_OBSERVATION_ID", 0))
         pathFieldTable = ms + "/FIELD"
@@ -30,14 +30,14 @@ def get_obs(ms):
         print("%s: Observation field: %s" % (ms, nameField))
         print("%s: Observation ID %s" % (ms, obsid))
 
-def get_timestep(ms):
+def get_timestep(ms: str):
     with pt.table(ms, ack = False) as t:
         times = sorted(set(t.getcol('TIME')))
     print("%s: Time step: %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
     time = Time( times[0]/86400, format='mjd')
     print("%s: Starting time: %s" % (ms, str(time.iso)))
 
-def get_freq(ms):
+def get_freq(ms: str):
     """
     Get chan frequencies in Hz
     """
@@ -52,7 +52,7 @@ def get_freq(ms):
     print("%s: Freq range: %f MHz - %f MHz (bandwidth: %f MHz, mean freq: %f MHz)" % (ms, min_freq, max_freq, bandwidth, mean_freq))
     print("%s: Channels: %i ch (bandwidth: %f MHz)" % (ms, nchan, chan_bandwidth) )
 
-def get_uvw(ms):
+def get_uvw(ms: str):
     with pt.table(ms, ack = False) as t:
         uvw = t.getcol('UVW')
         wavelength = 2.99e8 / np.mean(t.SPECTRAL_WINDOW[0]['CHAN_FREQ'])
@@ -61,7 +61,7 @@ def get_uvw(ms):
         print(f"%s: uv-range: %.0f m - %.0f m" % (ms, minuv, maxuv))
         print(f"%s: uv-range: %.0f lambda - %.0f lambda" % (ms, minuv/wavelength, maxuv/wavelength))
 
-def get_dir(ms):
+def get_dir(ms: str):
     """
     Get phase centre
     """
@@ -84,8 +84,34 @@ def get_dir(ms):
             code = t.getcell('LOFAR_TARGET',0)[0]
     code = code.lower().replace(' ','_')
     print("%s: Field: %s" % (ms, code))
+    
+def get_history(ms: str):
+    print("%s: History:" % (ms))
+    with pt.table(ms + "/HISTORY", ack=False) as table:
+        colnames = table.colnames()
+        for colname in colnames:
+            if colname not in ["APP_PARAMS", "APPLICATION"]:
+                continue
+            
+            col = table.col(colname)
+            
+            i = 1 # start at cell 1 (not 0) to skip long observation details
+            print(f"    History column (excluding observation log): {colname}")
+            while True:
+                try: 
+                    content = col.getcell(i)
+                    print(f"        History item {i}...")
+                    if type(content) == list:
+                        for value in content:
+                            print(f"            {value}")
+                    else:
+                        print(f"            value: {content}")
+                    i += 1
+                except:
+                    i = 0
+                    break
 
-def get_cols(ms):
+def get_cols(ms: str):
     """
     get non-default colummns
     """
@@ -125,6 +151,8 @@ for ms in sys.argv[1:]:
         get_obs(ms)
     except RuntimeError:
         pass
+    
+    get_history(ms)
     get_timestep(ms)
     get_freq(ms)
     get_uvw(ms)
