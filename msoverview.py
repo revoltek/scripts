@@ -61,6 +61,13 @@ def get_uvw(ms: str):
         print(f"%s: uv-range: %.0f m - %.0f m" % (ms, minuv, maxuv))
         print(f"%s: uv-range: %.0f lambda - %.0f lambda" % (ms, minuv/wavelength, maxuv/wavelength))
 
+def get_antenna_set(ms: str):
+    """
+    If LBA observation, return obs mode: INNER, OUTER, SPARSE_EVEN, SPARSE_ODD
+    """
+    with pt.table(ms+'/OBSERVATION', ack = False) as t:
+        print(f"%s: antenna set: %s" % (ms, t.getcell("LOFAR_ANTENNA_SET",0)))
+
 def get_dir(ms: str):
     """
     Get phase centre
@@ -153,6 +160,7 @@ for ms in sys.argv[1:]:
         pass
     
     get_history(ms)
+    get_antenna_set(ms)
     get_timestep(ms)
     get_freq(ms)
     get_uvw(ms)
