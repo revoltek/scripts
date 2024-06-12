@@ -8,7 +8,7 @@ from awlofar.main.aweimports import CorrelatedDataProduct, \
     FileObject, \
     Observation
 from awlofar.toolbox.LtaStager import LtaStager, LtaStagerError
-from astropy.utils import iers
+#from astropy.utils import iers
 #iers.IERS_A_URL='https://maia.usno.navy.mil/ser7/finals2000A.all'
 #iers_a = iers.IERS_A.open(iers.IERS_A_URL)
 #iers.earth_orientation_table.set(iers_a)

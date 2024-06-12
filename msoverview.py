@@ -36,6 +36,8 @@ def get_timestep(ms: str):
     print("%s: Time step: %i seconds (total timesteps: %i)." % (ms, times[1]-times[0], len(times)))
     time = Time( times[0]/86400, format='mjd')
     print("%s: Starting time: %s" % (ms, str(time.iso)))
+    time = Time( times[-1]/86400, format='mjd')
+    print("%s: Ending time: %s" % (ms, str(time.iso)))
 
 def get_freq(ms: str):
     """
@@ -58,8 +60,9 @@ def get_uvw(ms: str):
         wavelength = 2.99e8 / np.mean(t.SPECTRAL_WINDOW[0]['CHAN_FREQ'])
         uvw = np.linalg.norm(uvw, axis=1)
         minuv, maxuv = uvw.min(), uvw.max()
-        print(f"%s: uv-range: %.0f m - %.0f m" % (ms, minuv, maxuv))
-        print(f"%s: uv-range: %.0f lambda - %.0f lambda" % (ms, minuv/wavelength, maxuv/wavelength))
+        resolution = wavelength/maxuv * 180/np.pi * 3600
+        print(f"%s: uv-range: %.0f m - %.0f m (%.0f lambda - %.0f lambda) - nominal resolution: %.1f arcsec" \
+                % (ms, minuv, maxuv, minuv/wavelength, maxuv/wavelength, resolution))
 
 def get_antenna_set(ms: str):
     """
