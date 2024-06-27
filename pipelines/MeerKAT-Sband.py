@@ -13,6 +13,7 @@ from recipes.almapolhelpers import *
 invis   = 'RawData/m87sband.MS'
 calms   = 'MS_Files/m87sband-cal.MS'
 tgtms   = 'MS_Files/m87sband-tgt.MS'
+tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
 ref_ant = 'm002'
 
 # Name your gain tables
@@ -415,17 +416,25 @@ wsclean -verbose -log-time -no-update-model-required -j 64 \
 
 ### WORK ON TARGET ...
 # Split target ...
-split(vis = invis, outputvis = tgtms, field = "HCG15", datacolumn = 'data', spw = '0:200~3838')
+split(vis = invis, outputvis = tgtms, field = "M87", datacolumn = 'data', spw = '0:200~3838')
 
 applycal(vis  = tgtms, parang = True, calwt = False, field = '',\
     gaintable = [ktab, btab, kxtab, ptab_xyf, dgen, ftab],\
-    gainfield = ['', '', '', '', '', 'J0217+017'],\
+    gainfield = ['', '', '', '', '', gcal],\
     interp    = ['nearest,linear','nearest,linearflag','nearest,linear','nearest,linearflag','linear,linearflag','linear,linear'])
 
-flagmanager(vis = 'MS_Files/1688961378_HCG15.MS', mode = 'save', versionname = 'ApplyCal')
+flagmanager(vis = tgtms, mode = 'save', versionname = 'ApplyCal')
 
 aoflagger-setup
-aoflagger -v -j 32 -strategy meerkat_custom20230417.lua -column CORRECTED_DATA MS_Files/1688961378_HCG15.MS
+aoflagger -v -j 32 -strategy meerkat_custom20230417.lua -column CORRECTED_DATA MS_Files/xxx.MS
 
-split(vis = 'MS_Files/1688961378_HCG15.MS', outputvis = 'MS_Files/1688961378_HCG15_corr-avg.MS', datacolumn = 'corrected', width = 8)
+split(vis = tgtms, outputvis = tgtavgms, datacolumn = 'corrected', width = 8)
+flagdata(vis=tgtavgms, mode='manual', spw = '0:66~72,0:106~114,0:202~210,0:278~285')
 
+for i in range(30):
+    tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
+    gaincal(vis=tgtavgms, caltable='selfcal%02i.G' %i, solint='8s', refant='m002', parang=False)
+    gaincal(vis=tgtavgms, caltable='selfcal%02i.K' %i, solint='8s', refant='m002', gaintype='K', gaintable='selfcal%02i.G' %i, parang=False)
+    bandpass(vis=tgtavgms, caltable='selfcal%02i.B' %i, combine='', solint='300s', gaintable=['selfcal%02i.G' %i, 'selfcal%02i.K' %i], refant='m002', parang=False)
+    applycal(vis=tgtavgms, gaintable=['selfcal%02i.B' %i, 'selfcal%02i.G' %i, 'selfcal%02i.K' %i], interp=['linear,linearflag','linear', 'linear,linearflag'], parang=False)
+    os.system('singularity exec ~/storage/pill.simg wsclean -name img/m87-test%02i -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol I -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 5 -multiscale -no-mf-weighting -fits-mask m87-07asec-2500.fits MS_Files/m87sband-tgt-avg.MS/' % i)
