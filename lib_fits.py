@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #i -*- coding: utf-8 -*-
 #
 # Copyright (C) 2022 - Francesco de Gasperin, Henrik Edler
@@ -27,11 +27,7 @@ from astropy.nddata import Cutout2D
 from astropy.coordinates import match_coordinates_sky, SkyCoord
 from astropy.convolution import Gaussian2DKernel
 import pyregion
-import lsmtool as lsm
 import astropy.units as u
-
-from reproject import reproject_interp, reproject_exact
-reproj = reproject_exact
 
 def flatten(filename, channel=0, stokes=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -628,6 +624,8 @@ class Image(object):
 
     def regrid(self, regrid_hdr):
         """ Regrid image to new header """
+        from reproject import reproject_interp, reproject_exact
+        reproj = reproject_exact
         # store some info so to reconstruct headers
         beam = self.get_beam()
         freq = self.get_freq()
@@ -688,6 +686,7 @@ class Image(object):
         Create catalogue for image alignmnt
         """
         import bdsf
+        import lsmtool as lsm
         from astropy.table import Table
 
         img_cat = self.imagefile+'.cat'
