@@ -18,14 +18,14 @@ from astropy.time import Time
 import astropy.units as u
 import zlib, base64
 
-survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC18_020,LC18_007' # list of projects related with the LBA survey
+survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC15_011,LC18_007,LC18_020,LC20_025,LC20_039,LC20_011' # list of projects related with the LBA survey
 projects = survey_projects.split(',')
 
 lofar_location = EarthLocation(lat=52.90889*u.deg, lon=6.86889*u.deg, height=0*u.m) # LOFAR
 
 # obs ids that are know to have bad data
 bad_obs_ids = pickle.load(open(os.path.dirname(os.path.realpath(__file__))+'/LoLSS-bkp/badobsids.pickle', 'rb'))
-bad_obs_ids += [2002720,2002893,2002900,2003137,2003474,2003537,2004173,2004180,2004187,2004194,2004201,2004208,2004215,2004222,2004229,2004244,2004259,2004266,2004273,2004288,2004323,2004330,2004411,2004552,2004559,2004869,2004925,2004932,2005019,2005236,2005243,2005547,2005771,2005778,2005792,2005829,2006414] # to be removed from LTA
+#bad_obs_ids += [2002720,2002893,2002900,2003137,2003474,2003537,2004173,2004180,2004187,2004194,2004201,2004208,2004215,2004222,2004229,2004244,2004259,2004266,2004273,2004288,2004323,2004330,2004411,2004552,2004559,2004869,2004925,2004932,2005019,2005236,2005243,2005547,2005771,2005778,2005792,2005829,2006414] # to be removed from LTA
 
 # The class of data to query
 cls = CorrelatedDataProduct

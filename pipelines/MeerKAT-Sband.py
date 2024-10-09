@@ -449,10 +449,10 @@ for i in range(30):
     for ms in mss:
         print(f'Working on {ms}...')
         # solve
-        os.system(f'DP3 msin={ms} msout=. DP3-sol.parset sol.h5parm={ms}/ph-{i}.h5 sol.mode=diagonalphase sol.solint=1 sol.nchan=1 sol.smoothnessconstraint=10e6')
-        os.system(f'DP3 msin={ms} msout=. DP3-sol.parset sol.h5parm={ms}/amp-{i}.h5 sol.mode=diagonalamplitude sol.solint=20 sol.nchan=1 sol.smoothnessconstraint=30e6')
+        os.system(f'DP3 DP3-sol.parset msin={ms} msout=. sol.h5parm={ms}/ph-{i}.h5 sol.mode=diagonalphase sol.solint=1 sol.nchan=1 sol.smoothnessconstraint=10e6 >> DP3.log')
+        os.system(f'DP3 DP3-sol.parset msin={ms} msout=. sol.h5parm={ms}/amp-{i}.h5 sol.mode=diagonalamplitude sol.solint=20 sol.nchan=1 sol.smoothnessconstraint=30e6 >> DP3.log')
         # correct
-        os.system(f'DP3 msin={ms} msout=. DP3-cor.parset cor1.parmdb={ms}/ph-{i}.h5 cor2.parmdb={ms}/amp-{i}.h5')
+        os.system(f'DP3 DP3-cor.parset msin={ms} msout=. cor1.parmdb={ms}/ph-{i}.h5 cor2.parmdb={ms}/amp-{i}.h5 >> DP3.log')
     # clean
     print(f'Cleaning...')
     imgname = "img/m87-dp3%02i" % i
