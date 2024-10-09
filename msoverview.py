@@ -68,8 +68,11 @@ def get_antenna_set(ms: str):
     """
     If LBA observation, return obs mode: INNER, OUTER, SPARSE_EVEN, SPARSE_ODD
     """
-    with pt.table(ms+'/OBSERVATION', ack = False) as t:
-        print(f"%s: antenna set: %s" % (ms, t.getcell("LOFAR_ANTENNA_SET",0)))
+    try:
+        with pt.table(ms+'/OBSERVATION', ack = False) as t:
+            print(f"%s: antenna set: %s" % (ms, t.getcell("LOFAR_ANTENNA_SET",0)))
+    except:
+        pass
 
 def get_dir(ms: str):
     """
