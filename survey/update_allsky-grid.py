@@ -3,17 +3,17 @@
 
 import os, sys, re, pickle
 import numpy as np
-from awlofar.database.Context import context
+#from awlofar.database.Context import context
 from awlofar.main.aweimports import CorrelatedDataProduct, \
     FileObject, \
     Observation
-from awlofar.toolbox.LtaStager import LtaStager, LtaStagerError
+#from awlofar.toolbox.LtaStager import LtaStager, LtaStagerError
 #from astropy.utils import iers
 #iers.IERS_A_URL='https://maia.usno.navy.mil/ser7/finals2000A.all'
 #iers_a = iers.IERS_A.open(iers.IERS_A_URL)
 #iers.earth_orientation_table.set(iers_a)
 from astropy.table import Table
-from astropy.coordinates import EarthLocation, SkyCoord
+from astropy.coordinates import EarthLocation, SkyCoord, match_coordinates_sky
 from astropy.time import Time
 import astropy.units as u
 import zlib, base64
@@ -127,26 +127,40 @@ grid['cycle'] = ''
 grid['obsid'] = 0
 grid['LST'] = None
 grid['antset'] = ''
+all_Skycoords = SkyCoord(grid['ra'],grid['dec'])
 for obs in obs_all:
     obs[0] = obs[0].strip()
-    # fix some name errors
-    if obs[0] == 'PP033+66': obs[0] = 'P033+66' # has a wrong name in LTA
-    if obs[0] == 'PP219+37': obs[0] = 'P219+37' # has a wrong name in LTA
-    if obs[0] == '094+59': obs[0] = 'P094+59' # has a wrong name in LTA
-    if obs[0] == 'P142+49': obs[0] = 'P142+42' # has a wrong name in LTA
-    if obs[0] == 'P351+28': obs[0] = 'P321+28' # has a wrong name in LTA
+    # fix some typos
+    if obs[0] == 'PP033+66': obs[0] = 'P033+66'
+    if obs[0] == 'PP219+37': obs[0] = 'P219+37'
+    if obs[0] == '094+59': obs[0] = 'P094+59'
+      
+    # fix some wrong names
+    #if obs[1] == 'LC12_017' and obs[0] == 'P174+57': obs[0] = 'P176+60'
+    if obs[1] == 'LT14_002' and obs[0] == 'P142+49': obs[0] = 'P142+42'
+    if obs[1] == 'LT16_004' and obs[0] == 'P351+28': obs[0] = 'P321+28'
 
     try:
         idx = np.where(grid['name'] == obs[0].upper())[0][0]
     except:
-        if obs[0] != 'Coma' and obs[0] != 'Cring':
+        if obs[0] != 'Coma' and obs[0] != 'M31' and obs[0] != 'Cring' and not 'PSO' in obs[0] \
+            and not 'Test' in obs[0]  and not 'test' in obs[0] and not 'A'in obs[0] and obs[0] != '3c48' \
+            and obs[0] != '3C48' and obs[0] != 'ref' and not 'Zwcl'in obs[0] and not 'lba'in obs[0] and not 'hba'in obs[0]:
             print('WARNING: missing %s in the grid' % obs)
         continue
-
+    
     dist = SkyCoord(grid['ra'][idx]*u.deg,grid['dec'][idx]*u.deg).separation(SkyCoord(obs[5]*u.deg,obs[6]*u.deg))
     if dist > 1*u.arcmin:
-        print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f)' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
-        continue
+        match = match_coordinates_sky(SkyCoord(obs[5]*u.deg,obs[6]*u.deg), all_Skycoords)
+        if match[1] < 1*u.arcmin:
+            idx_correct = match[0]
+            name_correct = grid['name'][idx_correct]
+            print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f) -> assigning to: %s' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6],name_correct))
+            idx=idx_correct
+        else:
+            print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f) -> no other pointing found!' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
+            continue
+
 
     if not obs[1] == 'bug' and not obs[1] == 'bad': grid['hrs'][idx] += 1
     idxcell = list(grid['obsid'][idx]).index(0)
