@@ -18,7 +18,7 @@ from astropy.time import Time
 import astropy.units as u
 import zlib, base64
 
-survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC15_011,LC18_007,LC18_020,LC20_025,LC20_039,LC20_011' # list of projects related with the LBA survey
+survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC15_011,LC18_007,LC18_020,LC20_025,LC20_039,LC20_011,COM_LBA_SPARSE' # list of projects related with the LBA survey
 projects = survey_projects.split(',')
 
 lofar_location = EarthLocation(lat=52.90889*u.deg, lon=6.86889*u.deg, height=0*u.m) # LOFAR
@@ -161,7 +161,13 @@ for obs in obs_all:
             print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f) -> no other pointing found!' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
             continue
 
+    # this fixes obs with multiple entries of the same field (e.g. 849992)
+    if obs[2] in grid['obsid'][idx]: continue
 
+    # remove known problematic obsids (no data):
+    if obs[2] in [790836,801468,801478,801492,805972,818060,833618,849992,2002010,2002272,2019066,2019093,2021187,2021463,2021484,2021678,2023187,2035650,2035741,2035762,2035769,2035776,2035888,2036185,2039382]: continue
+
+    # all ok, add
     if not obs[1] == 'bug' and not obs[1] == 'bad': grid['hrs'][idx] += 1
     idxcell = list(grid['obsid'][idx]).index(0)
     #print(obs,idxcell)
