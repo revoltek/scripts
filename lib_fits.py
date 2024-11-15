@@ -24,7 +24,7 @@ from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
 from astropy.cosmology import FlatLambdaCDM
 from astropy.nddata import Cutout2D
-from astropy.coordinates import match_coordinates_sky, SkyCoord
+from astropy.coordinates import match_coordinates_sky, SkyCoord, FK5
 from astropy.convolution import Gaussian2DKernel
 import pyregion
 import astropy.units as u
@@ -284,7 +284,7 @@ class AllImages():
         action: regrid, header, regrid_header
             The function can perform the regrid or just return the common header or both
         """
-
+        
         rwcs = pywcs(naxis=2)
         rwcs.wcs.ctype = self.images[0].get_wcs().wcs.ctype
         if pixscale:
@@ -376,7 +376,27 @@ class Image(object):
         header = pyfits.open(imagefile)[0].header
         header = correct_beam_header(header)
         self.img_hdr_orig = header
+        
+        try:
+            self.img_hdr_orig["EQUINOX"]
+        except KeyError:
+            try:
+                self.img_hdr_orig["EQUINOX"] = self.img_hdr_orig["EPOCH"]
+            except KeyError:
+                self.img_hdr_orig["EQUINOX"] = 2000.0 
 
+        if self.img_hdr_orig["EQUINOX"] != 2000:
+            logging.warning(f'Equinox is not 2000, but {self.img_hdr_orig["EQUINOX"]}. transforming to J2000')
+            ra_b1950 = self.img_hdr_orig["CRVAL1"] # RA in degrees
+            dec_b1950 = self.img_hdr_orig["CRVAL2"] # Dec in degrees
+            
+            coord_b1950 = SkyCoord(ra=ra_b1950, dec=dec_b1950, unit='deg', frame=FK5, equinox="B1950")
+            coord_j2000 = coord_b1950.transform_to(FK5(equinox="J2000"))
+            
+            self.img_hdr_orig["EQUINOX"] = 2000.0
+            self.img_hdr_orig["CRVAL1"] = coord_j2000.ra.deg
+            self.img_hdr_orig["CRVAL2"] = coord_j2000.dec.deg
+            
         try:
             beam = [header['BMAJ'], header['BMIN'], header['BPA']]
         except:
@@ -399,6 +419,27 @@ class Image(object):
 
         self.noise = None
         self.img_hdr, self.img_data = flatten(self.imagefile, channel=channel, stokes=stokes)
+        self.img_data_orig = self.img_data.copy()
+        
+        try:
+            self.img_hdr["EQUINOX"]
+        except KeyError:
+            try:
+                self.img_hdr["EQUINOX"] = self.img_hdr["EPOCH"]
+            except KeyError:
+                self.img_hdr["EQUINOX"] = 2000.0 
+
+        if self.img_hdr["EQUINOX"] != 2000:
+            ra_b1950 = self.img_hdr["CRVAL1"] # RA in degrees
+            dec_b1950 = self.img_hdr["CRVAL2"] # Dec in degrees
+            
+            coord_b1950 = SkyCoord(ra=ra_b1950, dec=dec_b1950, unit='deg', frame=FK5, equinox="B1950")
+            coord_j2000 = coord_b1950.transform_to(FK5(equinox="J2000"))
+            
+            self.img_hdr["EQUINOX"] = 2000.0
+            self.img_hdr["CRVAL1"] = coord_j2000.ra.deg
+            self.img_hdr["CRVAL2"] = coord_j2000.dec.deg
+        
         self.img_hdu = pyfits.ImageHDU(data=self.img_data, header=self.img_hdr)
         self.set_beam(beam)
         self.set_freq(freq)
@@ -592,7 +633,7 @@ class Image(object):
         """
         from lib_beamdeconv import deconvolve_ell, EllipticalGaussian2DKernel
         from astropy import convolution
-
+        
         # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
         beam = self.get_beam()
         try:
@@ -612,7 +653,8 @@ class Image(object):
         # do convolution on data
         bmaj, bmin, bpa = convolve_beam
         #print(self.imagefile,self.img_hdr['CDELT1'], self.img_hdr['CDELT2'])
-        assert abs(self.img_hdr['CDELT1']) == abs(self.img_hdr['CDELT2'])
+        
+        assert abs(self.img_hdr['CDELT1']) - abs(self.img_hdr['CDELT2']) < 1e-6
         pixsize = abs(self.img_hdr['CDELT1'])
         fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
         gauss_kern = EllipticalGaussian2DKernel((bmaj*fwhm2sigma)/pixsize, (bmin*fwhm2sigma)/pixsize, (90+bpa)*np.pi/180.) # bmaj and bmin are in pixels
