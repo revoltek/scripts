@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os, sys
+import os, sys, argparse
 import casacore.tables as pt
 from astropy.time import Time
 import numpy as np
@@ -63,6 +63,15 @@ def get_uvw(ms: str):
         resolution = wavelength/maxuv * 180/np.pi * 3600
         print(f"%s: uv-range: %.0f m - %.0f m (%.0f lambda - %.0f lambda) - nominal resolution: %.1f arcsec" \
                 % (ms, minuv, maxuv, minuv/wavelength, maxuv/wavelength, resolution))
+
+def get_antenna(ms: str):
+    """
+    Print a list of antennas in the antenna subtable
+    """
+    with pt.table(ms+'/ANTENNA', ack = False) as t:
+        print(f"%s: antennas:" % (ms))
+        for a in t:
+            print(a["NAME"])
 
 def get_antenna_set(ms: str):
     """
@@ -153,7 +162,15 @@ def get_cols(ms: str):
                     print(f'{ms}: [{colname}] Beam mode: No LOFAR beam applied.')
 
 
-for ms in sys.argv[1:]:
+parser = argparse.ArgumentParser(description="Print MS metadata.")
+parser.add_argument("--hist", "-i", action="store_true", help="Print also history.")
+parser.add_argument("--antenna", "-a", action="store_true", help="Print also Antenna table")
+parser.add_argument("MSs", nargs="*", help="MS list")
+
+# Parse the arguments
+args = parser.parse_args()
+
+for ms in args.MSs:
     if not os.path.exists(ms):
         print("ERROR: missing ms %s" % ms)
         sys.exit()
@@ -162,7 +179,8 @@ for ms in sys.argv[1:]:
     except RuntimeError:
         pass
     
-    get_history(ms)
+    if args.hist: get_history(ms)
+    if args.antenna: get_antenna(ms)
     get_antenna_set(ms)
     get_timestep(ms)
     get_freq(ms)
