@@ -3,29 +3,29 @@
 
 import os, sys, re, pickle
 import numpy as np
-from awlofar.database.Context import context
+#from awlofar.database.Context import context
 from awlofar.main.aweimports import CorrelatedDataProduct, \
     FileObject, \
     Observation
-from awlofar.toolbox.LtaStager import LtaStager, LtaStagerError
+#from awlofar.toolbox.LtaStager import LtaStager, LtaStagerError
 #from astropy.utils import iers
 #iers.IERS_A_URL='https://maia.usno.navy.mil/ser7/finals2000A.all'
 #iers_a = iers.IERS_A.open(iers.IERS_A_URL)
 #iers.earth_orientation_table.set(iers_a)
 from astropy.table import Table
-from astropy.coordinates import EarthLocation, SkyCoord
+from astropy.coordinates import EarthLocation, SkyCoord, match_coordinates_sky
 from astropy.time import Time
 import astropy.units as u
 import zlib, base64
 
-survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC18_020,LC18_007' # list of projects related with the LBA survey
+survey_projects = 'LT16_004,LT14_002,LC12_017,LC9_016,LC8_031,LC15_011,LC18_007,LC18_020,LC20_025,LC20_039,LC20_011,COM_LBA_SPARSE' # list of projects related with the LBA survey
 projects = survey_projects.split(',')
 
 lofar_location = EarthLocation(lat=52.90889*u.deg, lon=6.86889*u.deg, height=0*u.m) # LOFAR
 
 # obs ids that are know to have bad data
 bad_obs_ids = pickle.load(open(os.path.dirname(os.path.realpath(__file__))+'/LoLSS-bkp/badobsids.pickle', 'rb'))
-bad_obs_ids += [2002720,2002893,2002900,2003137,2003474,2003537,2004173,2004180,2004187,2004194,2004201,2004208,2004215,2004222,2004229,2004244,2004259,2004266,2004273,2004288,2004323,2004330,2004411,2004552,2004559,2004869,2004925,2004932,2005019,2005236,2005243,2005547,2005771,2005778,2005792,2005829,2006414] # to be removed from LTA
+#bad_obs_ids += [2002720,2002893,2002900,2003137,2003474,2003537,2004173,2004180,2004187,2004194,2004201,2004208,2004215,2004222,2004229,2004244,2004259,2004266,2004273,2004288,2004323,2004330,2004411,2004552,2004559,2004869,2004925,2004932,2005019,2005236,2005243,2005547,2005771,2005778,2005792,2005829,2006414] # to be removed from LTA
 
 # The class of data to query
 cls = CorrelatedDataProduct
@@ -127,27 +127,47 @@ grid['cycle'] = ''
 grid['obsid'] = 0
 grid['LST'] = None
 grid['antset'] = ''
+all_Skycoords = SkyCoord(grid['ra'],grid['dec'])
 for obs in obs_all:
     obs[0] = obs[0].strip()
-    # fix some name errors
-    if obs[0] == 'PP033+66': obs[0] = 'P033+66' # has a wrong name in LTA
-    if obs[0] == 'PP219+37': obs[0] = 'P219+37' # has a wrong name in LTA
-    if obs[0] == '094+59': obs[0] = 'P094+59' # has a wrong name in LTA
-    if obs[0] == 'P142+49': obs[0] = 'P142+42' # has a wrong name in LTA
-    if obs[0] == 'P351+28': obs[0] = 'P321+28' # has a wrong name in LTA
+    # fix some typos
+    if obs[0] == 'PP033+66': obs[0] = 'P033+66'
+    if obs[0] == 'PP219+37': obs[0] = 'P219+37'
+    if obs[0] == '094+59': obs[0] = 'P094+59'
+      
+    # fix some wrong names
+    #if obs[1] == 'LC12_017' and obs[0] == 'P174+57': obs[0] = 'P176+60'
+    if obs[1] == 'LT14_002' and obs[0] == 'P142+49': obs[0] = 'P142+42'
+    if obs[1] == 'LT16_004' and obs[0] == 'P351+28': obs[0] = 'P321+28'
 
     try:
         idx = np.where(grid['name'] == obs[0].upper())[0][0]
     except:
-        if obs[0] != 'Coma' and obs[0] != 'Cring':
+        if obs[0] != 'Coma' and obs[0] != 'M31' and obs[0] != 'Cring' and not 'PSO' in obs[0] \
+            and not 'Test' in obs[0]  and not 'test' in obs[0] and not 'A'in obs[0] and obs[0] != '3c48' \
+            and obs[0] != '3C48' and obs[0] != 'ref' and not 'Zwcl'in obs[0] and not 'lba'in obs[0] and not 'hba'in obs[0]:
             print('WARNING: missing %s in the grid' % obs)
         continue
-
+    
     dist = SkyCoord(grid['ra'][idx]*u.deg,grid['dec'][idx]*u.deg).separation(SkyCoord(obs[5]*u.deg,obs[6]*u.deg))
     if dist > 1*u.arcmin:
-        print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f)' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
-        continue
+        match = match_coordinates_sky(SkyCoord(obs[5]*u.deg,obs[6]*u.deg), all_Skycoords)
+        if match[1] < 1*u.arcmin:
+            idx_correct = match[0]
+            name_correct = grid['name'][idx_correct]
+            print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f) -> assigning to: %s' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6],name_correct))
+            idx=idx_correct
+        else:
+            print('WARNING: wrong coord for %s - %s (should be: %f %f - it is: %f %f) -> no other pointing found!' % (obs[0],obs[1],grid['ra'][idx],grid['dec'][idx],obs[5],obs[6]))
+            continue
 
+    # this fixes obs with multiple entries of the same field (e.g. 849992)
+    if obs[2] in grid['obsid'][idx]: continue
+
+    # remove known problematic obsids (no data):
+    if obs[2] in [790836,801468,801478,801492,805972,818060,833618,849992,2002010,2002272,2019066,2019093,2021187,2021463,2021484,2021678,2023187,2035650,2035741,2035762,2035769,2035776,2035888,2036185,2039382]: continue
+
+    # all ok, add
     if not obs[1] == 'bug' and not obs[1] == 'bad': grid['hrs'][idx] += 1
     idxcell = list(grid['obsid'][idx]).index(0)
     #print(obs,idxcell)

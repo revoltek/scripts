@@ -73,7 +73,7 @@ def addScalebar(ax, wcs, z, kpc,  fontsize, color='black'):
     degperkpc = cosmo.arcsec_per_kpc_proper(z).value/3600.
     pixelperkpc = degperkpc/degperpixel
     fontprops = fm.FontProperties(size=fontsize)
-    scalebar = AnchoredSizeBar(ax.transData, kpc*pixelperkpc, '%i kpc' % kpc, 'lower right', fontproperties=fontprops, pad=0.5, color=color, frameon=False, sep=5, label_top=True, size_vertical=2)
+    scalebar = AnchoredSizeBar(ax.transData, kpc*pixelperkpc, '%i kpc' % kpc, 'lower right', fontproperties=fontprops, pad=0.5, color=color, frameon=False, sep=5, label_top=True, size_vertical=1)
     ax.add_artist(scalebar)
 
 
@@ -97,16 +97,19 @@ def addBeam(ax, hdr, edgecolor='black'):
     r.set_facecolor('white')
     ax.add_patch(r)
 
-def addRegion(regionfile, ax, header, alpha=1.0):
+def addRegion(regionfile, ax, header, alpha=1.0, color=None, text=True):
     import pyregion
     reg = pyregion.open(regionfile)
     reg = reg.as_imagecoord(header)
     patch_list, artist_list = reg.get_mpl_patches_texts()
     [p.set_alpha(alpha) for p in patch_list]
+    if color:
+        [p.set_edgecolor(color) for p in patch_list]
     for p in patch_list:
         ax.add_patch(p)
-    for a in artist_list:
-        ax.add_artist(a)
+    if text:
+        for a in artist_list:
+            ax.add_artist(a)
 
 def addCbar(fig, plottype, im, header, int_max, fontsize, cbanchor=[0.127, 0.89, 0.772, 0.02]):
     cbaxes = fig.add_axes(cbanchor)

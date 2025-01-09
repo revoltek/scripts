@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from multiprocessing import freeze_support
 import os, sys, argparse, logging
 import numpy as np
 from astropy.io import fits as pyfits
@@ -28,9 +29,10 @@ import pyregion
 from lib_linearfit import linear_fit, linear_fit_bootstrap
 from lib_fits import AllImages
 # https://github.com/astrofrog/reproject
-from reproject import reproject_interp, reproject_exact
-reproj = reproject_exact
+#from reproject import reproject_interp, reproject_exact # type: ignore
+freeze_support()
 logging.root.setLevel(logging.DEBUG)
+#reproj = reproject_exact
 
 parser = argparse.ArgumentParser(description='Make spectral index maps, e.g. spidxmap.py --region ds9.reg --noise --sigma 5 --save *fits')
 parser.add_argument('images', nargs='+', help='List of images to use for spidx')
@@ -66,10 +68,12 @@ if np.all([os.path.exists(name.replace('.fits', '-conv-regrid.fits')) for name i
 else:
     all_images = AllImages(args.images)
     all_images.convolve_to(beam=args.beam, circbeam=args.circbeam)
-    if args.save: all_images.write('conv')
+    if args.save: 
+        all_images.write('conv', inflate=True) 
     regrid_hdr = all_images.regrid_common(size=args.size, region=args.region, radec=args.radec, action='regrid_header')
-    if args.save: all_images.write('conv-regrid')
-
+    if args.save: 
+        all_images.write('conv-regrid', inflate=True)
+    
 #####################################################
 # find+apply shift w.r.t. lowest noise image
 if args.shift:
@@ -101,6 +105,8 @@ spidx_data = np.empty(shape=(ysize,xsize))
 spidx_data[:] = np.nan
 spidx_err_data = np.empty(shape=(ysize,xsize))
 spidx_err_data[:] = np.nan
+spidx_frac_data = np.empty(shape=(ysize,xsize))
+spidx_frac_data[:] = np.nan
 
 if args.ncpu > 1:
     from lib_multiproc import multiprocManager
@@ -109,7 +115,9 @@ if args.ncpu > 1:
             (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
         else:
             (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
-        outQueue.put([i,j,a,sa])
+        
+        if outQueue is not None:
+            outQueue.put([i,j,a,sa])
 
     # start processes for multi-thread
     mpm = multiprocManager(args.ncpu, funct)
@@ -133,6 +141,7 @@ if args.ncpu > 1:
         i = r[0]; j = r[1]; a = r[2]; sa = r[3]
         spidx_data[i,j] = a
         spidx_err_data[i,j] = sa
+        spidx_frac_data[i,j] = abs(sa/a)
 else:
     for i in range(ysize):
         print('%i/%i' % (i+1,ysize), end='\r')
@@ -148,10 +157,14 @@ else:
             if (np.array(val4reg) <= 0).any(): continue
             if args.bootstrap:
                 (a, b, sa, sb) = linear_fit_bootstrap(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
+            elif len(frequencies) == 2:
+                a = (np.log10(val4reg[1])-np.log10(val4reg[0]))/(np.log10(frequencies[1])-np.log10(frequencies[0]))
+                sa = 1. / (np.log10(frequencies[1])-np.log10(frequencies[0])) * ((yerr[0]/val4reg[0])**2 + (yerr[1]/val4reg[1])**2) ** 0.5
             else:
                 (a, b, sa, sb) = linear_fit(x=frequencies, y=val4reg, yerr=yerr, tolog=True)
             spidx_data[i,j] = a
             spidx_err_data[i,j] = sa
+            spidx_frac_data[i,j] = abs(sa/a)
 
 if 'FREQ' in regrid_hdr.keys():
     del regrid_hdr['FREQ']
@@ -169,3 +182,4 @@ regrid_hdr['CTYPE3'] = 'ALPHA'
 pyfits.writeto(filename_out, spidx_data, regrid_hdr, overwrite=True, output_verify='fix')
 regrid_hdr['CTYPE3'] = 'ALPHAERR'
 pyfits.writeto(filename_out.replace('.fits','-err.fits'), spidx_err_data, regrid_hdr, overwrite=True, output_verify='fix')
+pyfits.writeto(filename_out.replace('.fits','-err-frac.fits'), spidx_frac_data, regrid_hdr, overwrite=True, output_verify='fix')

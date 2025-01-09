@@ -8,12 +8,13 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 singularity_img = '/homes/fdg/storage/pill.simg'
-singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/lofarfs2/lofar2/fdg '+singularity_img
+singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/groups/ulu/fdg '+singularity_img
 
-dir_storage_cals = '/iranet/lofarfs2/lofar2/fdg/surveycals'
-dir_storage_tgts = '/iranet/lofarfs2/lofar2/fdg/surveytgts'
+dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
+dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
+run_only = 1000 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
@@ -49,13 +50,16 @@ class Scheduler():
                          #SBATCH --ntasks-per-node=1
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
-                         #SBATCH --time=5:00:00
+                         #SBATCH --time=10:00:00
                          #SBATCH -o {self.file_log}-%N.log
+                         #SBATCH --job-name={self.name}
                          rm -r /local/work/fdg/*
-                         mkdir -p /local/work/fdg
-                         echo -e "[LOFAR_cal]\ndata_dir={dir_orig}\n" > /local/work/fdg/lilf.config
+                         mkdir -p /local/work/fdg/data-bkp
+                         cp {dir_orig}/* /local/work/fdg/data-bkp
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/LOFAR_cal.py
-                         mv /local/work/fdg/plots* /local/work/fdg/cal*h5 /local/work/fdg/*logger /local/work/fdg/logs* {dir_dest}
+                         mv /local/work/fdg/cal-pa.h5 /local/work/fdg/cal-bp.h5 /local/work/fdg/cal-fr.h5 /local/work/fdg/cal-iono-cs.h5 /local/work/fdg/cal-iono.h5 {dir_dest}
+                         mv /local/work/fdg/plots* {dir_dest}
+                         mv /local/work/fdg/pipeline-cal_*logger /local/work/fdg/logs_pipeline-cal_* /local/work/fdg/pipeline-cal.walker {dir_dest}
                          rm -r /local/work/fdg/*
                          """
             content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
@@ -73,6 +77,7 @@ class Scheduler():
                          #SBATCH --cpus-per-task=36
                          #SBATCH --time=200:00:00
                          #SBATCH -o {self.file_log}-%N.log
+                         #SBATCH --job-name={self.name}
                          rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg/
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL.py
@@ -92,15 +97,16 @@ logging.info('Setting up %i jobs.' % len(all_cals))
 i=0
 for dir_orig in all_cals:
     dir_dest = dir_orig.replace('download/mss','done')
+
     if not os.path.exists(dir_dest):
         os.makedirs(dir_dest)
 
     # skip if already done
-    if len(glob.glob(dir_dest+'/*h5')) == 4:
+    if len(glob.glob(dir_dest+'/*h5')) == 5:
         continue
 
     # skip if not present
-    if len(glob.glob(dir_orig+'/*MS')) == 0:
+    if len(glob.glob(dir_orig+'/*MS')) == 0 and len(glob.glob(dir_orig+'/*tar')) == 0:
         continue
 
     c = Scheduler(name=dir_orig.split('/')[-1])
@@ -108,9 +114,12 @@ for dir_orig in all_cals:
     c.submit()
 
     # separate initial calls so initial cp is diluted
-    if i < 24:
+    if i < 34:
         time.sleep(120)
     i+=1
+    
+    if i == run_only:
+        sys.exit()
 
 ###
 # tgts
@@ -123,3 +132,6 @@ for dir_orig in all_cals:
     # separate initial calls so the stagings+downloads are diluted
     #if i < 24:
     #    time.sleep(2*3600)
+
+    #if i > run_only:
+    #    sys.exit()
