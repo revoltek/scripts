@@ -200,8 +200,8 @@ gaincal(vis = calms, caltable = gtab, selectdata = True,\
 
 # Delay calibration
 gaincal(vis = calms, caltable = ktab, selectdata = True,\
-    solint = "inf", field = bpcal, refant = ref_ant,\
-    solnorm = False, gaintype = "K",\
+    solint = "inf", field = bpcal, combine = "",\
+    refant = ref_ant, solnorm = False, gaintype = "K",\
     gaintable = [gtab], gainfield = [''], interp = ['linear'],\
     parang = False)
 
@@ -209,8 +209,8 @@ gaincal(vis = calms, caltable = ktab, selectdata = True,\
 bandpass(vis = calms, caltable = btab, selectdata = True,\
     solint = "inf", field = bpcal, combine = "",\
     refant = ref_ant, solnorm = False, bandtype = "B",\
-    gaintable = [ktab,gtab], gainfield = [''],\
-    interp = ['linear','linear'], parang = False)
+    gaintable = [ktab], gainfield = [''],\
+    interp = ['linear'], parang = False)
 
 # Gain calibration: bandpass calibrators
 #gaincal(vis = calms, caltable = gtab_all, selectdata = True,\
@@ -248,17 +248,6 @@ gaincal(vis = calms, caltable = gtab_all, selectdata = True,\
     gaintable = [ktab, btab], gainfield = ['', ''],\
     interp = ['nearest', 'linear,linearflag'],\
     parang = False)
-
-applycal(vis=calms, field=bpcal+','+gcal+','+xcal, 
-    gaintable=[[ktab, btab, gtab_all],
-    interp=['nearest,linear','nearest,linearflag','linear'])
-
-# plot off diag pre Df
-plotms(vis=calms, xaxis='frequency', yaxis='amplitude',
-    xdatacolumn='corrected', ydatacolumn='corrected', correlation='XY,YX',
-    coloraxis='corr', uvrange=">1m", avgtime='99999999999', avgscan=True,
-    field=bpcal.split(',')[0])
-
 
 ### Polarisation calibration
 qu = qufromgain(gtab_all, paoffset=-90)

@@ -14,7 +14,7 @@ dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
 dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
-run_only = 1000 # limit run to this number of objects
+run_only = 9999 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
@@ -102,7 +102,8 @@ for dir_orig in all_cals:
         os.makedirs(dir_dest)
 
     # skip if already done
-    if len(glob.glob(dir_dest+'/*h5')) == 5:
+    if len(glob.glob(dir_dest+'/*h5')) == 5 or len(glob.glob(dir_dest+'/*h5')) == 0:
+    #if len(glob.glob(dir_dest+'/*logger')) == 1:
         continue
 
     # skip if not present
