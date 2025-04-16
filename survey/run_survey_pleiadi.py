@@ -14,7 +14,7 @@ dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
 dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
-run_only = 1000 # limit run to this number of objects
+run_only = 10 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
@@ -75,12 +75,14 @@ class Scheduler():
                          #SBATCH --ntasks-per-node=1
                          ### number of openmp threads
                          #SBATCH --cpus-per-task=36
-                         #SBATCH --time=200:00:00
+                         #SBATCH --time=240:00:00
                          #SBATCH -o {self.file_log}-%N.log
                          #SBATCH --job-name={self.name}
                          rm -r /local/work/fdg/*
                          mkdir -p /local/work/fdg/
-                         {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL.py
+                         echo "[LOFAR_ddparallel]" > /local/work/fdg/lilf.config
+                         echo "ateam_clip = [CygA]" >> /local/work/fdg/lilf.config
+                         {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL-survey.py
                          #rm -r /local/work/fdg/*
                          """
             content = ''.join(line.lstrip(' \t') for line in content.splitlines(True)) # remove spaces
@@ -91,47 +93,48 @@ class Scheduler():
 
 ###
 # cals
-all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
-logging.info('Setting up %i jobs.' % len(all_cals))
-
-i=0
-for dir_orig in all_cals:
-    dir_dest = dir_orig.replace('download/mss','done')
-
-    if not os.path.exists(dir_dest):
-        os.makedirs(dir_dest)
-
-    # skip if already done
-    if len(glob.glob(dir_dest+'/*h5')) == 5:
-        continue
-
-    # skip if not present
-    if len(glob.glob(dir_orig+'/*MS')) == 0 and len(glob.glob(dir_orig+'/*tar')) == 0:
-        continue
-
-    c = Scheduler(name=dir_orig.split('/')[-1])
-    c.prepare_sbatch('cal')
-    c.submit()
-
-    # separate initial calls so initial cp is diluted
-    if i < 34:
-        time.sleep(120)
-    i+=1
-    
-    if i == run_only:
-        sys.exit()
+#all_cals = sorted(glob.glob(dir_storage_cals+'/download/mss/id*'))
+#logging.info('Setting up %i jobs.' % len(all_cals))
+#
+#i=0
+#for dir_orig in all_cals:
+#    dir_dest = dir_orig.replace('download/mss','done')
+#
+#    if not os.path.exists(dir_dest):
+#        os.makedirs(dir_dest)
+#
+#    # skip if already done
+#    if len(glob.glob(dir_dest+'/*h5')) == 5 or len(glob.glob(dir_dest+'/*h5')) == 0:
+#    #if len(glob.glob(dir_dest+'/*logger')) == 1:
+#        continue
+#
+#    # skip if not present
+#    if len(glob.glob(dir_orig+'/*MS')) == 0 and len(glob.glob(dir_orig+'/*tar')) == 0:
+#        continue
+#
+#    c = Scheduler(name=dir_orig.split('/')[-1])
+#    c.prepare_sbatch('cal')
+#    c.submit()
+#
+#    # separate initial calls so initial cp is diluted
+#    if i < 34:
+#        time.sleep(120)
+#    i+=1
+#    
+#    if i == run_only:
+#        sys.exit()
 
 ###
 # tgts
-#i=0
-#for i in range(1):
-#    c = Scheduler('pill')
-#    c.prepare_sbatch('pill')
-#    c.submit()
+i=0
+for i in range(9999):
+    c = Scheduler('pill')
+    c.prepare_sbatch('pill')
+    c.submit()
 
     # separate initial calls so the stagings+downloads are diluted
-    #if i < 24:
-    #    time.sleep(2*3600)
+    if i < 24:
+        time.sleep(600)
 
-    #if i > run_only:
-    #    sys.exit()
+    if i > run_only:
+        sys.exit()

@@ -121,7 +121,7 @@ title('Pointing Elevation')
 title('Elevation')
 ylabel('Elevation (deg)');
 xlabel('Time (h)');
-#savefig('elevation.eps')
 l = legend(loc=5)
 l.get_frame().set_alpha(0.5)
+savefig('elevation.png')
 show()
