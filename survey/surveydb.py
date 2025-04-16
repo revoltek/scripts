@@ -54,6 +54,8 @@ if args.updatedb:
     
     grid = Table.read('allsky-grid.fits')
     grid.convert_bytestring_to_unicode()
+    grid = grid[np.random.permutation(len(grid))] # shuffle the table
+
 
     with SurveysDB(survey='lba',readonly=False) as sdb:
         all_fields = {}
@@ -138,7 +140,8 @@ if args.show is not None:
             for i, entry in enumerate(r):
                 # TODO: only select good
                 hrs = sum(np.array(all_fields) == entry['id'])
-                print(f'{i}) ID: {entry['id']} - {hrs} hrs ({entry['status']} - priority: {entry['priority']})')
+                print('%i) ID: %s - %i hrs (%s) - priority: %s)' \
+                        % (i, entry['id'], hrs, entry['status'], entry['priority']))
             print("############################")
 
         if args.show == 'all' or args.show == 'done':
