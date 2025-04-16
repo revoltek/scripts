@@ -28,6 +28,7 @@ from astropy.coordinates import match_coordinates_sky, SkyCoord, FK5
 from astropy.convolution import Gaussian2DKernel
 import pyregion
 import astropy.units as u
+from astropy import wcs
 
 def flatten(filename, channel=0, stokes=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -87,6 +88,18 @@ def flatten(filename, channel=0, stokes=0):
         header["BPA"]=f[0].header['BPA']
     except:
         pass
+    
+    if 'BUNIT' in f[0].header:
+        header['BUNIT'] = f[0].header['BUNIT']
+    else:
+        print('Warning: BUNIT not found in header, assuming JY/BEAM')
+        header['BUNIT'] = 'JY/BEAM'
+        
+    if 'BTYPE' in f[0].header:
+        header['BTYPE'] = f[0].header['BTYPE']
+    else:
+        print('Warning: BTYPE not found in header, assuming INTENSITY')
+        header['BTYPE'] = 'INTENSITY'
 
     # slice=(0,)*(naxis-2)+(np.s_[:],)*2
     return header, f[0].data[tuple(dataslice)]
@@ -125,6 +138,48 @@ def find_freq(header):
                 return header.get('CRVAL%i' % i)
 
     return None # no freq information found
+
+def transform_to_j2000(header: pyfits.Header):
+    try:
+            header["EQUINOX"]
+    except KeyError:
+        try:
+            header["EQUINOX"] = header["EPOCH"]
+        except KeyError:
+            header["EQUINOX"] = 2000.0 
+    if header["EQUINOX"] == 2000:
+        return header
+                
+    crvals = tuple(np.array([header["CRPIX2"], header["CRPIX1"]], dtype=int))
+    xx, yy = np.meshgrid(np.arange(header["NAXIS1"]), np.arange(header["NAXIS2"]))
+
+    coord_b1950 = wcs.utils.pixel_to_skycoord(
+        xx.flatten(), yy.flatten(), wcs.WCS(header), origin=1, mode="all"
+    )
+    ra1950 = coord_b1950.ra.deg.reshape(header["NAXIS2"], header["NAXIS1"])
+    dec1950 = coord_b1950.dec.deg.reshape(header["NAXIS2"], header["NAXIS1"])
+    coord_b1950 = SkyCoord(ra=ra1950, dec=dec1950, unit='deg', frame=FK5, equinox="B1950")
+
+    coord_j2000 = coord_b1950.transform_to(FK5(equinox="J2000"))
+    ra2000 = coord_j2000.ra.deg.reshape(header["NAXIS2"], header["NAXIS1"])
+    dec2000 = coord_j2000.dec.deg.reshape(header["NAXIS2"], header["NAXIS1"])
+
+    header["EQUINOX"] = 2000.0
+    header.pop("EPOCH")
+    header["CRVAL1"] = ra2000[crvals]
+    header["CRVAL2"] = dec2000[crvals]
+
+    CD2_2 = (dec2000[crvals] - dec2000[crvals[0]-1, crvals[1]])
+    CD1_1 = -(dec2000[crvals] - dec2000[crvals[0]-1, crvals[1]])
+    CD2_1 = (dec2000[crvals] - dec2000[crvals[0], crvals[1]-1])
+    CD1_2 = (dec2000[crvals] - dec2000[crvals[0], crvals[1]-1])
+    rot = np.arctan2(CD2_1, CD1_1) * 180 / np.pi
+
+    header["CDELT1"] = CD1_1 / np.cos(rot * np.pi / 180)
+    header["CDELT2"] = CD2_2 / np.cos(rot * np.pi / 180)
+    header["CROTA1"] = rot - 180
+    header["CROTA2"] = rot - 180
+    return header
  
 class AllImages():
 
@@ -160,6 +215,10 @@ class AllImages():
 
     def __getitem__(self, x):
         return self.images[x]
+    
+    def shift_by(self, xpix, ypix, img_idx):
+        img_idx = int(img_idx)
+        self.images[img_idx].apply_shift(xpix, ypix)
 
     def align_catalogue(self):
         [image.make_catalogue() for image in self]
@@ -300,6 +359,7 @@ class AllImages():
             midpix = np.array(self.images[0].img_data.shape)/2
             mra, mdec = self.images[0].get_wcs().all_pix2world(midpix[1], midpix[0], 0, ra_dec_order=True)
         rwcs.wcs.crval = [mra, mdec]
+        rwcs.wcs.crota = [0,0]
 
         if region:
             r = pyregion.open(region)
@@ -375,27 +435,8 @@ class Image(object):
         self.imagefile = imagefile
         header = pyfits.open(imagefile)[0].header
         header = correct_beam_header(header)
+        header = transform_to_j2000(header)
         self.img_hdr_orig = header
-        
-        try:
-            self.img_hdr_orig["EQUINOX"]
-        except KeyError:
-            try:
-                self.img_hdr_orig["EQUINOX"] = self.img_hdr_orig["EPOCH"]
-            except KeyError:
-                self.img_hdr_orig["EQUINOX"] = 2000.0 
-
-        if self.img_hdr_orig["EQUINOX"] != 2000:
-            logging.warning(f'Equinox is not 2000, but {self.img_hdr_orig["EQUINOX"]}. transforming to J2000')
-            ra_b1950 = self.img_hdr_orig["CRVAL1"] # RA in degrees
-            dec_b1950 = self.img_hdr_orig["CRVAL2"] # Dec in degrees
-            
-            coord_b1950 = SkyCoord(ra=ra_b1950, dec=dec_b1950, unit='deg', frame=FK5, equinox="B1950")
-            coord_j2000 = coord_b1950.transform_to(FK5(equinox="J2000"))
-            
-            self.img_hdr_orig["EQUINOX"] = 2000.0
-            self.img_hdr_orig["CRVAL1"] = coord_j2000.ra.deg
-            self.img_hdr_orig["CRVAL2"] = coord_j2000.dec.deg
             
         try:
             beam = [header['BMAJ'], header['BMIN'], header['BPA']]
@@ -422,6 +463,13 @@ class Image(object):
         self.img_data_orig = self.img_data.copy()
         
         try:
+            self.img_hdr["CROTA1"] = header["CROTA1"]
+            self.img_hdr["CROTA2"] = header["CROTA2"]
+        except:
+            self.img_hdr["CROTA1"] = 0.
+            self.img_hdr["CROTA2"] = 0.
+        
+        try:
             self.img_hdr["EQUINOX"]
         except KeyError:
             try:
@@ -430,15 +478,9 @@ class Image(object):
                 self.img_hdr["EQUINOX"] = 2000.0 
 
         if self.img_hdr["EQUINOX"] != 2000:
-            ra_b1950 = self.img_hdr["CRVAL1"] # RA in degrees
-            dec_b1950 = self.img_hdr["CRVAL2"] # Dec in degrees
-            
-            coord_b1950 = SkyCoord(ra=ra_b1950, dec=dec_b1950, unit='deg', frame=FK5, equinox="B1950")
-            coord_j2000 = coord_b1950.transform_to(FK5(equinox="J2000"))
-            
             self.img_hdr["EQUINOX"] = 2000.0
-            self.img_hdr["CRVAL1"] = coord_j2000.ra.deg
-            self.img_hdr["CRVAL2"] = coord_j2000.dec.deg
+            self.img_hdr["CRVAL1"] = header["CRVAL1"]
+            self.img_hdr["CRVAL2"] = header["CRVAL2"]
         
         self.img_hdu = pyfits.ImageHDU(data=self.img_data, header=self.img_hdr)
         self.set_beam(beam)
@@ -479,13 +521,25 @@ class Image(object):
             hdr_inf['BPA'     ] = self.img_hdr['BPA']
             hdr_inf['EQUINOX' ] = self.img_hdr_orig['EQUINOX']
             hdr_inf['BTYPE'   ] = 'INTENSITY'
-            hdr_inf['TELESCOP'] = self.img_hdr_orig['TELESCOP']
-            hdr_inf['OBJECT'  ] = self.img_hdr_orig['OBJECT']
+            try:
+                hdr_inf['TELESCOP'] = self.img_hdr_orig['TELESCOP']
+            except KeyError:
+                hdr_inf['TELESCOP'] = ' '
+            try:
+                hdr_inf['OBJECT'  ] = self.img_hdr_orig['OBJECT']
+            except KeyError:
+                hdr_inf['OBJECT'  ] = ' '
             hdr_inf['CTYPE1'  ] = self.img_hdr['CTYPE1']
             hdr_inf['CRPIX1'  ] = self.img_hdr['CRPIX1']
             hdr_inf['CRVAL1'  ] = self.img_hdr['CRVAL1']
             hdr_inf['CDELT1'  ] = self.img_hdr['CDELT1']
             hdr_inf['CUNIT1'  ] = self.img_hdr['CUNIT1']
+            try:
+                hdr_inf['CROTA1'] = self.img_hdr['CROTA1']
+                hdr_inf['CROTA2'] = self.img_hdr['CROTA2']
+            except KeyError as e:
+                print(filename)
+                print(e)
             hdr_inf['CTYPE2'  ] = self.img_hdr['CTYPE2']
             hdr_inf['CRPIX2'  ] = self.img_hdr['CRPIX2']
             hdr_inf['CRVAL2'  ] = self.img_hdr['CRVAL2']
@@ -509,7 +563,16 @@ class Image(object):
         self.img_hdr['BMAJ'] = beam[0]
         self.img_hdr['BMIN'] = beam[1]
         self.img_hdr['BPA'] = beam[2]
-
+        
+    def apply_shift(self, xpix, ypix):
+        """
+        Shift image by xpix, ypix pixels
+        """
+        logging.debug('%s: Shift image by %.2f, %.2f pixels' % (self.imagefile, xpix, ypix))
+        self.img_hdr['CRVAL1'] += xpix * abs(self.img_hdr['CDELT1']) # type: ignore
+        self.img_hdr['CRVAL2'] += ypix * abs(self.img_hdr['CDELT2']) # type: ignore
+        
+        
     def get_beam(self):
         return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
 
@@ -686,9 +749,8 @@ class Image(object):
         """
         # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log as the reference val doesn't need it!
         logging.info('Shift %.2f %.2f arcsec (%s)' % (dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600, self.imagefile))
-        dec = self.img_hdr['CRVAL2']
-        self.img_hdr['CRVAL1'] += dra
-        self.img_hdr['CRVAL2'] += ddec
+        self.img_hdr['CRVAL1'] += dra * abs(self.img_hdr['CDELT1']) 
+        self.img_hdr['CRVAL2'] += ddec * abs(self.img_hdr['CDELT2'])
 
     def pixel_covariance(self, pix1, pix2):
         """
