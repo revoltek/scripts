@@ -108,15 +108,23 @@ if args.updatedb:
         # finally fill the "fields" table
         for field_id in all_fields.keys():
             # check what obs_id is ready
-            missing=False
+            missing=0
             for obs_id in all_fields[field_id]:
                 #print(f"checking: {tgtdirroot}/id{obs_id}_-_{field_id[:-1]}")
                 if len(glob.glob(f'{tgtdirroot}/id{obs_id}_-_{field_id[:-1]}')) == 0:
-                    missing=True
+                    missing+=1
+                    print('WARNING: %s: missing %i' % (field_id, obs_id))
 
             hrs = len(all_fields[field_id])
-            if not missing:
-                priority = 1 if (grid[grid['name'] == field_id[:-1]]['distAteam'] < 15) else 3
+            if missing > 0:
+                print('WARNING: %s: %i hrs missing out of %i' % (field_id, missing, hrs))
+
+            hrs -= missing
+            if hrs > 0:
+                if missing == 0 and (grid[grid['name'] == field_id[:-1]]['distAteam'] > 15): priority = 3
+                elif missing > 0 and (grid[grid['name'] == field_id[:-1]]['distAteam'] > 15): priority = 2
+                else: priority = 1
+
                 print("%s: set as Downloaded (%i hr - priority: %i)" % (field_id, hrs, priority))
                 sdb.execute('UPDATE fields SET status="Downloaded", priority=%i WHERE id="%s"' % (priority,field_id))
             else:

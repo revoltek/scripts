@@ -14,7 +14,7 @@ dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
 dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
-run_only = 10 # limit run to this number of objects
+run_only = 1 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
@@ -126,15 +126,11 @@ class Scheduler():
 
 ###
 # tgts
-i=0
-for i in range(9999):
+for i in range(run_only):
     c = Scheduler('pill')
     c.prepare_sbatch('pill')
     c.submit()
 
     # separate initial calls so the stagings+downloads are diluted
-    if i < 24:
+    if i < 36:
         time.sleep(600)
-
-    if i > run_only:
-        sys.exit()

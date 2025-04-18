@@ -185,12 +185,23 @@ for obs in obs_all:
         continue
 
     # remove known problematic obsids (no data):
-    if obs[2] in [790836,801468,801478,801492,805972,818060,828830,833618,2002010,2002272,2019066,2019093,2021187,2021463,2021484,2021678,2023187,2035650,2035741,2035762,2035769,2035776,2035888,2036185,2039382]: 
+    if obs[2] in [2013192,790836,801468,801478,801492,805972,818060,828830,833618,2002010,2002272,2019066,2019093,2021187,2021463,2021484,2021678,2023187,2035650,2035741,2035762,2035769,2035776,2035888,2036185,2039382]: 
         print('WARNING: obsid %i has missing data. Ignoring.' % (obs[2]) )
         continue
     # remove known problematic obsids (flagged data):
     if obs[2] in [2007856, 2014278, 2014285, 2015837, 2015844, 2006261]:
         print('WARNING: obsid %i has flagged data. Ignoring.' % (obs[2]) )
+        continue
+    # remove partially unsaved data:
+    if (obs[0] == 'P161+37' and obs[2] == 2004559) or \
+       (obs[0] == 'P107+24' and obs[2] == 2002286) or \
+       (obs[0] == 'P184+57' and obs[2] == 746432) or \
+       (obs[0] == 'P176+60' and obs[2] == 746422) or \
+       (obs[0] == 'P138+45' and obs[2] == 2003809) or \
+       (obs[0] == 'P295+55' and obs[2] == 2013192) or \
+       (obs[0] == 'P296+53' and obs[2] == 802070) or \
+       (obs[0] == 'P091+32' and obs[2] == 2002713): 
+        print('WARNING: obsid %i has flagged data for field %s. Ignoring.' % (obs[2], obs[0]) )
         continue
 
     # all ok, add
