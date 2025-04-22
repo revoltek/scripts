@@ -154,11 +154,11 @@ if args.show is not None:
 
         if args.show == 'all' or args.show == 'done':
             print("Done:")
-            sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac FROM fields WHERE status="Done"')
+            sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac,end_date FROM fields WHERE status="Done" order by end_date asc')
             r = sdb.cur.fetchall()
             for i, entry in enumerate(r):
-                print('%03i) ID: %s (%s - %s: %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
-                            % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
+                print('%03i) ID: %s (%s - %s: %s; %s) Noise: %.2f mJy, NVSSratio: %.2f (matches: %i) - flags: %.1f%%' \
+                            % (i, entry['id'], entry['status'], entry['clustername'], entry['nodename'],entry['end_date'],entry['noise']*1e3,entry['nvss_ratio'],entry['nvss_match'],entry['flag_frac']*100))
             print("############################")      
 
         if args.show == 'all' or args.show == 'running':
