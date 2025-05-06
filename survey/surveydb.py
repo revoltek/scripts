@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # This script uses the data from LBA (in the gridfile) and populate the field and field_obs table
 
-import os, sys, argparse, re, glob
+import sys, argparse, glob
 from LiLF.surveys_db import SurveysDB
 from astropy.table import Table
 import numpy as np
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
+keyjson = '/homes/fdg/.ssh/lolss-459012-2b1a95f95b82.json'
 gridfile = 'allsky-grid.fits'
 caldirroot = ('/iranet/groups/ulu/fdg/surveycals/done/')
 tgtdirroot = ('/iranet/groups/ulu/fdg/surveytgts/download*/mss/')
@@ -18,7 +21,69 @@ parser.add_argument('--status', '-t', dest="status", help='To use with --reset t
 parser.add_argument('--incompletereset', '-i', action="store_true", help='Reset the fields that are not "Done"/"Observed"/"Not observed" to "Downloaded".')
 parser.add_argument('--sethighpriority', '-p', dest="sethighpriority", help='Give the pointing name so to set its priority to 0 (maximum).', default=None)
 parser.add_argument('--show', '-s', dest="show", help="If 'done' shows completed runs; if 'running' shows ongoing/failed runs; if 'all' shows all, incuding runs that have Observed yet.")
+parser.add_argument('--google', '-o', dest="google", help="Update google spreadsheet with the current status of the fields.", action="store_true")
 args = parser.parse_args()
+
+if args.google:
+    print("Udating google spreadsheet...")
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(keyjson, scope)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1nPjEC78_XOr40FVmTvQ14Pey03su2RQpdOIO6yZOV68/edit?usp=sharing").sheet1  # First worksheet
+    id_sheet = sheet.col_values(1) # this columns contains the id of the fields
+    # Store all updates in memory
+    updates = {}
+
+    with SurveysDB(survey='lba',readonly=True) as sdb:
+        sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac,end_date FROM fields')
+        r = sdb.cur.fetchall()
+        for i, entry in enumerate(r):
+            if entry['id'] in id_sheet:
+                if entry['noise'] is None: entry['noise'] = 0
+                if entry['flag_frac'] is None: entry['flag_frac'] = 0
+                if entry['nvss_ratio'] is None: entry['nvss_ratio'] = 0
+                # be sure to not list older data
+                if entry['status'] == 'Downloaded' or entry['status'] == 'Observed':
+                    entry['noise'] = 0
+                    entry['flag_frac'] = 0
+                    entry['nvss_ratio'] = 0
+                    entry['end_date'] = None
+                if entry['status'] != 'Done' and entry['status'] != 'Downloaded' and entry['status'] != 'Observed':
+                    entry['status'] += ' ('+str(entry['nodename'])+')'
+
+                row_index = id_sheet.index(entry['id']) + 1  # +1 because gspread is 1-indexed
+                updates[row_index] = [
+                None,  # Column A (ID) — leave unchanged
+                None,  # Column B (notes) - not used
+                None,  # Column C (ra)
+                None,  # Column D (dec)
+                entry['status'],                     # Column E
+                entry['noise'] * 1e3,                # Column F
+                entry['nvss_ratio'],                 # Column G
+                entry['flag_frac'] * 100,            # Column H
+                str(entry['end_date']),              # Column I
+                None, None, None, None, None, None, None, None, None, None, None, None # Columns J to U - leave unchanged
+                ]
+    
+    min_row = min(updates.keys())
+    max_row = max(updates.keys())
+    data_block = []
+
+    for i in range(min_row, max_row + 1):
+        if i in updates:
+            data_block.append(updates[i])
+        else:
+            data_block.append([None] * 21)  # Preserve row alignment
+
+    # Update in one batch call (columns E to I = cols 5–9)
+    range_start = f"E{min_row}"
+    range_end = f"I{max_row}"
+    update_range = f"{range_start}:{range_end}"
+    sheet.update(update_range, [row[4:9] for row in data_block])
+
+    print("✅ Spreadsheet updated successfully.")
+
+    sys.exit()            
 
 if args.sethighpriority is not None:
     with SurveysDB(survey='lba',readonly=False) as sdb:  
