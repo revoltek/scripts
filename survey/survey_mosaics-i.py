@@ -4,117 +4,109 @@
 
 import os, sys, glob
 from astropy.table import Table
-from astropy.io import fits as pyfits
+from astropy.io import fits
 from astropy.wcs import WCS as pywcs
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
+from LiLF.surveys_db import SurveysDB
 
-file_suffix = '-wide-v.fits' # this is used to isolate file names
+dir_mosaics = "/homes/fdg/storage/surveytgts/mosaics/"
+dir_done = "/homes/fdg/storage/surveytgts/done/"
+
+file_MFS_i = 'wideDD-c00-MFS-image.fits' # this is used to isolate file names
 nchans = None
 #file_suffix = '-wide-cube.fits' # this is used to isolate file names
 #nchans = 6
-cutout_size = 3.3 # size of the final cutout [deg]
-beam_size = 3.7 # approx beam RADIUS at the blank point, usually 30% of the beam power [deg]
-grid_file = '../allsky-grid.fits'
-beamdir = '../beams/'
-stokes = 1
+
+file_beam = 'primarybeam.fits' # this is used to isolate file names
+beam_size = 4 # approx beam RADIUS at the blank point, usually 30% of the beam power [deg] - measured at low dec = 24deg
+grid_file = '/homes/fdg/storage/allsky-grid.fits'
+file_header_template = '/homes/fdg/storage/scripts/survey/LoLSS-bkp/headers_template.hdr'
+
+min_good = 2 # minimum number of good pointings to mosaic
 
 class Pointing():
 
-    def __init__(self, pointing_file, channel=None, stokes=0):
-        self.pointing_file = pointing_file
-        if channel is not None:
-            self.beam_file = beamdir+pointing_file.replace(file_suffix,'-beam%04i.fits' % channel)
-            self.output_file = pointing_file.replace(file_suffix,'-mosaic-chan%02i.fits' % channel)
-        else:
-            self.beam_file = beamdir+pointing_file.replace(file_suffix,'-avgbeam.fits')
-            self.output_file = pointing_file.replace(file_suffix,'-mosaic.fits')
-        if not os.path.exists(self.beam_file):
-            sys.exit('Missing %s' % self.beam_file)
-
-        with pyfits.open(pointing_file) as f:
-            self.head = f[0].header
-        if channel:
-            assert self.head['CTYPE4']  == 'FREQ'
-            self.head['RESTFREQ'] = self.head['CRVAL4']+self.head['CDELT4']*channel
-        ra = self.head['CRVAL1']
-        dec = self.head['CRVAL2']
-        self.wcs = pywcs(self.head)
-        self.coord = SkyCoord(ra*u.deg, dec*u.deg, frame='fk5')
-        self.channel = channel
-        self.stokes = stokes
-
-    def add_closest(self, dist):
-        print("Max ditance: %f deg" % dist)
-        grid['dist'] = self.coord.separation(SkyCoord(grid['ra'],grid['dec'],frame='fk5'))
-        self.pointing_closest_files = [f.lower()+file_suffix for f in grid[grid['dist'] < dist*u.deg]['name']]
-        print('distances:', grid[grid['dist'] < dist*u.deg])
-        
-        # track also beam files
-        if self.channel is not None:
-            self.beam_closest_files = [beamdir+pointing_closest_file.replace(file_suffix,'-beam%04i.fits' % self.channel) for pointing_closest_file in self.pointing_closest_files]
-        else:
-            self.beam_closest_files = [beamdir+pointing_closest_file.replace(file_suffix,'-avgbeam.fits') for pointing_closest_file in self.pointing_closest_files]
+    def __init__(self, pointing_name, pointings_name_nearby):
+        self.pointing_name = pointing_name
+        self.pointing_files = [dir_done+p+'/'+file_MFS_i for p in pointings_name_nearby]
+        self.beam_files = [dir_done+p+'/'+file_beam for p in pointings_name_nearby]
+        self.output_file = dir_mosaics+pointing_name+'-mosaicI.fits'
 
     def mosaic(self):
-        in_pointings = [self.pointing_file]+self.pointing_closest_files
-        in_beams = [self.beam_file]+self.beam_closest_files
-        if self.channel is not None:
-            print('mosaic.py --shift --images %s --beams %s --beamcorr --beamcut 0.3 --find_noise --header %s --use_channel %i --use_stokes %i --output %s > %s.log 2>&1' % \
-                (' '.join(in_pointings), ' '.join(in_beams), self.output_file, self.channel, self.stokes, self.output_file, self.output_file))
-            os.system('mosaic.py --shift --images %s --beams %s --beamcorr --beamcut 0.3 --find_noise --header %s --use_channel %i --use_stokes %i --output %s > %s.log 2>&1' % \
-                (' '.join(in_pointings), ' '.join(in_beams), self.output_file, self.channel, self.stokes, self.output_file, self.output_file))
-        else:
-            print('mosaic.py --shift --images %s --beams %s --beamcorr --beamcut 0.3 --find_noise --header %s --use_stokes %i --output %s > %s.log 2>&1' % \
-                (' '.join(in_pointings), ' '.join(in_beams), self.output_file, self.stokes, self.output_file, self.output_file))
-            os.system('mosaic.py --shift --images %s --beams %s --beamcorr --beamcut 0.3 --find_noise --header %s --use_stokes %i --output %s > %s.log 2>&1' % \
-                (' '.join(in_pointings), ' '.join(in_beams), self.output_file, self.stokes, self.output_file, self.output_file))
+        print('mosaic.py --images %s --beams %s --beamcorr --beamcut 0.3 --find_noise --header %s --output %s > %s.log 2>&1' % \
+                (' '.join(self.pointing_files), ' '.join(self.beam_files), self.output_file, self.output_file, self.output_file))
+        os.system('mosaic.py --images %s --beams %s --beamcorr --beamcut 0.3 --find_noise --header %s --output %s > %s.log 2>&1' % \
+                (' '.join(self.pointing_files), ' '.join(self.beam_files), self.output_file, self.output_file, self.output_file))
 
-    def make_empty_mosaic(self):
-        rwcs = pywcs(naxis=2)
-        rwcs.wcs.ctype = [self.wcs.wcs.ctype[0],self.wcs.wcs.ctype[1]]
-        rwcs.wcs.cdelt = [self.wcs.wcs.cdelt[0],self.wcs.wcs.cdelt[1]]
-        rwcs.wcs.crval = [self.coord.ra.deg,self.coord.dec.deg]
-        rwcs.wcs.crpix = [2000,2000]
-        regrid_hdr = rwcs.to_header()
-        regrid_hdr['NAXIS'] = 2
-        regrid_hdr['NAXIS1'] = 4000
-        regrid_hdr['NAXIS2'] = 4000
-        # inherit some headers
-        for h in ['RESTFRQ','BTYPE','BUNIT','BMAJ','BMIN','BPA']:
-            regrid_hdr[h] = self.head[h]
-        data = np.zeros((4000,4000))
-        pyfits.writeto(self.output_file, header=regrid_hdr, data=data, overwrite=True)
+    def make_empty_mosaic(self, file_header_template, ra, dec):
+        print('Creating empty mosaic for %s' % self.output_file)
+        with open(file_header_template) as f:
+            hdr_str = f.read()
+        self.head = fits.Header.fromstring(hdr_str, sep='\n')
+        self.head['CRVAL1'] = ra 
+        self.head['CRVAL2'] = dec
+        self.head['OBJECT'] = self.pointing_name
+        data = np.zeros((3500,3500))
+        fits.writeto(self.output_file, header=self.head, data=data, overwrite=True)
 
-pointing_files = sorted(glob.glob('*'+file_suffix))
-
-# open grid file and restrict to available pointings
-pointing_names = [p.replace(file_suffix,'') for p in pointing_files]
-print('Use pointings:', pointing_names)
+# calculate matrix of distances
 grid = Table.read(grid_file)
-selection = [p['name'].lower() in pointing_names for p in grid]
-grid = grid[selection]
-print('Restricting to %i pointings.' % len(grid))
+grid = grid[grid['dec'] > 24]
+coords = SkyCoord(ra=grid['ra'], dec=grid['dec'], frame='icrs')
+# Do a “search around” with itself, using a 4° threshold
+idx1, idx2, sep2d, _ = coords.search_around_sky(coords, 4 * u.deg)
+unique = idx1 <= idx2
+idx1 = idx1[unique]
+idx2 = idx2[unique]
+# Build a mapping: object_id → list of neighbor_ids within 4°
+neighbors = {obj_id: [] for obj_id in grid['name']}
+for ii, jj in zip(idx1, idx2):
+    id_i = grid['name'][ii]
+    id_j = grid['name'][jj]
+    neighbors[id_i].append(id_j)
+    neighbors[id_j].append(id_i)  # since the relation is symmetric
 
+with SurveysDB(survey='lba',readonly=True) as sdb:
+    sdb.execute('SELECT id,status FROM fields')
+r = sdb.cur.fetchall()
+pointings_status = {r[i]['id']: r[i]['status'] for i in range(len(r))}
+
+#pointing_files = sorted(glob.glob(dir_mosaics+file_MFS_i))
 # list of pointings to mosaic
-if nchans:
-    for chan in range(nchans):
-        os.system('rm *__beam.fits') # be sure we do not re-use the old beam
-        for pointing_file in pointing_files:
-            pointing = Pointing(pointing_file, channel=chan, stokes=stokes)
-            if not os.path.exists(pointing.output_file):
-                # get the closest (assuming worst case: perfectly diagonally aligned pointings)
-                dist = np.sqrt(2.)/2*cutout_size+beam_size
-                pointing.add_closest(dist)
-                pointing.make_empty_mosaic()
-                pointing.mosaic()
-else:
-    for pointing_file in pointing_files:
-        pointing = Pointing(pointing_file, channel=None, stokes=stokes)
-        if not os.path.exists(pointing.output_file):
-            # get the closest (assuming worst case: perfectly diagonally aligned pointings)
-            dist = np.sqrt(2.)/2*cutout_size+beam_size
-            pointing.add_closest(dist)
-            pointing.make_empty_mosaic()
-            pointing.mosaic()
+for pointing, close_pointings in neighbors.items():
+    close_pointings = np.unique(close_pointings) # remove double entry of self-pointing
+    #print('Pointing:', pointing, close_pointings)
+    # skip not observed pointings
+    if pointings_status[pointing+'o'] == 'Not observed' and \
+       pointings_status[pointing+'s'] == 'Not observed': continue
+
+    # count how many good pointings we have
+    good = 0; bad = 0; good_pointings = []
+    for close_pointing in close_pointings:
+        if pointings_status[close_pointing+'o'] == 'Done': 
+            good += 1
+            good_pointings.append(close_pointing+'o')
+        elif pointings_status[close_pointing+'o'] == 'Not observed': pass
+        else: bad += 1
+        if pointings_status[close_pointing+'s'] == 'Done': 
+            good += 1
+            good_pointings.append(close_pointing+'s')
+        elif pointings_status[close_pointing+'s'] == 'Not observed': pass
+        else: bad += 1
+    
+    if good >= min_good:
+        print(f'{pointing}: Enough good pointing done ({good}/{good+bad} - {good_pointings}), proceeding.')
+    elif bad == 0:
+        print(f'{pointing}: All pointings are done ({good}/{good+bad}), proceeding')
+    else:
+        #print(f'{pointing}: Not all pointings are done ({good}/{good+bad} - {good_pointings}), skipping.')
+        continue    
+
+    p = Pointing(pointing, good_pointings)
+    if not os.path.exists(p.output_file):
+        ra = grid['ra'][grid['name'] == pointing][0]
+        dec = grid['dec'][grid['name'] == pointing][0]
+        p.make_empty_mosaic(file_header_template, ra, dec)
+        p.mosaic()

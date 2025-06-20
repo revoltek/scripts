@@ -35,7 +35,7 @@ if args.google:
     updates = {}
 
     with SurveysDB(survey='lba',readonly=True) as sdb:
-        sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac,end_date FROM fields')
+        sdb.execute('SELECT id,status,clustername,nodename,noise,nvss_ratio,nvss_match,flag_frac,start_date,end_date FROM fields')
         r = sdb.cur.fetchall()
         for i, entry in enumerate(r):
             if entry['id'] in id_sheet:
@@ -47,6 +47,7 @@ if args.google:
                     entry['noise'] = 0
                     entry['flag_frac'] = 0
                     entry['nvss_ratio'] = 0
+                    entry['start_date'] = None
                     entry['end_date'] = None
                 if entry['status'] != 'Done' and entry['status'] != 'Downloaded' and entry['status'] != 'Observed':
                     entry['status'] += ' ('+str(entry['nodename'])+')'
@@ -61,7 +62,8 @@ if args.google:
                 entry['noise'] * 1e3,                # Column F
                 entry['nvss_ratio'],                 # Column G
                 entry['flag_frac'] * 100,            # Column H
-                str(entry['end_date']),              # Column I
+                str(entry['start_date']),            # Column I
+                str(entry['end_date']),              # Column J
                 None, None, None, None, None, None, None, None, None, None, None, None # Columns J to U - leave unchanged
                 ]
     

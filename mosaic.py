@@ -30,7 +30,7 @@ import pyregion
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_interp
 
-ref_catalog = '/home/fdg/scripts/FIRST_14dec17.fits.gz'
+ref_catalog = '/homes/fdg/scripts/FIRST_14dec17.fits.gz'
 
 parser = argparse.ArgumentParser(description='Mosaic for LiLF dd-pipeline.')
 parser.add_argument('--images', dest='images', nargs='+', help='List of images to combine')
@@ -348,7 +348,7 @@ else:
 logging.info('Making mosaic...')
 isum = np.zeros([ysize,xsize])
 wsum = np.zeros_like(isum)
-mask = np.zeros_like(isum,dtype=np.bool)
+mask = np.zeros_like(isum,dtype=bool)
 if args.mask is not None:
     logging.debug('Reprojecting mask...')
     outname = args.mask.replace('.fits','-reproj.fits')
