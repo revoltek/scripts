@@ -14,7 +14,7 @@ dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
 dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
-run_only = 100 # limit run to this number of objects
+run_only = 1 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
@@ -81,7 +81,9 @@ class Scheduler():
                          rm -r /local/work/fdg/*
                          rm -r /dev/shm/*
                          mkdir -p /local/work/fdg/
-                         echo "[LOFAR_ddparallel]" > /local/work/fdg/lilf.config
+                         echo "[PiLL]" > /local/work/fdg/lilf.config
+                         echo "minmaxhrs = 1,3" >> /local/work/fdg/lilf.config
+                         echo "[LOFAR_timesplit]" >> /local/work/fdg/lilf.config
                          echo "ateam_clip = [CygA]" >> /local/work/fdg/lilf.config
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL-survey.py
                          rm -r /local/work/fdg/*

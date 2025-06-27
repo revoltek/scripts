@@ -16,7 +16,7 @@ tgtdirroot = ('/iranet/groups/ulu/fdg/surveytgts/download*/mss/')
 parser = argparse.ArgumentParser(description='Stage and download MS from the LOFAR LTA.')
 parser.add_argument('--gridfile', '-g', dest="gridfile", help='The gridfile as created with update_allsky-grid.py', default=gridfile)
 parser.add_argument('--updatedb', '-u', action="store_true", help='Update the databse using the gridfile.')
-parser.add_argument('--reset', '-r', dest="reset", help='If "all" reset the db to "Not observed" for all observed fields. If a field is specified it only reset it to "Observed" (or the value of --status).', default=None)
+parser.add_argument('--reset', '-r', dest="reset", help='If "all" reset the db to "Not observed" for all observed fields. If a comma separated list of field is specified it only reset them to "Observed" (or the value of --status).', default=None)
 parser.add_argument('--status', '-t', dest="status", help='To use with --reset to define the finale status, default: "Observed".', default="Observed")
 parser.add_argument('--incompletereset', '-i', action="store_true", help='Reset the fields that are not "Done"/"Observed"/"Not observed" to "Downloaded".')
 parser.add_argument('--sethighpriority', '-p', dest="sethighpriority", help='Give the pointing name so to set its priority to 0 (maximum).', default=None)
@@ -64,7 +64,7 @@ if args.google:
                 entry['flag_frac'] * 100,            # Column H
                 str(entry['start_date']),            # Column I
                 str(entry['end_date']),              # Column J
-                None, None, None, None, None, None, None, None, None, None, None, None # Columns J to U - leave unchanged
+                None, None, None, None, None, None, None, None, None, None, None, None # Columns K to V - leave unchanged
                 ]
     
     min_row = min(updates.keys())
@@ -103,7 +103,8 @@ if args.reset is not None:
         else:
             print("WARNING: reset pointing %s to \"%s\"" % (args.reset, args.status))
             input("Press Enter to continue...")
-            sdb.execute('UPDATE fields SET status="%s" where id="%s"' % (args.status, args.reset))
+            reset = ','.join(f'"{item.strip()}"' for item in args.reset.split(','))
+            sdb.execute('UPDATE fields SET status="%s" where id IN (%s)' % (args.status, reset))
     sys.exit()
 
 if args.incompletereset:
