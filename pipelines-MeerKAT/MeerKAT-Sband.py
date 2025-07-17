@@ -7,10 +7,8 @@ import os
 import sys
 import logging
 
-os.system('irainit load casapy release-5.5.0-149.el7')
-
 # Older CASA
-from recipes.almapolhelpers import *
+#from recipes.almapolhelpers import *
 # Current CASA
 #from almatasks import *
 
@@ -202,7 +200,8 @@ for cc in range(3):
     casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant)
     casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Ga_tab'], gaintype='G', calmode='a', gaintable=[tab['K_tab'],tab['Gp_tab']], refant=ref_ant)
     # one can now combine the scans and use different B as diagnostics
-    
+    casa.bandpass(vis=calms, field=PhaseCal, caltable=tab['B_tab'], bandtype='B', 
+                  gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab']], combine='', solint='inf', refant=ref_ant)
     # plotms(vis=tab['B_tab'], coloraxis='antenna1', xaxis='freq', yaxis='amp')
     # plotms(vis=tab['B_tab'], coloraxis='antenna1', xaxis='freq', yaxis='phase')
 
@@ -210,7 +209,7 @@ for cc in range(3):
     casa.flagmanager(vis=calms, mode='restore', versionname='PreCal')
 
     # applycal
-    casa.applycal(vis=calms,field=CalibFields, gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']], flagbackup=False)
+    casa.applycal(vis=calms,field='*', gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']], flagbackup=False)
     os.sytem(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-cal.png' {calms}")
 
     # Flag with tricolour
@@ -227,6 +226,10 @@ casa.polcal(vis=calms,
 # Bootrap secondary calibrator
 casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
 casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
+# TODO: add time dependent delay for each calibrator?
+casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, \
+             gaintable=[tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], append=True)
+
 # plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 # plotms(vis=tab['Tsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='amp')
 #image the secondary and selfcal
