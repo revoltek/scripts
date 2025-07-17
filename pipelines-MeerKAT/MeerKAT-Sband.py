@@ -1,11 +1,9 @@
 #!/usr/bin/python3
 
+import os, sys, logging
 import casatasks as casa
+from casatools import table
 import numpy as np
-from casacore import tables as t
-import os
-import sys
-import logging
 
 # Older CASA
 #from recipes.almapolhelpers import *
@@ -135,11 +133,11 @@ def convert_flux_model(nu=np.linspace(0.9,2,200)*1e9 , a=1,b=0,c=0,d=0,Reffreq= 
 
 ##############################
 # Change RECEPTOR_ANGLE : DEFAULT IS -90DEG but should be fixed with the initial swap
-casa.tb.open(invis+'/FEED', nomodify=False)
-feed_angle = casa.tb.getcol('RECEPTOR_ANGLE')
+t=table(invis+'/FEED', nomodify=False)
+feed_angle = t.getcol('RECEPTOR_ANGLE')
 new_feed_angle = np.zeros(feed_angle.shape)
-casa.tb.putcol('RECEPTOR_ANGLE', new_feed_angle)
-casa.tb.close()
+t.putcol('RECEPTOR_ANGLE', new_feed_angle)
+t.close()
 
 ###########################
 # Split the calibrators
