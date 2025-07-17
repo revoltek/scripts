@@ -87,7 +87,7 @@ plotms(vis='moon_uhf_calibrators.ms', xaxis='uvdist', yaxis='amplitude', xdataco
 # let's for the moment assume that the source is pointlike. We will refine the phase and calibrate for a polarization-insensitive "Tropospherical" time-variable amplitude
 gaincal(vis='moon_uhf_calibrators.ms', caltable='sec.Gp', field='J1733-1304', gaintype='G', calmode='p', solint='inf', combine='',refant='m002', gaintable=['bp.K', 'bp.Ga', 'bp.B', 'bp.Df'])
 # please note solnorm=True is set here because we do not have a model for the secondary. In a full workflow you should derive a bootstrapped model for the secondary before running an amplitude gain!!!
-gaincal(vis='moon_uhf_calibrators.ms', caltable='sec.T', field='J1733-1304', gaintype='T', calmode='ap', solnorm=True, solint='inf', combine='',refant='m002', gaintable=['bp.K', 'sec.Gp', 'bp.Ga', 'bp.B', 'bp.Df'])
+gaincal(vis='moon_uhf_calibrators.ms', caltable='sec.T', field='J1733-1304', gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant='m002', gaintable=['bp.K', 'sec.Gp', 'bp.Ga', 'bp.B', 'bp.Df'])
 # phases should be reasonably stable within a few degress over the span of the observation
 plotms(vis='sec.Gp', xaxis='time', yaxis='phase', coloraxis='corr', iteraxis='antenna')
 # especially the same for amplitude -- at this point the amplitude should hover around unity!

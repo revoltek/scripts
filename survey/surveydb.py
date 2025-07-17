@@ -55,18 +55,18 @@ if args.google:
                 row_index = id_sheet.index(entry['id']) + 1  # +1 because gspread is 1-indexed
                 updates[row_index] = [
                 None,  # Column A (ID) — leave unchanged
-                None,  # Column B (notes) - not used
-                None,  # Column C (ra)
-                None,  # Column D (dec)
+                None,  # Column B (ra)
+                None,  # Column C (Dec)
+                None,  # Column D (Note)
                 entry['status'],                     # Column E
                 entry['noise'] * 1e3,                # Column F
                 entry['nvss_ratio'],                 # Column G
                 entry['flag_frac'] * 100,            # Column H
                 str(entry['start_date']),            # Column I
                 str(entry['end_date']),              # Column J
-                None, None, None, None, None, None, None, None, None, None, None, None # Columns K to V - leave unchanged
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None # Columns K to W - leave unchanged
                 ]
-    
+                
     min_row = min(updates.keys())
     max_row = max(updates.keys())
     data_block = []
@@ -75,13 +75,13 @@ if args.google:
         if i in updates:
             data_block.append(updates[i])
         else:
-            data_block.append([None] * 21)  # Preserve row alignment
+            data_block.append([None] * 23)  # Preserve row alignment
 
-    # Update in one batch call (columns E to I = cols 5–9)
+    # Update in one batch call (columns E to J = cols 5–9)
     range_start = f"E{min_row}"
-    range_end = f"I{max_row}"
+    range_end = f"J{max_row}"
     update_range = f"{range_start}:{range_end}"
-    sheet.update(update_range, [row[4:9] for row in data_block])
+    sheet.update(update_range, [row[4:10] for row in data_block])
 
     print("✅ Spreadsheet updated successfully.")
 
