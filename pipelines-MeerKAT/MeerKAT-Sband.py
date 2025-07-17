@@ -19,6 +19,7 @@ calms   = 'MS_Files/m87sband-cal.MS'
 tgtms   = 'MS_Files/m87sband-tgt.MS'
 tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
 ref_ant = 'm002'
+tricolour_strategy = 'tricolour_oxkat.yaml'
 
 # Name your gain tables
 tab = {'K_tab' : 'delay.cal',
@@ -27,6 +28,7 @@ tab = {'K_tab' : 'delay.cal',
        'Ga_tab': 'gain_a.cal',
        'Tsec_tab' : 'T_sec.cal',
        'Gpsec_tab' : 'gain_p_sec.cal',
+       'Gppol_tab' : 'gain_p_pol.cal',
        # Pol cal tables #
        'Kcross_tab': 'kcross.cal',
        'Xf_tab': 'Xf.cal',
@@ -45,7 +47,7 @@ PhaseCal = ','.join(PhaseTargetDic.keys())
 Targets = ','.join(PhaseTargetDic.values())
 CalibFields = ','.join([BandPassCal, PolCal, PhaseCal])
 
-tricolour_command = f'singularity run --bind $(pwd) -B {os.getcwd()} ~/storage/tricolour.simg tricolour'
+tricolour_command = f'singularity run --bind $PWD -B /local/work/fdg ~/storage/tricolour.simg tricolour'
 
 #############################
 ### Logs Setting up and functions
@@ -149,6 +151,7 @@ casa.split(vis = invis, outputvis = calms, field = f"{BandPassCal},{PolCal},{Pha
 casa.flagdata(vis=calms, flagbackup=False, mode='shadow')
 casa.flagdata(vis=calms, flagbackup=False, mode='manual', autocorr=True)
 casa.flagdata(vis=calms, flagbackup=False, mode='clip', clipzeros=True, clipminmax=[0.0, 100.0])
+casa.flagdata(vis=calms, flagbackup=False, mode='manual', spw='0:850~900,0:1610~1660') # resonances S1 band
 
 # Set flux density scale
 for cal in set(FluxCal.split(',')+BandPassCal.split(',')+PolCal.split(',')):
@@ -176,7 +179,7 @@ for cal in set(FluxCal.split(',')+BandPassCal.split(',')+PolCal.split(',')):
 
 ################################################################
 # backup flags
-casa.flagmanager(vis = calms, mode = 'save', versionname = 'PreCal')
+casa.flagmanager(vis=calms, mode='save', versionname='PreCal')
 
 # Run TFCrop on the DATA column
 casa.flagdata(vis=calms, mode='tfcrop', field=CalibFields,
@@ -191,62 +194,70 @@ casa.flagdata(vis=calms, mode='extend', field=CalibFields,
         flagbackup=False, overwrite=True, writeflags=True)
 
 ### Basic calibration
-# Delay calibration
-casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant)
-# Gani calibration
-casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant)
-casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Ga_tab'], gaintype='G', calmode='a', gaintable=[tab['K_tab'],tab['Gp_tab']], refant=ref_ant)
-# one can now combine the scans and use different B as diagnostics
-casa.bandpass(vis=calms, field=BandPassCal, caltable=tab['B_tab'], bandtype='B', gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab']], combine='scan', refant=ref_ant)
+for cc in range(3):
+    # Delay calibration
+    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant)
+    # plotms(vis=tab['K_tab'], coloraxis='corr')
+    # Gani calibration
+    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant)
+    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Ga_tab'], gaintype='G', calmode='a', gaintable=[tab['K_tab'],tab['Gp_tab']], refant=ref_ant)
+    # one can now combine the scans and use different B as diagnostics
+    
+    # plotms(vis=tab['B_tab'], coloraxis='antenna1', xaxis='freq', yaxis='amp')
+    # plotms(vis=tab['B_tab'], coloraxis='antenna1', xaxis='freq', yaxis='phase')
 
-# Restore original falgs
-casa.flagmanager(vis=calms, mode='restore', versionname='PreCal')
+    # Restore original falgs
+    casa.flagmanager(vis=calms, mode='restore', versionname='PreCal')
 
-# applycal
-casa.applycal(vis=calms,field=CalibFields, gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']])
+    # applycal
+    casa.applycal(vis=calms,field=CalibFields, gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']], flagbackup=False)
+    os.sytem(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-cal.png' {calms}")
 
-# Flag with tricolour
+    # Flag with tricolour
+    casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreTricolour{cc}')
+    os.sytem(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
 
-
-### Redo basic calibtration
-# Delay calibration
-casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant)
-# PLOT: plotms(vis=tab['K_tab']) 
-# Gani calibration
-casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant)
-casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Ga_tab'], gaintype='G', calmode='a', gaintable=[tab['K_tab'],tab['Gp_tab']], refant=ref_ant)
-# one can now combine the scans and use different B as diagnostics
-casa.bandpass(vis=calms, field=BandPassCal, caltable=tab['B_tab'], bandtype='B', gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab']], combine='scan', refant=ref_ant)
 # Leackage
 casa.polcal(vis=calms,
    caltable=tab['Df_tab'],field=FluxCal, poltype='Df', solint='inf', refant=ref_ant,
    gaintable=[tab['K_tab'], tab['Gp_tab'], tab['Ga_tab'], tab['B_tab']])
+# plotms(vis=tab['Df_tab'], xaxis='frequency', yaxis='amplitude', coloraxis='antenna1')
 
 ############################################################################
 # Bootrap secondary calibrator
-casa.gaincal(vis=calms, caltable='sec.Gp', field='J1733-1304', gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=['bp.K', 'bp.Ga', 'bp.B', 'bp.Df'])
-casa.gaincal(vis=calms, caltable='sec.T', field='J1733-1304', gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=['bp.K', 'sec.Gp', 'bp.Ga', 'bp.B', 'bp.Df'])
+casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
+casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
+# plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
+# plotms(vis=tab['Tsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='amp')
 #image the secondary and selfcal
-casa.tclean(vis=calms,field=PhaseCal,cell='0.5arcsec',imsize=512,niter=1000,imagename=PhaseCal+'-selfcal',weighting='briggs',robust=-0.2,
-       datacolumn= 'corrected',deconvolver= 'mtmfs',nterms=2,specmode='mfs',interactive=False)
-gaincal(vis=calms, caltable='sec.Gp', field='J1733-1304', gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=['bp.K', 'bp.Ga', 'bp.B', 'bp.Df'])
-# QUESTION: can I remove solnorm here?
-gaincal(vis=calms, caltable='sec.T', field='J1733-1304', gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=['bp.K', 'sec.Gp', 'bp.Ga', 'bp.B', 'bp.Df'])
+casa.applycal(vis=calms,field=PhaseCal, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], parang=True, flagbackup=False)
+casa.tclean(vis=calms,field=PhaseCal,cell='0.5arcsec',imsize=8000,niter=1000,imagename=PhaseCal+'-selfcal',weighting='briggs',robust=-0.2,
+       datacolumn='corrected',deconvolver= 'mtmfs',nterms=2,specmode='mfs',interactive=False)
+# TODO: add masking
+casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
+casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
 
+##############################################################################
 # Solve for polarization angle
+os.system(f"shadems --xaxis FREQ  --yaxis CORRECTED_DATA --field {PolCal} --corr XY,YX {calms}")
+# here we can use also secT to trace slow variations in the amp
+casa.gaincal(vis=calms, caltable=tab['Gppol_tab'], field=PolCal, gaintype='G', calmode='p', solint='inf', combine='', 
+             refant=ref_ant, gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']])
+# plotms(vis=tab['Gppol_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
+#casa.applycal(vis=calms, field=PolCal, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gppol_tab'], tab['Tsec_tab'], tab['Df_tab'])
+# plot
+
 # KCROSS
-casa.gaincal(vis=calms,
-    caltable=tab['Kcross_tab'], field=PolCal, gaintype='KCROSS', refant=ref_ant, solint='inf', parang=True,
-    gaintable=[tab['K_tab'], tab['Gp_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab']])
+#casa.gaincal(vis=calms, caltable=tab['Kcross_tab'], field=PolCal, gaintype='KCROSS', refant=ref_ant, solint='inf', combine='scan', parang=True,
+#    gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
+
 # Xf that is constant within a scan
-casa.polcal(vis=msFile,
-   caltable=tab['Xf_tab'], field=PolCal, poltype='Xf',
-   uvrange=myuvrange, solint='inf', refant=ref_ant,
-   combine='scan', preavg=-1.,
-   gaintable=[tab['B_tab'], tab['Ga_tab'], tab['K_tab'], tab['Kcross_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gpsec_tab']])
+casa.polcal(vis=calms, caltable=tab['Xf_tab'], field=PolCal, poltype='Xf', solint='inf,10MHz', refant=ref_ant,
+   combine='scan', preavg=-1., gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
+# plotms(vis=tab['Xf_tab'], xaxis='freq', yaxis='phase')
 
 # Final applycal to all sources
-casa.applycal(vis=calms, field='*', gaintable=['bp.K','sec.Gp','bp.Ga','bp.B','sec.T','bp.Df','pol.Xf'], parang=True)
+casa.applycal(vis=calms, field='*', gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab'],tab['Xf_tab']], parang=True)
 
 # test images
 tclean(vis=calms,field=xcal,cell='0.5arcsec',imsize=512,niter=1000,imagename=xcal+'-selfcal',weighting='briggs',robust=-0.2,datacolumn= 'corrected',deconvolver= 'mtmfs',\

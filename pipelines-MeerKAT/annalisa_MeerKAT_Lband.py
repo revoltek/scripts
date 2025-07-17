@@ -163,7 +163,7 @@ for ii in range(np.size(bpcal)):
             refant = ref_ant, gaintype = "G", calmode = "p",uvrange='',\
             gaintable = [ktab], gainfield = [''], interp = [''],parang = False,append=append)
 
-        # amp cal on bandpass calibrator
+    # amp cal on bandpass calibrator
     gaincal(vis = calms, caltable = gtab_a, selectdata = True,\
                 solint = "inf", field = bpcal[ii], combine = "",\
                 refant = ref_ant, gaintype = "G", calmode = "a",uvrange='',\
