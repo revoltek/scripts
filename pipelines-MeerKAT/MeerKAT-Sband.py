@@ -229,17 +229,19 @@ for cc in range(3):
     ###
 
 # DEBUG:
-os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
+os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
+###
 
 # Leackage
 casa.polcal(vis=calms,
-   caltable=tab['Df_tab'],field=FluxCal, poltype='Df', solint='inf', refant=ref_ant,
+   caltable=tab['Df_tab'],field=BandPassCal, poltype='Df', solint='inf', refant=ref_ant,
    gaintable=[tab['K_tab'], tab['Gp_tab'], tab['Ga_tab'], tab['B_tab']])
 # plotms(vis=tab['Df_tab'], xaxis='frequency', yaxis='amplitude', coloraxis='antenna1')
 
 # DEBUG:
 casa.applycal(vis=calms,field=BandPassCal, gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']], flagbackup=False)
-os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-postleak.png' {calms}")
+os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-postleak.png' {calms}")
+###
 
 ############################################################################
 # Bootrap secondary calibrator
@@ -248,6 +250,7 @@ casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', 
 # TODO: add time dependent delay for each calibrator?
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, \
              gaintable=[tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], append=True)
+# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 
 # plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 # plotms(vis=tab['Tsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='amp')
