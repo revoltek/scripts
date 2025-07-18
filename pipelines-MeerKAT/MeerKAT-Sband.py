@@ -5,11 +5,6 @@ import casatasks as casa
 from casatools import table
 import numpy as np
 
-# Older CASA
-#from recipes.almapolhelpers import *
-# Current CASA
-#from almatasks import *
-
 invis   = 'RawData/m87sband-flipped.MS'
 calms   = 'MS_Files/m87sband-cal.MS'
 tgtms   = 'MS_Files/m87sband-tgt.MS'
@@ -57,6 +52,12 @@ logging.basicConfig(filename=log_file,
         level=log_level)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 logger = logging.getLogger(__name__)
+old_log_filename = casa.casalog.logfile()
+# Point the casa logsink to the new file
+casa.casalog.setlogfile(filename=casa_log)
+# Delete the old file
+os.remove(old_log_filename)
+
 
 #### NEEDED FOR J0408-6545 from https://skaafrica.atlassian.net/wiki/spaces/ESDKB/pages/1481408634/Flux+and+bandpass+calibration
 def casa_flux_model(lnunu0, iref, *args):
@@ -192,7 +193,7 @@ casa.flagdata(vis=calms, mode='extend', field=CalibFields,
 ### Basic calibration
 for cc in range(3):
     # Delay calibration
-    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, solint='60s')
+    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, solint='8s')
     # plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
     # Gani calibration
     casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant, solint='8s')
