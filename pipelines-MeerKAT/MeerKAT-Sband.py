@@ -135,9 +135,11 @@ def convert_flux_model(nu=np.linspace(0.9,2,200)*1e9 , a=1,b=0,c=0,d=0,Reffreq= 
     return fit_flux_model(nu, S , Reffreq,np.ones_like(nu),sref=1 ,order=3)
 
 def make_debug_plots(tables, command):
-    logging.info(f'Making debug plot: {command}')
     casa.applycal(vis=calms,field='*', gaintable=tables, flagbackup=False)
-    os.system(command)
+    if not isinstance(command, list): command = [command]
+    for cmd in command:
+        logging.info(f'Making debug plot: {cmd}')
+        os.system(cmd)
 
 ##############################
 # Change RECEPTOR_ANGLE : DEFAULT IS -90DEG but should be fixed with the initial swap
@@ -219,9 +221,8 @@ for cc in range(3):
 
     # DEBUG:
     make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp.png' {calms}")
-    make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph.png' {calms}")
+        [f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp.png' {calms}"
+        f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph.png' {calms}"])
 
     # Flag with AOFlagger
     casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreAOFlagger{cc}')
@@ -230,9 +231,8 @@ for cc in range(3):
 
     # DEBUG:
     make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp-flag.png' {calms}")
-    make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph-flag.png' {calms}")
+        [f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp-flag.png' {calms}",
+        f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph-flag.png' {calms}"])
 
 # DEBUG:
 make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
