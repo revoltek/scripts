@@ -235,7 +235,8 @@ for cc in range(3):
     f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph-flag.png' {calms}")
 
 # DEBUG:
-os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
+make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
+    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
 
 # Leackage
 casa.polcal(vis=calms,
@@ -244,9 +245,8 @@ casa.polcal(vis=calms,
 # plotms(vis=tab['Df_tab'], xaxis='frequency', yaxis='amplitude', coloraxis='antenna1')
 
 # DEBUG:
-casa.applycal(vis=calms,field='*', gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']], flagbackup=False)
-os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-postleak.png' {calms}")
-
+make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']],
+    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-postleak.png' {calms}")
 
 ############################################################################
 # Bootrap secondary calibrator
