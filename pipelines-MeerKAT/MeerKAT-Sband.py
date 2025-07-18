@@ -57,7 +57,8 @@ old_log_filename = casa.casalog.logfile()
 casa.casalog.setlogfile(filename=casa_log)
 # Delete the old file
 os.remove(old_log_filename)
-
+# remove annoying warnings
+logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 #### NEEDED FOR J0408-6545 from https://skaafrica.atlassian.net/wiki/spaces/ESDKB/pages/1481408634/Flux+and+bandpass+calibration
 def casa_flux_model(lnunu0, iref, *args):
