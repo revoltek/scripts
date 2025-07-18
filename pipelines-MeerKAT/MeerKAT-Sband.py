@@ -192,13 +192,14 @@ casa.flagdata(vis=calms, mode='extend', field=CalibFields,
 ### Basic calibration
 for cc in range(3):
     # Delay calibration
-    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant)
-    # plotms(vis=tab['K_tab'], coloraxis='corr')
+    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, solint='60s')
+    # plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
     # Gani calibration
-    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant)
+    casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Gp_tab'], gaintype='G', calmode='p', gaintable=[tab['K_tab']], refant=ref_ant, solint='8s')
     casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['Ga_tab'], gaintype='G', calmode='a', gaintable=[tab['K_tab'],tab['Gp_tab']], refant=ref_ant)
+    # plotms(vis=tab['Gp_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
     # one can now combine the scans and use different B as diagnostics
-    casa.bandpass(vis=calms, field=PhaseCal, caltable=tab['B_tab'], bandtype='B', 
+    casa.bandpass(vis=calms, field=BandPassCal, caltable=tab['B_tab'], bandtype='B', 
                   gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab']], combine='', solint='inf', refant=ref_ant)
     # plotms(vis=tab['B_tab'], coloraxis='antenna1', xaxis='freq', yaxis='amp')
     # plotms(vis=tab['B_tab'], coloraxis='antenna1', xaxis='freq', yaxis='phase')
