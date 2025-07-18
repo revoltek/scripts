@@ -208,11 +208,11 @@ for cc in range(3):
 
     # applycal
     casa.applycal(vis=calms,field='*', gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']], flagbackup=False)
-    os.sytem(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-cal.png' {calms}")
+    os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-cal.png' {calms}")
 
     # Flag with tricolour
     casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreTricolour{cc}')
-    os.sytem(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
+    os.system(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
 
 # Leackage
 casa.polcal(vis=calms,
