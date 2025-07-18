@@ -10,7 +10,8 @@ calms   = 'MS_Files/m87sband-cal.MS'
 tgtms   = 'MS_Files/m87sband-tgt.MS'
 tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
 ref_ant = 'm002'
-tricolour_strategy = 'tricolour_oxkat.yaml'
+# tricolour_strategy = 'tricolour_oxkat.yaml'
+aoflagger_strategy = 'aoflagger_StokesQUV.lua'
 
 # Name your gain tables
 tab = {'K_tab' : 'delay.cal',
@@ -38,7 +39,7 @@ PhaseCal = ','.join(PhaseTargetDic.keys())
 Targets = ','.join(PhaseTargetDic.values())
 CalibFields = ','.join([BandPassCal, PolCal, PhaseCal])
 
-tricolour_command = f'singularity run --bind $PWD -B /local/work/fdg ~/storage/tricolour.simg tricolour'
+# tricolour_command = f'singularity run --bind $PWD -B /local/work/fdg ~/storage/tricolour.simg tricolour'
 
 #############################
 ### Logs Setting up and functions
@@ -222,9 +223,10 @@ for cc in range(3):
     make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
     f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph.png' {calms}")
 
-    # Flag with tricolour
-    casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreTricolour{cc}')
-    os.system(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
+    # Flag with AOFlagger
+    casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreAOFlagger{cc}')
+    # os.system(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
+    os.system(f"aoflagger -strategy {aoflagger_strategy} -column CORRECTED_DATA {calms}")
 
     # DEBUG:
     make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
