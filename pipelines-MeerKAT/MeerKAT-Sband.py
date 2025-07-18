@@ -134,13 +134,6 @@ def convert_flux_model(nu=np.linspace(0.9,2,200)*1e9 , a=1,b=0,c=0,d=0,Reffreq= 
     S = 10**(a + b*np.log10(nu/MHz) +c*np.log10(nu/MHz)**2 + d*np.log10(nu/MHz)**3)
     return fit_flux_model(nu, S , Reffreq,np.ones_like(nu),sref=1 ,order=3)
 
-def make_debug_plots(tables, command):
-    casa.applycal(vis=calms,field='*', gaintable=tables, flagbackup=False)
-    if not isinstance(command, list): command = [command]
-    for cmd in command:
-        logging.info(f'Making debug plot: {cmd}')
-        os.system(cmd)
-
 ##############################
 # Change RECEPTOR_ANGLE : DEFAULT IS -90DEG but should be fixed with the initial swap
 t=table(invis+'/FEED', nomodify=False)
@@ -220,23 +213,23 @@ for cc in range(3):
     casa.flagmanager(vis=calms, mode='restore', versionname='PreCal')
 
     # DEBUG:
-    make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-        [f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp.png' {calms}"
-        f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph.png' {calms}"])
-
+    casa.applycal(vis=calms,field=BandPassCal, gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']], flagbackup=False)
+    os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp.png' {calms}")
+    os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph.png' {calms}")
+    ###
+    
     # Flag with AOFlagger
     casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreAOFlagger{cc}')
     # os.system(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
     os.system(f"aoflagger -strategy {aoflagger_strategy} -column CORRECTED_DATA {calms}")
 
     # DEBUG:
-    make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-        [f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp-flag.png' {calms}",
-        f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph-flag.png' {calms}"])
+    os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-amp-flag.png' {calms}")
+    os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass-ph-flag.png' {calms}")
+    ###
 
 # DEBUG:
-make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab']],
-    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
+os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
 
 # Leackage
 casa.polcal(vis=calms,
@@ -245,8 +238,8 @@ casa.polcal(vis=calms,
 # plotms(vis=tab['Df_tab'], xaxis='frequency', yaxis='amplitude', coloraxis='antenna1')
 
 # DEBUG:
-make_debug_plots([tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']],
-    f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-postleak.png' {calms}")
+casa.applycal(vis=calms,field=BandPassCal, gaintable=[tab['K_tab'],tab['Gp_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']], flagbackup=False)
+os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-postleak.png' {calms}")
 
 ############################################################################
 # Bootrap secondary calibrator
