@@ -9,7 +9,7 @@ invis   = 'RawData/m87sband-flipped.MS'
 calms   = 'MS_Files/m87sband-cal.MS'
 tgtms   = 'MS_Files/m87sband-tgt.MS'
 tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
-ref_ant = 'm002'
+ref_ant = 'm003'
 # tricolour_strategy = 'tricolour_oxkat.yaml'
 aoflagger_strategy = 'aoflagger_StokesQUV.lua'
 
@@ -234,7 +234,7 @@ os.system(f"shadems --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal
 
 # Leackage
 casa.polcal(vis=calms,
-   caltable=tab['Df_tab'],field=BandPassCal, poltype='Df', solint='inf', refant=ref_ant,
+   caltable=tab['Df_tab'],field=BandPassCal, poltype='Df', solint='inf', refant=ref_ant, combine='scans',
    gaintable=[tab['K_tab'], tab['Gp_tab'], tab['Ga_tab'], tab['B_tab']])
 # plotms(vis=tab['Df_tab'], xaxis='frequency', yaxis='amplitude', coloraxis='antenna1')
 
