@@ -18,7 +18,11 @@ tgtms   = 'MS_Files/m87sband-tgt.MS'
 tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
 ref_ant = 'm003'
 # tricolour_strategy = 'tricolour_oxkat.yaml'
-aoflagger_strategy = 'aoflagger_StokesQUV.lua'
+# Set aoflagger_strategy as a file in the same directory as this script
+#script_dir = os.path.dirname(os.path.abspath(__file__))
+script_dir = '.'
+aoflagger_strategy = os.path.join(script_dir, 'aoflagger_StokesQUV.lua')
+
 
 FluxCal = 'J1939-6342' # one of the BandPassCals
 BandPassCal = 'J1939-6342,J0408-6545'
@@ -241,6 +245,8 @@ for cc in range(2):
     os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass{cc}-amp-flag.png' {calms}")
     os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:phase --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass{cc}-ph-flag.png' {calms}")
     ###
+
+casa.flagmanager(vis = calms, mode = 'save', versionname = f'PrePol')
 
 # DEBUG:
 os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
