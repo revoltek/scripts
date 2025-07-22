@@ -268,22 +268,23 @@ os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {B
 # Bootrap secondary calibrator
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
              gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
-# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
+# plotms(vis=tab['Ksec_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', refant=ref_ant, \
              gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
+# plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, refant=ref_ant, \
              gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
-
-# plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 # plotms(vis=tab['Tsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='amp')
+
 #image the secondary and selfcal
-casa.applycal(vis=calms,field=PhaseCal, gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], parang=True, flagbackup=False)
-casa.tclean(vis=calms,field=PhaseCal,cell='0.5arcsec',imsize=8000,niter=1000,imagename=PhaseCal+'-selfcal',weighting='briggs',robust=-0.2,
-       datacolumn='corrected',deconvolver= 'mtmfs',nterms=2,specmode='mfs',interactive=False)
+casa.applycal(vis=calms,field=PhaseCal, parang=True, flagbackup=False, \
+              gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']])
+#casa.tclean(vis=calms,field=PhaseCal,cell='0.5arcsec',imsize=8000,niter=1000,imagename=PhaseCal+'-selfcal',weighting='briggs',robust=-0.2,
+#       datacolumn='corrected',deconvolver= 'mtmfs',nterms=2,specmode='mfs',interactive=False)
+os.system('{wsclean_command}')
 
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
              gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
-# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', refant=ref_ant, \
              gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
 casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, refant=ref_ant, \
@@ -295,7 +296,7 @@ os.system(f"{shadems_command} --xaxis FREQ  --yaxis CORRECTED_DATA --field {PolC
 # plotms(vis=tab['Gppol_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 casa.gaincal(vis=calms, caltable=tab['Kpol_tab'], field=PolCal, gaintype='K', \
              gaintable=[tab['Ga_tab'],tab['B_tab'], tab['Df_tab'], tab['Gpsec_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
-# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
+# plotms(vis=tab['Kpol_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 # here we can use also secT to trace slow variations in the amp
 casa.gaincal(vis=calms, caltable=tab['Gppol_tab'], field=PolCal, gaintype='G', calmode='p', 
              gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
@@ -305,12 +306,14 @@ casa.polcal(vis=calms, caltable=tab['Xf_tab'], field=PolCal, poltype='Xf', solin
    combine='scan', preavg=-1., gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
 # plotms(vis=tab['Xf_tab'], xaxis='freq', yaxis='phase')
 
-# Final applycal to all sources
-casa.applycal(vis=calms, field='*', gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab'],tab['Xf_tab']], parang=True)
+# Final applycal to PolCal to check pol quality
+casa.applycal(vis=calms, field=PolCal, parang=True, flagbackup=False, \
+              gaintable=[tab['Kpol_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gppol_tab'], tab['Tsec_tab'], tab['Df_tab'],tab['Xf_tab']])
 
 # test images
-tclean(vis=calms,field=xcal,cell='0.5arcsec',imsize=512,niter=1000,imagename=xcal+'-selfcal',weighting='briggs',robust=-0.2,datacolumn= 'corrected',deconvolver= 'mtmfs',\
-       nterms=2,specmode='mfs',interactive=False)
+os.system('{wsclean_command}')
+#tclean(vis=calms,field=xcal,cell='0.5arcsec',imsize=512,niter=1000,imagename=xcal+'-selfcal',weighting='briggs',robust=-0.2,datacolumn= 'corrected',deconvolver= 'mtmfs',\
+#       nterms=2,specmode='mfs',interactive=False)
 
 ###############################################################################
 # Target
