@@ -53,7 +53,7 @@ PhaseCal = ','.join(PhaseTargetDic.keys())
 Targets = ','.join(PhaseTargetDic.values())
 CalibFields = ','.join([BandPassCal, PolCal, PhaseCal])
 # create dirs if missing
-for d in ['PLOTS', 'MS_Files', inpath]:
+for d in ['IMG', 'PLOTS', 'MS_Files', inpath]:
     os.makedirs(d, exist_ok=True)
 
 #############################
@@ -279,9 +279,9 @@ casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', 
 #image the secondary and selfcal
 casa.applycal(vis=calms,field=PhaseCal, parang=True, flagbackup=False, \
               gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']])
-#casa.tclean(vis=calms,field=PhaseCal,cell='0.5arcsec',imsize=8000,niter=1000,imagename=PhaseCal+'-selfcal',weighting='briggs',robust=-0.2,
-#       datacolumn='corrected',deconvolver= 'mtmfs',nterms=2,specmode='mfs',interactive=False)
-os.system('{wsclean_command}')
+os.system(f'{wsclean_command} -name IMG/{PhaseCal}-selfcal -reorder -parallel-deconvolution 1024 -update-model-required -weight briggs -0.2 -size 8000 8000 \
+        -scale 0.5arcsec -channels-out 6 -pol I -data-column CORRECTED_DATA -niter 1000000 -mgain 0.8 -join-channels \
+        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PhaseCal} {calms} > wsclean_{PhaseCal}-selfcal.log')
 
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
              gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
@@ -310,10 +310,10 @@ casa.polcal(vis=calms, caltable=tab['Xf_tab'], field=PolCal, poltype='Xf', solin
 casa.applycal(vis=calms, field=PolCal, parang=True, flagbackup=False, \
               gaintable=[tab['Kpol_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gppol_tab'], tab['Tsec_tab'], tab['Df_tab'],tab['Xf_tab']])
 
-# test images
-os.system('{wsclean_command}')
-#tclean(vis=calms,field=xcal,cell='0.5arcsec',imsize=512,niter=1000,imagename=xcal+'-selfcal',weighting='briggs',robust=-0.2,datacolumn= 'corrected',deconvolver= 'mtmfs',\
-#       nterms=2,specmode='mfs',interactive=False)
+# test image of the polcal
+os.system(f'{wsclean_command} -name IMG/{PhaseCal}-selfcal -reorder -parallel-deconvolution 1024 -update-model-required -weight briggs -0.2 -size 8000 8000 \
+        -scale 0.5arcsec -channels-out 6 -pol IQUV -data-column CORRECTED_DATA -niter 1000000 -mgain 0.8 -join-channels \
+        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PolCal} {calms} > wsclean_{PhaseCal}-selfcal.log')
 
 ###############################################################################
 # Target
