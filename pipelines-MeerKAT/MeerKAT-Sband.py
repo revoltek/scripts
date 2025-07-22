@@ -31,12 +31,14 @@ PhaseTargetDic = {'J1150-0023':'M87'} # PhaseCal <--> Target pairs
 ############################################
 
 # Name your gain tables
-tab = {'K_tab' : 'delay.cal',
+tab = {'K_tab' : 'delay_bp.cal',
        'B_tab' : 'bandpass.cal',
-       'Gp_tab': 'gain_p.cal',
-       'Ga_tab': 'gain_a.cal',
+       'Gp_tab': 'gain_p_bp.cal',
+       'Ga_tab': 'gain_a_bp.cal',
+       'Ksec_tab' : 'delay_sec.cal',
        'Tsec_tab' : 'T_sec.cal',
        'Gpsec_tab' : 'gain_p_sec.cal',
+       'Kpol_tab' : 'delay_pol.cal',
        'Gppol_tab' : 'gain_p_pol.cal',
        # Pol cal tables
        'Kcross_tab': 'kcross.cal',
@@ -264,37 +266,43 @@ os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {B
 
 ############################################################################
 # Bootrap secondary calibrator
-casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
-casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
-# TODO: add time dependent delay for each calibrator?
-casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, \
-             gaintable=[tab['Ga_tab'],tab['B_tab'], tab['Df_tab'],tab['Gpsec_tab'], tab['Tsec_tab']], append=True)
+casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
+             gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
 # plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
+casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', refant=ref_ant, \
+             gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
+casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, refant=ref_ant, \
+             gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
 
 # plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 # plotms(vis=tab['Tsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='amp')
 #image the secondary and selfcal
-casa.applycal(vis=calms,field=PhaseCal, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], parang=True, flagbackup=False)
+casa.applycal(vis=calms,field=PhaseCal, gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], parang=True, flagbackup=False)
 casa.tclean(vis=calms,field=PhaseCal,cell='0.5arcsec',imsize=8000,niter=1000,imagename=PhaseCal+'-selfcal',weighting='briggs',robust=-0.2,
        datacolumn='corrected',deconvolver= 'mtmfs',nterms=2,specmode='mfs',interactive=False)
-# TODO: add masking
-casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
-casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
+
+casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
+             gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
+# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
+casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G', calmode='p', refant=ref_ant, \
+             gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab']])
+casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, refant=ref_ant, \
+             gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
 
 ##############################################################################
-# Solve for polarization angle
+# Solve for polarization alignment
 os.system(f"{shadems_command} --xaxis FREQ  --yaxis CORRECTED_DATA --field {PolCal} --corr XY,YX {calms}")
+# plotms(vis=tab['Gppol_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
+casa.gaincal(vis=calms, caltable=tab['Kpol_tab'], field=PolCal, gaintype='K', \
+             gaintable=[tab['Ga_tab'],tab['B_tab'], tab['Df_tab'], tab['Gpsec_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
+# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 # here we can use also secT to trace slow variations in the amp
 casa.gaincal(vis=calms, caltable=tab['Gppol_tab'], field=PolCal, gaintype='G', calmode='p', 
-             gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
-# plotms(vis=tab['Gppol_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
-casa.gaincal(vis=calms, caltable=tab['K_tab'], field=PolCal, gaintype='K', \
-             gaintable=[tab['Ga_tab'],tab['B_tab'], tab['Df_tab'], tab['Gppol_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s', append=True)
-# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
+             gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
 
 # Xf that is constant within a scan
 casa.polcal(vis=calms, caltable=tab['Xf_tab'], field=PolCal, poltype='Xf', solint='inf,10MHz', refant=ref_ant,
-   combine='scan', preavg=-1., gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
+   combine='scan', preavg=-1., gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
 # plotms(vis=tab['Xf_tab'], xaxis='freq', yaxis='phase')
 
 # Final applycal to all sources
