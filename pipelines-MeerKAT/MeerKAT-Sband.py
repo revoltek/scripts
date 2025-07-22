@@ -178,18 +178,17 @@ for cal in set(FluxCal.split(',')+BandPassCal.split(',')+PolCal.split(',')):
     elif cal == 'J0408-6545':
         a=-0.9790; b=3.3662; c=-1.1216; d=0.0861
         reffreq,fluxdensity,spix0,spix1,spix2 =  convert_flux_model(np.linspace(0.9,2,200)*1e9,a,b,c,d)
-        casa.setjy(vis = calms, field = cal, usescratch = True, \
-            spix = [spix0, spix1, spix2, 0], fluxdensity = fluxdensity, reffreq = '%f Hz'%(reffreq), standard = 'manual', )
+        casa.setjy(vis = calms, field = cal, usescratch = True, standard = 'manual', \
+            spix = [spix0, spix1, spix2, 0], fluxdensity = fluxdensity, reffreq = '%f Hz'%(reffreq))
     elif cal == 'J1331+3030':
-            reffreq = '1.284GHz'
-            # Stokes flux density in Jy
-            I =  15.74331687; Q = 0.8628247336; U = 1.248991241; V = 0
-            # Spectral Index in 2nd order
-            alpha =   [-0.4881438633844231, -0.17025582235426978]
-            casa.setjy(vis=calms, field=cal, standard="manual", fluxdensity=[I,Q,U,V], spix=alpha, reffreq=reffreq,
-                polindex=[0.0964244115642966, 0.018277345381024372, -0.07332409550519345, 0.3253188415787851, -0.37228554528542385],
-                polangle=[0.48312994184873537, 0.12063061722082152, -0.04180094935296229, 0.12832951565823608],
-                rotmeas=0.12,usescratch=True)
+        I= 14.7172
+        alpha= [-0.4507, -0.1798, 0.0357]
+        reffreq= '1.47GHz'
+        polfrac= 0.098
+        polangle = 0.575959
+        rm=0.
+        casa.setjy(vis=calms, field=cal, usescratch = True, standard = 'manual', \
+                   fluxdensity=[I,0,0,0], spix=alpha, reffreq=reffreq, polindex=polfrac, polangle=polangle, rotmeas=rm)
     else:
         print("Unknown calibrator ", cal)
         sys.exit()
@@ -252,7 +251,7 @@ casa.flagmanager(vis = calms, mode = 'save', versionname = f'PrePol')
 os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
 ###
 
-# Leackage
+# Leackage on unpol calib
 casa.polcal(vis=calms,
    caltable=tab['Df_tab'],field=BandPassCal, poltype='Df', solint='inf', refant=ref_ant, combine='scan',
    gaintable=[tab['K_tab'], tab['Gp_tab'], tab['Ga_tab'], tab['B_tab']])
@@ -269,7 +268,7 @@ casa.gaincal(vis=calms, caltable=tab['Gpsec_tab'], field=PhaseCal, gaintype='G',
 casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', calmode='a', solnorm=True, solint='inf', combine='',refant=ref_ant, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Df_tab'],tab['Gpsec_tab']])
 # TODO: add time dependent delay for each calibrator?
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, \
-             gaintable=[tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']], append=True)
+             gaintable=[tab['Ga_tab'],tab['B_tab'], tab['Df_tab'],tab['Gpsec_tab'], tab['Tsec_tab']], append=True)
 # plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 
 # plotms(vis=tab['Gpsec_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
@@ -286,10 +285,12 @@ casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', 
 # Solve for polarization angle
 os.system(f"{shadems_command} --xaxis FREQ  --yaxis CORRECTED_DATA --field {PolCal} --corr XY,YX {calms}")
 # here we can use also secT to trace slow variations in the amp
-casa.gaincal(vis=calms, caltable=tab['Gppol_tab'], field=PolCal, gaintype='G', calmode='p', solint='inf', combine='', 
-             refant=ref_ant, gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']])
+casa.gaincal(vis=calms, caltable=tab['Gppol_tab'], field=PolCal, gaintype='G', calmode='p', 
+             gaintable=[tab['K_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
 # plotms(vis=tab['Gppol_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
-#casa.applycal(vis=calms, field=PolCal, gaintable=[tab['K_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gppol_tab'], tab['Tsec_tab'], tab['Df_tab'])
+casa.gaincal(vis=calms, caltable=tab['K_tab'], field=PolCal, gaintype='K', \
+             gaintable=[tab['Ga_tab'],tab['B_tab'], tab['Df_tab'], tab['Gppol_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s', append=True)
+# plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
 
 # Xf that is constant within a scan
 casa.polcal(vis=calms, caltable=tab['Xf_tab'], field=PolCal, poltype='Xf', solint='inf,10MHz', refant=ref_ant,
