@@ -2,6 +2,7 @@
 
 import os, sys, logging
 import casatasks as casa
+from casatools import msmetadata
 from casatools import table
 import numpy as np
 
@@ -55,6 +56,11 @@ CalibFields = ','.join([BandPassCal, PolCal, PhaseCal])
 # create dirs if missing
 for d in ['IMG', 'PLOTS', 'MS_Files', inpath]:
     os.makedirs(d, exist_ok=True)
+# field ids
+msmd = msmetadata()
+msmd.open(invis)
+PhaseCal_id = msmd.fieldsforname(PhaseCal)[0]
+PolCal_id = msmd.fieldsforname(PolCal)[0]
 
 #############################
 ### Logs Setting up and functions
@@ -281,7 +287,7 @@ casa.applycal(vis=calms,field=PhaseCal, parang=True, flagbackup=False, \
               gaintable=[tab['Ksec_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gpsec_tab'], tab['Tsec_tab'], tab['Df_tab']])
 os.system(f'{wsclean_command} -name IMG/{PhaseCal}-selfcal -reorder -parallel-deconvolution 1024 -update-model-required -weight briggs -0.2 -size 8000 8000 \
         -scale 0.5arcsec -channels-out 6 -pol I -data-column CORRECTED_DATA -niter 1000000 -mgain 0.8 -join-channels \
-        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PhaseCal} {calms} > wsclean_{PhaseCal}-selfcal.log')
+        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PhaseCal_id} {calms} > wsclean_{PhaseCal}-selfcal.log')
 
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
              gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
@@ -313,7 +319,7 @@ casa.applycal(vis=calms, field=PolCal, parang=True, flagbackup=False, \
 # test image of the polcal
 os.system(f'{wsclean_command} -name IMG/{PhaseCal}-selfcal -reorder -parallel-deconvolution 1024 -update-model-required -weight briggs -0.2 -size 8000 8000 \
         -scale 0.5arcsec -channels-out 6 -pol IQUV -data-column CORRECTED_DATA -niter 1000000 -mgain 0.8 -join-channels \
-        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PolCal} {calms} > wsclean_{PhaseCal}-selfcal.log')
+        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PolCal_id} {calms} > wsclean_{PhaseCal}-selfcal.log')
 
 ###############################################################################
 # Target
