@@ -169,6 +169,7 @@ t.close()
 
 ###########################
 # Split the calibrators
+logger.info('Splitting calibrators...')
 spw_selection = '0:210~3841'
 casa.split(vis = invis, outputvis = calms, field = f"{BandPassCal},{PolCal},{PhaseCal}", datacolumn = 'data', spw = spw_selection)
 
@@ -180,6 +181,8 @@ casa.flagdata(vis=calms, flagbackup=False, mode='manual', spw='0:850~900,0:1610~
 
 # Set flux density scale
 for cal in set(FluxCal.split(',')+BandPassCal.split(',')+PolCal.split(',')):
+
+    logger.info('Setting model for calibrator %s' % cal)
 
     if cal == 'J1939-6342':
         casa.setjy(vis = calms, field = cal, standard = 'Stevens-Reynolds 2016', usescratch = True)
@@ -206,6 +209,7 @@ for cal in set(FluxCal.split(',')+BandPassCal.split(',')+PolCal.split(',')):
 casa.flagmanager(vis=calms, mode='save', versionname='PreCal')
 
 # Run TFCrop on the DATA column
+logger.info('Running TFCrop...')
 casa.flagdata(vis=calms, mode='tfcrop', field=CalibFields,
         ntime='scan', timecutoff=5.0, freqcutoff=5.0, timefit='line',
         freqfit='line', extendflags=False, timedevscale=5., freqdevscale=5.,
@@ -219,6 +223,7 @@ casa.flagdata(vis=calms, mode='extend', field=CalibFields,
 
 ### Basic calibration
 for cc in range(2):
+    logger.info(f'Calibration cycle {cc+1}')
     # Delay calibration (fast to track the ionosphere)
     casa.gaincal(vis=calms, field=BandPassCal, caltable=tab['K_tab'], gaintype='K', refant=ref_ant, solint='8s')
     # plotms(vis=tab['K_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
@@ -255,6 +260,7 @@ for cc in range(2):
 
 casa.flagmanager(vis = calms, mode = 'save', versionname = f'PrePol')
 
+logger.info('Finding leackage...')
 # DEBUG:
 os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XY,YX --png './PLOTS/Bandpass-cross-preleak.png' {calms}")
 ###
@@ -272,6 +278,7 @@ os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {B
 
 ############################################################################
 # Bootrap secondary calibrator
+logger.info('Bootstrapping secondary calibrator...')
 casa.gaincal(vis=calms, field=PhaseCal, caltable=tab['Ksec_tab'], gaintype='K', refant=ref_ant, \
              gaintable=[tab['Ga_tab'], tab['Gp_tab'], tab['B_tab'], tab['Df_tab']])
 # plotms(vis=tab['Ksec_tab'], coloraxis='antenna1', xaxis='time', yaxis='delay')
@@ -298,6 +305,7 @@ casa.gaincal(vis=calms, caltable=tab['Tsec_tab'], field=PhaseCal, gaintype='T', 
 
 ##############################################################################
 # Solve for polarization alignment
+logger.info('Solving for polarization alignment...')
 os.system(f"{shadems_command} --xaxis FREQ  --yaxis CORRECTED_DATA --field {PolCal} --corr XY,YX {calms}")
 # plotms(vis=tab['Gppol_tab'], coloraxis='antenna1', xaxis='time', yaxis='phase')
 casa.gaincal(vis=calms, caltable=tab['Kpol_tab'], field=PolCal, gaintype='K', \
@@ -307,11 +315,12 @@ casa.gaincal(vis=calms, caltable=tab['Kpol_tab'], field=PolCal, gaintype='K', \
 casa.gaincal(vis=calms, caltable=tab['Gppol_tab'], field=PolCal, gaintype='G', calmode='p', 
              gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab']], refant=ref_ant, solint='8s')
 
-# Xf that is constant within a scan
+# Xf that is constant within a scan, but it drift slowly with time, try not combining scans
 casa.polcal(vis=calms, caltable=tab['Xf_tab'], field=PolCal, poltype='Xf', solint='inf,10MHz', refant=ref_ant,
-   combine='scan', preavg=-1., gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
+   combine='', preavg=-1., gaintable=[tab['Kpol_tab'], tab['Ga_tab'], tab['B_tab'], tab['Df_tab'], tab['Tsec_tab'], tab['Gppol_tab']])
 # plotms(vis=tab['Xf_tab'], xaxis='freq', yaxis='phase')
 
+logger.info('Applying calibration to PolCal and test imaging...')
 # Final applycal to PolCal to check pol quality
 casa.applycal(vis=calms, field=PolCal, parang=True, flagbackup=False, \
               gaintable=[tab['Kpol_tab'],tab['Ga_tab'],tab['B_tab'],tab['Gppol_tab'], tab['Tsec_tab'], tab['Df_tab'],tab['Xf_tab']])
@@ -319,82 +328,82 @@ casa.applycal(vis=calms, field=PolCal, parang=True, flagbackup=False, \
 # test image of the polcal
 os.system(f'{wsclean_command} -name IMG/{PhaseCal}-selfcal -reorder -parallel-deconvolution 1024 -update-model-required -weight briggs -0.2 -size 8000 8000 \
         -scale 0.5arcsec -channels-out 6 -pol IQUV -data-column CORRECTED_DATA -niter 1000000 -mgain 0.8 -join-channels \
-        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PolCal_id} {calms} > wsclean_{PhaseCal}-selfcal.log')
+        -multiscale -fit-spectral-pol 3  -auto-mask 5 -auto-threshold 3 -field {PolCal_id} {calms} > wsclean_{PolCal}-selfcal.log')
 
 ###############################################################################
 # Target
 
 # selfcal only on scalar amp and possibly diag phase. If dig phase needed, only for stokes I and consider parang is amp rot matrix and doesn't commute
 
-applycal(vis  = calms, parang = True, calwt = False, field = '',\
-    gaintable = [ktab, btab, kxtab, ptab_xyf, dgen, ftab],\
-    gainfield = ['', '', '', '', '', ''],\
-    interp    = ['nearest,linear','nearest,linearflag','nearest,linear','nearest,linearflag','linear,linearflag','linear,linear'])
+# applycal(vis  = calms, parang = True, calwt = False, field = '',\
+#     gaintable = [ktab, btab, kxtab, ptab_xyf, dgen, ftab],\
+#     gainfield = ['', '', '', '', '', ''],\
+#     interp    = ['nearest,linear','nearest,linearflag','nearest,linear','nearest,linearflag','linear,linearflag','linear,linear'])
 
 
-wsclean -verbose -log-time -no-update-model-required -j 64 \
-    -field 2 -weight briggs -0.5 -size 2048 2048 -scale 1.0asec -channels-out 48 \
-    -no-mf-weighting -weighting-rank-filter 3 -auto-mask 5 -auto-threshold 1.0 \
-    -taper-gaussian 6 -pol IQUV -data-column CORRECTED_DATA -niter 10000 -gain 0.05 \
-    -mgain 0.9 -join-polarizations -join-channels -squared-channel-joining -gridder wgridder \
-    -padding 1.3 -local-rms -name img/3c286_wsclean_FullStokes MS_Files/m87sband-cal.MS
+# wsclean -verbose -log-time -no-update-model-required -j 64 \
+#     -field 2 -weight briggs -0.5 -size 2048 2048 -scale 1.0asec -channels-out 48 \
+#     -no-mf-weighting -weighting-rank-filter 3 -auto-mask 5 -auto-threshold 1.0 \
+#     -taper-gaussian 6 -pol IQUV -data-column CORRECTED_DATA -niter 10000 -gain 0.05 \
+#     -mgain 0.9 -join-polarizations -join-channels -squared-channel-joining -gridder wgridder \
+#     -padding 1.3 -local-rms -name img/3c286_wsclean_FullStokes MS_Files/m87sband-cal.MS
 
-# IMAGE 3C138... OTHER PYTHON FILE
+# # IMAGE 3C138... OTHER PYTHON FILE
 
-### WORK ON TARGET ...
-# Split target ...
-split(vis = invis, outputvis = tgtms, field = "M87", datacolumn = 'data', spw = '0:210~3841')
+# ### WORK ON TARGET ...
+# # Split target ...
+# split(vis = invis, outputvis = tgtms, field = "M87", datacolumn = 'data', spw = '0:210~3841')
 
-# Change RECEPTOR_ANGLE : DEFAULT IS -90DEG but should be fixed with the initial swap
-casa.tb.open(calms+'/FEED', nomodify=False)
-feed_angle = casa.tb.getcol('RECEPTOR_ANGLE')
-new_feed_angle = np.zeros(feed_angle.shape)
-casa.tb.putcol('RECEPTOR_ANGLE', new_feed_angle)
-casa.tb.close()
+# # Change RECEPTOR_ANGLE : DEFAULT IS -90DEG but should be fixed with the initial swap
+# casa.tb.open(calms+'/FEED', nomodify=False)
+# feed_angle = casa.tb.getcol('RECEPTOR_ANGLE')
+# new_feed_angle = np.zeros(feed_angle.shape)
+# casa.tb.putcol('RECEPTOR_ANGLE', new_feed_angle)
+# casa.tb.close()
 
-applycal(vis  = tgtms, parang = True, calwt = False, field = '',\
-    gaintable = [ktab, btab, kxtab, ptab_xyf, dgen, ftab],\
-    gainfield = ['', '', '', '', '', gcal],\
-    interp    = ['nearest,linear','nearest,linearflag','nearest,linear','nearest,linearflag','linear,linearflag','linear,linear'])
+# applycal(vis  = tgtms, parang = True, calwt = False, field = '',\
+#     gaintable = [ktab, btab, kxtab, ptab_xyf, dgen, ftab],\
+#     gainfield = ['', '', '', '', '', gcal],\
+#     interp    = ['nearest,linear','nearest,linearflag','nearest,linear','nearest,linearflag','linear,linearflag','linear,linear'])
 
-flagmanager(vis = tgtms, mode = 'save', versionname = 'ApplyCal')
+# flagmanager(vis = tgtms, mode = 'save', versionname = 'ApplyCal')
 
-aoflagger-setup
-aoflagger -v -j 32 -strategy meerkat_custom20230417.lua -column CORRECTED_DATA MS_Files/xxx.MS
+# aoflagger-setup
+# aoflagger -v -j 32 -strategy meerkat_custom20230417.lua -column CORRECTED_DATA MS_Files/xxx.MS
 
-split(vis = tgtms, outputvis = tgtavgms, datacolumn = 'corrected', width = 8)
-flagdata(vis=tgtavgms, mode='manual', spw = '0:66~72,0:106~114,0:202~210,0:278~285')
+# split(vis = tgtms, outputvis = tgtavgms, datacolumn = 'corrected', width = 8)
+# flagdata(vis=tgtavgms, mode='manual', spw = '0:66~72,0:106~114,0:202~210,0:278~285')
 
-# Casa
-for i in range(30):
-    tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
-    gaincal(vis=tgtavgms, caltable='selfcal%02i.G' %i, solint='8s', refant='m002', parang=False)
-    gaincal(vis=tgtavgms, caltable='selfcal%02i.K' %i, solint='8s', refant='m002', gaintype='K', gaintable='selfcal%02i.G' %i, parang=False)
-    bandpass(vis=tgtavgms, caltable='selfcal%02i.B' %i, combine='', solint='300s', gaintable=['selfcal%02i.G' %i, 'selfcal%02i.K' %i], refant='m002', parang=False)
-    applycal(vis=tgtavgms, gaintable=['selfcal%02i.B' %i, 'selfcal%02i.G' %i, 'selfcal%02i.K' %i], interp=['linear,linearflag','linear', 'linear,linearflag'], parang=False)
-    os.system('singularity exec ~/storage/pill.simg wsclean -name img/m87-test%02i -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol XX,YY -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 3 -multiscale -no-mf-weighting -fits-mask m87-07asec-2500.fits MS_Files/m87sband-tgt-avg.MS/' % i)
+# # Casa
+# for i in range(30):
+#     tgtavgms   = 'MS_Files/m87sband-tgt-avg.MS'
+#     gaincal(vis=tgtavgms, caltable='selfcal%02i.G' %i, solint='8s', refant='m002', parang=False)
+#     gaincal(vis=tgtavgms, caltable='selfcal%02i.K' %i, solint='8s', refant='m002', gaintype='K', gaintable='selfcal%02i.G' %i, parang=False)
+#     bandpass(vis=tgtavgms, caltable='selfcal%02i.B' %i, combine='', solint='300s', gaintable=['selfcal%02i.G' %i, 'selfcal%02i.K' %i], refant='m002', parang=False)
+#     applycal(vis=tgtavgms, gaintable=['selfcal%02i.B' %i, 'selfcal%02i.G' %i, 'selfcal%02i.K' %i], interp=['linear,linearflag','linear', 'linear,linearflag'], parang=False)
+#     os.system('singularity exec ~/storage/pill.simg wsclean -name img/m87-test%02i -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol XX,YY -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 3 -multiscale -no-mf-weighting -fits-mask m87-07asec-2500.fits MS_Files/m87sband-tgt-avg.MS/' % i)
 
 
-# DP3
-import os, glob
-mss = sorted(glob.glob('MS_Files/m87sband-tgt-full-scan*.MS'))
-for i in range(30):
-    print(f'Cycle: {i}')
-    for ms in mss:
-        print(f'Working on {ms}...')
-        # solve
-        os.system(f'DP3 DP3-sol.parset msin={ms} msout=. sol.h5parm={ms}/ph-{i}.h5 sol.mode=diagonalphase sol.solint=1 sol.nchan=1 sol.smoothnessconstraint=10e6 >> DP3.log')
-        os.system(f'DP3 DP3-sol.parset msin={ms} msout=. sol.h5parm={ms}/amp-{i}.h5 sol.mode=diagonalamplitude sol.solint=20 sol.nchan=1 sol.smoothnessconstraint=30e6 >> DP3.log')
-        # correct
-        os.system(f'DP3 DP3-cor.parset msin={ms} msout=. cor1.parmdb={ms}/ph-{i}.h5 cor2.parmdb={ms}/amp-{i}.h5 >> DP3.log')
-    # clean
-    print(f'Cleaning...')
-    imgname = "img/m87-dp3%02i" % i
-    os.system("rm -r wsclean_concat.MS")
-    os.system(f"taql select from {mss} giving wsclean_concat.MS as plain")
-    #os.system(f'wsclean -name {imgname} -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -no-update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol XX,YY,XY,YX -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 3 -multiscale -no-mf-weighting -fits-mask m87-07asec-2500.fits wsclean_concat.MS >> wsclean.log')
-    os.system(f'wsclean -name {imgname} -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -no-update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol IQUV -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 3 -multiscale -no-mf-weighting -join-polarizations -fits-mask m87-07asec-2500.fits wsclean_concat.MS >> wsclean.log')
-    for ms in mss:
-        print(f'Predict on {ms}...')
-        # predict
-        os.system(f'wsclean  -predict -padding 1.8 -j 64 -name {imgname} -channels-out 461 {ms} >> wsclean.log')
+# # DP3
+# import os, glob
+# mss = sorted(glob.glob('MS_Files/m87sband-tgt-full-scan*.MS'))
+# for i in range(30):
+#     print(f'Cycle: {i}')
+#     for ms in mss:
+#         print(f'Working on {ms}...')
+#         # solve
+#         os.system(f'DP3 DP3-sol.parset msin={ms} msout=. sol.h5parm={ms}/ph-{i}.h5 sol.mode=diagonalphase sol.solint=1 sol.nchan=1 sol.smoothnessconstraint=10e6 >> DP3.log')
+#         os.system(f'DP3 DP3-sol.parset msin={ms} msout=. sol.h5parm={ms}/amp-{i}.h5 sol.mode=diagonalamplitude sol.solint=20 sol.nchan=1 sol.smoothnessconstraint=30e6 >> DP3.log')
+#         # correct
+#         os.system(f'DP3 DP3-cor.parset msin={ms} msout=. cor1.parmdb={ms}/ph-{i}.h5 cor2.parmdb={ms}/amp-{i}.h5 >> DP3.log')
+#     # clean
+#     print(f'Cleaning...')
+#     imgname = "img/m87-dp3%02i" % i
+#     os.system("rm -r wsclean_concat.MS")
+#     os.system(f"taql select from {mss} giving wsclean_concat.MS as plain")
+#     #os.system(f'wsclean -name {imgname} -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -no-update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol XX,YY,XY,YX -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 3 -multiscale -no-mf-weighting -fits-mask m87-07asec-2500.fits wsclean_concat.MS >> wsclean.log')
+#     os.system(f'wsclean -name {imgname} -reorder -parallel-reordering 5 -parallel-gridding 12 -j 64 -mem 100 -no-update-model-required -weight briggs 0.0 -size 2500 2500 -scale 0.7arcsec -channels-out 454 -deconvolution-channels 8 -pol IQUV -data-column CORRECTED_DATA -niter 10000000 -auto-threshold 2 -gain 0.1 -mgain 0.5 -join-channels -multiscale -fit-spectral-pol 3 -multiscale -no-mf-weighting -join-polarizations -fits-mask m87-07asec-2500.fits wsclean_concat.MS >> wsclean.log')
+#     for ms in mss:
+#         print(f'Predict on {ms}...')
+#         # predict
+#         os.system(f'wsclean  -predict -padding 1.8 -j 64 -name {imgname} -channels-out 461 {ms} >> wsclean.log')
