@@ -170,7 +170,11 @@ t.close()
 ###########################
 # Split the calibrators
 logger.info('Splitting calibrators...')
-casa.split(vis = invis, outputvis = calms, field = f"{BandPassCal},{PolCal},{PhaseCal}", datacolumn = 'data', spw = spw_selection)
+if not os.path.exists(calms):
+       casa.split(vis = invis, outputvis = calms, field = f"{BandPassCal},{PolCal},{PhaseCal}", datacolumn = 'data', spw = spw_selection)
+       logger.info(f'Calibrators split and saved in {calms}')
+else:
+       logger.info('Calibrators have already been split previously')
 
 # Standard flagging for shadowing, zero-clip, and auto-correlation
 casa.flagdata(vis=calms, flagbackup=False, mode='shadow')
@@ -250,7 +254,7 @@ for cc in range(2):
     # Flag with AOFlagger
     casa.flagmanager(vis = calms, mode = 'save', versionname = f'PreAOFlagger{cc}')
     # os.system(f"{tricolour_command} -fs total_power -dc CORRECTED_DATA -c {tricolour_strategy}")
-    os.system(f"{aoflagger_command} -v -j 64 -strategy {aoflagger_strategy} -column CORRECTED_DATA {calms}")
+    os.system(f"{aoflagger_command} -strategy {aoflagger_strategy} -column CORRECTED_DATA {calms}")
 
     # DEBUG:
     os.system(f"{shadems_command} --xaxis FREQ --yaxis CORRECTED_DATA:amp --field {BandPassCal} --corr XX,YY --png './PLOTS/Bandpass{cc}-amp-flag.png' {calms}")
