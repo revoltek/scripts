@@ -23,7 +23,7 @@ ref_ant = 'm003'
 #script_dir = os.path.dirname(os.path.abspath(__file__))
 script_dir = '.'
 aoflagger_strategy = os.path.join(script_dir, 'aoflagger_StokesQUV.lua')
-
+spw_selection = '0:210~3841' # channel selection - here is what we keep in the split command
 
 FluxCal = 'J1939-6342' # one of the BandPassCals
 BandPassCal = 'J1939-6342,J0408-6545'
@@ -170,7 +170,6 @@ t.close()
 ###########################
 # Split the calibrators
 logger.info('Splitting calibrators...')
-spw_selection = '0:210~3841'
 casa.split(vis = invis, outputvis = calms, field = f"{BandPassCal},{PolCal},{PhaseCal}", datacolumn = 'data', spw = spw_selection)
 
 # Standard flagging for shadowing, zero-clip, and auto-correlation
