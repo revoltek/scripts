@@ -5,7 +5,6 @@
 import os, sys, glob
 from astropy.table import Table
 from astropy.io import fits
-from astropy.wcs import WCS as pywcs
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
@@ -20,11 +19,11 @@ nchans = None
 #nchans = 6
 
 file_beam = 'primarybeam.fits' # this is used to isolate file names
-beam_size = 4 # approx beam RADIUS at the blank point, usually 30% of the beam power [deg] - measured at low dec = 24deg
+beam_size = 3 # shoudl be 4! approx beam RADIUS at the blank point, usually 30% of the beam power [deg] - measured at low dec = 24deg
 grid_file = '/homes/fdg/storage/allsky-grid.fits'
 file_header_template = '/homes/fdg/storage/scripts/survey/LoLSS-bkp/headers_template.hdr'
 
-min_good = 2 # minimum number of good pointings to mosaic
+min_good = 999 # minimum number of good pointings to mosaic if not all surrounding pointings are done
 
 class Pointing():
 
@@ -56,7 +55,7 @@ grid = Table.read(grid_file)
 grid = grid[grid['dec'] > 24]
 coords = SkyCoord(ra=grid['ra'], dec=grid['dec'], frame='icrs')
 # Do a “search around” with itself, using a 4° threshold
-idx1, idx2, sep2d, _ = coords.search_around_sky(coords, 4 * u.deg)
+idx1, idx2, sep2d, _ = coords.search_around_sky(coords, beam_size * u.deg)
 unique = idx1 <= idx2
 idx1 = idx1[unique]
 idx2 = idx2[unique]
@@ -85,23 +84,25 @@ for pointing, close_pointings in neighbors.items():
     # count how many good pointings we have
     good = 0; bad = 0; good_pointings = []
     for close_pointing in close_pointings:
+        
         if pointings_status[close_pointing+'o'] == 'Done': 
             good += 1
             good_pointings.append(close_pointing+'o')
         elif pointings_status[close_pointing+'o'] == 'Not observed': pass
         else: bad += 1
+
         if pointings_status[close_pointing+'s'] == 'Done': 
             good += 1
             good_pointings.append(close_pointing+'s')
         elif pointings_status[close_pointing+'s'] == 'Not observed': pass
         else: bad += 1
     
-    if good >= min_good:
-        print(f'{pointing}: Enough good pointing done ({good}/{good+bad} - {good_pointings}), proceeding.')
-    elif bad == 0:
+    if bad == 0:
         print(f'{pointing}: All pointings are done ({good}/{good+bad}), proceeding')
+    elif good >= min_good:
+        print(f'{pointing}: Enough good pointing done ({good}/{good+bad} - {good_pointings}), proceeding.')
     else:
-        #print(f'{pointing}: Not all pointings are done ({good}/{good+bad} - {good_pointings}), skipping.')
+        print(f'{pointing}: Not all pointings are done ({good}/{good+bad} - {good_pointings}), skipping.')
         continue    
 
     p = Pointing(pointing, good_pointings)

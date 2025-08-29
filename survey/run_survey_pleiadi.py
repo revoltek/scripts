@@ -14,7 +14,7 @@ dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
 dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
-run_only = 500 # limit run to this number of objects
+run_only = 1000 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
