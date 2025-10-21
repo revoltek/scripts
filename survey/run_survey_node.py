@@ -22,13 +22,14 @@ for i in range(run_only):
     os.system(f'rm -r /dev/shm/* 2> /dev/null')
     os.makedirs(dir_run)
     os.chdir(dir_run)
+    logfile = "/homes/fdg/storage/run/sbatch_files/pill_"+id_generator()+"-"+socket.gethostname()+'.log'
     config_path = f"{dir_run}/lilf.config"
     with open(config_path, "w") as f:
         f.write("[PiLL]\n")
         f.write("minmaxhrs = 5,999\n")
+        f.write(f"logfile = {logfile}\n")
         f.write("[LOFAR_timesplit]\n")
         f.write("ateam_clip = [CygA]\n")
-    logfile = "/homes/fdg/storage/run/sbatch_files/pill_"+id_generator()+"-"+socket.gethostname()+'.log'
     logging.info(f'Starting run num: {i}; log: {logfile}')
     os.system(f'{singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL-survey.py > {logfile} 2>&1')
     os.system(f'rm -r {dir_run} 2> /dev/null')

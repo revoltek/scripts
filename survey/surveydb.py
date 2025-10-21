@@ -60,11 +60,12 @@ if args.google:
                 None,  # Column D (Note)
                 entry['status'],                     # Column E
                 entry['noise'] * 1e3,                # Column F
-                entry['nvss_ratio'],                 # Column G
-                entry['flag_frac'] * 100,            # Column H
-                str(entry['start_date']),            # Column I
-                str(entry['end_date']),              # Column J
-                None, None, None, None, None, None, None, None, None, None, None, None, None, None # Columns K to W - leave unchanged
+                None,                                # column G
+                entry['nvss_ratio'],                 # Column H
+                entry['flag_frac'] * 100,            # Column I
+                str(entry['start_date']),            # Column J
+                str(entry['end_date']),              # Column K
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None # Columns L to X - leave unchanged
                 ]
                 
     min_row = min(updates.keys())
@@ -75,7 +76,7 @@ if args.google:
         if i in updates:
             data_block.append(updates[i])
         else:
-            data_block.append([None] * 23)  # Preserve row alignment
+            data_block.append([None] * 24)  # Preserve row alignment
 
     # Update in one batch call (columns E to J = cols 5–9)
     range_start = f"E{min_row}"
@@ -90,7 +91,7 @@ if args.google:
 if args.sethighpriority is not None:
     with SurveysDB(survey='lba',readonly=False) as sdb:  
         print("INFO: set %s to maximum priority" % args.sethighpriority)
-        sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (0,args.sethighpriority))
+        sdb.execute('UPDATE fields SET priority=%i WHERE id="%s"' % (5,args.sethighpriority))
         sys.exit()
 
 if args.reset is not None:
