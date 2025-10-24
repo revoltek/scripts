@@ -78,11 +78,11 @@ if args.google:
         else:
             data_block.append([None] * 24)  # Preserve row alignment
 
-    # Update in one batch call (columns E to J = cols 5–9)
+    # Update in one batch call (columns E to K = cols 5–10)
     range_start = f"E{min_row}"
-    range_end = f"J{max_row}"
+    range_end = f"K{max_row}"
     update_range = f"{range_start}:{range_end}"
-    sheet.update(update_range, [row[4:10] for row in data_block])
+    sheet.update(update_range, [row[4:11] for row in data_block])
 
     print("✅ Spreadsheet updated successfully.")
 
