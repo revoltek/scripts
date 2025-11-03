@@ -28,7 +28,7 @@ class Scheduler():
             return ''.join(random.choice(chars) for _ in range(size))
 
         self.name = name
-        self.file_sbatch = "sbatch_files/"+name+'_'+id_generator()
+        self.file_sbatch = "/homes/fdg/storage/run/sbatch_files/"+name+'_'+id_generator()
         self.file_log = self.file_sbatch
 
     def submit(self):
@@ -83,7 +83,7 @@ class Scheduler():
                          mkdir -p /local/work/fdg/
                          echo "[PiLL]" > /local/work/fdg/lilf.config
                          echo "minmaxhrs = 1,3" >> /local/work/fdg/lilf.config
-                         echo "logfile = {self.file_log}-%%N.log" >> /local/work/fdg/lilf.config
+                         echo "logfile = {self.file_log}-${{HOSTNAME}}.log" >> /local/work/fdg/lilf.config
                          echo "[LOFAR_timesplit]" >> /local/work/fdg/lilf.config
                          echo "ateam_clip = [CygA]" >> /local/work/fdg/lilf.config
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL-survey.py
