@@ -19,14 +19,14 @@ parser.add_argument('--updatedb', '-u', action="store_true", help='Update the da
 parser.add_argument('--reset', '-r', dest="reset", help='If "all" reset the db to "Not observed" for all observed fields. If a comma separated list of field is specified it only reset them to "Observed" (or the value of --status).', default=None)
 parser.add_argument('--status', '-t', dest="status", help='To use with --reset to define the finale status, default: "Observed".', default="Observed")
 parser.add_argument('--incompletereset', '-i', action="store_true", help='Reset the fields that are not "Done"/"Observed"/"Not observed" to "Downloaded".')
-parser.add_argument('--setpriority', '-p', dest="setpriority", help='Give the pointing name so to set its priority to "-P value" i.e. 0 (maximum) to 5 (minimum).', default=None)
-parser.add_argument('--priority', '-P', dest="priority", type=int, help='Set to this priority for the specified field, defult=1.', default=1)
+parser.add_argument('--setpriority', '-p', dest="setpriority", help='Give the pointing name so to set its priority to "-P value" i.e. 5 (maximum) to 0 (minimum).', default=None)
+parser.add_argument('--priority', '-P', dest="priority", type=int, help='Set to this priority for the specified field, defult=3.', default=1)
 parser.add_argument('--show', '-s', dest="show", help="If 'done' shows completed runs; if 'running' shows ongoing/failed runs; if 'all' shows all, incuding runs that have Observed yet.")
 parser.add_argument('--google', '-o', dest="google", help="Update google spreadsheet with the current status of the fields.", action="store_true")
 args = parser.parse_args()
 
 if args.google:
-    print("Udating google spreadsheet...")
+    print("Updating google spreadsheet...")
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(keyjson, scope)
     client = gspread.authorize(creds)

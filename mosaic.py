@@ -30,6 +30,11 @@ import pyregion
 from reproject import reproject_interp, reproject_exact
 reproj = reproject_interp
 
+# cleanup logs
+from astropy.wcs import FITSFixedWarning
+import warnings
+warnings.filterwarnings('ignore', category=FITSFixedWarning)
+
 ref_catalog = '/homes/fdg/scripts/FIRST_14dec17.fits.gz'
 
 parser = argparse.ArgumentParser(description='Mosaic for LiLF dd-pipeline.')
@@ -101,9 +106,10 @@ class Direction(Image):
             sys.exit(1)
         self.beamfile = beamfile
         self.beam_hdr, self.beam_data = flatten(self.beamfile)
+        logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
         if self.beam_data.shape != self.img_data.shape:
             beamfile = self.imagefile+'__beam.fits'
-            logging.warning('Beam and image shape are different, regrid beam...')
+            logging.warning('Beam and image shape are different, regrid beam and save to %s...' % beamfile)
             if not os.path.exists(beamfile):
                 beam_data, footprint = reproj((self.beam_data, self.beam_hdr), self.img_hdr,
                                             order='bilinear')  # , parallel=True)
@@ -111,7 +117,6 @@ class Direction(Image):
                 pyfits.writeto(beamfile, header=self.img_hdr, data=beam_data, overwrite=True)
             self.beamfile = beamfile
             self.beam_hdr, self.beam_data = flatten(self.beamfile)
-        logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
 
     def apply_beam_cut(self, beamcut=0.3):
         if self.beamfile is None: return

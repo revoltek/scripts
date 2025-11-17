@@ -13,13 +13,13 @@ from LiLF.surveys_db import SurveysDB
 dir_mosaics = "/homes/fdg/storage/surveytgts/mosaics/"
 dir_done = "/homes/fdg/storage/surveytgts/done/"
 
-file_MFS_i = 'wideDD-c00-MFS-image.fits' # this is used to isolate file names
+file_MFS_i = 'wideDDS-c0-MFS-image.fits' # this is used to isolate file names
 nchans = None
 #file_suffix = '-wide-cube.fits' # this is used to isolate file names
 #nchans = 6
 
 file_beam = 'primarybeam.fits' # this is used to isolate file names
-beam_size = 3 # shoudl be 4! approx beam RADIUS at the blank point, usually 30% of the beam power [deg] - measured at low dec = 24deg
+beam_size = 4 # shoudl be 4! approx beam RADIUS at the blank point, usually 30% of the beam power [deg] - measured at low dec = 24deg
 grid_file = '/homes/fdg/storage/allsky-grid.fits'
 file_header_template = '/homes/fdg/storage/scripts/survey/LoLSS-bkp/headers_template.hdr'
 
