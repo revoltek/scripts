@@ -1,15 +1,13 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.offsetbox
 import matplotlib.hatch
 from matplotlib.patches import Polygon
 from matplotlib.colorbar import ColorbarBase
 from astropy import units as u
 import matplotlib.image as mpimg
-import PIL
-
-
+from astropy.io import fits
+from astropy.wcs import WCS
+import pandas as pd
 
 class ArrowHatch(matplotlib.hatch.Shapes):
     """
@@ -62,40 +60,47 @@ def setSize(ax, wcs, ra, dec, size_ra, size_dec):
     ax.set_ylim(y[0], y[1])
     return x.astype(int), y.astype(int)
 
-
-def addScalebar(ax, wcs, z, kpc,  fontsize, color='black'):
-    import matplotlib.font_manager as fm
+def add_scalebar(ax, wcs: WCS, z: float, kpc: float = 500, color='white'):
     from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
     from astropy.cosmology import FlatLambdaCDM
     cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
-    print("-- Redshift: %f" % z)
-    degperpixel = np.abs(wcs.all_pix2world(0,0,0)[1] - wcs.all_pix2world(0,1,0)[1]) # delta deg for 1 pixel
-    degperkpc = cosmo.arcsec_per_kpc_proper(z).value/3600.
-    pixelperkpc = degperkpc/degperpixel
-    fontprops = fm.FontProperties(size=fontsize)
-    scalebar = AnchoredSizeBar(ax.transData, kpc*pixelperkpc, '%i kpc' % kpc, 'lower right', fontproperties=fontprops, pad=0.5, color=color, frameon=False, sep=5, label_top=True, size_vertical=1)
+    
+    deg_per_pixel = np.abs(wcs.proj_plane_pixel_scales()[0].to(u.deg).value)
+    if pd.isna(z) or z <= 0:
+        print(f"  -- Skipping scalebar: Invalid redshift z={z}")
+        return
+    kpc_per_arcsec = 1 / cosmo.arcsec_per_kpc_proper(z).value
+    deg_per_kpc = (1 / 3600) / kpc_per_arcsec
+    length_pix = deg_per_kpc * kpc / deg_per_pixel
+    scalebar = AnchoredSizeBar(
+        ax.transData, length_pix, f'{kpc} kpc', 'lower right',
+        pad=0.5, color=color, frameon=False, sep=5,
+        label_top=True, size_vertical=1
+    )
     ax.add_artist(scalebar)
 
-
-def addBeam(ax, hdr, edgecolor='black'):
-    """
-    hdr: fits header of the file
-    """
+def add_beam(ax, hdr: fits.Header, box_scale: float = 1.5):
     from radio_beam import Beam
-
-    bmaj = hdr['BMAJ']
-    bmin = hdr['BMIN']
-    bpa = hdr['BPA']
-    beam = Beam(bmaj*u.deg,bmin*u.deg,bpa*u.deg)
-
-    assert np.abs(hdr['CDELT1']) == np.abs(hdr['CDELT2'])
-    pixscale = np.abs(hdr['CDELT1'])
-    posx = ax.get_xlim()[0]+bmaj/pixscale
-    posy = ax.get_ylim()[0]+bmaj/pixscale
-    r = beam.ellipse_to_plot(posx, posy, pixscale *u.deg)
-    r.set_edgecolor(edgecolor)
-    r.set_facecolor('white')
-    ax.add_patch(r)
+    from matplotlib.patches import Rectangle
+    try:
+        beam = Beam.from_fits_header(hdr)
+        pixscale = np.abs(hdr["CDELT1"]) * u.deg
+        xlim, ylim = ax.get_xlim(), ax.get_ylim()
+        pad = 0.05 * (xlim[1] - xlim[0])
+        box_size_pix = box_scale * beam.major.to(u.deg).value / pixscale.value
+        cx = xlim[0] + pad + box_size_pix / 2
+        cy = ylim[0] + pad + box_size_pix / 2
+        box = Rectangle(
+            (cx - box_size_pix / 2, cy - box_size_pix / 2),
+            width=box_size_pix, height=box_size_pix,
+            edgecolor="black", facecolor="white", linewidth=1.0, zorder=10
+        )
+        ax.add_patch(box)
+        ellipse = beam.ellipse_to_plot(cx, cy, pixscale)
+        ellipse.set(facecolor="black", edgecolor="black", zorder=11)
+        ax.add_patch(ellipse)
+    except Exception as e:
+        print(f"  -- Could not add beam: {e}")
 
 def addRegion(regionfile, ax, header, alpha=1.0, color=None, text=True):
     import pyregion
