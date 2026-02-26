@@ -62,7 +62,7 @@ class RadioImage(Image):
     def set_region_noise(self, regionfile):
         self.region_noise = regionfile
 
-    def get_flux(self, flux_scale_err = 0, nsigma = 0, with_upper_limits = False, upper_limit_sigma = 3):
+    def get_flux(self, flux_scale_err = 0, nsigma = 5, with_upper_limits = False, upper_limit_sigma = 3):
         """
         flux_scale_err = percentage of error to add to the flux scale (e.g. 0.05 to have a 5% error)
         nsigma: use only pixels above this sigma
@@ -72,9 +72,9 @@ class RadioImage(Image):
 
         # set self.noise
         if self.region_noise is None:
-            self.calc_noise()
+            self.calc_noise(sigma=nsigma)
         else:
-            self.calc_noise(bg_reg = self.region_noise)
+            self.calc_noise(bg_reg = self.region_noise, sigma=nsigma)
 
         fluxes = []
         errors = []

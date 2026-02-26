@@ -55,6 +55,8 @@ def get_beam(data, header):
         raise ValueError('Freq not found')
     # find distance in deg from image center to each pixel
     
+    print('Calculate beam for frequency: %s MHz' % (nu/1e6))
+
     pix2deg = abs(header['CDELT1']) # in deg
     pixPhaseCentre = [header['CRPIX2'], header['CRPIX1']]
 
@@ -75,6 +77,7 @@ for fits_file in args.images:
         beam = get_beam(data, header)
         if args.savecorr:
             data = data/beam
+            header.add_history(' - Corrected for MeerKAT primary beam.')
             # write
             fits_output = fits_file.replace('.fits','_'+args.outputcorr+'.fits')
             print('Save: %s' % fits_output)
