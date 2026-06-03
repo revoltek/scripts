@@ -3,7 +3,6 @@
 import os, sys, argparse, logging
 import numpy as np
 from astropy.io import fits as pyfits
-from lib_linearfit import linear_fit, linear_fit_bootstrap
 from lib_fits import AllImages
 logging.root.setLevel(logging.DEBUG)
 
