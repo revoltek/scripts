@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os,sys, glob, time, re
+import os, glob, re
 import numpy as np
 from astropy.io import fits
 from astropy import units as u
@@ -26,8 +26,8 @@ def replace_to(t, col, dtype):
 
 def concat_catalogs(cats, outconcatcat):
     # Use the first catalogue as a dummy and then just update the entries
-
-    concat_table = vstack([ Table.read(c) for c in cats if len(Table.read(c))>0], join_type='exact')
+    tables = [Table.read(c) for c in cats]
+    concat_table = vstack([t for t in tables if len(t) > 0], join_type='exact')
     concat_table.sort('Source_name')
     concat_table.write(outconcatcat, overwrite=True)
 
@@ -45,8 +45,7 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
     print("Cat: %i -> %i" % (initial_len, len(cat)))
     # select only gaussians that are part of selected sources
     initial_len = len(cat_gaus)
-    idx = [i for i in range(len(cat_gaus)) if cat_gaus['Source_id'][i] in cat['Source_id']]
-    cat_gaus = cat_gaus[idx]
+    cat_gaus = cat_gaus[np.isin(cat_gaus['Source_id'], cat['Source_id'])]
     print("Gaus: %i -> %i" % (initial_len, len(cat_gaus)))
 
     # name
@@ -56,10 +55,8 @@ def filter_catalogs(t_full, t_this, srl_outname, gaus_outname):
     identity = [ 'LOL1J'+i[:8]+j[7:] for (i,j) in zip(identityRA,identityDEC) ]
     cat['Source_name'] = identity
 
-    identity = []
-    for idx in cat_gaus['Source_id']:
-        identity.append( cat['Source_name'][ cat['Source_id'] == idx ][0] )
-    cat_gaus['Source_name'] = identity
+    gaus_identity = [cat['Source_name'][cat['Source_id'] == src_id][0] for src_id in cat_gaus['Source_id']]
+    cat_gaus['Source_name'] = gaus_identity
 
     # add mosaic id if at least a source is found
     if len(cat) > 0:
@@ -158,7 +155,6 @@ def do_concat(mosdir, catdir):
     decs = []
     for mosaiccat, gauscat in zip(mosaiccats, gauscats):
         mosaicfile = mosdir+'/'+os.path.basename(mosaiccat).replace('.cat.fits', '.fits')
-        #fieldnames.append(mosaicfile[9:16])
         fieldnames.append( re.findall(r'p\d\d\d\+\d\d', mosaicfile)[0] )
         print('Adding catalogue: %s (field: %s)' % (mosaiccat, fieldnames[-1]))
         with fits.open(mosaicfile) as f:
@@ -180,15 +176,15 @@ def do_concat(mosdir, catdir):
         srlcatnames.append(srl_outname)
         gauscatnames.append(gaus_outname)
 
-    print('### Concatenating %s files' % len(srlcatnames))
+    print('### Concatenating %i files' % len(srlcatnames))
     concat_catalogs(srlcatnames,'LoLSS_DR1_rolling.srl.fits')
     concat_catalogs(gauscatnames,'LoLSS_DR1_rolling.gaus.fits')
 
 if __name__=='__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Concatenate ddf-pipeline mosaic directories')
-    parser.add_argument('--mosdir', type=str, help='mosaic directory name')
-    parser.add_argument('--catdir', type=str, help='catalogue directory name')
+    parser.add_argument('--mosdir', type=str, required=True, help='mosaic directory name')
+    parser.add_argument('--catdir', type=str, required=True, help='catalogue directory name')
     args = parser.parse_args()
 
     do_concat(args.mosdir, args.catdir)

@@ -26,7 +26,7 @@ for i in range(run_only):
     config_path = f"{dir_run}/lilf.config"
     with open(config_path, "w") as f:
         f.write("[PiLL]\n")
-        f.write("minmaxhrs = 5,999\n")
+        f.write("minmaxhrs = 3,999\n")
         f.write(f"logfile = {logfile}\n")
         f.write("[LOFAR_timesplit]\n")
         f.write("ateam_clip = [CygA]\n")
