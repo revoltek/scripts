@@ -23,12 +23,17 @@ import os, sys, logging, re, copy
 from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
 from astropy.cosmology import FlatLambdaCDM
-from astropy.nddata import Cutout2D
 from astropy.coordinates import match_coordinates_sky, SkyCoord, FK5
-from astropy.convolution import Gaussian2DKernel
 import pyregion
 import astropy.units as u
 from astropy import wcs
+from reproject import reproject_interp, reproject_exact
+
+
+import warnings
+from astropy.wcs import FITSFixedWarning
+# Filter out the specific FITSFixedWarning
+warnings.filterwarnings('ignore', category=FITSFixedWarning)
 
 def flatten(filename, channel=0, stokes=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -125,18 +130,20 @@ def find_freq(header):
     """
     Find frequency value in most common places of a fits header
     """
+    try:
+        for i in range(5):
+            type_s = header.get('CTYPE%i' % i)
+            if type_s is not None and type_s[0:4] == 'FREQ':
+                return header.get('CRVAL%i' % i)
+    except:
+        pass
     if not header.get('RESTFRQ') is None and not header.get('RESTFRQ') == 0:
         return header.get('RESTFRQ')
     elif not header.get('FREQ') is None and not header.get('FREQ') == 0:
         return header.get('FREQ')
     elif not header.get('RFALPHA') is None and not header.get('RFALPHA') == 0:
         return header.get('RFALPHA')
-    else:
-        for i in range(5):
-            type_s = header.get('CTYPE%i' % i)
-            if type_s is not None and type_s[0:4] == 'FREQ':
-                return header.get('CRVAL%i' % i)
-
+        
     return None # no freq information found
 
 def transform_to_j2000(header: pyfits.Header):
@@ -190,13 +197,17 @@ class AllImages():
 
         self.filenames = filenames
         self.images = []
-        img_list, freqs = [], []
-        for filename in filenames:
-            img_list.append(Image(filename))
-            freqs.append(img_list[-1].freq)
-        self.images = [img_list[i] for i in np.argsort(freqs)]
-        self.freqs = np.sort(freqs)
-
+        try:
+            img_list, freqs = [], []
+            for filename in filenames:
+                img_list.append(Image(filename))
+                freqs.append(img_list[-1].freq)
+            self.images = [img_list[i] for i in np.argsort(freqs)]
+            self.freqs = np.sort(freqs)
+        except:
+            # no frequency information found, just load in order of input
+            for filename in filenames:
+                self.images.append(Image(filename))
 
     def __len__(self):
         return len(self.images)
@@ -584,7 +595,7 @@ class Image(object):
 
     def get_freq(self):
         try:
-            return self.img_hdr['FREQ']
+            return self.freq
         except:
             return None
 
@@ -729,7 +740,6 @@ class Image(object):
 
     def regrid(self, regrid_hdr):
         """ Regrid image to new header """
-        from reproject import reproject_interp, reproject_exact
         reproj = reproject_exact
         # store some info so to reconstruct headers
         beam = self.get_beam()
