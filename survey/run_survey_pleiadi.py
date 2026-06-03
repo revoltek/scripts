@@ -7,14 +7,14 @@ import string, random, glob, time
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-singularity_img = '/homes/fdg/storage/pill.simg'
+singularity_img = '/homes/fdg/storage/pill-20250605.simg'
 singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/groups/ulu/fdg '+singularity_img
 
 dir_storage_cals = '/iranet/groups/ulu/fdg/surveycals'
 dir_storage_tgts = '/iranet/groups/ulu/fdg/surveytgts'
 
 dir_run = "/homes/fdg/storage/run"
-run_only = 1000 # limit run to this number of objects
+run_only = 53 # limit run to this number of objects
 
 # go in the run dir
 os.chdir(dir_run)
@@ -82,10 +82,12 @@ class Scheduler():
                          rm -r /dev/shm/*
                          mkdir -p /local/work/fdg/
                          echo "[PiLL]" > /local/work/fdg/lilf.config
-                         echo "minmaxhrs = 1,4" >> /local/work/fdg/lilf.config
+                         echo "minmaxhrs = 1,8" >> /local/work/fdg/lilf.config
                          echo "logfile = {self.file_log}-${{HOSTNAME}}.log" >> /local/work/fdg/lilf.config
                          echo "[LOFAR_timesplit]" >> /local/work/fdg/lilf.config
                          echo "ateam_clip = [CygA]" >> /local/work/fdg/lilf.config
+                         echo "[LOFAR_ddserial]" >> /local/work/fdg/lilf.config
+                         echo "solve_amp = False" >> /local/work/fdg/lilf.config
                          {singularity_cmd} /homes/fdg/storage/LiLF/pipelines/PiLL-survey.py
                          rm -r /local/work/fdg/*
                          rm -r /dev/shm/*
@@ -138,4 +140,4 @@ for i in range(run_only):
 
     # separate initial calls so the stagings+downloads are diluted
     if i < 36:
-        time.sleep(600)
+        time.sleep(60)

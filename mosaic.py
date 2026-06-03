@@ -19,8 +19,9 @@
 
 # Mosaic images
 
-import os.path, sys, pickle, glob, argparse, re, logging
+import os.path, sys, argparse, logging
 import numpy as np
+import astropy.units as u
 from lib_fits import flatten, Image
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
@@ -62,30 +63,31 @@ logging.root.setLevel(logging.DEBUG)
 #######################################################
 # input check
 
+if args.images is None or len(args.images) < 1:
+    logging.error('Requires at least 1 image.')
+    sys.exit(1)
+
 if args.scales is not None:
     if len(args.scales) != len(args.images):
         logging.error('Scales provided must match images.')
         sys.exit(1)
 
 if args.noises is not None:
-    if len(args.noises) != len(args.imagess):
+    if len(args.noises) != len(args.images):
         logging.error('Noises provided must match images.')
         sys.exit(1)
 
 if args.beamcirc and not args.beamarm:
-        logging.error('--beamcirc requires --beamarm.')
-        sys.exit(1)
-
-if args.images is None or len(args.images) < 2:
-    logging.error('Requires at lest 2 images.')
+    logging.error('--beamcirc requires --beamarm.')
     sys.exit(1)
 
 if args.mask is not None:
     logging.debug('Reading mask: %s.' % args.mask)
-    mask_n = pyfits.open(args.mask)[0]
+    with pyfits.open(args.mask) as hdul:
+        mask_n = hdul[0].copy()
 
 if args.shift and not args.beamcorr:
-    logging.warning('Attempting shift calculation on beam corrected images, this is not the best.')
+    logging.warning('Attempting shift calculation without beam correction, this is not the best.')
 
 #############################################################
 
@@ -137,16 +139,13 @@ class Direction(Image):
         # https://en.wikipedia.org/wiki/Inverse-variance_weighting
         self.weight_data = self.weight_data**2.0
 
-    def calc_shift(self, ref_cat, separation=15):
+    def calc_shift(self, ref_cat):
         """
-        Find a shift cross-matching source extracted from the image and a given catalog
-        separation in arcsec
+        Find a shift cross-matching source extracted from the image and a given catalog.
         """
         import bdsf
         from astropy.coordinates import match_coordinates_sky
         from astropy.coordinates import SkyCoord
-        import astropy.units as u
-        from scipy.stats import gaussian_kde
         from astropy.stats import median_absolute_deviation
 
         # if there are no data in the image prevent the crash of bdsf
@@ -187,11 +186,15 @@ class Direction(Image):
         # cross match
         idx_match, sep, _ = match_coordinates_sky(SkyCoord(img_t['RA'], img_t['DEC']),\
                                                   SkyCoord(ref_t['RA'], ref_t['DEC']))
-    
+
+        if len(idx_match) == 0:
+            logging.warning('No match found in the reference catalogue.')
+            return
+
         sep_mad = median_absolute_deviation(sep[np.where(sep < (3*self.get_beam()[0])*u.deg)])
         sep_med = np.median(sep[np.where(sep < (3*self.get_beam()[0])*u.deg)])
         logging.debug('SHIFT: Sep init Med: %f" - MAD: %f"' % (sep_med.arcsec, sep_mad.arcsec))
-        sep_mad_old = 0
+        sep_mad_old = 0. * u.deg
         i = 0
         while sep_mad != sep_mad_old and not i > 100:
             sep_mad_old = sep_mad
@@ -201,7 +204,8 @@ class Direction(Image):
             logging.debug('SHIFT: Sep Med: %.2f" - MAD: %.2f" (n sources:%i)' % \
                     (sep_med.arcsec, sep_mad.arcsec, len(sep[idx])))
             if np.isnan(sep_mad):
-                sys.exit('MAD diverged')
+                logging.error('MAD diverged')
+                sys.exit(1)
             i+=1
     
         idx_match_ref = idx_match[sep-sep_med < 3*sep_mad]
@@ -209,12 +213,8 @@ class Direction(Image):
         img_t = img_t[idx_match_img]
     
         logging.debug('SHIFT: After match source len: %i' % len(img_t))
-    
-        # find & apply shift
-        if len(idx_match) == 0:
-            logging.warning('No match found in the reference catalogue.')
-            return
 
+        # find & apply shift
         ddec = ref_t['DEC'][idx_match_ref] - img_t['DEC']
         dra = ref_t['RA'][idx_match_ref] - img_t['RA']
         dra[ dra>180 ] -= 360
@@ -245,13 +245,12 @@ logging.info("Working on %i images..." % len(directions))
 
 if args.beamarm:
 
-    if beams.count(beams[0]) == len(beams):
-        # all beams are already exactly the same
-        common_beam = beams[0]
-
     if args.beamcirc:
         maxmaj = np.max([b[0] for b in beams])
         common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
+    elif beams.count(beams[0]) == len(beams):
+        # all beams are already exactly the same
+        common_beam = list(beams[0])
     else:
         from radio_beam import Beams
         my_beams = Beams([b[0] for b in beams] * u.deg, [b[1] for b in beams] * u.deg, [b[2] for b in beams] * u.deg)
@@ -311,6 +310,8 @@ if args.header is None:
     for d in directions:
         w = d.get_wcs()
         ys, xs = np.where(d.img_data)
+        if xs.size == 0:
+            continue
         axmin = xs.min()
         aymin = ys.min()
         axmax = xs.max()
@@ -343,10 +344,11 @@ if args.header is None:
 else:
     try:
         logging.info("Using %s header for final gridding." % args.header)
-        regrid_hdr = pyfits.open(args.header)[0].header
+        with pyfits.open(args.header) as hdul:
+            regrid_hdr = hdul[0].header.copy()
         xsize = regrid_hdr['NAXIS1']
         ysize = regrid_hdr['NAXIS2']
-    except:
+    except Exception:
         logging.error("--header must be a fits file.")
         sys.exit(1)
 
@@ -359,7 +361,8 @@ if args.mask is not None:
     outname = args.mask.replace('.fits','-reproj.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
-        mask_n = pyfits.open(outname)[0]
+        with pyfits.open(outname) as hdul:
+            mask_n = hdul[0].copy()
     else:
         mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='bilinear')#, parallel=True)
         if args.save:
@@ -374,7 +377,8 @@ for i, d in enumerate(directions):
     outname = d.imagefile.replace('.fits','-reproj.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
-        r = pyfits.open(outname)[0].data
+        with pyfits.open(outname) as hdul:
+            r = hdul[0].data.copy()
     else:
         logging.debug('Reprojecting data...')
         r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
@@ -385,7 +389,8 @@ for i, d in enumerate(directions):
     outname = d.imagefile.replace('.fits','-reprojW.fits')
     if os.path.exists(outname):
         logging.debug('Loading %s...' % outname)
-        w = pyfits.open(outname)[0].data
+        with pyfits.open(outname) as hdul:
+            w = hdul[0].data.copy()
         mask |= (w>0)
     else:
         logging.debug('Reprojecting weights...')
@@ -411,10 +416,11 @@ try:
     regrid_hdr['BMAJ'] = common_beam[0]
     regrid_hdr['BMIN'] = common_beam[1]
     regrid_hdr['BPA'] = common_beam[2]
-except:
+except (NameError, KeyError):
     logging.warning('Setting beam in the headers equal to: %s' % directions[0].imagefile)
-    for ch in ('BMAJ', 'BMIN', 'BPA'):
-        regrid_hdr[ch] = pyfits.open(directions[0].imagefile)[0].header[ch]
+    with pyfits.open(directions[0].imagefile) as hdul:
+        for ch in ('BMAJ', 'BMIN', 'BPA'):
+            regrid_hdr[ch] = hdul[0].header[ch]
 
 regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
 regrid_hdr['UNITS'] = 'Jy/beam'
