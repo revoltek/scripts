@@ -2,26 +2,36 @@
 
 import glob
 import subprocess
+import argparse
 from astropy.table import Table
 from tqdm import tqdm
 import os
 from astropy_healpix import HEALPix
 import astropy.units as u
-from astropy.io import fits
 from astropy.coordinates import SkyCoord
 
 def run(s):
     print(s)
     subprocess.run(s, shell=True, check=True)
 
-force=False
+parser = argparse.ArgumentParser(description='Concatenate survey catalogues')
+parser.add_argument('--catdir', default=os.path.expanduser('~/storage/surveytgts/catalogues/'),
+                    help='Directory containing the per-HEALPix catalogue FITS files (default: ~/storage/surveytgts/catalogues/)')
+parser.add_argument('--force', action='store_true', default=False,
+                    help='Re-process files even if filtered output already exists')
+parser.add_argument('--output', default='LoLSS_DR2',
+                    help='Base name for the output FITS files (default: LoLSS_DR2)')
+args = parser.parse_args()
+
+CATALOGUE_DIR = args.catdir
+force = args.force
     
 hp = HEALPix(nside=16)
 print(hp.npix,'total healpix pixels on sky')
 area=hp.pixel_area.to(u.deg**2).value
 print('area of one healpix is',area,'sq. deg')
 
-os.chdir(os.path.expanduser('~/storage/surveytgts/catalogues'))
+os.chdir(CATALOGUE_DIR)
 
 for cattype in ['cat','gaus']:
     with open(f'{cattype}-catlist.txt','w') as flist:
@@ -52,4 +62,4 @@ for cattype in ['cat','gaus']:
                 t.write(outname, overwrite=True)
             flist.write(outname+'\n')
     print('Now running STILTS')
-    run(f'stilts tcat in=@{cattype}-catlist.txt out=LoLSS_DR2-{cattype}.fits lazy=true ocmd="tablename LoLSS_DR2_{cattype}; sort RA"')
+    run(f'stilts tcat in=@{cattype}-catlist.txt out={args.output}-{cattype}.fits lazy=true ocmd="tablename {args.output}_{cattype}; sort RA"')

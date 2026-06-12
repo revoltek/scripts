@@ -27,12 +27,12 @@ import pyregion
 
 def isolated(tab, dist):
     # reduce to isolated sources - nothing closer than $dist arcsec
-    idx_match, sep, _ = match_coordinates_sky(SkyCoord(tab['RA'], tab['DEC']),\
-                                              SkyCoord(tab['RA'], tab['DEC']), nthneighbor=2)
+    _, sep, _ = match_coordinates_sky(SkyCoord(tab['RA'], tab['DEC']),\
+                                      SkyCoord(tab['RA'], tab['DEC']), nthneighbor=2)
     idx_match = np.arange(0,len(tab))[sep>dist*u.arcsec]
     return tab[idx_match]
 
-def do_dynrng(mosaics_coord, catfile, outfile):
+def do_dynrng(mosaics_coord, catfile, outfile, resdir):
 
     with open(outfile, 'w') as f:
         f.write("#id flux rms... \n")
@@ -42,32 +42,30 @@ def do_dynrng(mosaics_coord, catfile, outfile):
     cat = isolated(cat, 560)
     print("After isolation:", len(cat))
     cat = cat[cat['Maj']<30]
-    print("Final len:", len(cat))
+    print("After size cut:", len(cat))
+
     for s, sou in enumerate(cat):
 
         ra = sou['RA']
         dec = sou['DEC']
         # create region
         region_strings = ['fk5;panda(%f,%f,0,359.9,1,%f",%f",1)' % (ra,dec,dist,dist+30) for dist in np.arange(30,630,60)]
-        print(region_strings)
-
-        # debug
-        #for region_string in region_strings:
-        #    print(region_string[4:])
-
+        #print(region_strings)
+        
         # !!! open right mosaic
-        img = args.resdir+'/'+sou['Mosaic_id']+'-mosaic.fits'
+        img = resdir+'HP%04i-mosaicI.fits' % (sou['HEALPIX'])
         img_data, img_hdr = fits.getdata(img, 0, header=True)
+        img_data = np.squeeze(img_data)  # reduce to 2D
 
-        print('(%04i/%04i) Working on %s (%s)' % (s, len(cat), sou['Source_name'], img))
-        outstr = "%s %s " % (sou['Source_name'], sou['Total_flux'])
+        print('(%04i/%04i) Working on %s (%s)' % (s, len(cat), sou['Source_Name'], img))
+        outstr = "%s %s " % (sou['Source_Name'], sou['Total_flux'])
         for region_string in region_strings:
             sl = pyregion.parse(region_string)
             mask = sl.get_mask(header=img_hdr, shape=img_data.shape)
             #print(np.sum(mask))
     
             # extract rms
-            rms = np.sqrt(np.nanmean(np.square(img_data[mask])))
+            rms = np.nanstd(img_data[mask])
     
             # add values
             outstr += "%s " % rms
@@ -97,4 +95,4 @@ if __name__=='__main__':
         mosaics_coord['ra'].append(ra)
         mosaics_coord['dec'].append(dec)
 
-    do_dynrng(mosaics_coord, args.catfile, args.outfile)
+    do_dynrng(mosaics_coord, args.catfile, args.outfile, args.resdir)

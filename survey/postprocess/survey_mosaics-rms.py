@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import os, sys, glob, logging, subprocess, math, re, warnings
+import os, sys, glob, logging, subprocess, math, re, warnings, argparse
+from multiprocessing import Pool
 import numpy as np
 from astropy.io import fits as afits
 from astropy.wcs import WCS, FITSFixedWarning
@@ -12,6 +13,11 @@ warnings.filterwarnings('ignore', category=FITSFixedWarning)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
+
+parser = argparse.ArgumentParser(description='Make RMS mosaic from catalogues')
+parser.add_argument('-j', '--njobs', dest='njobs', type=int, default=12,
+                    help='Number of parallel mProject processes (default: 12)')
+args = parser.parse_args()
 
 os.chdir(os.path.expanduser('~/storage/surveytgts/'))
 
@@ -67,7 +73,7 @@ logger.info('Written %s: %dx%d px, %.0f arcmin/px, ZEA north pole, DEC >= %.0f d
             hdr_final, NAXIS1, NAXIS2, PIXSIZE_DEG * 60, DEC_MIN)
 
 # project all files onto the same pixel grid
-for fits_raw in sorted(glob.glob(dir_raw + '/HP*-mosaicI.rms.fits')):
+def project_one(fits_raw):
     fits_proj  = dir_proj + '/' + os.path.basename(fits_raw).replace('.fits', '-proj.fits')
     fits_blank = dir_blank + '/' + os.path.basename(fits_raw).replace('.fits', '-blank.fits')
     if not os.path.exists(fits_proj):
@@ -98,6 +104,11 @@ for fits_raw in sorted(glob.glob(dir_raw + '/HP*-mosaicI.rms.fits')):
 
         logger.info('Projecting %s', fits_to_project)
         subprocess.run(['mProject', '-X', '-z', '0.5', fits_to_project, fits_proj, hdr_final], check=True)
+    else:
+        logger.info('Already projected: %s', fits_proj)
+
+with Pool(processes=args.njobs) as pool:
+    pool.map(project_one, sorted(glob.glob(dir_raw + '/HP*-mosaicI.rms.fits')))
 
 # make image table for mAdd
 subprocess.run(['mImgtbl', dir_proj, tbl_proj], check=True)
@@ -113,27 +124,57 @@ with afits.open(fits_output) as _hdul:
     _pixels = _hdul[0].data.ravel()
 
 _pixels = _pixels[np.isfinite(_pixels) & (_pixels > 0)]
+_pixels *= 1e3   # convert to mJy/beam
 
-_bins = np.logspace(np.log10(_pixels.min()), np.log10(10e-3), 100)
-fig, ax = plt.subplots()
-_n, _bedges, _ = ax.hist(_pixels, bins=_bins, edgecolor='black', linewidth=0.5)
-_peak_idx = np.argmax(_n)
-_peak_x = np.sqrt(_bedges[_peak_idx] * _bedges[_peak_idx + 1])
-ax.axvline(_peak_x, color='red', linestyle='--', label=f'peak: {_peak_x:.3e} Jy/beam')
-ax.legend()
-ax.set_xscale('log')
-ax.xaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10, numticks=20))
-ax.xaxis.set_minor_locator(matplotlib.ticker.LogLocator(base=10, subs='all', numticks=100))
-ax.xaxis.set_major_formatter(matplotlib.ticker.LogFormatter(base=10, labelOnlyBase=False))
-ax.xaxis.set_minor_formatter(matplotlib.ticker.LogFormatter(base=10, labelOnlyBase=False, minor_thresholds=(10, 0.4)))
-ax.tick_params(axis='x', which='both', rotation=45)
-ax.set_xlabel('rms noise (Jy/beam)')
-ax.set_ylabel('Count')
-ax.set_title('RMS mosaic pixel distribution')
-fig.tight_layout()
+# total sky area covered: one HEALPix pixel per input file
+_hp_ids_used = set()
+for _f in glob.glob(dir_raw + '/HP*-mosaicI.rms.fits'):
+    _m = re.search(r'HP(\d+)', os.path.basename(_f))
+    if _m is not None:
+        _hp_ids_used.add(int(_m.group(1)))
+totarea = len(_hp_ids_used) * hp_grid.pixel_area.to(u.deg**2).value
+logger.info('Total area: %.1f deg^2 from %d HEALPix pixels (nside=%d)',
+            totarea, len(_hp_ids_used), healpix_nside)
+
+# plot rms
+fig = plt.figure(figsize=(6, 4))
+fig.subplots_adjust(wspace=0, hspace=0)
+ax = fig.add_subplot(111)
+ax2 = ax.twinx()
+ax.tick_params(direction='in', top=True, right=True)
+
+ax.set_xlabel(r'rms noise (mJy beam$^{-1}$)')
+ax.set_yticklabels([])
+
+_bins = np.logspace(np.log10(_pixels.min()), np.log10(10), 500)
+n, bins, patches = ax.hist(_pixels, bins=_bins, orientation='vertical', histtype='bar', alpha=.9)
+
+cm = plt.colormaps['inferno']
+col = (n-n.min())/(n.max()-n.min())
+for c, p in zip(col, patches):
+    p.set_facecolor(cm(c))
+
+ax2.hist(_pixels, bins=_bins, density=True, histtype='step', cumulative=True, label='Empirical', color='gray')
+ax2.set_ylabel(r'Cumulative area (deg$^2$)')
+ax2.set_yticks([0.5,1.0])
+ax2.set_yticklabels([str(int(x))+' '+y for x,y in zip(np.array([0.5,1.0])*totarea, ['\n[50%]', '\n[100%]'])])
+
+#ax.set_ylim(ymin=0,ymax=4)
+median = np.median(_pixels)
+print('Median rms: %f' % median)
+thirty = np.quantile(_pixels,0.3)
+print('30%% quantile: %f' % thirty)
+
+fifty = np.quantile(_pixels,0.5)
+print('50%% quantile: %f' % fifty)
+commonrms = bins[np.argmax(n)]
+print('Most common value: %f' % commonrms)
+ax.set_xlim(xmin=0.8,xmax=3.8)
+ax.axvline(commonrms, ls="--", color='r')
+ax.axvline(fifty, ls="--", color='c')
+ax2.axhline(0.5, ls="--", color='c')
+ax.tick_params(axis=u'both', which=u'both',length=0)
 _hist_out = fits_output.replace('.fits', '-hist.png')
-fig.savefig(_hist_out, dpi=150)
-plt.close(fig)
-logger.info('Histogram saved to %s', _hist_out)
+fig.savefig(_hist_out, bbox_inches='tight', facecolor='w')
 
 logger.info('Done: %s', fits_output)

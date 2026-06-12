@@ -2,25 +2,11 @@
 # ~/scripts/survey/survey_completness.py $file -m 1e-3 --logfile=$file-injection.txt -i 20 -n 1500 -I -1.6
 
 # to run on several pointings, collect the residual_gaus from mosaic-i and rms+mean in the same dir and run
-"""
-#!/usr/bin/env python3
-  
-import os, sys, glob
-
-residuals = sorted(glob.glob('*resid_gaus*fits'))
-
-for residual in residuals:
-    print ('Working on %s' % residual)
-    rms = residual.replace('resid_gaus','rmsd_I')
-    mean = residual.replace('resid_gaus','mean_I')
-    output = residual.replace('resid_gaus.fits','injection.txt')
-
-    os.system('~/scripts/survey/survey_completeness.py %s -m 3e-3 --logfile %s -i 20 -n 10000 -I -1.6 --rmsmap %s --meanmap %s' % (residual,output,rms,mean))
-"""
+# use --batch to auto-discover *resid_gaus*fits files and process them all
 
 
 from astropy.io import fits
-import sys
+import os, sys, subprocess
 from astropy import wcs
 import numpy as np
 import bdsf as bdsm
@@ -40,7 +26,7 @@ class memoized(object):
       self.func = func
       self.cache = {}
    def __call__(self, *args):
-      if not isinstance(args, collections.Hashable):
+      if not isinstance(args, collections.abc.Hashable):
          # uncacheable. a list, for instance.
          # better to not cache than blow up.
          return self.func(*args)
@@ -105,8 +91,11 @@ def restore_gaussian(image,norm,x,y,bmaj,bmin,bpa,guard,verbose=False):
 gfactor=2.0*np.sqrt(2.0*np.log(2.0))
 
 parser = argparse.ArgumentParser(description='Completness testing')
-parser.add_argument('file', metavar='FILE', nargs='+',
+parser.add_argument('file', metavar='FILE', nargs='*',
                    help='Root name of file to process (a residual image)')
+parser.add_argument('-b','--batch',dest='batch',action='store',
+                    default=None, metavar='DIR',
+                    help='Auto-discover *mosaicI.fits files in DIR and process each one')
 parser.add_argument('-p','--plot',dest='plot',action='store_const',
                     const=True,default=False,
                     help='Produce diagnostic plots')
@@ -117,21 +106,21 @@ parser.add_argument('-t','--tolerance',dest='toler',action='store',
                     type=float, default=15.0,
                     help='Tolerance for source matches in pixels')
 parser.add_argument('-n','--number',dest='number',action='store',
-                    type=int, default=100,
+                    type=int, default=200,
                     help='Number of fake sources to add')
 parser.add_argument('-m','--minimum',dest='min',action='store',
                     type=float, default=3e-3,
                     help='Minimum flux to use')
 parser.add_argument('-M','--maximum',dest='max',action='store',
                     type=float, default=10,
-                    help='Minimum flux to use')
+                    help='Maximum flux to use')
 parser.add_argument('-I','--index',dest='index',action='store',
                     type=float, default=-0.6,
                     help='Power-law index of integrated number counts')
 parser.add_argument('-s','--smear',dest='smear',action='store',
                     type=float, default=0,
                     help='Fraction of smearing (e.g. 0.2 for 20% reduction in peak flux)')
-parser.add_argument('-l','--logfile',dest='logfile',action='store',
+parser.add_argument('-o','--outfile',dest='outfile',action='store',
                     default=None,
                     help='File to log results to')
 parser.add_argument('-r','--rmsmap',dest='rmsmap',action='store',
@@ -142,6 +131,32 @@ parser.add_argument('-e','--meanmap',dest='meanmap',action='store',
                     help='BDSF mean map')
 args = parser.parse_args()
 
+if args.batch:
+    import glob as _glob
+    residuals = sorted(_glob.glob(os.path.join(args.batch, '*mosaicI.fits')))
+    if not residuals:
+        print('No *mosaicI.fits files found in current directory.')
+        sys.exit(1)
+    for residual in residuals:
+        print('Batch: working on %s' % residual)
+        basename = os.path.basename(residual).replace('.fits', '')
+        rms     = os.path.join(args.rmsmap, basename + '.rms.fits')
+        mean    = os.path.join(args.meanmap, basename + '.mean.fits')
+        outfile = os.path.join(args.batch, basename + '.injection.txt')
+        cmd = [sys.argv[0], residual,
+               '-m', str(args.min), '-M', str(args.max),
+               '-i', str(args.iter), '-n', str(args.number),
+               '-I', str(args.index), '-t', str(args.toler),
+               '-o', outfile, '-r', rms, '-e', mean]
+        if args.smear:
+            cmd += ['-s', str(args.smear)]
+        print('Running command: %s' % ' '.join(cmd))
+        subprocess.run(cmd, check=True)
+    sys.exit(0)
+
+if not args.file:
+    parser.error('Provide at least one FILE or use --batch')
+
 fn=args.file[0]
 fitsfile=fn
 fakefile=re.sub('.fits','.fake.fits',fitsfile)
@@ -149,9 +164,9 @@ fakefile=re.sub('.fits','.fake.fits',fitsfile)
 if (args.plot):
     import matplotlib.pyplot as plt
 
-if (args.logfile!=None):
-    print('Logging to file',args.logfile)
-    outfile=open(args.logfile,'w')
+if args.outfile:
+    print('Logging to file', args.outfile)
+    outfile = open(args.outfile, 'w')
 
 pnorm=args.min**args.index-args.max**args.index
 sms=args.min**args.index
@@ -160,7 +175,7 @@ for c in range(0,args.iter):
 
     print('Doing iteration #',c)
     fp=fits.open(fitsfile)
-    f=fp[0].data[0,0]
+    f=fp[0].data
     prhd=fp[0].header
     bmaj=prhd.get('BMAJ')
     bmin=prhd.get('BMIN')
@@ -206,7 +221,7 @@ for c in range(0,args.iter):
         xp[i]=x
         yp[i]=y
         fv[i]=fl
-        [[ra,dec,_,_]]=w.wcs_pix2world([[x,y,0,0]],0)
+        [[ra,dec]]=w.wcs_pix2world([[x,y]],0)
         ras[i] = ra
         decs[i] = dec
 
@@ -219,7 +234,10 @@ for c in range(0,args.iter):
     fp.close()
     #restfrq=54e6 # should work this out from the FITS headers eventually
     if args.rmsmap and args.meanmap:
-        img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq, rmsmean_map_filename=[args.meanmap,args.rmsmap])
+        fake_dir = os.path.dirname(os.path.abspath(fakefile))
+        rmsmap_rel  = os.path.relpath(os.path.abspath(args.rmsmap),  fake_dir)
+        meanmap_rel = os.path.relpath(os.path.abspath(args.meanmap), fake_dir)
+        img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq, rmsmean_map_filename=[meanmap_rel,rmsmap_rel])
     else:
         img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq)
 
@@ -227,7 +245,7 @@ for c in range(0,args.iter):
         
     for s in img.sources:
         (ra,dec)=s.posn_sky_centroid
-        [[x,y,_,_]]=w.wcs_world2pix([[ra,dec,0,0]],0)
+        [[x,y]]=w.wcs_world2pix([[ra,dec]],0)
         #print x,y,s.total_flux
         d=np.sqrt((xp-x)**2.0+(yp-y)**2.0)
         i=np.argmin(d)
@@ -253,8 +271,11 @@ for c in range(0,args.iter):
         plt.plot([fv[found].min()*0.9,fv[found].max()*1.1],[fv[found].min()*0.9,fv[found].max()*1.1])
         plt.show()
 
-    if (args.logfile!=None):
+    if args.outfile:
         if c == 0: outfile.write('cycle idx ra dec fv rfv efv\n')
         for i in range(sources):
             outfile.write('%i %i %g %g %g %g %g\n' % (c,i, ras[i], decs[i], fv[i], rfv[i], efv[i]))
+
+if args.outfile:
+    outfile.close()
 
