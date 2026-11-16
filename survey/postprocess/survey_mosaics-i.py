@@ -12,11 +12,11 @@
 # lists exactly the pointings that went into it.
 
 import os, sys, logging, argparse
+from concurrent.futures import ThreadPoolExecutor
 from astropy.io import fits
 from astropy import units as u
 from astropy_healpix import HEALPix
 import numpy as np
-from LiLF.surveys_db import SurveysDB
 import lolss_config as cfg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
@@ -26,20 +26,19 @@ parser = argparse.ArgumentParser(description='Mosaic survey pointings onto HEALP
 parser.add_argument('--dir-mosaics',        default=cfg.DIR_MOSAICS,                    help='Output directory for mosaics')
 parser.add_argument('--dir-done',           default=cfg.DIR_DONE,                       help='Directory containing completed pointings')
 parser.add_argument('--file-image',         default=cfg.FILE_IMAGE,                                 help='MFS image filename within each pointing directory')
-parser.add_argument('--nchans',             default=None, type=int,                                              help='Number of channels (default: None = MFS only)')
 parser.add_argument('--file-beam',          default=cfg.FILE_BEAM,                                          help='Primary beam filename within each pointing directory')
 parser.add_argument('--pointing-sets-file', default=cfg.FILE_POINTING_SETS, help='File mapping HEALPix pixels to pointing names')
 parser.add_argument('--only-pointing',      default=None, type=int, nargs='+', metavar='HP',                    help='Only mosaic these HEALPix pixel IDs (default: all)')
 parser.add_argument('--cellsize',           default=4, type=int,                                                 help='Output pixel size in arcsec (default: 4)')
 parser.add_argument('--resolution',         default=15, type=int,                                                help='Output beam FWHM in arcsec (default: 15)')
 parser.add_argument('--sbatch',             action='store_true',                                                 help='Submit mosaic jobs via sbatch instead of running locally')
+parser.add_argument('-j', '--njobs',        default=1, type=int,                                                 help='Number of mosaics to make at the same time when running locally (default: 1)')
 parser.add_argument('--retry',              action='store_true',                                                 help='With --sbatch: resubmit also the mosaics whose previous job never finished (killed or still running)')
 args = parser.parse_args()
 
 dir_mosaics        = args.dir_mosaics
 dir_done           = args.dir_done
 file_MFS_i         = args.file_image
-nchans             = args.nchans
 file_beam          = args.file_beam
 pointing_sets_file = args.pointing_sets_file
 only_this_pointing = args.only_pointing
@@ -88,8 +87,8 @@ class Pointing():
         for _stale in (self.partial_file, self.failed_file):
             if os.path.exists(_stale):
                 os.remove(_stale)
-        cmd = 'mosaic.py --images %s --beams %s --beamcorr --beamcut 0.4 --find_noise --header %s --output %s' % \
-                (' '.join(self.pointing_files), ' '.join(self.beam_files), self.template_file, self.partial_file)
+        cmd = 'mosaic.py --images %s --beams %s --beamcorr --beamcut %s --find_noise --header %s --output %s' % \
+                (' '.join(self.pointing_files), ' '.join(self.beam_files), cfg.BEAM_THRESHOLD, self.template_file, self.partial_file)
         finalize = f'mv {self.partial_file} {self.output_file} && rm -f {self.template_file}'
         if use_sbatch:
             os.makedirs(os.path.dirname(self.batch_script), exist_ok=True)
@@ -208,9 +207,10 @@ logger.info(f'Loaded {len(grouped_pointings)} coarse HEALPix pixels from {pointi
 
 # list of pointings to mosaic
 failed = []
+todo = []
 for healpix, close_pointings in grouped_pointings.items():
     # skip if not in the list of pointings to mosaic
-    if only_this_pointing is not None and healpix not in only_this_pointing: 
+    if only_this_pointing is not None and healpix not in only_this_pointing:
         logger.info(f'Skipping pointing {healpix} (not in {only_this_pointing})')
         continue
 
@@ -226,11 +226,29 @@ for healpix, close_pointings in grouped_pointings.items():
             logger.warning(f'HP{healpix:04d}: a previous job has not finished (found {p.template_file}); '
                            'skipping, use --retry to resubmit')
             continue
-        p.make_empty_mosaic()
-        if not p.mosaic():
-            failed.append(healpix)
+        todo.append(p)
     else:
         logger.info(f'Skipping pointing {healpix} (already complete)')
+
+
+def run(p):
+    """Make (or submit) one mosaic, return True on success."""
+    try:
+        p.make_empty_mosaic()
+        return p.mosaic()
+    except Exception:
+        logger.exception(f'HP{p.healpix:04d}: unexpected error')
+        return False
+
+
+logger.info(f'{len(todo)} mosaic(s) to make')
+if use_sbatch or args.njobs <= 1:
+    results = [run(p) for p in todo]
+else:
+    # mosaic.py runs as a separate process: threads are enough to keep njobs of them going
+    with ThreadPoolExecutor(max_workers=args.njobs) as pool:
+        results = list(pool.map(run, todo))
+failed += [p.healpix for p, ok in zip(todo, results) if not ok]
 
 if failed:
     logger.error(f'{len(failed)} mosaic(s) failed: ' + ' '.join(f'HP{h:04d}' for h in failed))

@@ -125,11 +125,13 @@ def main():
     print(f'Beam threshold: {args.threshold},  '
           f'search radius: {args.search_radius} deg\n')
 
-    # overlay pointing status from the survey DB
+    # pointing status and position from the survey DB: read once, used both to
+    # select the pointings and to mark them on the map, so the two always agree
     with SurveysDB(survey='lba', readonly=True) as sdb:
-        sdb.execute('SELECT id, status FROM fields')
-        rows = sdb.cur.fetchall()
-    field_status = {row['id']: row['status'] for row in rows}
+        sdb.execute('SELECT id, status, ra, decl FROM fields')
+        db_rows = sdb.cur.fetchall()
+    # db_rows are dicts: {'id': ..., 'status': ..., 'ra': ..., 'decl': ...}
+    field_status = {row['id']: row['status'] for row in db_rows}
 
     # fine_pixel_index -> set of pointing names above threshold
     fine_to_pointings: dict[int, set] = {}
@@ -274,15 +276,11 @@ def main():
     ax.set_xticklabels(['0h','2h','4h','6h','8h','10h','12h','14h','16h','18h','20h','22h'])
     ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.5)
 
-    # overlay pointing status from the survey DB
-    with SurveysDB(survey='lba''', readonly=True) as sdb:
-        sdb.execute('SELECT id, status, ra, decl FROM fields')
-        rows = sdb.cur.fetchall()
-    # rows are dicts: {'id': ..., 'status': ..., 'ra': ..., 'decl': ...}
+    # overlay pointing status (same DB snapshot used to build the sets)
     err_ra,  err_r  = [], []   # status == 'Error'  → red X
     warn_ra, warn_r = [], []   # anything else (not 'Done') → yellow X
     n_done = 0
-    for row in rows:
+    for row in db_rows:
         status  = row['status']
         ra_deg  = float(row['ra'])
         dec_deg = float(row['decl'])

@@ -38,76 +38,77 @@ warnings.filterwarnings('ignore', category=FITSFixedWarning)
 def flatten(filename, channel=0, stokes=0):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
 
-    f = pyfits.open(filename)
-    header_init = f[0].header
+    with pyfits.open(filename) as f:
+        header_init = f[0].header
 
-    naxis = header_init['NAXIS']
-    if naxis<2:
-        raise RadioError('Can\'t make map from this')
-    if naxis==2:
-        pass
-        #return f[0].header,f[0].data
+        naxis = header_init['NAXIS']
+        if naxis<2:
+            raise RadioError('Can\'t make map from this')
+        if naxis==2:
+            pass
+            #return f[0].header,f[0].data
 
-    w = pywcs(f[0].header)
-    wn = pywcs(naxis=2)
+        w = pywcs(f[0].header)
+        wn = pywcs(naxis=2)
 
-    wn.wcs.crpix[0]=w.wcs.crpix[0]
-    wn.wcs.crpix[1]=w.wcs.crpix[1]
-    wn.wcs.cdelt=w.wcs.cdelt[0:2]
-    wn.wcs.crval=w.wcs.crval[0:2]
-    wn.wcs.ctype[0]=w.wcs.ctype[0]
-    wn.wcs.ctype[1]=w.wcs.ctype[1]
+        wn.wcs.crpix[0]=w.wcs.crpix[0]
+        wn.wcs.crpix[1]=w.wcs.crpix[1]
+        wn.wcs.cdelt=w.wcs.cdelt[0:2]
+        wn.wcs.crval=w.wcs.crval[0:2]
+        wn.wcs.ctype[0]=w.wcs.ctype[0]
+        wn.wcs.ctype[1]=w.wcs.ctype[1]
 
-    header = wn.to_header()
-    header["NAXIS"]=2
-    header["NAXIS1"]=f[0].header['NAXIS1']
-    header["NAXIS2"]=f[0].header['NAXIS2']
-    copy=('EQUINOX','EPOCH')
-    for k in copy:
-        r=f[0].header.get(k)
-        if r:
-            header[k]=r
+        header = wn.to_header()
+        header["NAXIS"]=2
+        header["NAXIS1"]=f[0].header['NAXIS1']
+        header["NAXIS2"]=f[0].header['NAXIS2']
+        copy=('EQUINOX','EPOCH')
+        for k in copy:
+            r=f[0].header.get(k)
+            if r:
+                header[k]=r
 
-    dataslice=[]
-    for i in range(naxis,0,-1):
-        if i<=2:
-            dataslice.append(np.s_[:],)
-        elif header_init['CTYPE%i'%i] == 'FREQ':
-            #print("channel:", channel)
-            dataslice.append(channel)
-        elif header_init['CTYPE%i'%i] == 'STOKES':
-            #print("stokes:", stokes)
-            dataslice.append(stokes)
-        else:
-            dataslice.append(0)
+        dataslice=[]
+        for i in range(naxis,0,-1):
+            if i<=2:
+                dataslice.append(np.s_[:],)
+            elif header_init['CTYPE%i'%i] == 'FREQ':
+                #print("channel:", channel)
+                dataslice.append(channel)
+            elif header_init['CTYPE%i'%i] == 'STOKES':
+                #print("stokes:", stokes)
+                dataslice.append(stokes)
+            else:
+                dataslice.append(0)
 
-    # add freq
-    freq = find_freq(f[0].header)
-    if freq is not None:
-        header["FREQ"] = freq
+        # add freq
+        freq = find_freq(f[0].header)
+        if freq is not None:
+            header["FREQ"] = freq
 
-    # add beam if present
-    try:
-        header["BMAJ"]=f[0].header['BMAJ']
-        header["BMIN"]=f[0].header['BMIN']
-        header["BPA"]=f[0].header['BPA']
-    except:
-        pass
+        # add beam if present
+        try:
+            header["BMAJ"]=f[0].header['BMAJ']
+            header["BMIN"]=f[0].header['BMIN']
+            header["BPA"]=f[0].header['BPA']
+        except:
+            pass
     
-    if 'BUNIT' in f[0].header:
-        header['BUNIT'] = f[0].header['BUNIT']
-    else:
-        print('Warning: BUNIT not found in header, assuming JY/BEAM')
-        header['BUNIT'] = 'JY/BEAM'
+        if 'BUNIT' in f[0].header:
+            header['BUNIT'] = f[0].header['BUNIT']
+        else:
+            print('Warning: BUNIT not found in header, assuming JY/BEAM')
+            header['BUNIT'] = 'JY/BEAM'
         
-    if 'BTYPE' in f[0].header:
-        header['BTYPE'] = f[0].header['BTYPE']
-    else:
-        print('Warning: BTYPE not found in header, assuming INTENSITY')
-        header['BTYPE'] = 'INTENSITY'
+        if 'BTYPE' in f[0].header:
+            header['BTYPE'] = f[0].header['BTYPE']
+        else:
+            print('Warning: BTYPE not found in header, assuming INTENSITY')
+            header['BTYPE'] = 'INTENSITY'
 
-    # slice=(0,)*(naxis-2)+(np.s_[:],)*2
-    return header, f[0].data[tuple(dataslice)]
+        # slice=(0,)*(naxis-2)+(np.s_[:],)*2
+        # copy: the data must outlive the file, which is closed here
+        return header, np.array(f[0].data[tuple(dataslice)])
 
 
 def correct_beam_header(header):
@@ -444,7 +445,8 @@ class Image(object):
 
         logging.info(f"Open {imagefile}")
         self.imagefile = imagefile
-        header = pyfits.open(imagefile)[0].header
+        with pyfits.open(imagefile) as hdul:
+            header = hdul[0].header.copy()
         header = correct_beam_header(header)
         header = transform_to_j2000(header)
         self.img_hdr_orig = header

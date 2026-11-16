@@ -28,7 +28,7 @@ FILE_BEAM  = 'primarybeam.fits'
 
 # ── survey / mosaic geometry ───────────────────────────────────────────────────
 HEALPIX_NSIDE      = 16    # coarse tiling: one mosaic and one catalogue per pixel
-HEALPIX_NSIDE_FINE = 128   # fine tiling used to decide which pointings cover a coarse pixel
+HEALPIX_NSIDE_FINE = 512   # fine tiling used to decide which pointings cover a coarse pixel
 BEAM_THRESHOLD     = 0.4   # primary-beam level below which a pointing is not used
 RESTFRQ            = 54e6  # Hz
 RESOLUTION         = 15    # arcsec, FWHM of the restoring beam of pointings and mosaics

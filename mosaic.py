@@ -19,16 +19,15 @@
 
 # Mosaic images
 
-import os.path, sys, argparse, logging
+import os, sys, argparse, logging
 import numpy as np
 import astropy.units as u
-from lib_fits import flatten, Image
+from lib_fits import flatten, Image, correct_beam_header
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs
 from astropy.table import Table
-import pyregion
 # https://github.com/astrofrog/reproject
-from reproject import reproject_interp, reproject_exact
+from reproject import reproject_interp
 reproj = reproject_interp
 
 # cleanup logs
@@ -91,11 +90,36 @@ if args.shift and not args.beamcorr:
 
 #############################################################
 
+def reproject_fast(data, wcs_in, wcs_out, shape_out):
+    """
+    Reproject a 2D image, or a stack of images on the same grid, in a single call.
+    The coordinate round trip of reproject (a check that takes half of the time) is skipped.
+    """
+    try:
+        out, _ = reproj((data, wcs_in), wcs_out, shape_out=shape_out, roundtrip_coords=False)
+    except TypeError: # old reproject without roundtrip_coords
+        out, _ = reproj((data, wcs_in), wcs_out, shape_out=shape_out)
+    return out
+
+
+def same_grid(hdr1, hdr2):
+    """True if the two headers describe the same pixel grid."""
+    for key in ('NAXIS1', 'NAXIS2', 'CTYPE1', 'CTYPE2'):
+        if hdr1.get(key) != hdr2.get(key): return False
+    for key in ('CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2', 'CDELT1', 'CDELT2'):
+        if hdr1.get(key) is None or hdr2.get(key) is None or not np.isclose(hdr1[key], hdr2[key], rtol=0, atol=1e-9): return False
+    return True
+
+
 class Direction(Image):
 
     def __init__(self, imagefile, channel=0, stokes=0):
         logging.debug('Create direction for %s' % imagefile)
         Image.__init__(self, imagefile, channel, stokes)
+        # the mosaic never goes back to the original data: do not keep a second copy in memory
+        self.img_data_orig = None
+        self.img_hdu = None
+        self.img_data = np.asarray(self.img_data, dtype=np.float32)
         self.scale = 1.
         self.shift = 0.
         self.beamfile = None
@@ -107,37 +131,104 @@ class Direction(Image):
             logging.error('Beam file %s not found.' % beamfile)
             sys.exit(1)
         self.beamfile = beamfile
-        self.beam_hdr, self.beam_data = flatten(self.beamfile)
+        self.beam_hdr, beam_data = flatten(self.beamfile)
         logging.debug('%s: set beam file %s' % (self.imagefile, beamfile))
-        if self.beam_data.shape != self.img_data.shape:
+        if beam_data.shape != self.img_data.shape:
             beamfile = self.imagefile+'__beam.fits'
-            logging.warning('Beam and image shape are different, regrid beam and save to %s...' % beamfile)
-            if not os.path.exists(beamfile):
-                beam_data, footprint = reproj((self.beam_data, self.beam_hdr), self.img_hdr,
-                                            order='bilinear')  # , parallel=True)
-                # save temp regridded beam
-                pyfits.writeto(beamfile, header=self.img_hdr, data=beam_data, overwrite=True)
+            if os.path.exists(beamfile):
+                logging.debug('Beam and image shape are different, load regridded beam %s...' % beamfile)
+                self.beam_hdr, beam_data = flatten(beamfile)
+            else:
+                logging.warning('Beam and image shape are different, regrid beam and save to %s...' % beamfile)
+                beam_data = reproject_fast(beam_data, pywcs(self.beam_hdr), pywcs(self.img_hdr), self.img_data.shape)
+                # other mosaics running at the same time use the same file: write it
+                # under a temporary name so that nobody can read it half-written
+                beamfile_tmp = '%s.tmp%i' % (beamfile, os.getpid())
+                pyfits.writeto(beamfile_tmp, header=self.img_hdr, data=beam_data.astype(np.float32), overwrite=True)
+                os.replace(beamfile_tmp, beamfile)
+                self.beam_hdr = self.img_hdr
             self.beamfile = beamfile
-            self.beam_hdr, self.beam_data = flatten(self.beamfile)
+        self.beam_data = np.asarray(beam_data, dtype=np.float32)
 
     def apply_beam_cut(self, beamcut=0.3):
         if self.beamfile is None: return
-        self.img_data[self.beam_data < beamcut] = 0. # in the calc_weigth this region is properly removed
-        #self.beam_data[self.beam_data < beamcut] = 0.
+        # blank with nan (not 0): the interpolation of the regridding then drops the pixels
+        # on the edge of the cut instead of mixing them with zeros. "not >=" blanks also nan beams
+        self.img_data[~(self.beam_data >= beamcut)] = np.nan
 
     def apply_beam_corr(self):
         if self.beamfile is None: return
-        self.img_data /= self.beam_data
+        with np.errstate(divide='ignore', invalid='ignore'):
+            self.img_data /= self.beam_data
+
+    def get_valid(self):
+        """Pixels with data: blanked pixels are nan, 0 marks regions without data"""
+        return np.isfinite(self.img_data) & (self.img_data != 0)
 
     def calc_weight(self):
         self.weight_data = np.ones_like(self.img_data)
-        self.weight_data[self.img_data == 0] = 0
         if self.beamfile is not None:
             self.weight_data *= self.beam_data
         # at this point this is the beam factor: we want 1/sigma**2.0, so divide by central noise and square
         self.weight_data /= self.noise * self.scale
         # https://en.wikipedia.org/wiki/Inverse-variance_weighting
         self.weight_data = self.weight_data**2.0
+        # no data, no weight: nan in both so that image and weight are dropped together when regridding
+        invalid = ~self.get_valid() | ~np.isfinite(self.weight_data)
+        self.weight_data[invalid] = np.nan
+        self.img_data[invalid] = np.nan
+        # the beam is not needed anymore
+        if self.beamfile is not None:
+            self.beam_data = None
+
+    def reproject(self, regrid_hdr):
+        """
+        Regrid image and weights on the output grid, only in the part of it covered by valid data.
+        Return image, weights (0 where there are no data, never nan) and the slices
+        of the output grid they refer to; None if the image does not contribute.
+        """
+        valid = np.isfinite(self.weight_data) & (self.weight_data > 0)
+        if not valid.any():
+            return None
+        ysize, xsize = regrid_hdr['NAXIS2'], regrid_hdr['NAXIS1']
+        wcs_in = self.get_wcs().celestial
+        wcs_out = pywcs(regrid_hdr).celestial
+
+        # box of the input with valid data
+        ys = np.where(valid.any(axis=1))[0]
+        xs = np.where(valid.any(axis=0))[0]
+        y0, y1, x0, x1 = ys[0], ys[-1]+1, xs[0], xs[-1]+1
+        del valid
+
+        # corresponding box of the output: follow the edge of the input box
+        n = 200
+        ex = np.concatenate([np.linspace(x0-1, x1, n), np.full(n, x1), np.linspace(x0-1, x1, n), np.full(n, x0-1)])
+        ey = np.concatenate([np.full(n, y0-1), np.linspace(y0-1, y1, n), np.full(n, y1), np.linspace(y0-1, y1, n)])
+        ra, dec = wcs_in.wcs_pix2world(ex, ey, 0)
+        ox, oy = wcs_out.wcs_world2pix(ra, dec, 0)
+        if np.all(np.isfinite(ox)) and np.all(np.isfinite(oy)):
+            ox0, ox1 = max(0, int(np.floor(ox.min()))-2), min(xsize, int(np.ceil(ox.max()))+3)
+            oy0, oy1 = max(0, int(np.floor(oy.min()))-2), min(ysize, int(np.ceil(oy.max()))+3)
+        else: # part of the image cannot be projected on the output: do not try to be smart
+            ox0, ox1, oy0, oy1 = 0, xsize, 0, ysize
+        if ox1 <= ox0 or oy1 <= oy0:
+            return None
+
+        # image and weights share the coordinate computation
+        stack = np.stack([self.img_data[y0:y1, x0:x1], self.weight_data[y0:y1, x0:x1]])
+        try:
+            r, w = reproject_fast(stack, wcs_in[y0:y1, x0:x1], wcs_out[oy0:oy1, ox0:ox1], (oy1-oy0, ox1-ox0))
+        except ValueError: # old reproject that does not broadcast over the extra axis
+            r = reproject_fast(stack[0], wcs_in[y0:y1, x0:x1], wcs_out[oy0:oy1, ox0:ox1], (oy1-oy0, ox1-ox0))
+            w = reproject_fast(stack[1], wcs_in[y0:y1, x0:x1], wcs_out[oy0:oy1, ox0:ox1], (oy1-oy0, ox1-ox0))
+        del stack
+
+        # a pixel counts only if both image and weight are defined: a nan in the image
+        # must never enter the mosaic as a 0 with a weight
+        bad = ~np.isfinite(r) | ~np.isfinite(w) | (w <= 0)
+        r[bad] = 0
+        w[bad] = 0
+        return r, w, (slice(oy0, oy1), slice(ox0, ox1))
 
     def calc_shift(self, ref_cat):
         """
@@ -150,7 +241,6 @@ class Direction(Image):
 
         # if there are no data in the image prevent the crash of bdsf
         if np.isnan(self.img_data).all(): return
-
         img_cat = self.imagefile+'.cat'
         if not os.path.exists(img_cat):
             bdsf_img = bdsf.process_image(self.imagefile, rms_box=(100,30), \
@@ -233,18 +323,17 @@ class Direction(Image):
         #if not args.save:
         #    os.system('rm '+img_cat)
 
-logging.info('Reading files...')
-directions = []
-beams = []
-for i, image in enumerate(args.images):
-    d = Direction(image, channel=args.use_channel, stokes=args.use_stokes)
-    beams.append(d.get_beam()) 
-    directions.append(d)
+def get_image_beam(imagefile):
+    """Beam of an image from its header, without loading the data"""
+    with pyfits.open(imagefile) as hdul:
+        header = correct_beam_header(hdul[0].header)
+        return [header['BMAJ'], header['BMIN'], header['BPA']]
 
-logging.info("Working on %i images..." % len(directions))
 
 if args.beamarm:
 
+    logging.info('Reading beams...')
+    beams = [get_image_beam(image) for image in args.images]
     if args.beamcirc:
         maxmaj = np.max([b[0] for b in beams])
         common_beam = [maxmaj*1.01, maxmaj*1.01, 0.] # add 1% to prevent crash in convolution
@@ -261,7 +350,9 @@ if args.beamarm:
              (common_beam[0]*3600., common_beam[1]*3600., common_beam[2]))
 
 
-for i, d in enumerate(directions):
+def prepare_direction(i):
+    """Load image i and get it ready to be regridded: beam, cuts, noise, weights"""
+    d = Direction(args.images[i], channel=args.use_channel, stokes=args.use_stokes)
 
     if args.beamarm:
         d.convolve(common_beam)
@@ -271,10 +362,14 @@ for i, d in enumerate(directions):
         d.apply_beam_cut(beamcut = args.beamcut)
 
     if args.regions is not None:
-        d.apply_region(args.regions[i], blankvalue=0, invert=True)
+        d.apply_region(args.regions[i], blankvalue=np.nan, invert=True)
 
     if args.noises is not None: d.noise = args.noises[i]
-    elif args.find_noise: d.calc_noise(force_recalc=True) # after beam cut/mask
+    elif args.find_noise:
+        d.calc_noise(force_recalc=True) # after beam cut/mask
+        if not d.noise: # None or 0: no data left in the image
+            logging.warning('%s: no valid data to estimate the noise, image ignored.' % d.imagefile)
+            d.noise = np.nan # all weights become nan
 
     if args.scales is not None: d.scale = args.scales[i]
 
@@ -285,10 +380,17 @@ for i, d in enumerate(directions):
     if args.shift:
         d.calc_shift(ref_catalog)
 
+    return d
+
+
+logging.info("Working on %i images..." % len(args.images))
 
 # prepare header for final gridding
+directions = None
 if args.header is None:
     logging.warning('Calculate output headers...')
+    # the extent of all images is needed before starting: keep them in memory
+    directions = [prepare_direction(i) for i in range(len(args.images))]
     mra = np.mean( np.array([d.get_wcs().wcs.crval[0]%360 for d in directions]) )
     mdec = np.mean( np.array([d.get_wcs().wcs.crval[1] for d in directions]) )
 
@@ -309,7 +411,7 @@ if args.header is None:
     ymax=0
     for d in directions:
         w = d.get_wcs()
-        ys, xs = np.where(d.img_data)
+        ys, xs = np.where(d.get_valid())
         if xs.size == 0:
             continue
         axmin = xs.min()
@@ -355,61 +457,80 @@ else:
 logging.info('Making mosaic...')
 isum = np.zeros([ysize,xsize])
 wsum = np.zeros_like(isum)
-mask = np.zeros_like(isum,dtype=bool)
 if args.mask is not None:
     logging.debug('Reprojecting mask...')
     outname = args.mask.replace('.fits','-reproj.fits')
+    mask_data = None
     if os.path.exists(outname):
-        logging.debug('Loading %s...' % outname)
         with pyfits.open(outname) as hdul:
-            mask_n = hdul[0].copy()
-    else:
-        mask_n.data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='bilinear')#, parallel=True)
+            if same_grid(hdul[0].header, regrid_hdr):
+                logging.debug('Loading %s...' % outname)
+                mask_data = hdul[0].data.copy()
+            else:
+                logging.warning('%s is on a different grid, ignored.' % outname)
+    if mask_data is None:
+        mask_data, footprint = reproj((mask_n.data, mask_n.header), regrid_hdr, order='bilinear')#, parallel=True)
         if args.save:
-            pyfits.writeto(outname, header=regrid_hdr, data=mask_n.data, overwrite=True)
+            pyfits.writeto(outname, header=regrid_hdr, data=mask_data, overwrite=True)
+    del mask_n
 
     # get numbers into mask in increasing order
-    mask_numbers = sorted(np.unique(mask_n.data))
+    mask_numbers = sorted(np.unique(mask_data))
 
-for i, d in enumerate(directions):
-    logging.info('Working on: %s' % d.imagefile)
-
-    outname = d.imagefile.replace('.fits','-reproj.fits')
-    if os.path.exists(outname):
+def load_saved(outname):
+    """Load a regridded image saved by a previous run with --save, if it is on the output grid"""
+    if not os.path.exists(outname):
+        return None
+    with pyfits.open(outname) as hdul:
+        if not same_grid(hdul[0].header, regrid_hdr):
+            logging.warning('%s is on a different grid, ignored.' % outname)
+            return None
         logging.debug('Loading %s...' % outname)
-        with pyfits.open(outname) as hdul:
-            r = hdul[0].data.copy()
-    else:
-        logging.debug('Reprojecting data...')
-        r, footprint = reproj((d.img_data, d.img_hdr), regrid_hdr)#, parallel=True)
-        r[ np.isnan(r) ] = 0
-        if args.save:
-            pyfits.writeto(outname, header=regrid_hdr, data=r, overwrite=True)
+        return np.nan_to_num(hdul[0].data)
 
-    outname = d.imagefile.replace('.fits','-reprojW.fits')
-    if os.path.exists(outname):
-        logging.debug('Loading %s...' % outname)
-        with pyfits.open(outname) as hdul:
-            w = hdul[0].data.copy()
-        mask |= (w>0)
-    else:
-        logging.debug('Reprojecting weights...')
-        w, footprint = reproj((d.weight_data, d.img_hdr), regrid_hdr)#, parallel=True)
-        mask |= ~np.isnan(w)
-        w[ np.isnan(w) ] = 0
-        if args.mask is not None:
-            w[mask_n.data != mask_numbers[i]] = 0
-        if args.save:
-            pyfits.writeto(outname, header=regrid_hdr, data=w, overwrite=True)
+for i in range(len(args.images)):
+    logging.info('Working on: %s' % args.images[i])
+
+    # regridded image and weights saved by a previous run (full output grid)
+    outname_r = args.images[i].replace('.fits','-reproj.fits')
+    outname_w = args.images[i].replace('.fits','-reprojW.fits')
+    r, w = load_saved(outname_r), load_saved(outname_w)
+    if r is not None and w is not None:
+        isum += r*w
+        wsum += w
+        del r, w
+        continue
+
+    # one image at a time in memory, unless they are all already there
+    d = directions[i] if directions is not None else prepare_direction(i)
+    logging.debug('Reprojecting data and weights...')
+    result = d.reproject(regrid_hdr)
+    if directions is not None: directions[i] = None
+    del d
+    if result is None:
+        logging.warning('%s: no valid data on the output grid, image ignored.' % args.images[i])
+        continue
+    r, w, box = result
+
+    if args.mask is not None:
+        w[mask_data[box] != mask_numbers[i]] = 0
+    if args.save:
+        for outname, data in ((outname_r, r), (outname_w, w)):
+            full = np.zeros([ysize,xsize], dtype=np.float32)
+            full[box] = data
+            pyfits.writeto(outname, header=regrid_hdr, data=full, overwrite=True)
+        del full
     logging.debug('Add to mosaic...')
-    isum += r*w
-    wsum += w
+    isum[box] += r*w
+    wsum[box] += w
+    del r, w, result
 
 logging.debug('Write mosaic: %s...' % args.output)
-# mask now contains True where a non-nan region was present in either map
-isum[wsum != 0] /= wsum[wsum != 0]
-isum[wsum == 0] = np.nan
-isum[~mask] = np.nan
+# no weight means that no image has valid data there
+valid = wsum != 0
+isum[valid] /= wsum[valid]
+isum[~valid] = np.nan
+del wsum, valid
 
 #set beam
 try:
@@ -417,14 +538,15 @@ try:
     regrid_hdr['BMIN'] = common_beam[1]
     regrid_hdr['BPA'] = common_beam[2]
 except (NameError, KeyError):
-    logging.warning('Setting beam in the headers equal to: %s' % directions[0].imagefile)
-    with pyfits.open(directions[0].imagefile) as hdul:
+    logging.warning('Setting beam in the headers equal to: %s' % args.images[0])
+    with pyfits.open(args.images[0]) as hdul:
         for ch in ('BMAJ', 'BMIN', 'BPA'):
             regrid_hdr[ch] = hdul[0].header[ch]
 
 regrid_hdr['ORIGIN'] = 'LiLF-pipeline-mosaic'
 regrid_hdr['UNITS'] = 'Jy/beam'
 
-pyfits.writeto(args.output, header=regrid_hdr, data=isum, overwrite=True)
+# single precision is plenty for an image and halves the file size
+pyfits.writeto(args.output, header=regrid_hdr, data=isum.astype(np.float32), overwrite=True)
 
 logging.debug('Done.')
