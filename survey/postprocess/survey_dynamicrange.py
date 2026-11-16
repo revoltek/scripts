@@ -25,6 +25,10 @@ from astropy import units as u
 from astropy.io import fits
 import pyregion
 
+# annuli where the rms is measured around each source [arcsec]; used also by survey_dynamicrange_plot.py
+ANNULI_INNER = np.arange(30, 630, 60)
+ANNULI_WIDTH = 30
+
 def isolated(tab, dist):
     # reduce to isolated sources - nothing closer than $dist arcsec
     _, sep, _ = match_coordinates_sky(SkyCoord(tab['RA'], tab['DEC']),\
@@ -49,7 +53,7 @@ def do_dynrng(mosaics_coord, catfile, outfile, resdir):
         ra = sou['RA']
         dec = sou['DEC']
         # create region
-        region_strings = ['fk5;panda(%f,%f,0,359.9,1,%f",%f",1)' % (ra,dec,dist,dist+30) for dist in np.arange(30,630,60)]
+        region_strings = ['fk5;panda(%f,%f,0,359.9,1,%f",%f",1)' % (ra,dec,dist,dist+ANNULI_WIDTH) for dist in ANNULI_INNER]
         #print(region_strings)
         
         # !!! open right mosaic

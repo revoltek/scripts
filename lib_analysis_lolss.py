@@ -94,20 +94,20 @@ def cross_match_multicomp(tab1, tab2, dist, flux_col, columns_to_keep=None):
         c = Column(name=col, dtype=tab2[col].dtype, length=len(tab1))
         tab1.add_column(c)
 
-    # group tab2 matches by their tab1 counterpart
-    for i1 in np.unique(idx1):
-        mask = idx1 == i1
-        matched_idx2 = idx2[mask]
-        matched_sep  = sep[mask]
+    if len(idx1) > 0:
+        # sum flux of all tab2 components matched to each tab1 source
+        n_match = np.bincount(idx1, minlength=len(tab1))
+        flux_sum = np.bincount(idx1, weights=np.asarray(tab2[flux_col], dtype=float)[idx2], minlength=len(tab1))
+        matched = n_match > 0
+        tab1[flux_col+'_sum'][matched] = flux_sum[matched]
+        tab1[n_comp.name] = n_match
 
-        # sum flux of all tab2 components matched to this tab1 source
-        tab1[flux_col+'_sum'][i1] = np.sum(tab2[flux_col][matched_idx2])
-        tab1[n_comp.name][i1] = len(matched_idx2)
-
-        # for other columns, take the value from the nearest match
-        nearest = matched_idx2[np.argmin(matched_sep)]
+        # for other columns, take the value from the nearest match:
+        # sort the pairs by tab1 index and then separation, the first of each group is the nearest
+        order = np.lexsort((sep.to_value(u.arcsec), idx1))
+        first = order[np.concatenate([[True], idx1[order][1:] != idx1[order][:-1]])]
         for col in columns_to_keep:
-            tab1[col][i1] = tab2[col][nearest]
+            tab1[col][idx1[first]] = tab2[col][idx2[first]]
 
     return tab1
 
