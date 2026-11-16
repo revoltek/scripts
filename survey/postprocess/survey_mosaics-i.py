@@ -12,17 +12,18 @@ from astropy import units as u
 from astropy_healpix import HEALPix
 import numpy as np
 from LiLF.surveys_db import SurveysDB
+import lolss_config as cfg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Mosaic survey pointings onto HEALPix tiles.')
-parser.add_argument('--dir-mosaics',        default='/homes/fdg/storage/surveytgts/mosaics/healpix/',                    help='Output directory for mosaics')
-parser.add_argument('--dir-done',           default='/homes/fdg/storage/surveytgts/done/',                       help='Directory containing completed pointings')
-parser.add_argument('--file-image',         default='wideDDS-c0-MFS-image.fits',                                 help='MFS image filename within each pointing directory')
+parser.add_argument('--dir-mosaics',        default=cfg.DIR_MOSAICS,                    help='Output directory for mosaics')
+parser.add_argument('--dir-done',           default=cfg.DIR_DONE,                       help='Directory containing completed pointings')
+parser.add_argument('--file-image',         default=cfg.FILE_IMAGE,                                 help='MFS image filename within each pointing directory')
 parser.add_argument('--nchans',             default=None, type=int,                                              help='Number of channels (default: None = MFS only)')
-parser.add_argument('--file-beam',          default='primarybeam.fits',                                          help='Primary beam filename within each pointing directory')
-parser.add_argument('--pointing-sets-file', default='/homes/fdg/storage/surveytgts/analysis/pointing_sets.txt', help='File mapping HEALPix pixels to pointing names')
+parser.add_argument('--file-beam',          default=cfg.FILE_BEAM,                                          help='Primary beam filename within each pointing directory')
+parser.add_argument('--pointing-sets-file', default=cfg.FILE_POINTING_SETS, help='File mapping HEALPix pixels to pointing names')
 parser.add_argument('--only-pointing',      default=None, type=int, nargs='+', metavar='HP',                    help='Only mosaic these HEALPix pixel IDs (default: all)')
 parser.add_argument('--cellsize',           default=4, type=int,                                                 help='Output pixel size in arcsec (default: 4)')
 parser.add_argument('--resolution',         default=15, type=int,                                                help='Output beam FWHM in arcsec (default: 15)')
@@ -40,7 +41,7 @@ CELLSIZE           = args.cellsize
 RESOLUTION         = args.resolution
 use_sbatch         = args.sbatch
 
-hp = HEALPix(nside=16, frame='icrs')
+hp = HEALPix(nside=cfg.HEALPIX_NSIDE, frame='icrs')
 logger.info(f'Total HEALPix pixels on sky: {hp.npix}')
 area = hp.pixel_area.to(u.deg**2).value
 logger.info(f'Area of one HEALPix pixel: {area:.4f} sq. deg')
@@ -116,7 +117,7 @@ class Pointing():
         header['BMIN']=RESOLUTION / 3600.0
         header['BPA']=0
         header['TELESCOP']='LOFAR'
-        header['RESTFRQ']=54e6
+        header['RESTFRQ']=cfg.RESTFRQ
         header['OBSERVER']='LoLSS'
         header['BUNIT']='JY/BEAM'
         header['BSCALE']=1.0

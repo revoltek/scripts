@@ -36,6 +36,7 @@ import astropy.units as u
 from scipy.ndimage import map_coordinates
 
 import bdsf
+import lolss_config as cfg
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,8 +48,8 @@ log = logging.getLogger(__name__)
 # ── configuration ──────────────────────────────────────────────────────────────
 DONE_DIR    = os.path.expanduser('~/storage/surveytgts/done-test/')
 PB_SUFFIX   = '-pb.fits'   # appended to image stem to locate the PB image
-BDSF_LOG    = os.path.expanduser('~/storage/surveytgts/analysis/bdsf.log')
-CAT_DIR     = os.path.expanduser('~/storage/surveytgts/analysis/catalogues/')
+BDSF_LOG    = cfg.DIR_ANALYSIS + 'bdsf.log'
+CAT_DIR     = cfg.DIR_ANALYSIS + 'catalogues/'
 
 # glob patterns used to discover images inside each pointing directory
 IMAGE_PATTERNS = [
@@ -57,28 +58,12 @@ IMAGE_PATTERNS = [
 ]
 
 # PyBDSF keyword arguments (tune as needed)
-BDSF_KWARGS = dict(
-    thresh_isl        = 4.0,
-    thresh_pix        = 5.0,
-    rms_box           = (150, 15),
-    rms_map           = True,
-    mean_map          = 'zero',
-    ini_method        = 'intensity',
-    adaptive_rms_box  = True,
-    adaptive_thresh   = 50,
-    rms_box_bright    = (60, 15),
-    group_by_isl      = False,
-    group_tol         = 10.0,
-    output_opts       = True,
-    output_all        = False,
-    atrous_do         = False,
-    atrous_jmax       = 4,
-    flagging_opts     = True,
-    flag_maxsize_fwhm = 0.5,
-    advanced_opts     = True,
-    blank_limit       = None,
-    quiet             = True,
-    detection_image    = None,  # to be set per run
+# the time-chunk images are not the survey mosaics: keep the box used so far for
+# bright sources instead of the catalogue one
+BDSF_KWARGS = cfg.bdsf_kwargs(
+    rms_box_bright  = (60, 15),
+    quiet           = True,
+    detection_image = None,  # to be set per run
 )
 
 
@@ -125,7 +110,7 @@ class BDSFRun:
         self.image_pb = image_pb
         self.catalog  = catalog_path_for(image)
 
-    def run(self, redo: bool = False, pb_threshold: float = 0.4) -> bool:
+    def run(self, redo: bool = False, pb_threshold: float = cfg.BEAM_THRESHOLD) -> bool:
         """Run PyBDSF. Returns True on success. Skips if catalogue already exists."""
         if not redo and self.catalog.exists():
             log.info('    catalogue exists, skipping: %s', self.catalog.name)
@@ -165,7 +150,7 @@ class BDSFRun:
                     _root_logger.removeHandler(_h)
                     _h.close()
             # filter both catalogues by the pointing primary beam
-            _pb = self.image.parent / 'primarybeam.fits'
+            _pb = self.image.parent / cfg.FILE_BEAM
             filter_catalog_by_pb(self.catalog, _pb, pb_threshold)
             _gaul = self.catalog.with_suffix('').with_suffix('.gaul.fits')
             filter_catalog_by_pb(_gaul, _pb, pb_threshold)
@@ -192,7 +177,7 @@ class Pointing:
             for img in sorted(self.dir.glob(pattern)):
                 self.runs.append(BDSFRun(img, pb_path_for(img)))
 
-    def process(self, redo: bool = False, pb_threshold: float = 0.4):
+    def process(self, redo: bool = False, pb_threshold: float = cfg.BEAM_THRESHOLD):
         log.info('Pointing %-20s  %d image(s)', self.name, len(self.runs))
         for run in self.runs:
             run.run(redo=redo, pb_threshold=pb_threshold)
@@ -215,7 +200,7 @@ class SurveyProcessor:
         log.info('Found %d pointing directory/ies in %s',
                  len(self.pointings), self.done_dir)
 
-    def process_all(self, redo: bool = False, pb_threshold: float = 0.4):
+    def process_all(self, redo: bool = False, pb_threshold: float = cfg.BEAM_THRESHOLD):
         for pointing in self.pointings:
             pointing.process(redo=redo, pb_threshold=pb_threshold)
 
@@ -281,8 +266,8 @@ def main():
                         help='Path to the done/ directory (default: %(default)s)')
     parser.add_argument('--redo', action='store_true',
                         help='Re-run PyBDSF even if a catalogue already exists')
-    parser.add_argument('--pb-threshold', type=float, default=0.4,
-                        help='Primary beam threshold for source filtering (default: 0.4)')
+    parser.add_argument('--pb-threshold', type=float, default=cfg.BEAM_THRESHOLD,
+                        help='Primary beam threshold for source filtering (default: %(default)s)')
     args = parser.parse_args()
 
     # ── source extraction ──────────────────────────────────────────────────────
@@ -329,7 +314,7 @@ def main():
     # Peak_flux, E_Peak_flux.  Adjust if your PyBDSF version differs.
 
     # load pointing grid (name, ra[deg], dec[deg])
-    _grid_path = os.path.expanduser('~/storage/allsky-grid.fits')
+    _grid_path = cfg.FILE_GRID
     _grid_tbl  = Table.read(_grid_path)
     grid: dict[str, tuple[float, float]] = {
         str(row['name']).strip(): (float(row['ra']), float(row['dec']))
@@ -442,7 +427,7 @@ def main():
     # --- save transient catalogue ---
     if all_transients:
         cat_transients = vstack(all_transients)
-        cat_transients.write('/homes/fdg/storage/surveytgts/analysis/transients/transients.fits', overwrite=True)
+        cat_transients.write(cfg.DIR_ANALYSIS + 'transients/transients.fits', overwrite=True)
         log.info('Transient catalogue saved: transients.fits  (%d sources)', len(cat_transients))
     else:
         log.info('No transient candidates found.')

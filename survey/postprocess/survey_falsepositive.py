@@ -6,6 +6,7 @@ import bdsf
 import argparse
 import os, sys, re
 from astropy.io import fits
+import lolss_config as cfg
 
 parser = argparse.ArgumentParser(description='Completness testing')
 parser.add_argument('-m','--mosaicdir',dest='mosaicdir',action='store',
@@ -16,7 +17,7 @@ parser.add_argument('-c','--catdir',dest='catdir',action='store',
                     help='Directory containing BDSF RMS and mean maps, named as <mosaic>.pybdsm.rms.fits / <mosaic>.pybdsm.mean.fits')
 args = parser.parse_args()
 
-restfrq = 54e6
+restfrq = cfg.RESTFRQ
 os.makedirs(os.path.join(args.catdir, 'catalogues-inv'), exist_ok=True)
 os.makedirs(args.mosaicdir.rstrip('/') + '-inv', exist_ok=True)
 
@@ -45,7 +46,7 @@ for infile in sorted(os.listdir(args.mosaicdir)):
     fp.writeto(fakefile, overwrite=True)
     fp.close()
 
-    img = bdsf.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0, output_opts=True, output_all=False, atrous_do=False, atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5, advanced_opts=True, blank_limit=None, frequency=restfrq, rmsmean_map_filename=[meanmap, rmsmap])
+    img = bdsf.process_image(fakefile, **cfg.bdsf_kwargs(frequency=restfrq, rmsmean_map_filename=[meanmap, rmsmap]))
 
     catprefix = os.path.join(args.catdir, 'catalogues-inv', os.path.basename(infile).replace('.fits', ''))
     img.write_catalog(outfile=catprefix + '.cat.fits', catalog_type='srl', format='fits', correct_proj='True', clobber=True)
