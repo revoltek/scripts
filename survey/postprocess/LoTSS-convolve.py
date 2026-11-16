@@ -7,11 +7,12 @@ from astropy.wcs import WCS
 from astropy.convolution import Gaussian2DKernel, convolve_fft
 from reproject import reproject_interp
 import numpy as np
+import lolss_config as cfg
 
 dir_mosaics_lotss = "/homes/fdg/storage/catalogues/LoTSS-DR3/healpix/"
 dir_mosaics_lotss_out = "/homes/fdg/storage/catalogues/LoTSS-DR3/healpix_convolved/"
 os.makedirs(dir_mosaics_lotss_out, exist_ok=True)
-dir_mosaics_lolss = "/homes/fdg/storage/surveytgts/mosaics/healpix/"
+dir_mosaics_lolss = cfg.DIR_MOSAICS
 
 infiles = sorted(glob.glob(dir_mosaics_lotss + '*.fits'))
 
@@ -28,7 +29,7 @@ for infile in infiles:
     # calculate kernel size for convolution to 15" resolution
     pixscale = np.abs(header['CDELT2'] * 3600)  # arcsec/pixel
     fwhm_current = header['BMAJ'] * 3600  # arcsec
-    fwhm_target = 15.0  # arcsec
+    fwhm_target = float(cfg.RESOLUTION)  # arcsec
     if fwhm_current >= fwhm_target:
         print('Already at or above target resolution, skipping convolution')
         continue

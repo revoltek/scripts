@@ -27,6 +27,7 @@ from astropy.wcs import FITSFixedWarning
 from scipy.ndimage import map_coordinates
 
 from LiLF.surveys_db import SurveysDB
+import lolss_config as cfg
 
 warnings.filterwarnings('ignore', category=FITSFixedWarning)
 
@@ -76,24 +77,24 @@ def main():
         help='Primary beam FITS files (glob patterns are expanded automatically)',
     )
     parser.add_argument(
-        '--threshold', type=float, default=0.4,
-        help='Minimum beam value for a pixel to be considered covered (default: 0.4)',
+        '--threshold', type=float, default=cfg.BEAM_THRESHOLD,
+        help='Minimum beam value for a pixel to be considered covered (default: %(default)s)',
     )
     parser.add_argument(
         '--search_radius', type=float, default=10.0,
         help='Search radius around pointing centre [deg] (default: 10.0)',
     )
     parser.add_argument(
-        '--nside_fine', type=int, default=128,
-        help='Fine HEALPix nside for per-pixel coverage map (default: 128)',
+        '--nside_fine', type=int, default=cfg.HEALPIX_NSIDE_FINE,
+        help='Fine HEALPix nside for per-pixel coverage map (default: %(default)s)',
     )
     parser.add_argument(
-        '--nside_coarse', type=int, default=16,
-        help='Coarse HEALPix nside for output pointing sets (default: 16)',
+        '--nside_coarse', type=int, default=cfg.HEALPIX_NSIDE,
+        help='Coarse HEALPix nside for output pointing sets (default: %(default)s)',
     )
     parser.add_argument(
-        '--output', default='/homes/fdg/storage/surveytgts/analysis/pointing_sets.txt',
-        help='Output text file (default: /homes/fdg/storage/surveytgts/analysis/pointing_sets.txt)',
+        '--output', default=cfg.FILE_POINTING_SETS,
+        help='Output text file (default: %(default)s)',
     )
     parser.add_argument(
         '--save_dict', default=None,

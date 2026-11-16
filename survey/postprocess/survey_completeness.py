@@ -10,6 +10,7 @@ import os, sys, subprocess
 from astropy import wcs
 import numpy as np
 import bdsf as bdsm
+import lolss_config as cfg
 import argparse
 import numexpr as ne
 import re
@@ -237,9 +238,9 @@ for c in range(0,args.iter):
         fake_dir = os.path.dirname(os.path.abspath(fakefile))
         rmsmap_rel  = os.path.relpath(os.path.abspath(args.rmsmap),  fake_dir)
         meanmap_rel = os.path.relpath(os.path.abspath(args.meanmap), fake_dir)
-        img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq, rmsmean_map_filename=[meanmap_rel,rmsmap_rel])
+        img=bdsm.process_image(fakefile, **cfg.bdsf_kwargs(frequency=restfrq, rmsmean_map_filename=[meanmap_rel,rmsmap_rel]))
     else:
-        img=bdsm.process_image(fakefile, thresh_isl=4.0, thresh_pix=5.0, rms_box=(150,15), rms_map=True, mean_map='zero', ini_method='intensity', adaptive_rms_box=True, adaptive_thresh=50, rms_box_bright=(60,15), group_by_isl=False, group_tol=10.0,output_opts=True, output_all=True, atrous_do=False,atrous_jmax=4, flagging_opts=True, flag_maxsize_fwhm=0.5,advanced_opts=True, blank_limit=None,frequency=restfrq)
+        img=bdsm.process_image(fakefile, **cfg.bdsf_kwargs(frequency=restfrq))
 
     found=[]
         

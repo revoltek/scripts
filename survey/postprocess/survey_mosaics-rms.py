@@ -8,6 +8,7 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy_healpix import HEALPix
+import lolss_config as cfg
 
 warnings.filterwarnings('ignore', category=FITSFixedWarning)
 
@@ -19,7 +20,7 @@ parser.add_argument('-j', '--njobs', dest='njobs', type=int, default=12,
                     help='Number of parallel mProject processes (default: 12)')
 args = parser.parse_args()
 
-os.chdir(os.path.expanduser('~/storage/surveytgts/'))
+os.chdir(cfg.DIR_SURVEY)
 
 dir_raw     = 'catalogues'  # input: *.rms.fits from survey_make_catalogues.py
 dir_proj    = 'mosaics-rms/projected'
@@ -27,7 +28,7 @@ dir_blank   = 'mosaics-rms/blanked'
 hdr_final   = 'mosaics-rms/mosaic-rms.hdr'
 tbl_proj    = 'mosaics-rms/mosaic-rms.tbl'
 fits_output = 'mosaics-rms/mosaic-rms.fits'
-healpix_nside = 16
+healpix_nside = cfg.HEALPIX_NSIDE
 hp_grid = HEALPix(nside=healpix_nside, order='ring', frame='icrs')
 
 if not os.path.exists(dir_raw):
