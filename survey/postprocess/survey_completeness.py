@@ -1,8 +1,13 @@
 #!/usr/bin/env python
-# ~/scripts/survey/survey_completness.py $file -m 1e-3 --logfile=$file-injection.txt -i 20 -n 1500 -I -1.6
-
-# to run on several pointings, collect the residual_gaus from mosaic-i and rms+mean in the same dir and run
-# use --batch to auto-discover *resid_gaus*fits files and process them all
+# Inject fake point sources in a residual mosaic and check which ones PyBDSF recovers.
+#
+# single mosaic:
+#   survey_completeness.py HPxxxx-mosaicI.fits -o HPxxxx-mosaicI.injection.txt -r HPxxxx-mosaicI.rms.fits -e HPxxxx-mosaicI.mean.fits
+# all the residual mosaics in a directory (rms and mean maps are taken from the catalogue directory):
+#   survey_completeness.py --batch ~/storage/surveytgts/mosaics/healpix-res/ -r ~/storage/surveytgts/catalogues/ -e ~/storage/surveytgts/catalogues/
+#
+# -i is the total number of cycles wanted: a run on an existing output file adds only the
+# missing cycles. The results are analysed by survey_completeness_analysis.py
 
 
 from astropy.io import fits
@@ -14,36 +19,6 @@ import argparse
 import numexpr as ne
 import re
 
-import collections
-import functools
-
-class memoized(object):
-   '''Decorator. Caches a function's return value each time it is called.
-   If called later with the same arguments, the cached value is returned
-   (not reevaluated).
-   '''
-   def __init__(self, func):
-      self.func = func
-      self.cache = {}
-   def __call__(self, *args):
-      if not isinstance(args, collections.abc.Hashable):
-         # uncacheable. a list, for instance.
-         # better to not cache than blow up.
-         return self.func(*args)
-      if args in self.cache:
-         return self.cache[args]
-      else:
-         value = self.func(*args)
-         self.cache[args] = value
-         return value
-   def __repr__(self):
-      '''Return the function's docstring.'''
-      return self.func.__doc__
-   def __get__(self, obj, objtype):
-      '''Support instance methods.'''
-      return functools.partial(self.__call__, obj)
-
-@memoized
 def gaussian(xsize,ysize,x0,y0,sx,sy,pa):
     X,Y = np.meshgrid(np.arange(0,xsize,1.0), np.arange(0,ysize,1.0))
     pa*=np.pi/180.0
@@ -56,14 +31,8 @@ def gaussian(xsize,ysize,x0,y0,sx,sy,pa):
 def restore_gaussian(image,norm,x,y,bmaj,bmin,bpa,guard,verbose=False):
     # deal with real image co-ords
     yd,xd=np.shape(image)
-    if x is int:
-        xp=x
-        x=x+0.5
-        yp=y
-        y=y+0.5
-    else:
-        xp=int(np.trunc(x))
-        yp=int(np.trunc(y))
+    xp=int(np.trunc(x))
+    yp=int(np.trunc(y))
     if verbose:
        print(x,y,xp,yp,norm)
     if xp<0 or yp<0 or xp>xd-1 or yp>yd-1:
@@ -95,16 +64,25 @@ parser.add_argument('file', metavar='FILE', nargs='*',
                    help='Root name of file to process (a residual image)')
 parser.add_argument('-b','--batch',dest='batch',action='store',
                     default=None, metavar='DIR',
-                    help='Auto-discover *mosaicI.fits files in DIR and process each one')
+                    help='Auto-discover *mosaicI.fits files in DIR and process each one; -r and -e must then be the directories with the rms and mean maps')
 parser.add_argument('-p','--plot',dest='plot',action='store_const',
                     const=True,default=False,
                     help='Produce diagnostic plots')
 parser.add_argument('-i','--iterations',dest='iter',action='store',
-                    type=int, default=1,
-                    help='Number of iterations to go through')
+                    type=int, default=5,
+                    help='Total number of iterations wanted; the ones already in the output file are not repeated (default: 5)')
 parser.add_argument('-t','--tolerance',dest='toler',action='store',
-                    type=float, default=15.0,
-                    help='Tolerance for source matches in pixels')
+                    type=float, default=None,
+                    help='Tolerance for source matches in pixels (default: use --tolerance-beam)')
+parser.add_argument('-T','--tolerance-beam',dest='toler_beam',action='store',
+                    type=float, default=1.0,
+                    help='Tolerance for source matches in units of the beam FWHM (default: 1)')
+parser.add_argument('--redo',dest='redo',action='store_const',
+                    const=True,default=False,
+                    help='Start from scratch even if the output file exists')
+parser.add_argument('--seed',dest='seed',action='store',
+                    type=int, default=None,
+                    help='Seed of the random number generator (default: not set)')
 parser.add_argument('-n','--number',dest='number',action='store',
                     type=int, default=200,
                     help='Number of fake sources to add')
@@ -135,8 +113,10 @@ if args.batch:
     import glob as _glob
     residuals = sorted(_glob.glob(os.path.join(args.batch, '*mosaicI.fits')))
     if not residuals:
-        print('No *mosaicI.fits files found in current directory.')
+        print('No *mosaicI.fits files found in %s.' % args.batch)
         sys.exit(1)
+    if args.rmsmap is None or args.meanmap is None:
+        parser.error('--batch requires -r and -e (directories with the rms and mean maps)')
     for residual in residuals:
         print('Batch: working on %s' % residual)
         basename = os.path.basename(residual).replace('.fits', '')
@@ -146,10 +126,16 @@ if args.batch:
         cmd = [sys.argv[0], residual,
                '-m', str(args.min), '-M', str(args.max),
                '-i', str(args.iter), '-n', str(args.number),
-               '-I', str(args.index), '-t', str(args.toler),
+               '-I', str(args.index), '-T', str(args.toler_beam),
                '-o', outfile, '-r', rms, '-e', mean]
+        if args.toler is not None:
+            cmd += ['-t', str(args.toler)]
         if args.smear:
             cmd += ['-s', str(args.smear)]
+        if args.redo:
+            cmd += ['--redo']
+        if args.seed is not None:
+            cmd += ['--seed', str(args.seed)]
         print('Running command: %s' % ' '.join(cmd))
         subprocess.run(cmd, check=True)
     sys.exit(0)
@@ -164,14 +150,42 @@ fakefile=re.sub('.fits','.fake.fits',fitsfile)
 if (args.plot):
     import matplotlib.pyplot as plt
 
+if args.seed is not None:
+    np.random.seed(args.seed)
+
+# matching tolerance in pixels, from the beam unless given explicitly
+with fits.open(fitsfile) as fp:
+    fwhm_pix=fp[0].header['BMAJ']/abs(fp[0].header['CDELT2'])
+toler=args.toler if args.toler is not None else args.toler_beam*fwhm_pix
+print('Matching tolerance: %.2f pixels (beam FWHM: %.2f pixels)' % (toler, fwhm_pix))
+
+# the first line of the output file records how the matches were made; cycles are
+# appended to an existing file only if it was made in the same way
+tag='# tolerance_pix=%.3f min=%g max=%g index=%g number=%i smear=%g' % (toler, args.min, args.max, args.index, args.number, args.smear)
+first_cycle=0
 if args.outfile:
     print('Logging to file', args.outfile)
-    outfile = open(args.outfile, 'w')
+    if os.path.exists(args.outfile) and not args.redo:
+        with open(args.outfile) as old:
+            lines=old.read().splitlines()
+        if not lines or lines[0]!=tag:
+            print('ERROR: %s was made with different parameters (or by an older version of this script); use --redo to overwrite it.' % args.outfile)
+            sys.exit(1)
+        first_cycle=1+max([int(l.split()[0]) for l in lines[2:]], default=-1)
+        if first_cycle>=args.iter:
+            print('%s already has %i cycles, nothing to do.' % (args.outfile, first_cycle))
+            sys.exit(0)
+        print('%s already has %i cycles, adding %i.' % (args.outfile, first_cycle, args.iter-first_cycle))
+        outfile = open(args.outfile, 'a')
+    else:
+        outfile = open(args.outfile, 'w')
+        outfile.write(tag+'\n')
+        outfile.write('cycle idx ra dec fv rfv efv\n')
 
 pnorm=args.min**args.index-args.max**args.index
 sms=args.min**args.index
 
-for c in range(0,args.iter):
+for c in range(first_cycle,args.iter):
 
     print('Doing iteration #',c)
     fp=fits.open(fitsfile)
@@ -250,7 +264,7 @@ for c in range(0,args.iter):
         d=np.sqrt((xp-x)**2.0+(yp-y)**2.0)
         i=np.argmin(d)
         fd=abs(fv[i]-s.total_flux)/s.total_fluxE
-        if (d[i]<args.toler) and (fd<10):
+        if (d[i]<toler) and (fd<10):
             rfv[i]=s.total_flux
             efv[i]=s.total_fluxE
             print(x,y,s.total_flux,i,d[i],fv[i])
@@ -272,9 +286,9 @@ for c in range(0,args.iter):
         plt.show()
 
     if args.outfile:
-        if c == 0: outfile.write('cycle idx ra dec fv rfv efv\n')
         for i in range(sources):
-            outfile.write('%i %i %g %g %g %g %g\n' % (c,i, ras[i], decs[i], fv[i], rfv[i], efv[i]))
+            outfile.write('%i %i %.6f %.6f %g %g %g\n' % (c,i, ras[i], decs[i], fv[i], rfv[i], efv[i]))
+        outfile.flush() # a completed cycle is safe even if a later one is interrupted
 
 if args.outfile:
     outfile.close()
