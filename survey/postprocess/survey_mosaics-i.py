@@ -5,8 +5,13 @@
 # correction. An empty FITS template is created first to define the output WCS
 # and pixel grid; mosaics that are already complete (all pointings recorded in
 # the FITS HISTORY header) are skipped.
+#
+# The template and the partial output live in <dir-mosaics>/tmp/ and the mosaic
+# is moved to its final name only if mosaic.py exits successfully. A final
+# HPxxxx-mosaicI.fits therefore always is a complete mosaic, and its HISTORY
+# lists exactly the pointings that went into it.
 
-import os, logging, argparse
+import os, sys, logging, argparse
 from astropy.io import fits
 from astropy import units as u
 from astropy_healpix import HEALPix
@@ -27,6 +32,7 @@ parser.add_argument('--only-pointing',      default=None, type=int, nargs='+', m
 parser.add_argument('--cellsize',           default=4, type=int,                                                 help='Output pixel size in arcsec (default: 4)')
 parser.add_argument('--resolution',         default=15, type=int,                                                help='Output beam FWHM in arcsec (default: 15)')
 parser.add_argument('--sbatch',             action='store_true',                                                 help='Submit mosaic jobs via sbatch instead of running locally')
+parser.add_argument('--retry',              action='store_true',                                                 help='With --sbatch: resubmit also the mosaics whose previous job never finished (killed or still running)')
 args = parser.parse_args()
 
 dir_mosaics        = args.dir_mosaics
@@ -58,15 +64,36 @@ class Pointing():
         self.output_file = dir_mosaics+f'HP{healpix:04d}'+'-mosaicI.fits'
         self.log = dir_mosaics+'logs/'+f'HP{healpix:04d}'+'-mosaicI.log'
         self.batch_script = dir_mosaics+'batch/'+f'HP{healpix:04d}'+'-mosaicI.sh'
+        # work files: never in dir_mosaics itself, so that every *.fits there is a finished mosaic
+        self.template_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}'+'-mosaicI.template.fits'
+        self.partial_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}'+'-mosaicI.partial.fits'
+        self.failed_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}'+'-mosaicI.failed'
+
+    def missing_inputs(self):
+        """Return the list of input images/beams that are not on disk."""
+        return [f for f in self.pointing_files + self.beam_files if not os.path.exists(f)]
+
+    def is_pending(self):
+        """True if a previous sbatch job was submitted and neither finished nor reported a failure."""
+        return os.path.exists(self.template_file) and not os.path.exists(self.failed_file)
 
     def mosaic(self):
+        """
+        Run (or submit) mosaic.py. The output is written to a partial file and renamed to the
+        final mosaic only if mosaic.py succeeds.
+        Returns True if the mosaic was made (local run) or submitted (sbatch), False on failure.
+        """
         os.makedirs(os.path.dirname(self.log), exist_ok=True)
-        cmd = 'mosaic.py --images %s --beams %s --beamcorr --beamcut 0.4 --find_noise --header %s --output %s > %s 2>&1' % \
-                (' '.join(self.pointing_files), ' '.join(self.beam_files), self.output_file, self.output_file, self.log)
-        logger.info(cmd)
+        for _stale in (self.partial_file, self.failed_file):
+            if os.path.exists(_stale):
+                os.remove(_stale)
+        cmd = 'mosaic.py --images %s --beams %s --beamcorr --beamcut 0.4 --find_noise --header %s --output %s' % \
+                (' '.join(self.pointing_files), ' '.join(self.beam_files), self.template_file, self.partial_file)
+        finalize = f'mv {self.partial_file} {self.output_file} && rm -f {self.template_file}'
         if use_sbatch:
             os.makedirs(os.path.dirname(self.batch_script), exist_ok=True)
             cmd = singularity_cmd + ' ' + cmd.replace('mosaic.py', '/homes/fdg/storage/scripts/mosaic.py')
+            logger.info(cmd)
             with open(self.batch_script, 'w') as _f:
                 _f.write('#!/bin/bash\n')
                 _f.write(f'#SBATCH --nodes=1\n')
@@ -75,10 +102,29 @@ class Pointing():
                 _f.write(f'#SBATCH --ntasks-per-node=1\n')
                 _f.write(f'#SBATCH --cpus-per-task=36\n')
                 _f.write(f'#SBATCH --time=240:00:00\n')
-                _f.write(f'\n{cmd}\n')
-            os.system(f'sbatch {self.batch_script}')
+                _f.write(f'\nif {cmd} > {self.log} 2>&1; then\n')
+                _f.write(f'    {finalize}\n')
+                _f.write(f'else\n')
+                _f.write(f'    rm -f {self.partial_file}\n')
+                _f.write(f'    touch {self.failed_file}\n')
+                _f.write(f'    exit 1\n')
+                _f.write(f'fi\n')
+            if os.system(f'sbatch {self.batch_script}') != 0:
+                logger.error(f'sbatch submission failed for {self.batch_script}')
+                os.remove(self.template_file)
+                return False
+            return True
         else:
-            os.system(cmd)
+            logger.info(cmd)
+            if os.system(f'{cmd} > {self.log} 2>&1') != 0:
+                logger.error(f'mosaic.py failed for HP{self.healpix:04d}, see {self.log}')
+                if os.path.exists(self.partial_file):
+                    os.remove(self.partial_file)
+                return False
+            if os.system(finalize) != 0:
+                logger.error(f'Cannot move {self.partial_file} to {self.output_file}')
+                return False
+            return True
 
     def make_empty_mosaic(self):
         centre = hp.healpix_to_skycoord(self.healpix)
@@ -89,7 +135,7 @@ class Pointing():
         maxdist=np.max(np.abs([dra,ddec]))
         size = maxdist*1.15
         himsize = int(size/(CELLSIZE / 3600.0))
-        logger.info(f'Creating empty mosaic for {self.output_file} - size: {2*size:.2f} deg, himsize: {2*himsize} pixels')
+        logger.info(f'Creating empty template for {self.output_file} - size: {2*size:.2f} deg, himsize: {2*himsize} pixels')
 
         header=fits.Header()
         header['SIMPLE']=True
@@ -126,7 +172,8 @@ class Pointing():
         for p in self.pointings_name_nearby:
             header['HISTORY'] = 'POINTING ADDED: ' + p
         data = np.zeros((2*himsize,2*himsize), dtype=np.float32)
-        fits.writeto(self.output_file, header=header, data=data, overwrite=True)
+        os.makedirs(os.path.dirname(self.template_file), exist_ok=True)
+        fits.writeto(self.template_file, header=header, data=data, overwrite=True)
 
     def check_todo(self):
         if not os.path.exists(self.output_file):
@@ -134,10 +181,16 @@ class Pointing():
         # check if the mosaic is complete by looking at the header
         with fits.open(self.output_file) as _f:
             _hdr = _f[0].header
-        for p in self.pointings_name_nearby:
-            if 'POINTING ADDED: ' + p not in _hdr['HISTORY']:
-                logger.info(f'Pointing {p} not found in HISTORY of {self.output_file}, needs to be remade')
-                return True
+        _prefix = 'POINTING ADDED: '
+        _in_mosaic = {str(_h)[len(_prefix):] for _h in _hdr.get('HISTORY', []) if str(_h).startswith(_prefix)}
+        _missing = sorted(set(self.pointings_name_nearby) - _in_mosaic)
+        _extra = sorted(_in_mosaic - set(self.pointings_name_nearby))
+        if _missing:
+            logger.info(f'Pointing(s) {_missing} not found in HISTORY of {self.output_file}, needs to be remade')
+            return True
+        if _extra:
+            logger.info(f'Pointing(s) {_extra} in HISTORY of {self.output_file} are not in the pointing set anymore, needs to be remade')
+            return True
         return False
 
 # build grouped_pointings dict from pointing_sets.txt
@@ -153,6 +206,7 @@ with open(pointing_sets_file) as _f:
 logger.info(f'Loaded {len(grouped_pointings)} coarse HEALPix pixels from {pointing_sets_file}')
 
 # list of pointings to mosaic
+failed = []
 for healpix, close_pointings in grouped_pointings.items():
     # skip if not in the list of pointings to mosaic
     if only_this_pointing is not None and healpix not in only_this_pointing: 
@@ -162,10 +216,21 @@ for healpix, close_pointings in grouped_pointings.items():
     p = Pointing(healpix, close_pointings)
     if p.check_todo():
         logger.info('Pointing: %s %s', healpix, close_pointings)
-        coord = hp.healpix_to_skycoord(healpix)
-        ra = coord.ra.deg
-        dec = coord.dec.deg
+        _missing_inputs = p.missing_inputs()
+        if _missing_inputs:
+            logger.error(f'HP{healpix:04d}: missing input file(s), not mosaicing: {_missing_inputs}')
+            failed.append(healpix)
+            continue
+        if use_sbatch and p.is_pending() and not args.retry:
+            logger.warning(f'HP{healpix:04d}: a previous job has not finished (found {p.template_file}); '
+                           'skipping, use --retry to resubmit')
+            continue
         p.make_empty_mosaic()
-        p.mosaic()
+        if not p.mosaic():
+            failed.append(healpix)
     else:
         logger.info(f'Skipping pointing {healpix} (already complete)')
+
+if failed:
+    logger.error(f'{len(failed)} mosaic(s) failed: ' + ' '.join(f'HP{h:04d}' for h in failed))
+    sys.exit(1)
