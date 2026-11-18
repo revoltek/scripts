@@ -10,7 +10,7 @@ LoLSS sources that are isolated, single-Gaussian, smaller than 30" and matched
 to an unresolved LoTSS source. It is fitted with
     R = A + B / (1 + (SNR/C)**D)
 and the coefficients are written to compactness_fit.json, which is read by
-survey_astrometry.py and survey_spidx_crossmatch.py.
+survey_spidx_crossmatch.py.
 
 Outputs (in --outdir): compactness_fit.json, inttopeak.png
 """

@@ -8,16 +8,30 @@
 #
 # The template and the partial output live in <dir-mosaics>/tmp/ and the mosaic
 # is moved to its final name only if mosaic.py exits successfully. A final
-# HPxxxx-mosaicI.fits therefore always is a complete mosaic, and its HISTORY
+# HPxxxx-<suffix>.fits therefore always is a complete mosaic, and its HISTORY
 # lists exactly the pointings that went into it.
+#
+# The images are not given to mosaic.py directly: first they are copied into
+# <dir-tmp>/HPxxxx-<suffix>/, and the copies are corrected with the results of
+# survey_astrometry.py (astrometry_pointings.fits):
+#   1. CRVAL1/CRVAL2 are shifted by the global offset of the pointing (dCRVAL1/2),
+#      unless the offset is not reliable (pointing flagged FEW or SCATTER);
+#   2. the facets flagged with --blank-flags (default: OFFSET|SCATTER) are set to nan;
+#   3. the pointings flagged SCATTER (facets shifted in different directions) are not used
+#      at all, unless --keep-scatter.
+# The images in dir-done are only read. A pointing that needs no correction is
+# symlinked instead of copied. The work directory is removed when mosaic.py ends.
 
-import os, sys, logging, argparse
+import os, sys, shutil, logging, argparse
 from concurrent.futures import ThreadPoolExecutor
 from astropy.io import fits
+from astropy.table import Table
+from astropy.wcs import WCS
 from astropy import units as u
 from astropy_healpix import HEALPix
 import numpy as np
 import lolss_config as cfg
+from survey_astrometry import read_facets, FLAG_FEW, FLAG_OFFSET, FLAG_SCATTER, PFLAG_BAD, PFLAG_SCATTER
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
@@ -30,10 +44,18 @@ parser.add_argument('--file-beam',          default=cfg.FILE_BEAM,              
 parser.add_argument('--pointing-sets-file', default=cfg.FILE_POINTING_SETS, help='File mapping HEALPix pixels to pointing names')
 parser.add_argument('--only-pointing',      default=None, type=int, nargs='+', metavar='HP',                    help='Only mosaic these HEALPix pixel IDs (default: all)')
 parser.add_argument('--cellsize',           default=4, type=int,                                                 help='Output pixel size in arcsec (default: 4)')
+parser.add_argument('--suffix',             default='mosaicI',                                                   help='Suffix of the output names: HPxxxx-<suffix>.fits (default: mosaicI)')
 parser.add_argument('--resolution',         default=15, type=int,                                                help='Output beam FWHM in arcsec (default: 15)')
 parser.add_argument('--sbatch',             action='store_true',                                                 help='Submit mosaic jobs via sbatch instead of running locally')
 parser.add_argument('-j', '--njobs',        default=1, type=int,                                                 help='Number of mosaics to make at the same time when running locally (default: 1)')
 parser.add_argument('--retry',              action='store_true',                                                 help='With --sbatch: resubmit also the mosaics whose previous job never finished (killed or still running)')
+parser.add_argument('--dir-tmp',            default=None,                                                        help='Where the corrected copies of the images are made (default: <dir-mosaics>/tmp/)')
+parser.add_argument('--astrometry',         default=cfg.DIR_ANALYSIS+'astrometry/astrometry_pointings.fits',     help='Output of survey_astrometry.py (default: %(default)s)')
+parser.add_argument('--no-astrometry',      action='store_true',                                                 help='Do not correct the astrometry nor blank facets')
+parser.add_argument('--no-shift',           action='store_true',                                                 help='Do not shift the pointings (facets are still blanked)')
+parser.add_argument('--blank-flags',        default=FLAG_OFFSET|FLAG_SCATTER, type=int,                          help='Blank the facets with any of these flag bits (2 OFFSET, 4 SCATTER; 0: none; default: %(default)s)')
+parser.add_argument('--keep-scatter',       action='store_true',                                                 help='Use also the pointings flagged SCATTER by survey_astrometry.py (default: leave them out)')
+parser.add_argument('--file-facets',        default='facetsS-c0.reg',                                            help='Facet regions within each pointing directory (default: %(default)s)')
 args = parser.parse_args()
 
 dir_mosaics        = args.dir_mosaics
@@ -45,6 +67,78 @@ only_this_pointing = args.only_pointing
 CELLSIZE           = args.cellsize
 RESOLUTION         = args.resolution
 use_sbatch         = args.sbatch
+dir_tmp            = args.dir_tmp if args.dir_tmp else dir_mosaics+'tmp/'
+
+
+class Astrometry():
+    """Corrections of each pointing from astrometry_pointings.fits."""
+
+    def __init__(self, path, blank_flags, shift=True, exclude_scatter=True):
+        self.path = os.path.abspath(path)
+        self.settings = f'shift={"yes" if shift else "no"} blank_flags={blank_flags} exclude_scatter={"yes" if exclude_scatter else "no"}'
+        with fits.open(path) as _h:
+            ptab = Table(_h['POINTINGS'].data)
+            ftab = Table(_h['FACETS'].data)
+        # global shift (deg, to add to CRVAL1/2); none if the offset is not reliable
+        self.shift = {}
+        for r in ptab:
+            if shift and not r["Flag"] & PFLAG_BAD:
+                self.shift[str(r['Pointing']).strip()] = (float(r['dCRVAL1']), float(r['dCRVAL2']))
+        self.known = {str(p).strip() for p in ptab['Pointing']}
+        # pointings left out of the mosaics
+        self.excluded = {str(r['Pointing']).strip() for r in ptab if r['Flag'] & PFLAG_SCATTER} if exclude_scatter else set()
+        # facets to blank: {pointing: [(index in the region file, name, flag)]}
+        self.bad = {}
+        if blank_flags:
+            sel = (ftab['Facet'] >= 0) & ((ftab['Flag'] & blank_flags) != 0) & ((ftab['Flag'] & FLAG_FEW) == 0)
+            for r in ftab[sel]:
+                self.bad.setdefault(str(r['Pointing']).strip(), []).append((int(r['Facet']), str(r['Name']).strip(), int(r['Flag'])))
+        logger.info(f'Astrometry from {self.path}: {len(self.known)} pointings, {len(self.excluded)} excluded, {len(self.shift)} shifted, '
+                    f'{sum(len(v) for v in self.bad.values())} facets to blank in {len(self.bad)} pointings')
+
+    def history(self):
+        """Line written in the HISTORY of the mosaics, to know which correction they have."""
+        return f'ASTROMETRY: {self.path} {self.settings}'
+
+    def needs_copy(self, pointing):
+        return pointing in self.shift or pointing in self.bad
+
+    def correct(self, pointing, src, dst, regfile):
+        """Write in dst the image src with the shift and the blanked facets of pointing."""
+        with fits.open(src, memmap=False) as _h:
+            hdr = _h[0].header
+            data = _h[0].data
+        if pointing in self.bad:
+            # facet polygons in pixels of the original (not shifted) image
+            facets = read_facets(regfile, WCS(hdr).celestial)
+            ny, nx = data.shape[-2:]
+            for idx, name, flag in self.bad[pointing]:
+                if idx >= len(facets) or facets[idx][0] != name:
+                    raise RuntimeError(f'{pointing}: facet {idx} {name} of {self.path} not found in {regfile}')
+                path = facets[idx][1]
+                x0, y0 = np.floor(path.vertices.min(axis=0)).astype(int)
+                x1, y1 = np.ceil(path.vertices.max(axis=0)).astype(int)
+                x0, y0, x1, y1 = max(x0, 0), max(y0, 0), min(x1+1, nx), min(y1+1, ny)
+                if x0 >= x1 or y0 >= y1: continue
+                yy, xx = np.mgrid[y0:y1, x0:x1]
+                inside = path.contains_points(np.column_stack([xx.ravel(), yy.ravel()])).reshape(xx.shape)
+                data[..., y0:y1, x0:x1][..., inside] = np.nan
+                hdr['HISTORY'] = f'Facet {name} (flag {flag}) blanked by survey_mosaics-i.py'
+                logger.debug(f'{pointing}: blanked facet {name} ({inside.sum()} pixels)')
+        if pointing in self.shift:
+            dcrval1, dcrval2 = self.shift[pointing]
+            hdr['CRVAL1'] += dcrval1
+            hdr['CRVAL2'] += dcrval2
+            hdr['HISTORY'] = f'Shifted by dRA {dcrval1*3600*np.cos(np.radians(hdr["CRVAL2"])):.2f}" dDEC {dcrval2*3600:.2f}" by survey_mosaics-i.py'
+        fits.writeto(dst, data=data, header=hdr, overwrite=True)
+
+
+astrometry = None
+if not args.no_astrometry:
+    if not os.path.exists(args.astrometry):
+        logger.error(f'{args.astrometry} not found: run survey_astrometry.py, or use --no-astrometry')
+        sys.exit(1)
+    astrometry = Astrometry(args.astrometry, args.blank_flags, shift=not args.no_shift, exclude_scatter=not args.keep_scatter)
 
 hp = HEALPix(nside=cfg.HEALPIX_NSIDE, frame='icrs')
 logger.info(f'Total HEALPix pixels on sky: {hp.npix}')
@@ -52,7 +146,7 @@ area = hp.pixel_area.to(u.deg**2).value
 logger.info(f'Area of one HEALPix pixel: {area:.4f} sq. deg')
 
 singularity_img = '/homes/fdg/storage/pill-20250605.simg'
-singularity_cmd = 'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/groups/ulu/fdg '+singularity_img
+singularity_cmd = r'singularity exec --cleanenv --pwd /local/work/fdg --env PYTHONPATH=\$PYTHONPATH:/homes/fdg/storage/LiLF/:/homes/fdg/storage/scripts/,PATH=\$PATH:/homes/fdg/storage/LiLF/scripts/ --pid --writable-tmpfs -B/homes/fdg,/local/work/fdg,/iranet/groups/ulu/fdg '+singularity_img
 
 class Pointing():
 
@@ -61,17 +155,40 @@ class Pointing():
         self.pointings_name_nearby = pointings_name_nearby
         self.pointing_files = [dir_done+p+'/'+file_MFS_i for p in pointings_name_nearby]
         self.beam_files = [dir_done+p+'/'+file_beam for p in pointings_name_nearby]
-        self.output_file = dir_mosaics+f'HP{healpix:04d}'+'-mosaicI.fits'
-        self.log = dir_mosaics+'logs/'+f'HP{healpix:04d}'+'-mosaicI.log'
-        self.batch_script = dir_mosaics+'batch/'+f'HP{healpix:04d}'+'-mosaicI.sh'
+        self.output_file = dir_mosaics+f'HP{healpix:04d}-{args.suffix}.fits'
+        self.log = dir_mosaics+'logs/'+f'HP{healpix:04d}-{args.suffix}.log'
+        self.batch_script = dir_mosaics+'batch/'+f'HP{healpix:04d}-{args.suffix}.sh'
         # work files: never in dir_mosaics itself, so that every *.fits there is a finished mosaic
-        self.template_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}'+'-mosaicI.template.fits'
-        self.partial_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}'+'-mosaicI.partial.fits'
-        self.failed_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}'+'-mosaicI.failed'
+        self.template_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}-{args.suffix}.template.fits'
+        self.partial_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}-{args.suffix}.partial.fits'
+        self.failed_file = dir_mosaics+'tmp/'+f'HP{healpix:04d}-{args.suffix}.failed'
+        # corrected copies of the images, given to mosaic.py
+        self.work_dir = dir_tmp+f'HP{healpix:04d}-{args.suffix}/'
+        self.work_files = [self.work_dir+p+'-'+file_MFS_i for p in pointings_name_nearby]
+        self.facet_files = [dir_done+p+'/'+args.file_facets for p in pointings_name_nearby]
 
     def missing_inputs(self):
-        """Return the list of input images/beams that are not on disk."""
-        return [f for f in self.pointing_files + self.beam_files if not os.path.exists(f)]
+        """Return the list of input images/beams (and needed facet files) that are not on disk."""
+        files = self.pointing_files + self.beam_files
+        if astrometry is not None:
+            files += [f for p, f in zip(self.pointings_name_nearby, self.facet_files) if p in astrometry.bad]
+        return [f for f in files if not os.path.exists(f)]
+
+    def prepare_inputs(self):
+        """Copy (with the astrometric corrections) or link the images in the work directory."""
+        if os.path.exists(self.work_dir):
+            shutil.rmtree(self.work_dir)
+        os.makedirs(self.work_dir)
+        for p, src, dst, reg in zip(self.pointings_name_nearby, self.pointing_files, self.work_files, self.facet_files):
+            if astrometry is not None and p not in astrometry.known:
+                logger.warning(f'HP{self.healpix:04d}: {p} not in {astrometry.path}, used without corrections')
+            if astrometry is not None and astrometry.needs_copy(p):
+                astrometry.correct(p, src, dst, reg)
+            else:
+                os.symlink(os.path.abspath(src), dst)
+
+    def clean(self):
+        shutil.rmtree(self.work_dir, ignore_errors=True)
 
     def is_pending(self):
         """True if a previous sbatch job was submitted and neither finished nor reported a failure."""
@@ -88,7 +205,7 @@ class Pointing():
             if os.path.exists(_stale):
                 os.remove(_stale)
         cmd = 'mosaic.py --images %s --beams %s --beamcorr --beamcut %s --find_noise --header %s --output %s' % \
-                (' '.join(self.pointing_files), ' '.join(self.beam_files), cfg.BEAM_THRESHOLD, self.template_file, self.partial_file)
+                (' '.join(self.work_files), ' '.join(self.beam_files), cfg.BEAM_THRESHOLD, self.template_file, self.partial_file)
         finalize = f'mv {self.partial_file} {self.output_file} && rm -f {self.template_file}'
         if use_sbatch:
             os.makedirs(os.path.dirname(self.batch_script), exist_ok=True)
@@ -103,8 +220,10 @@ class Pointing():
                 _f.write(f'#SBATCH --cpus-per-task=36\n')
                 _f.write(f'#SBATCH --time=240:00:00\n')
                 _f.write(f'\nif {cmd} > {self.log} 2>&1; then\n')
+                _f.write(f'    rm -rf {self.work_dir}\n')
                 _f.write(f'    {finalize}\n')
                 _f.write(f'else\n')
+                _f.write(f'    rm -rf {self.work_dir}\n')
                 _f.write(f'    rm -f {self.partial_file}\n')
                 _f.write(f'    touch {self.failed_file}\n')
                 _f.write(f'    exit 1\n')
@@ -112,11 +231,14 @@ class Pointing():
             if os.system(f'sbatch {self.batch_script}') != 0:
                 logger.error(f'sbatch submission failed for {self.batch_script}')
                 os.remove(self.template_file)
+                self.clean()
                 return False
             return True
         else:
             logger.info(cmd)
-            if os.system(f'{cmd} > {self.log} 2>&1') != 0:
+            _ok = os.system(f'{cmd} > {self.log} 2>&1') == 0
+            self.clean()
+            if not _ok:
                 logger.error(f'mosaic.py failed for HP{self.healpix:04d}, see {self.log}')
                 if os.path.exists(self.partial_file):
                     os.remove(self.partial_file)
@@ -171,6 +293,7 @@ class Pointing():
         header['OBJECT']='HP-'+str(self.healpix)
         for p in self.pointings_name_nearby:
             header['HISTORY'] = 'POINTING ADDED: ' + p
+        header['HISTORY'] = astrometry.history() if astrometry is not None else 'ASTROMETRY: none'
         data = np.zeros((2*himsize,2*himsize), dtype=np.float32)
         os.makedirs(os.path.dirname(self.template_file), exist_ok=True)
         fits.writeto(self.template_file, header=header, data=data, overwrite=True)
@@ -190,6 +313,11 @@ class Pointing():
             return True
         if _extra:
             logger.info(f'Pointing(s) {_extra} in HISTORY of {self.output_file} are not in the pointing set anymore, needs to be remade')
+            return True
+        # HISTORY cards are split at 72 characters: compare the joined text
+        _expected = astrometry.history() if astrometry is not None else 'ASTROMETRY: none'
+        if _expected.replace(' ', '') not in ''.join(str(_h) for _h in _hdr.get('HISTORY', [])).replace(' ', ''):
+            logger.info(f'{self.output_file} was made with a different astrometric correction, needs to be remade')
             return True
         return False
 
@@ -214,6 +342,15 @@ for healpix, close_pointings in grouped_pointings.items():
         logger.info(f'Skipping pointing {healpix} (not in {only_this_pointing})')
         continue
 
+    if astrometry is not None:
+        _excluded = [c for c in close_pointings if c in astrometry.excluded]
+        if _excluded:
+            logger.warning(f'HP{healpix:04d}: pointing(s) {_excluded} flagged SCATTER, left out')
+            close_pointings = [c for c in close_pointings if c not in astrometry.excluded]
+        if not close_pointings:
+            logger.warning(f'HP{healpix:04d}: no pointing left, not mosaiced')
+            continue
+
     p = Pointing(healpix, close_pointings)
     if p.check_todo():
         logger.info('Pointing: %s %s', healpix, close_pointings)
@@ -235,9 +372,11 @@ def run(p):
     """Make (or submit) one mosaic, return True on success."""
     try:
         p.make_empty_mosaic()
+        p.prepare_inputs()
         return p.mosaic()
     except Exception:
         logger.exception(f'HP{p.healpix:04d}: unexpected error')
+        p.clean()
         return False
 
 

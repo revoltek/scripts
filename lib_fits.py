@@ -230,7 +230,7 @@ class AllImages():
     
     def shift_by(self, xpix, ypix, img_idx):
         img_idx = int(img_idx)
-        self.images[img_idx].apply_shift(xpix, ypix)
+        self.images[img_idx].apply_shift_pix(xpix, ypix)
 
     def align_catalogue(self):
         [image.make_catalogue() for image in self]
@@ -577,7 +577,7 @@ class Image(object):
         self.img_hdr['BMIN'] = beam[1]
         self.img_hdr['BPA'] = beam[2]
         
-    def apply_shift(self, xpix, ypix):
+    def apply_shift_pix(self, xpix, ypix):
         """
         Shift image by xpix, ypix pixels
         """
@@ -761,8 +761,8 @@ class Image(object):
         """
         # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log as the reference val doesn't need it!
         logging.info('Shift %.2f %.2f arcsec (%s)' % (dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600, self.imagefile))
-        self.img_hdr['CRVAL1'] += dra * abs(self.img_hdr['CDELT1']) 
-        self.img_hdr['CRVAL2'] += ddec * abs(self.img_hdr['CDELT2'])
+        self.img_hdr['CRVAL1'] += dra
+        self.img_hdr['CRVAL2'] += ddec
 
     def pixel_covariance(self, pix1, pix2):
         """

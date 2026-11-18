@@ -1,6 +1,6 @@
 """
 Helpers shared by the analysis scripts that were ported from the notebooks in
-imagemakers/ (survey_compactness.py, survey_astrometry.py,
+imagemakers/ (survey_compactness.py,
 survey_spidx_crossmatch.py, survey_dynamicrange_plot.py,
 survey_falsepositive_plot.py).
 """
